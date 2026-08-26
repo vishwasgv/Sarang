@@ -10,6 +10,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface MembershipPlan {
   id: string
@@ -100,7 +101,7 @@ export function MembershipsScreen() {
   const [freezeTarget, setFreezeTarget] = useState<string | null>(null)
   const [freezeReason, setFreezeReason] = useState('')
   const [freezing, setFreezing] = useState(false)
-  const [newForm, setNewForm] = useState({ planId: '', startDate: new Date().toISOString().slice(0, 10), paymentStatus: 'PENDING', notes: '' })
+  const [newForm, setNewForm] = useState({ planId: '', startDate: toLocalISODate(new Date()), paymentStatus: 'PENDING', notes: '' })
   const [pickedClient, setPickedClient] = useState<Customer | null>(null)
   const [saving, setSaving] = useState(false)
   const [saveError, setSaveError] = useState<string | null>(null)
@@ -239,7 +240,7 @@ export function MembershipsScreen() {
   function openNewMembership() {
     setShowNewMembership(true)
     setSaveError(null)
-    setNewForm({ planId: '', startDate: new Date().toISOString().slice(0, 10), paymentStatus: 'PENDING', notes: '' })
+    setNewForm({ planId: '', startDate: toLocalISODate(new Date()), paymentStatus: 'PENDING', notes: '' })
     setPickedClient(null)
   }
 

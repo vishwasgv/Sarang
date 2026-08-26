@@ -7,6 +7,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface BatchInfo { id: string; batchName: string; subjectOrCourse: string }
 
@@ -24,9 +25,16 @@ interface Performance {
 interface CoachingBatch { id: string; batchName: string; subjectOrCourse: string }
 interface EnrolledStudent { studentId: string; student: { id: string; customerName: string } }
 
-const EMPTY_FORM = {
-  batchId: '', performanceName: '', date: new Date().toISOString().split('T')[0],
-  venue: '', participatingStudentIds: [] as string[], notes: '',
+// Phase 68 §9.1 final audit — Coaching Institute: was a module-level
+// constant computing new Date().toISOString().split('T')[0] (UTC date,
+// wrong before 5:30am IST) once at module load, then reused stale across
+// every subsequent form reset. Now a function so date is always today, in
+// local time, every time the form actually opens.
+function emptyForm() {
+  return {
+    batchId: '', performanceName: '', date: toLocalISODate(new Date()),
+    venue: '', participatingStudentIds: [] as string[], notes: '',
+  }
 }
 
 export default function PerformanceScreen() {
@@ -38,7 +46,7 @@ export default function PerformanceScreen() {
 
   const [showForm, setShowForm] = useState(false)
   const [editPerf, setEditPerf] = useState<Performance | null>(null)
-  const [form, setForm] = useState({ ...EMPTY_FORM })
+  const [form, setForm] = useState(emptyForm())
   const [batchStudents, setBatchStudents] = useState<EnrolledStudent[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -81,7 +89,7 @@ export default function PerformanceScreen() {
 
   function openNew() {
     setEditPerf(null)
-    setForm({ ...EMPTY_FORM })
+    setForm(emptyForm())
     setBatchStudents([])
     setFormError('')
     setShowForm(true)

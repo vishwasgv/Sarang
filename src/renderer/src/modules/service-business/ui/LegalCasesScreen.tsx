@@ -9,6 +9,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -140,7 +141,7 @@ export function LegalCasesScreen() {
   // Phase 68 §9.1 — Lawyer item 5: court-fee/disbursement tracking.
   const [disbursements, setDisbursements] = useState<CaseDisbursement[]>([])
   const [showDisbursementForm, setShowDisbursementForm] = useState(false)
-  const [disbursementForm, setDisbursementForm] = useState({ description: '', amount: '', paidDate: new Date().toISOString().slice(0, 10), notes: '' })
+  const [disbursementForm, setDisbursementForm] = useState({ description: '', amount: '', paidDate: toLocalISODate(new Date()), notes: '' })
   const [savingDisbursement, setSavingDisbursement] = useState(false)
 
   // New Case form
@@ -182,7 +183,7 @@ export function LegalCasesScreen() {
 
   // Time entry form (inside case detail)
   const [showTimeForm, setShowTimeForm] = useState(false)
-  const [timeForm, setTimeForm] = useState({ date: new Date().toISOString().slice(0, 10), description: '', hours: '', ratePerHour: '', employeeId: '' })
+  const [timeForm, setTimeForm] = useState({ date: toLocalISODate(new Date()), description: '', hours: '', ratePerHour: '', employeeId: '' })
   const [savingTime, setSavingTime] = useState(false)
   const [timeError, setTimeError] = useState<string | null>(null)
 
@@ -295,7 +296,7 @@ export function LegalCasesScreen() {
       })
       if (res.success) {
         setShowDisbursementForm(false)
-        setDisbursementForm({ description: '', amount: '', paidDate: new Date().toISOString().slice(0, 10), notes: '' })
+        setDisbursementForm({ description: '', amount: '', paidDate: toLocalISODate(new Date()), notes: '' })
         loadCaseDetail(selectedCase.id)
       } else {
         toastError('Error', res.error?.message ?? 'Could not save disbursement.')
@@ -530,7 +531,7 @@ export function LegalCasesScreen() {
       })
       if (res.success) {
         setShowTimeForm(false)
-        setTimeForm({ date: new Date().toISOString().slice(0, 10), description: '', hours: '', ratePerHour: '', employeeId: '' })
+        setTimeForm({ date: toLocalISODate(new Date()), description: '', hours: '', ratePerHour: '', employeeId: '' })
         loadCaseDetail(selectedCase.id)
       } else {
         setTimeError(res.error?.message ?? 'Could not log time.')
@@ -876,7 +877,7 @@ export function LegalCasesScreen() {
                     <div className="flex items-center justify-between">
                       <p className="font-semibold text-foreground text-sm">Court Fees / Disbursements ({disbursements.length})</p>
                       <button
-                        onClick={() => { setShowDisbursementForm(true); setDisbursementForm({ description: '', amount: '', paidDate: new Date().toISOString().slice(0, 10), notes: '' }) }}
+                        onClick={() => { setShowDisbursementForm(true); setDisbursementForm({ description: '', amount: '', paidDate: toLocalISODate(new Date()), notes: '' }) }}
                         className="h-7 px-2 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
                       >
                         <Plus size={11} /> Add
@@ -929,7 +930,7 @@ export function LegalCasesScreen() {
                         )}
                       </div>
                       <button
-                        onClick={() => { setShowTimeForm(true); setTimeError(null); setTimeForm({ date: new Date().toISOString().slice(0, 10), description: '', hours: '', ratePerHour: '', employeeId: '' }); loadFormData() }}
+                        onClick={() => { setShowTimeForm(true); setTimeError(null); setTimeForm({ date: toLocalISODate(new Date()), description: '', hours: '', ratePerHour: '', employeeId: '' }); loadFormData() }}
                         className="h-7 px-2 bg-primary text-primary-foreground rounded-lg text-xs font-medium flex items-center gap-1"
                       >
                         <Plus size={11} /> Log Time

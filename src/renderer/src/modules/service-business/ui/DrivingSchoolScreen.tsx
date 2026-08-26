@@ -155,7 +155,7 @@ export function DrivingSchoolScreen() {
   const [sessions, setSessions] = useState<DrivingSession[]>([])
   const [sessionFilter, setSessionFilter] = useState<'all' | 'today' | 'SCHEDULED' | 'COMPLETED'>('today')
   const [showSessionForm, setShowSessionForm] = useState(false)
-  const [sessionForm, setSessionForm] = useState({ learnerId: '', instructorId: '', vehicleId: '', sessionDate: new Date().toISOString().slice(0, 10), sessionTime: '09:00', durationMinutes: 60, pickupPoint: '', sessionFee: '', packageEnrollmentId: '' })
+  const [sessionForm, setSessionForm] = useState({ learnerId: '', instructorId: '', vehicleId: '', sessionDate: toLocalISODate(new Date()), sessionTime: '09:00', durationMinutes: 60, pickupPoint: '', sessionFee: '', packageEnrollmentId: '' })
   const [pickedSessionLearner, setPickedSessionLearner] = useState<Customer | null>(null)
   const [savingSession, setSavingSession] = useState(false)
   const [sessionError, setSessionError] = useState<string | null>(null)
@@ -193,7 +193,7 @@ export function DrivingSchoolScreen() {
   // Vehicle maintenance (Phase 58 §2)
   const [maintenanceVehicle, setMaintenanceVehicle] = useState<DrivingVehicle | null>(null)
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([])
-  const [maintenanceForm, setMaintenanceForm] = useState({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: 0, serviceType: '', cost: '', notes: '' })
+  const [maintenanceForm, setMaintenanceForm] = useState({ serviceDate: toLocalISODate(new Date()), odometerKm: 0, serviceType: '', cost: '', notes: '' })
   const [savingMaintenance, setSavingMaintenance] = useState(false)
   const [maintenanceError, setMaintenanceError] = useState<string | null>(null)
 
@@ -201,7 +201,7 @@ export function DrivingSchoolScreen() {
   const [tests, setTests] = useState<DrivingTest[]>([])
   const [passRates, setPassRates] = useState<InstructorPassRate[]>([])
   const [showTestForm, setShowTestForm] = useState(false)
-  const [testForm, setTestForm] = useState({ learnerId: '', testType: 'LL_TEST', testDate: new Date().toISOString().slice(0, 10), testCenter: '', notes: '', instructorId: '' })
+  const [testForm, setTestForm] = useState({ learnerId: '', testType: 'LL_TEST', testDate: toLocalISODate(new Date()), testCenter: '', notes: '', instructorId: '' })
   const [pickedTestLearner, setPickedTestLearner] = useState<Customer | null>(null)
   const [savingTest, setSavingTest] = useState(false)
   const [testError, setTestError] = useState<string | null>(null)
@@ -513,7 +513,7 @@ export function DrivingSchoolScreen() {
 
   async function openMaintenance(v: DrivingVehicle) {
     setMaintenanceVehicle(v)
-    setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: v.odometerKm, serviceType: '', cost: '', notes: '' })
+    setMaintenanceForm({ serviceDate: toLocalISODate(new Date()), odometerKm: v.odometerKm, serviceType: '', cost: '', notes: '' })
     setMaintenanceError(null)
     try {
       const res = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: v.id })
@@ -543,7 +543,7 @@ export function DrivingSchoolScreen() {
         loadVehicles()
         const logsRes = await api.drivingVehicle.listMaintenanceLogs({ vehicleId: maintenanceVehicle.id })
         if (logsRes.success) setMaintenanceLogs(logsRes.data as MaintenanceLog[])
-        setMaintenanceForm({ serviceDate: new Date().toISOString().slice(0, 10), odometerKm: maintenanceForm.odometerKm, serviceType: '', cost: '', notes: '' })
+        setMaintenanceForm({ serviceDate: toLocalISODate(new Date()), odometerKm: maintenanceForm.odometerKm, serviceType: '', cost: '', notes: '' })
       } else {
         setMaintenanceError(res.error?.message ?? 'Could not log maintenance.')
       }
@@ -719,7 +719,7 @@ export function DrivingSchoolScreen() {
         <div className="flex items-center gap-2">
           {tab === 'sessions' && <button onClick={() => setShowSessionForm(true)} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Schedule Session</button>}
           {tab === 'vehicles' && <button onClick={() => { setEditVehicle(null); setVehicleForm({ registrationNumber: '', make: '', model: '', vehicleClass: 'LMV', instructorId: '', status: 'ACTIVE', odometerKm: 0, serviceIntervalKm: 5000, serviceIntervalSessions: 30 }); setVehicleError(null); setShowVehicleForm(true); loadEmployees() }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Add Vehicle</button>}
-          {tab === 'tests' && <button onClick={() => { setShowTestForm(true); setTestError(null); setPickedTestLearner(null); setTestForm({ learnerId: '', testType: 'LL_TEST', testDate: new Date().toISOString().slice(0, 10), testCenter: '', notes: '', instructorId: '' }) }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Schedule Test</button>}
+          {tab === 'tests' && <button onClick={() => { setShowTestForm(true); setTestError(null); setPickedTestLearner(null); setTestForm({ learnerId: '', testType: 'LL_TEST', testDate: toLocalISODate(new Date()), testCenter: '', notes: '', instructorId: '' }) }} className="h-10 px-4 bg-primary text-primary-foreground rounded-xl text-sm font-medium flex items-center gap-2"><Plus size={16} /> Schedule Test</button>}
           {tab === 'packages' && (
             <>
               <button onClick={() => { setShowEnrollForm(true); setEnrollError(null); loadCustomers() }} className="h-10 px-4 rounded-xl border border-border text-sm font-medium flex items-center gap-2 text-foreground hover:bg-muted/50"><Plus size={16} /> Enroll Learner</button>

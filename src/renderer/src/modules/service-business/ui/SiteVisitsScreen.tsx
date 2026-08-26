@@ -8,6 +8,7 @@ import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface Project { id: string; projectName: string; client: { customerName: string } }
 interface SiteVisit {
@@ -47,7 +48,7 @@ export function SiteVisitsScreen(): React.JSX.Element {
   const [items, setItems] = useState<SiteVisit[]>([])
   const [loading, setLoading] = useState(false)
   const [showForm, setShowForm] = useState(false)
-  const [visitDate, setVisitDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [visitDate, setVisitDate] = useState(() => toLocalISODate(new Date()))
   const [visitType, setVisitType] = useState('INSPECTION')
   const [findings, setFindings] = useState('')
   const [weatherConditions, setWeatherConditions] = useState('')
@@ -101,7 +102,7 @@ export function SiteVisitsScreen(): React.JSX.Element {
   useEffect(() => { void load(projectId) }, [projectId, load])
 
   function resetForm() {
-    setVisitDate(new Date().toISOString().slice(0, 10)); setVisitType('INSPECTION'); setFindings(''); setWeatherConditions(''); setBillableAmount(''); setError('')
+    setVisitDate(toLocalISODate(new Date())); setVisitType('INSPECTION'); setFindings(''); setWeatherConditions(''); setBillableAmount(''); setError('')
     setLatitude(''); setLongitude(''); setLocationAccuracy(null); setLocationError('')
   }
 

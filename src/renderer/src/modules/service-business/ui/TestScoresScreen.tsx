@@ -7,6 +7,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
 import { useNotificationStore } from '@app/store/notification.store'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface CoachingBatch { id: string; batchName: string; subjectOrCourse: string }
 interface EnrolledStudent { id: string; studentId: string; status: string; student: { id: string; customerName: string } }
@@ -29,10 +30,17 @@ interface TestScore {
   }
 }
 
-const EMPTY_FORM = {
-  batchId: '', enrollmentId: '', testName: '', subject: '',
-  marksObtained: '', maxMarks: '', testDate: new Date().toISOString().split('T')[0],
-  grade: '', notes: '',
+// Phase 68 §9.1 final audit — Coaching Institute: was a module-level
+// constant computing new Date().toISOString().split('T')[0] (UTC date,
+// wrong before 5:30am IST) once at module load, then reused stale across
+// every subsequent form reset. Now a function so testDate is always today,
+// in local time, every time the form actually opens.
+function emptyForm() {
+  return {
+    batchId: '', enrollmentId: '', testName: '', subject: '',
+    marksObtained: '', maxMarks: '', testDate: toLocalISODate(new Date()),
+    grade: '', notes: '',
+  }
 }
 
 // A rough, common Indian grading scale — purely a convenience prefill, never
@@ -57,7 +65,7 @@ export default function TestScoresScreen() {
 
   const [showForm, setShowForm] = useState(false)
   const [editScore, setEditScore] = useState<TestScore | null>(null)
-  const [form, setForm] = useState({ ...EMPTY_FORM })
+  const [form, setForm] = useState(emptyForm())
   const [batchStudents, setBatchStudents] = useState<EnrolledStudent[]>([])
   const [saving, setSaving] = useState(false)
   const [formError, setFormError] = useState('')
@@ -99,7 +107,7 @@ export default function TestScoresScreen() {
 
   function openNew() {
     setEditScore(null)
-    setForm({ ...EMPTY_FORM })
+    setForm(emptyForm())
     setBatchStudents([])
     setFormError('')
     setShowForm(true)

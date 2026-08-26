@@ -13,6 +13,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { Card } from '@shared/ui/molecules/Card'
 import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { toLocalISODate } from '@shared/utils/locale.util'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
@@ -610,7 +611,7 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
     providerId: '',
     serviceCatalogId: '',
     serviceTitle: '',
-    scheduledDate: new Date().toISOString().split('T')[0],
+    scheduledDate: toLocalISODate(new Date()),
     scheduledTime: '09:00',
     durationMinutes: 30,
     notes: '',

@@ -41,8 +41,14 @@ function fmtAmount(n: number): string {
   return `₹${Number(n).toLocaleString('en-IN', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`
 }
 
+// Phase 68 §9.1 final audit — Independent Consultant: was a raw
+// `.toISOString().slice(0, 7)`, computing the UTC year-month — wrong for
+// the first ~5.5h of a new month in IST, which would target/generate-invoice
+// for the WRONG billing period. Same bug class fixed across
+// retainer.service.ts/pest-contract.service.ts this phase.
 function currentPeriod(): string {
-  return new Date().toISOString().slice(0, 7)
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
 }
 
 // Exhaustive against RetainerAgreement.status in prisma/schema.prisma (ACTIVE|PAUSED|EXPIRED)

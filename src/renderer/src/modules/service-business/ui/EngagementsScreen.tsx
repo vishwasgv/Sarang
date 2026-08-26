@@ -74,7 +74,18 @@ const FEE_TYPES       = ['FIXED', 'HOURLY', 'RETAINER_MONTHLY']
 // generateEngagementInvoice defaults to the same "YYYY-MM" of `new Date()`
 // when no explicit period is passed) — re-invoicing is gated per calendar
 // month, not a one-shot invoiceId, so a retainer can be billed every month.
-const currentPeriod = new Date().toISOString().slice(0, 7)
+//
+// Phase 68 §9.1 final audit: was a module-level constant computing a raw
+// `.toISOString().slice(0, 7)` (the UTC month, wrong for the first ~5.5h of
+// a new month in IST) exactly once at module load, then reused stale for
+// the rest of the renderer session — the backend side of this exact
+// mismatch (engagement.service.ts) was already fixed to local time earlier
+// this phase, so this renderer constant had silently drifted out of sync
+// with it. Now a function so it's always today's LOCAL month.
+function currentPeriod(): string {
+  const n = new Date()
+  return `${n.getFullYear()}-${String(n.getMonth() + 1).padStart(2, '0')}`
+}
 
 // ── Component ─────────────────────────────────────────────────────────────────
 
@@ -376,19 +387,19 @@ export default function EngagementsScreen(): React.JSX.Element {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-1">
-                      {eng.lastInvoicedPeriod !== currentPeriod && eng.feeAmount != null && eng.feeAmount > 0 && (
+                      {eng.lastInvoicedPeriod !== currentPeriod() && eng.feeAmount != null && eng.feeAmount > 0 && (
                         <button
                           onClick={() => void handleGenerateInvoice(eng.id)}
                           disabled={generatingInvoiceId === eng.id}
                           className="p-1.5 text-gray-400 hover:text-green-600 rounded hover:bg-green-50 transition-colors disabled:opacity-50 dark:text-slate-500"
-                          title={eng.lastInvoicedPeriod ? `Generate invoice for ${currentPeriod}` : 'Generate Invoice'}
+                          title={eng.lastInvoicedPeriod ? `Generate invoice for ${currentPeriod()}` : 'Generate Invoice'}
                           style={{ minHeight: 32, minWidth: 32 }}
                         >
                           <Receipt className="w-4 h-4" />
                         </button>
                       )}
-                      {eng.lastInvoicedPeriod === currentPeriod && (
-                        <span className="text-xs text-green-600 font-medium px-1">Invoiced ({currentPeriod})</span>
+                      {eng.lastInvoicedPeriod === currentPeriod() && (
+                        <span className="text-xs text-green-600 font-medium px-1">Invoiced ({currentPeriod()})</span>
                       )}
                       <button onClick={() => openEditForm(eng)} className="p-1.5 text-gray-400 hover:text-violet-600 rounded hover:bg-violet-50 transition-colors dark:text-slate-500" title="Edit" style={{ minHeight: 32, minWidth: 32 }}>
                         <Edit2 className="w-4 h-4" />

@@ -7,6 +7,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface Instructor { id: string; fullName: string }
 interface BatchCount { enrollments: number }
@@ -70,12 +71,18 @@ interface SyllabusTopic {
   notes: string | null
 }
 
-const EMPTY_BATCH = {
+// Phase 68 §9.1 final audit — Coaching Institute: was a module-level
+// constant computing `new Date().toISOString().split('T')[0]` (the UTC
+// date, wrong before 5:30am IST) exactly once at module load, then reused
+// stale across every subsequent form reset for the lifetime of the
+// renderer session. Now a function so startDate is always today, in local
+// time, every time the form actually opens.
+function emptyBatch() { return {
   batchName: '', subjectOrCourse: '', instructorId: '',
   scheduleDays: [] as string[], scheduleTime: '', roomOrLocation: '',
-  maxCapacity: '20', startDate: new Date().toISOString().split('T')[0],
+  maxCapacity: '20', startDate: toLocalISODate(new Date()),
   endDate: '', feePerMonth: '', status: 'ACTIVE',
-}
+} }
 
 const EMPTY_ENR = {
   studentId: '', discountType: 'NONE', discountAmount: '0', effectiveFee: '', notes: '',
@@ -102,7 +109,7 @@ export default function BatchesScreen() {
 
   const [showBatchForm, setShowBatchForm] = useState(false)
   const [editBatch, setEditBatch] = useState<CoachingBatch | null>(null)
-  const [batchForm, setBatchForm] = useState({ ...EMPTY_BATCH })
+  const [batchForm, setBatchForm] = useState(emptyBatch())
   const [batchSaving, setBatchSaving] = useState(false)
   const [batchError, setBatchError] = useState('')
 
@@ -171,7 +178,7 @@ export default function BatchesScreen() {
   // Batch form
   function openNewBatch() {
     setEditBatch(null)
-    setBatchForm({ ...EMPTY_BATCH })
+    setBatchForm(emptyBatch())
     setBatchError('')
     setShowBatchForm(true)
   }
