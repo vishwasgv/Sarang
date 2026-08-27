@@ -39,6 +39,7 @@ async function run() {
   let categoryId = null
   let salaryPaymentId = null
   let recurringProfileId = null
+  let ccBillSupplierId = null, ccBillId = null
   try {
     page = await h.getMainWindow(app)
     await h.login(page)
@@ -58,6 +59,26 @@ async function run() {
       productId = prod?.data?.id
       r.log('seed-ok', !!(downtownId && uptownId && customerAId && customerBId && productId),
         JSON.stringify({ cc1: cc1?.error, cc2: cc2?.error, custA: custA?.error, custB: custB?.error, prod: prod?.error }))
+    })
+
+    // ── Phase 65 gap-closure (2026-08-27) — Bill cost-centre tagging (only
+    // Invoice/Expense were previously covered here). ──────────────────────
+    await r.step('bill-cost-centre-tagging', async () => {
+      const supRes = await page.evaluate((n) => window.api.suppliers.create({ supplierName: n }), `${TEST_PREFIX} CC Bill Vendor ${suffix}`)
+      ccBillSupplierId = supRes?.data?.id
+      const billRes = await page.evaluate(({ supplierId, costCentreId }) => window.api.bills.create({
+        supplierId, costCentreId, items: [{ serviceDescription: 'E2E Phase65 CC-tagged bill line', quantity: 1, unitCost: 1000, taxRate: 0 }],
+      }), { supplierId: ccBillSupplierId, costCentreId: uptownId })
+      ccBillId = billRes?.data?.id
+      r.log('cc-tagged-bill-created', !!ccBillId, JSON.stringify(billRes?.error || ''))
+      r.log('bill-cost-centre-persisted', billRes?.data?.costCentreId === uptownId, JSON.stringify(billRes?.data?.costCentreId))
+
+      const je = h.withDb((db) => db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'BILL' AND sourceId = ?").get(ccBillId))
+      r.log('bill-gl-posting-exists', !!je, JSON.stringify(je))
+      if (je) {
+        const taggedLine = h.withDb((db) => db.prepare('SELECT * FROM JournalEntryLine WHERE journalEntryId = ? AND costCentreId = ?').get(je.id, uptownId))
+        r.log('bill-gl-posting-attributed-to-cost-centre', !!taggedLine, JSON.stringify(taggedLine))
+      }
     })
 
     // ── Cost-centre tagging via real Billing UI, flowing into the treemap report ──
@@ -215,12 +236,14 @@ async function run() {
     })
 
     await r.step('seed-employee-for-payroll', async () => {
-      const emp = await page.evaluate(async (n) => window.api.hr.createEmployee({
+      const emp = await page.evaluate(async ({ n, costCentreId }) => window.api.hr.createEmployee({
         fullName: n, employeeType: 'FULL_TIME', joinDate: new Date().toISOString().slice(0, 10),
-        salaryType: 'MONTHLY', basicSalary: 20000
-      }), employeeName)
+        salaryType: 'MONTHLY', basicSalary: 20000, costCentreId
+      }), { n: employeeName, costCentreId: downtownId })
       employeeId = emp?.data?.id
       r.log('employee-created', !!employeeId, JSON.stringify(emp?.error))
+      // Phase 65 gap-closure (2026-08-27) — Employee cost-centre tagging.
+      r.log('employee-cost-centre-persisted', emp?.data?.costCentreId === downtownId, JSON.stringify(emp?.data?.costCentreId))
     })
 
     await r.step('generate-payroll-and-suggest-statutory-via-real-ui', async () => {
@@ -315,6 +338,10 @@ async function run() {
         if (je) {
           const lines = db.prepare('SELECT * FROM JournalEntryLine WHERE journalEntryId = ?').all(je.id)
           r.log('payroll-gl-posting-has-lines', lines.length >= 2, `count=${lines.length}`)
+          // Phase 65 gap-closure (2026-08-27) — the employee's own
+          // costCentreId should attribute this GL posting to that centre.
+          const taggedLine = lines.find((l) => l.costCentreId === downtownId)
+          r.log('payroll-gl-posting-attributed-to-employee-cost-centre', !!taggedLine, JSON.stringify({ downtownId, lines: lines.map((l) => l.costCentreId) }))
         }
       }
     }))
@@ -418,6 +445,17 @@ async function run() {
         }
         for (const custId of [customerAId, customerBId].filter(Boolean)) {
           try { db.prepare('DELETE FROM Customer WHERE id = ?').run(custId) } catch { db.prepare('UPDATE Customer SET isActive = 0 WHERE id = ?').run(custId) }
+        }
+        if (ccBillId) {
+          del('SupplierPayment', 'billId = ?', ccBillId)
+          del('BillItem', 'billId = ?', ccBillId)
+          const je = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'BILL' AND sourceId = ?").get(ccBillId)
+          if (je) { del('JournalEntryLine', 'journalEntryId = ?', je.id); del('"JournalEntry"', 'id = ?', je.id) }
+          del('"Bill"', 'id = ?', ccBillId)
+        }
+        if (ccBillSupplierId) {
+          del('SupplierLedger', 'supplierId = ?', ccBillSupplierId)
+          try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(ccBillSupplierId) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(ccBillSupplierId) }
         }
         if (uptownId) del('Budget', 'costCentreId = ?', uptownId)
         if (recurringProfileId) del('RecurringProfile', 'id = ?', recurringProfileId)
