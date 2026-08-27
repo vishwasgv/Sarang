@@ -9,6 +9,26 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Hotel'
 
+// Phase 68 §9.1 — Hotel/Lodge items 2/3/4 report-tile render sweep. Wired
+// via window.api.hotel.* (not window.api.reports.*) — see hotel.service.ts.
+async function checkReportTile(page, r, tileId, tileLabel) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  const dateInputs = page.locator('input[type="date"]')
+  await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+  await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -178,6 +198,35 @@ async function run() {
         const expectedTotal = 3000 * 1.12 + 500 * 1.18
         r.log('invoice-total-correct', Math.abs((invRes?.data?.totalAmount ?? 0) - expectedTotal) < 1, `expected=${expectedTotal} actual=${invRes?.data?.totalAmount}`)
       }
+    })
+
+    await r.step('occupancy-trend-report', () => checkReportTile(page, r, 'occupancyTrend', 'Occupancy Trend'))
+
+    await r.step('occupancy-trend-has-real-data-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.hotel.occupancyTrend({ dateFrom: from, dateTo: to }), { from, to })
+      r.log('occupancy-trend-has-nonzero-peak', (res?.data?.summary?.peakOccupancyPercent ?? 0) > 0, JSON.stringify(res?.data?.summary))
+    })
+
+    await r.step('room-wise-adr-report', () => checkReportTile(page, r, 'roomWiseADR', 'Room-wise ADR'))
+
+    await r.step('room-wise-adr-shows-our-room-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.hotel.roomWiseADR({ dateFrom: from, dateTo: to }), { from, to })
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.roomNumber === 'H-E2E9')
+      r.log('room-wise-adr-includes-our-room', !!found && found.nightsSold >= 1, JSON.stringify(found))
+    })
+
+    await r.step('adr-revpar-report', () => checkReportTile(page, r, 'adrRevPAR', 'ADR & RevPAR'))
+
+    await r.step('adr-revpar-has-real-revenue-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.hotel.adrRevPAR({ dateFrom: from, dateTo: to }), { from, to })
+      r.log('adr-revpar-has-nonzero-room-revenue', (res?.data?.summary?.totalRoomRevenue ?? 0) >= 3000, JSON.stringify(res?.data?.summary))
     })
 
     await r.step('restore-business-type', async () => {
