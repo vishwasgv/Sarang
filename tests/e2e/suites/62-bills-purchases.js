@@ -272,6 +272,72 @@ async function run() {
       r.log('gst-computed-on-discounted-base-162-not-original-180', Math.abs((invRes?.data?.taxAmount ?? -1) - 162) < 0.01, `taxAmount=${invRes?.data?.taxAmount}`)
       r.log('invoice-total-correct-1062', Math.abs((invRes?.data?.totalAmount ?? -1) - 1062) < 0.01, `total=${invRes?.data?.totalAmount}`)
     })
+
+    // ── Purchases by Vendor / by Item reports (both genuinely untested
+    // anywhere before this) ────────────────────────────────────────────────
+    let pbvSupplierId, pbvProductId
+    await r.step('purchases-by-vendor-and-by-item-reports-reflect-a-real-bill', async () => {
+      const supRes = await makeSupplier({ supplierName: `${TEST_PREFIX} Purchases-By Vendor` })
+      pbvSupplierId = supRes?.data?.id
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 200, sellingPrice: 300, taxRate: 18
+      }), `${TEST_PREFIX} Purchases-By Item ${Date.now()}`)
+      pbvProductId = prodRes?.data?.id
+      if (pbvProductId) createdProductIds.push(pbvProductId)
+
+      const billRes = await page.evaluate(({ supplierId, productId }) => window.api.bills.create({
+        supplierId, items: [{ productId, quantity: 3, unitCost: 200, taxRate: 18 }]
+      }), { supplierId: pbvSupplierId, productId: pbvProductId })
+      if (billRes?.data?.id) createdBillIds.push(billRes.data.id)
+      r.log('purchases-by-source-bill-created', !!billRes?.success, JSON.stringify(billRes?.error || ''))
+
+      const today = h.toLocalISODate(new Date())
+      const byVendorRes = await page.evaluate(({ dateFrom, dateTo }) => window.api.reports.purchasesByVendor({ dateFrom, dateTo }), { dateFrom: today, dateTo: today })
+      const vendorRow = (byVendorRes?.data?.rows || []).find((row) => row.supplierId === pbvSupplierId)
+      r.log('purchases-by-vendor-shows-our-supplier', !!vendorRow && Math.abs(vendorRow.totalAmount - 708) < 0.01, JSON.stringify(vendorRow))
+
+      const byItemRes = await page.evaluate(({ dateFrom, dateTo }) => window.api.reports.purchasesByItem({ dateFrom, dateTo }), { dateFrom: today, dateTo: today })
+      const itemRowByQty = (byItemRes?.data?.rows || []).find((row) => row.quantity === 3 && !row.isService)
+      r.log('purchases-by-item-shows-our-line', !!itemRowByQty && Math.abs(itemRowByQty.totalAmount - 708) < 0.01, JSON.stringify(itemRowByQty))
+    })
+
+    // ── Supplier bank details + PAN persist ────────────────────────────────
+    await r.step('supplier-bank-details-and-pan-persist', async () => {
+      const supRes = await makeSupplier({
+        supplierName: `${TEST_PREFIX} Banked Vendor`,
+        bankAccountNumber: '000111222333', bankIfscCode: 'HDFC0001234', bankName: 'HDFC Bank', panNumber: 'ABCDE1234F',
+      })
+      r.log('supplier-with-bank-details-created', !!supRes?.success, JSON.stringify(supRes?.error || ''))
+      r.log('bank-account-number-persisted', supRes?.data?.bankAccountNumber === '000111222333', JSON.stringify(supRes?.data?.bankAccountNumber))
+      r.log('bank-ifsc-persisted', supRes?.data?.bankIfscCode === 'HDFC0001234', JSON.stringify(supRes?.data?.bankIfscCode))
+      r.log('pan-number-persisted', supRes?.data?.panNumber === 'ABCDE1234F', JSON.stringify(supRes?.data?.panNumber))
+    })
+
+    // ── Expense: vendor tracking, mileage (server-recomputed amount),
+    // billable-to-customer flag ────────────────────────────────────────────
+    await r.step('expense-vendor-mileage-and-billable-flag', async () => {
+      const supRes = await makeSupplier({ supplierName: `${TEST_PREFIX} Expense Vendor` })
+      const expSupplierId = supRes?.data?.id
+
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Billable Client ${Date.now()}`)
+      if (custRes?.data?.id) createdCustomerIds.push(custRes.data.id)
+      const billableCustomerId = custRes?.data?.id
+
+      const catRes = await page.evaluate(() => window.api.expenses.listCategories())
+      const categoryId = catRes?.data?.[0]?.id
+
+      const expRes = await page.evaluate(({ categoryId, supplierId, billableCustomerId, today }) => window.api.expenses.create({
+        categoryId, expenseName: 'E2E Bills Client Site Visit', amount: 1,
+        expenseDate: today, supplierId, mileageKm: 40, mileageRatePerKm: 12, billableCustomerId,
+      }), { categoryId, supplierId: expSupplierId, billableCustomerId, today: h.toLocalISODate(new Date()) })
+      r.log('expense-with-vendor-mileage-billable-created', !!expRes?.success, JSON.stringify(expRes?.error || ''))
+      r.log('expense-supplier-persisted', expRes?.data?.supplierId === expSupplierId, JSON.stringify(expRes?.data?.supplierId))
+      r.log('expense-billable-customer-persisted', expRes?.data?.billableCustomerId === billableCustomerId, JSON.stringify(expRes?.data?.billableCustomerId))
+      // Server recomputes amount = mileageKm * mileageRatePerKm = 40*12 = 480,
+      // NOT the 1 we sent -- proves the recompute actually runs, not just a
+      // pass-through of the client-sent amount.
+      r.log('expense-amount-server-recomputed-from-mileage-480', Number(expRes?.data?.amount) === 480, `amount=${expRes?.data?.amount}`)
+    })
   } finally {
     await h.closeApp(app)
     h.randomizeAdminPassword()
@@ -281,6 +347,10 @@ async function run() {
     // suite-created rows behind in the shared dev DB.
     const cleaned = h.withDb((db) => {
       let payments = 0, bills = 0, billItems = 0, poItems = 0, pos = 0, ledger = 0, suppliers = 0
+      // Delete first -- Expense.supplierId is a plain FK to Supplier, must
+      // clear before the supplier-delete loop below or it silently falls
+      // back to soft-deactivate instead.
+      const expenses = db.prepare("DELETE FROM Expense WHERE expenseName LIKE 'E2E Bills%'").run().changes
       for (const billId of createdBillIds) {
         payments += db.prepare('DELETE FROM SupplierPayment WHERE billId = ?').run(billId).changes
         billItems += db.prepare('DELETE FROM BillItem WHERE billId = ?').run(billId).changes
@@ -303,7 +373,7 @@ async function run() {
         db.prepare('DELETE FROM Inventory WHERE productId = ?').run(productId)
         try { db.prepare('DELETE FROM Product WHERE id = ?').run(productId) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(productId) }
       }
-      return { payments, bills, billItems, poItems, pos, ledger, suppliers }
+      return { payments, bills, billItems, poItems, pos, ledger, suppliers, expenses }
     })
     console.log('extra cleanup (Phase 61 tables):', JSON.stringify(cleaned))
     const genericCleaned = h.cleanupByNamePrefix(TEST_PREFIX)
