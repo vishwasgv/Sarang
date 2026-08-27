@@ -8,6 +8,31 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E CarSvc'
 
+// Phase 68 §9.1 — Car Service Center items 3/4 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange, expectNonEmpty, emptyStateText } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  if (expectNonEmpty && emptyStateText) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    r.log(`${tileId}-shows-real-data`, !bodyText.includes(emptyStateText), 'expected our seeded data to flow through, not the empty-state message')
+  }
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -54,6 +79,8 @@ async function run() {
       await page.waitForTimeout(300)
       await modal.getByPlaceholder('Service name').fill('E2E Oil Change')
       await modal.getByPlaceholder('₹ Rate').first().fill('1500')
+      // carPartsVariance needs a real quoted-parts estimate on the card.
+      await modal.locator('label:has-text("Quoted Parts Estimate") + input').fill('2000')
       await page.waitForTimeout(300)
 
       await modal.getByRole('button', { name: 'Create Job Card' }).click()
@@ -103,6 +130,30 @@ async function run() {
         const expectedTotal = 1500 * 1.18
         r.log('invoice-total-correct', Math.abs((invRes?.data?.totalAmount ?? 0) - expectedTotal) < 1, `expected=${expectedTotal} actual=${invRes?.data?.totalAmount}`)
       }
+    })
+
+    await r.step('car-parts-variance-report', () => checkReportTile(page, r, 'carPartsVariance', 'Parts Cost Variance', {
+      needsDateRange: false, expectNonEmpty: true, emptyStateText: 'No jobs with a quoted parts estimate yet.',
+    }))
+
+    await r.step('car-parts-variance-shows-our-job-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.carPartsVariance())
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.vehicleNumber === 'KA01E2E9999')
+      r.log('parts-variance-includes-our-job', !!found && found.quotedPartsTotal === 2000, JSON.stringify(found))
+    })
+
+    await r.step('service-type-revenue-report', () => checkReportTile(page, r, 'serviceTypeRevenue', 'Revenue by Service Type', {
+      needsDateRange: true, expectNonEmpty: true, emptyStateText: 'No service items billed in this date range.',
+    }))
+
+    await r.step('service-type-revenue-shows-oil-change-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.reports.serviceTypeRevenue({ dateFrom: from, dateTo: to }), { from, to })
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.serviceType === 'E2E Oil Change')
+      r.log('service-revenue-includes-oil-change', !!found && Number(found.totalRevenue) === 1500, JSON.stringify(found))
     })
 
     await r.step('restore-business-type', async () => {
