@@ -9,6 +9,27 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Evt'
 
+// Phase 68 §9.1 — Event Management items 2/5 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -113,6 +134,44 @@ async function run() {
       r.log('delete-after-invoice-correctly-rejected', delRes?.success === false && delRes?.error?.code === 'EVT-002', JSON.stringify(delRes?.error))
     })
 
+    await r.step('vendor-cost-vs-budget-report', () => checkReportTile(page, r, 'vendorCostVsBudget', 'Vendor Cost vs. Budget', { needsDateRange: false }))
+
+    await r.step('vendor-cost-vs-budget-shows-our-event-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.vendorCostVsBudget())
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.eventName === 'E2E Evt Test Wedding')
+      r.log('vendor-cost-report-includes-our-event', !!found, JSON.stringify(found))
+    })
+
+    let vendorBookingId
+
+    await r.step('book-and-rate-vendor-for-performance-history', async () => {
+      const supRes = await page.evaluate(async () => window.api.suppliers.create({ supplierName: 'E2E Evt Caterer' }))
+      const vendorId = supRes?.data?.id
+      r.log('vendor-supplier-created', !!vendorId, JSON.stringify(supRes?.error || ''))
+      if (!vendorId || !eventId) return
+
+      const bookRes = await page.evaluate(({ eid, vid }) => window.api.eventVendorBooking.create({
+        eventId: eid, vendorId: vid, vendorCategory: 'Catering', quotedAmount: 20000,
+      }), { eid: eventId, vid: vendorId })
+      vendorBookingId = bookRes?.data?.id
+      r.log('vendor-booking-created', !!vendorBookingId, JSON.stringify(bookRes?.error || ''))
+
+      if (vendorBookingId) {
+        const fbRes = await page.evaluate((id) => window.api.eventVendorBooking.recordFeedback({ id, vendorRating: 5, vendorFeedback: 'E2E excellent service' }), vendorBookingId)
+        r.log('vendor-feedback-recorded', fbRes?.data?.vendorRating === 5, JSON.stringify(fbRes?.error || ''))
+      }
+    })
+
+    await r.step('vendor-performance-history-report', () => checkReportTile(page, r, 'vendorPerformanceHistory', 'Vendor Performance History', { needsDateRange: false }))
+
+    await r.step('vendor-performance-history-shows-our-caterer-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.vendorPerformanceHistory())
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.vendorName === 'E2E Evt Caterer')
+      r.log('performance-history-includes-our-caterer', !!found && found.avgRating === 5, JSON.stringify(found))
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'EVENT_MANAGEMENT') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -126,8 +185,13 @@ async function run() {
     console.log('cleanup:', JSON.stringify(cleaned))
     h.withDb((db) => {
       const ids = db.prepare("SELECT id FROM EventBooking WHERE eventName LIKE 'E2E Evt%'").all().map((r2) => r2.id)
-      for (const id of ids) { try { db.prepare('DELETE FROM EventBooking WHERE id = ?').run(id) } catch { /* left in place — delete-guard is meant to hold post-invoice */ } }
-      console.log('extra cleanup: events', ids.length)
+      for (const id of ids) {
+        try { db.prepare('DELETE FROM EventVendorBooking WHERE eventId = ?').run(id) } catch { /* noop */ }
+        try { db.prepare('DELETE FROM EventBooking WHERE id = ?').run(id) } catch { /* left in place — delete-guard is meant to hold post-invoice */ }
+      }
+      const supIds = db.prepare("SELECT id FROM Supplier WHERE supplierName LIKE 'E2E Evt%'").all().map((r2) => r2.id)
+      for (const sid of supIds) { try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(sid) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(sid) } }
+      console.log('extra cleanup: events', ids.length, 'suppliers', supIds.length)
     })
   }
 
