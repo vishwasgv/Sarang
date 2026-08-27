@@ -9,6 +9,33 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Salon'
 
+// Phase 68 §9.1 — Beauty Salon items 1-4 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange, expectNonEmpty, emptyStateText } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+    const to = h.toLocalISODate(new Date())
+    await dateInputs.nth(0).fill(from)
+    await dateInputs.nth(1).fill(to)
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  if (expectNonEmpty && emptyStateText) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    r.log(`${tileId}-shows-real-data`, !bodyText.includes(emptyStateText), 'expected our seeded data to flow through, not the empty-state message')
+  }
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -142,6 +169,40 @@ async function run() {
       const found = records.find((c) => c.appointmentId === commissionAppointmentId)
       r.log('commission-record-auto-created', !!found, JSON.stringify({ commissionAmount: found?.commissionAmount, staffId: found?.staffId }))
     })
+
+    await r.step('seed-repeat-client-data', async () => {
+      // generateStylistRepeatClientReport requires a real customerId (not just
+      // a free-text customerName) plus 2+ COMPLETED appointments with the SAME
+      // provider+customer to count as a "repeat" — the commission-flow
+      // appointment above uses a bare customerName, so it can never show up
+      // here. Build genuine repeat-client data directly via the API (the
+      // status-transition UI path is already covered by the commission test
+      // above; this step is purely about feeding the report real data).
+      const custRes = await page.evaluate(async () => window.api.customers.create({ customerName: 'E2E Salon Repeat Client' }))
+      const custId = custRes?.data?.id
+      r.log('repeat-client-customer-created', !!custId, JSON.stringify(custRes?.error || ''))
+
+      const today = h.toLocalISODate(new Date())
+      let firstId, secondId
+      if (custId && providerId) {
+        const a1 = await page.evaluate(async ({ pid, cid, today }) => window.api.appointments.create({
+          providerId: pid, customerId: cid, serviceTitle: 'E2E Salon Repeat Visit 1', scheduledDate: today, scheduledTime: '09:00', totalAmount: 400,
+        }), { pid: providerId, cid: custId, today })
+        const a2 = await page.evaluate(async ({ pid, cid, today }) => window.api.appointments.create({
+          providerId: pid, customerId: cid, serviceTitle: 'E2E Salon Repeat Visit 2', scheduledDate: today, scheduledTime: '10:00', totalAmount: 400,
+        }), { pid: providerId, cid: custId, today })
+        firstId = a1?.data?.id; secondId = a2?.data?.id
+        r.log('repeat-appointments-created', !!firstId && !!secondId, JSON.stringify({ err1: a1?.error, err2: a2?.error }))
+        if (firstId) await page.evaluate((id) => window.api.appointments.updateStatus({ id, status: 'COMPLETED' }), firstId)
+        if (secondId) await page.evaluate((id) => window.api.appointments.updateStatus({ id, status: 'COMPLETED' }), secondId)
+      }
+    })
+
+    await r.step('stylist-repeat-client-report', () => checkReportTile(page, r, 'stylistRepeatClient', 'Stylist Repeat-Client Rate', {
+      needsDateRange: true, expectNonEmpty: true, emptyStateText: 'No completed appointments with an assigned stylist in this date range.',
+    }))
+
+    await r.step('retail-attach-rate-report', () => checkReportTile(page, r, 'retailAttachRate', 'Retail Attach Rate', { needsDateRange: true }))
 
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'BEAUTY_SALON') {
