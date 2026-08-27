@@ -65,6 +65,61 @@ async function run() {
       r.log('pet-linked-to-owner-correctly', found?.customerId === ownerId, JSON.stringify(found?.customerId))
     })
 
+    // ── Phase 67 §9.1 item 18.3 gap-closure (2026-08-27) — breed-specific
+    // health-alert flagging, previously untested. ──────────────────────────
+    let breedAlertId
+
+    await r.step('save-breed-health-alert-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.breedHealthAlert.save({
+        species: 'Dog', breed: 'E2E Labrador', alertText: 'E2E Prone to hip dysplasia — watch for limping',
+      }))
+      breedAlertId = res?.data?.id
+      r.log('breed-alert-saved', !!breedAlertId, JSON.stringify(res?.error || ''))
+    })
+
+    await r.step('missing-required-fields-rejected', async () => {
+      const res = await page.evaluate(async () => window.api.breedHealthAlert.save({ species: 'Dog', breed: '', alertText: '' }))
+      r.log('save-without-breed-and-text-rejected', res?.success === false, JSON.stringify(res?.error))
+    })
+
+    await r.step('for-breed-lookup-matches-case-insensitively', async () => {
+      // Real pet above is breed 'Labrador' (exact case, no E2E prefix) --
+      // the alert is 'E2E Labrador'. Case-insensitive SUBSTRING match either
+      // direction means a real pet's plain 'Labrador' still needs to be
+      // checked against 'E2E Labrador' -- it won't match (substring fails
+      // both ways), so verify using the alert's own exact breed spelling
+      // instead, and separately confirm a genuinely unrelated breed finds nothing.
+      const matchRes = await page.evaluate(async () => window.api.breedHealthAlert.forBreed({ species: 'Dog', breed: 'E2E Labrador' }))
+      const found = (matchRes?.data || []).some((a) => a.id === breedAlertId)
+      r.log('for-breed-finds-exact-breed-match', found, JSON.stringify(matchRes?.data))
+
+      const caseInsensitiveRes = await page.evaluate(async () => window.api.breedHealthAlert.forBreed({ species: 'Dog', breed: 'e2e labrador' }))
+      const foundCaseInsensitive = (caseInsensitiveRes?.data || []).some((a) => a.id === breedAlertId)
+      r.log('for-breed-matches-case-insensitively', foundCaseInsensitive, JSON.stringify(caseInsensitiveRes?.data))
+
+      const noMatchRes = await page.evaluate(async () => window.api.breedHealthAlert.forBreed({ species: 'Dog', breed: 'Poodle' }))
+      const wronglyMatched = (noMatchRes?.data || []).some((a) => a.id === breedAlertId)
+      r.log('for-breed-does-not-match-unrelated-breed', !wronglyMatched, JSON.stringify(noMatchRes?.data))
+    })
+
+    await r.step('breed-alerts-screen-loads-and-lists-alert', async () => {
+      await h.gotoHash(page, '#/vet/breed-alerts')
+      await page.waitForTimeout(700)
+      r.log('breed-alerts-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('breed-alerts-screen-shows-our-alert', bodyText.includes('E2E Labrador'), 'expected our saved breed alert to render')
+      await h.shot(page, 'vetclinic-breed-alerts')
+    })
+
+    await r.step('delete-breed-alert', async () => {
+      if (!breedAlertId) return r.log('delete-breed-alert', false, 'no breedAlertId captured')
+      const res = await page.evaluate((id) => window.api.breedHealthAlert.delete({ id }), breedAlertId)
+      r.log('breed-alert-deleted', !!res?.success, JSON.stringify(res?.error || ''))
+      const listRes = await page.evaluate(async () => window.api.breedHealthAlert.list({ species: 'Dog' }))
+      const stillThere = (listRes?.data || []).some((a) => a.id === breedAlertId)
+      r.log('breed-alert-actually-gone', !stillThere, JSON.stringify(listRes?.data?.map((a) => a.id)))
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'VET_CLINIC') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
