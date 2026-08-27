@@ -7,6 +7,31 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Cons'
 
+// Phase 68 §9.1 — Independent Consultant items 1/3/4 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange, expectNonEmpty, emptyStateText } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  if (expectNonEmpty && emptyStateText) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    r.log(`${tileId}-shows-real-data`, !bodyText.includes(emptyStateText), 'expected our seeded data to flow through, not the empty-state message')
+  }
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -58,10 +83,16 @@ async function run() {
       await page.waitForTimeout(300)
 
       await modal.getByPlaceholder('e.g. Monthly Marketing Retainer').fill('E2E Consulting Retainer')
+      // HOURLY_BUCKET -- retainerUtilization's report only considers
+      // retainers with hoursPerMonth set (reveals the Hours/Month field).
+      await modal.getByLabel('Type').selectOption('HOURLY_BUCKET')
+      await page.waitForTimeout(200)
       const monthlyAmountInput = modal.locator('input[type="number"]').first()
       await monthlyAmountInput.fill('20000')
       const startDateInput = modal.locator('input[type="date"]').first()
       await startDateInput.fill(h.toLocalISODate(new Date()))
+      const hoursInput = modal.locator('label:has-text("Hours / Month") + input')
+      await hoursInput.fill('40')
       await page.waitForTimeout(300)
 
       await modal.getByRole('button', { name: 'Create Retainer' }).click()
@@ -114,6 +145,38 @@ async function run() {
       r.log('same-period-retry-correctly-blocked', retryRes?.success === false && retryRes?.error?.code === 'RT30-006', JSON.stringify(retryRes?.error))
     })
 
+    await r.step('retainer-utilization-report', () => checkReportTile(page, r, 'retainerUtilization', 'Retainer Utilization', {
+      needsDateRange: false, expectNonEmpty: true, emptyStateText: 'No active hourly retainers right now.',
+    }))
+
+    await r.step('create-accepted-quotation-for-win-rate', async () => {
+      // proposalWinRate treats Quotation as the proposal document -- needs
+      // a real SENT/ACCEPTED/EXPIRED one, none exists yet in this suite.
+      const quoteRes = await page.evaluate(async (cid) => window.api.quotations.create({
+        customerId: cid, items: [{ productName: 'E2E Cons Discovery Package', quantity: 1, unitPrice: 15000 }],
+      }), clientId)
+      const quoteId = quoteRes?.data?.id
+      r.log('quotation-created', !!quoteId, JSON.stringify(quoteRes?.error || ''))
+      if (quoteId) {
+        await page.evaluate((id) => window.api.quotations.updateStatus({ id, status: 'SENT' }), quoteId)
+        const acceptRes = await page.evaluate((id) => window.api.quotations.updateStatus({ id, status: 'ACCEPTED' }), quoteId)
+        r.log('quotation-accepted', acceptRes?.data?.status === 'ACCEPTED', JSON.stringify(acceptRes?.error || ''))
+      }
+    })
+
+    await r.step('proposal-win-rate-report', () => checkReportTile(page, r, 'proposalWinRate', 'Proposal Win Rate', { needsDateRange: true }))
+
+    await r.step('proposal-win-rate-reflects-our-accepted-quotation-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.reports.proposalWinRate({ dateFrom: from, dateTo: to }), { from, to })
+      r.log('win-rate-report-shows-nonzero-won', (res?.data?.summary?.wonCount ?? 0) >= 1, JSON.stringify(res?.data?.summary))
+    })
+
+    await r.step('client-revenue-concentration-report', () => checkReportTile(page, r, 'clientRevenueConcentration', 'Client Revenue Concentration', {
+      needsDateRange: true, expectNonEmpty: true, emptyStateText: 'No invoiced revenue in this date range.',
+    }))
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'INDEPENDENT_CONSULTANT') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -128,7 +191,12 @@ async function run() {
     h.withDb((db) => {
       const ids = db.prepare("SELECT id FROM RetainerAgreement WHERE title LIKE 'E2E Consulting%'").all().map((r2) => r2.id)
       for (const id of ids) { try { db.prepare('DELETE FROM RetainerAgreement WHERE id = ?').run(id) } catch { /* noop */ } }
-      console.log('extra cleanup: retainers', ids.length)
+      const quoteIds = db.prepare("SELECT q.id AS id FROM Quotation q JOIN Customer c ON c.id = q.customerId WHERE c.customerName LIKE 'E2E Cons%'").all().map((r2) => r2.id)
+      for (const id of quoteIds) {
+        try { db.prepare('DELETE FROM QuotationItem WHERE quotationId = ?').run(id) } catch { /* noop */ }
+        try { db.prepare('DELETE FROM Quotation WHERE id = ?').run(id) } catch { /* noop */ }
+      }
+      console.log('extra cleanup: retainers', ids.length, 'quotations', quoteIds.length)
     })
   }
 
