@@ -136,6 +136,28 @@ async function run() {
       r.log('enrollment-findable-via-api', !!enrollmentId, JSON.stringify({ status: found?.status, effectiveFee: found?.effectiveFee }))
     })
 
+    let underperformerEnrollmentId
+
+    await r.step('create-second-underperforming-student-and-enrollment', async () => {
+      // feeDueUnderperformanceAlert needs a real AND condition (outstanding
+      // fee + avgTestPercentage < 50%) -- the primary student above gets
+      // marked PAID and scores 70%, so it can never satisfy this report.
+      // Created before Generate Fees runs so one click covers both students.
+      if (!batchId) return r.log('create-second-underperforming-student-and-enrollment', false, 'no batchId captured')
+      const stuRes = await page.evaluate(async () => window.api.student.create({
+        customerName: 'E2E Coach Underperformer', classOrGrade: 'Class 10',
+      }))
+      const underperformerCustomerId = stuRes?.data?.customerId
+      r.log('underperformer-student-created', !!underperformerCustomerId, JSON.stringify(stuRes?.error || ''))
+      if (underperformerCustomerId) {
+        const enrRes = await page.evaluate(({ bid, sid }) => window.api.enrollment.create({
+          batchId: bid, studentId: sid, effectiveFee: 2000,
+        }), { bid: batchId, sid: underperformerCustomerId })
+        underperformerEnrollmentId = enrRes?.data?.id
+        r.log('underperformer-enrollment-created', !!underperformerEnrollmentId, JSON.stringify(enrRes?.error || ''))
+      }
+    })
+
     const feeMonth = new Date().toISOString().slice(0, 7)
 
     await r.step('generate-fees-via-real-ui', async () => {
@@ -256,6 +278,57 @@ async function run() {
       const bodyText = await page.locator('body').innerText().catch(() => '')
       r.log('batch-performance-trend-shows-our-batch', bodyText.includes('E2E Coach Batch'), 'expected batch name in rendered report')
       await h.shot(page, 'coaching-batch-performance-trend')
+    })
+
+    await r.step('attendance-performance-correlation-report', async () => {
+      await h.gotoHash(page, '#/reports')
+      await page.waitForTimeout(700)
+      const tile = page.locator('button, [role="button"]', { hasText: 'Attendance vs. Performance' }).first()
+      const present = await tile.count() > 0
+      r.log('attendancePerformanceCorrelation-tile-present', present)
+      if (!present) return
+      await tile.click()
+      await page.waitForTimeout(500)
+      await page.locator('button:has-text("Generate Report")').click()
+      await page.waitForTimeout(1200)
+      r.log('attendancePerformanceCorrelation-renders-no-crash', !(await h.hasErrorBoundary(page)))
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('attendance-correlation-shows-our-student', bodyText.includes('E2E Coach Student'), 'expected our enrolled student in the rendered report')
+      await h.shot(page, 'coaching-attendance-performance-correlation')
+    })
+
+    await r.step('add-low-test-score-for-underperformer', async () => {
+      if (!underperformerEnrollmentId) return
+      const res = await page.evaluate(({ eid, today }) => window.api.studentTestScore.create({
+        enrollmentId: eid, testName: 'E2E Weak Unit Test', marksObtained: 10, maxMarks: 50, testDate: today,
+      }), { eid: underperformerEnrollmentId, today: h.toLocalISODate(new Date()) })
+      r.log('low-test-score-created', !!res?.data?.id && res.data.grade !== undefined, JSON.stringify({ data: res?.data, error: res?.error }))
+    })
+
+    await r.step('fee-due-underperformance-alert-report', async () => {
+      await h.gotoHash(page, '#/reports')
+      await page.waitForTimeout(700)
+      const tile = page.locator('button, [role="button"]', { hasText: 'Fee-Due Underperformance Alert' }).first()
+      const present = await tile.count() > 0
+      r.log('feeDueUnderperformanceAlert-tile-present', present)
+      if (!present) return
+      await tile.click()
+      await page.waitForTimeout(500)
+      await page.locator('button:has-text("Generate Report")').click()
+      await page.waitForTimeout(1200)
+      r.log('feeDueUnderperformanceAlert-renders-no-crash', !(await h.hasErrorBoundary(page)))
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('underperformance-alert-shows-flagged-student', bodyText.includes('E2E Coach Underperformer'), 'expected the underperforming+fee-due student to be flagged')
+      await h.shot(page, 'coaching-fee-due-underperformance-alert')
+    })
+
+    await r.step('fee-due-underperformance-alert-excludes-fully-paid-student-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.feeDueUnderperformanceAlert())
+      const rows = res?.data?.rows || []
+      const flagged = rows.find((row) => row.studentName === 'E2E Coach Underperformer')
+      const notFlagged = rows.some((row) => row.studentName === 'E2E Coach Student')
+      r.log('underperformer-correctly-flagged-with-low-percentage', !!flagged && flagged.avgTestPercentage === 20, JSON.stringify(flagged))
+      r.log('fully-paid-70pct-student-correctly-excluded', !notFlagged, JSON.stringify({ notFlagged }))
     })
 
     await r.step('restore-business-type', async () => {
