@@ -181,6 +181,83 @@ async function run() {
       }
     })
 
+    // Phase 68 §9.1 final evaluation (2026-08-27) — regression test for a
+    // real bug found by code review: TestScoresScreen.tsx's client-side
+    // suggestGrade (which pre-fills the grade field before submission) used
+    // a DIFFERENT 7-tier scale than the backend's own computeGrade in
+    // student-test-score.service.ts — since the renderer pre-fills the
+    // field, the backend's auto-calc never actually ran in the real UI
+    // flow. 70% is the one band where the two scales disagreed (old
+    // renderer scale: B+, backend/fixed scale: B) — proves the fix landed
+    // in the ACTUAL UI path, not just in the backend unit tests.
+    await r.step('create-test-score-with-grade-autocalc-via-real-ui', async () => {
+      await h.gotoHash(page, '#/coaching/test-scores')
+      await page.waitForTimeout(700)
+      r.log('test-scores-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+
+      await page.getByRole('button', { name: 'Add Test Score' }).click()
+      await page.waitForTimeout(500)
+      const modal = h.topModal(page)
+
+      await modal.getByLabel('Batch').selectOption({ label: 'E2E Coach Batch — Mathematics' })
+      await page.waitForTimeout(400)
+      await modal.getByLabel('Student').selectOption({ label: 'E2E Coach Student' })
+      await page.waitForTimeout(300)
+
+      await modal.locator('input[placeholder="e.g. Unit Test 1"]').fill('E2E Unit Test')
+      // Fill Marks Obtained BEFORE Max Marks — applySuggestedGrade no-ops
+      // while maxMarks is still empty (max<=0 guard), so the suggestion
+      // only actually computes once both values are present.
+      await modal.locator('input[type="number"]').nth(0).fill('35')
+      await page.waitForTimeout(200)
+      await modal.locator('input[type="number"]').nth(1).fill('50') // 35/50 = 70%
+      await page.waitForTimeout(300)
+
+      const gradeInput = modal.locator('input[placeholder="A+"]')
+      const suggestedGrade = await gradeInput.inputValue()
+      r.log('grade-autosuggested-matches-backend-scale', suggestedGrade === 'B', `expected="B" actual="${suggestedGrade}"`)
+
+      const dateInput = modal.locator('input[type="date"]')
+      await dateInput.fill(h.toLocalISODate(new Date()))
+
+      await modal.getByRole('button', { name: 'Add Test Score', exact: true }).click()
+      await page.waitForTimeout(1200)
+      r.log('test-score-created-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('verify-test-score-grade-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.studentTestScore.list({}))
+      const scores = res?.data || []
+      const found = scores.find((s) => s.testName === 'E2E Unit Test')
+      r.log('test-score-findable-via-api', !!found, JSON.stringify({ marksObtained: found?.marksObtained, maxMarks: found?.maxMarks }))
+      r.log('test-score-grade-persisted-correctly', found?.grade === 'B', `expected="B" actual="${found?.grade}"`)
+    })
+
+    // Phase 68 §9.1 final evaluation — Batch Performance Trend (item 2) was
+    // a genuinely missing report discovered during the final audit; verify
+    // it actually renders via the real Reports screen, not just typechecks.
+    await r.step('batch-performance-trend-report-renders', async () => {
+      await h.gotoHash(page, '#/reports')
+      await page.waitForTimeout(700)
+      const tile = page.locator('button, [role="button"]', { hasText: 'Batch Performance Trend' }).first()
+      const present = await tile.count() > 0
+      r.log('batch-performance-trend-tile-present', present)
+      if (!present) return
+      await tile.click()
+      await page.waitForTimeout(500)
+      const dateInputs = page.locator('input[type="date"]')
+      const from = h.toLocalISODate(new Date(Date.now() - 60 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      await dateInputs.nth(0).fill(from)
+      await dateInputs.nth(1).fill(to)
+      await page.locator('button:has-text("Generate Report")').click()
+      await page.waitForTimeout(1200)
+      r.log('batch-performance-trend-renders-no-crash', !(await h.hasErrorBoundary(page)))
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('batch-performance-trend-shows-our-batch', bodyText.includes('E2E Coach Batch'), 'expected batch name in rendered report')
+      await h.shot(page, 'coaching-batch-performance-trend')
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'COACHING_INSTITUTE') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -193,6 +270,8 @@ async function run() {
     const cleaned = h.cleanupByNamePrefix(TEST_PREFIX)
     console.log('cleanup:', JSON.stringify(cleaned))
     h.withDb((db) => {
+      const testScoreIds = db.prepare("SELECT sts.id AS id FROM StudentTestScore sts JOIN CoachingBatchEnrollment cbe ON cbe.id = sts.enrollmentId JOIN Customer c ON c.id = cbe.studentId WHERE c.customerName LIKE 'E2E Coach%'").all().map((r2) => r2.id)
+      for (const id of testScoreIds) { try { db.prepare('DELETE FROM StudentTestScore WHERE id = ?').run(id) } catch { /* noop */ } }
       const feeIds = db.prepare("SELECT cfr.id AS id FROM CoachingFeeRecord cfr JOIN Customer c ON c.id = cfr.studentId WHERE c.customerName LIKE 'E2E Coach%'").all().map((r2) => r2.id)
       for (const id of feeIds) { try { db.prepare('DELETE FROM CoachingFeeRecord WHERE id = ?').run(id) } catch { /* noop */ } }
       const enrIds = db.prepare("SELECT cbe.id AS id FROM CoachingBatchEnrollment cbe JOIN Customer c ON c.id = cbe.studentId WHERE c.customerName LIKE 'E2E Coach%'").all().map((r2) => r2.id)
@@ -201,7 +280,7 @@ async function run() {
       for (const id of batchIds) { try { db.prepare('DELETE FROM CoachingBatch WHERE id = ?').run(id) } catch { /* noop */ } }
       const stuIds = db.prepare("SELECT sp.id AS id FROM StudentProfile sp JOIN Customer c ON c.id = sp.customerId WHERE c.customerName LIKE 'E2E Coach%'").all().map((r2) => r2.id)
       for (const id of stuIds) { try { db.prepare('DELETE FROM StudentProfile WHERE id = ?').run(id) } catch { /* noop */ } }
-      console.log('extra cleanup: feeRecords', feeIds.length, 'enrollments', enrIds.length, 'batches', batchIds.length, 'studentProfiles', stuIds.length)
+      console.log('extra cleanup: testScores', testScoreIds.length, 'feeRecords', feeIds.length, 'enrollments', enrIds.length, 'batches', batchIds.length, 'studentProfiles', stuIds.length)
     })
   }
 

@@ -1912,6 +1912,18 @@
         "label": "Guest Register",
         "description": "Every registered guest ID for stays overlapping the selected date range — for police/immigration verification"
       },
+      "occupancyTrend": {
+        "label": "Occupancy Trend",
+        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+      },
+      "roomWiseADR": {
+        "label": "Room-wise ADR",
+        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+      },
+      "adrRevPAR": {
+        "label": "ADR & RevPAR",
+        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+      },
       "appointmentUtilisation": {
         "label": "Appointment Utilisation",
         "description": "Completion rates, provider utilisation, peak hours and days"
