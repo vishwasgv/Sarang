@@ -80,7 +80,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -94,7 +94,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Shirt', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Shirt', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 200, sellingPrice: 400, unit: 'PCS', taxRate: 5,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0, gender: 'MENS'
     })
@@ -109,7 +109,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -124,7 +124,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Screw', productType: 'STANDARD', sellByWeight: false, sellByPack: true,
+      productName: 'Screw', productType: 'STANDARD', sellByWeight: false, sellByPack: true, valuationMethod: 'WEIGHTED_AVERAGE',
       packUnit: 'BOX', unitsPerPack: 50,
       costPrice: 1, sellingPrice: 2, unit: 'PCS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
@@ -140,7 +140,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       // Simulates a stale payload with leftover pack fields the caller forgot to clear —
       // still valid at the type level (the superRefine only requires them when sellByPack is true).
       packUnit: 'BOX', unitsPerPack: 50,
@@ -159,7 +159,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Grain Bag', productType: 'STANDARD', sellByWeight: false, sellByPack: true,
+      productName: 'Grain Bag', productType: 'STANDARD', sellByWeight: false, sellByPack: true, valuationMethod: 'WEIGHTED_AVERAGE',
       packUnit: 'BAG', unitsPerPack: 50, floatingUnitConversion: true,
       costPrice: 1, sellingPrice: 2, unit: 'KG', taxRate: 0,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
@@ -175,7 +175,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, floatingUnitConversion: true,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE', floatingUnitConversion: true,
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -190,7 +190,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0, hsnCode: '8471'
     })
@@ -205,7 +205,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -222,7 +222,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await productService.createProduct({
-      productName: 'Copy', sku: 'W-001', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Copy', sku: 'W-001', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 10, sellingPrice: 20, unit: 'PCS', taxRate: 0,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -236,7 +236,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', sku: 'NEW-001', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', sku: 'NEW-001', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -251,7 +251,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 25
     })
@@ -277,7 +277,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const result = await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 25
     })
@@ -296,7 +296,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, openingQuantity: 0
     })
@@ -312,7 +312,7 @@ describe('productService.createProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.createProduct({
-      productName: 'Consultation', productType: 'SERVICE', sellByWeight: false, sellByPack: false,
+      productName: 'Consultation', productType: 'SERVICE', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 0, sellingPrice: 500, unit: 'HRS', taxRate: 18,
       reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0
     })
@@ -327,7 +327,7 @@ describe('productService.updateProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.updateProduct({
-      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, gender: 'UNISEX'
     })
@@ -342,7 +342,7 @@ describe('productService.updateProduct', () => {
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await productService.updateProduct({
-      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false,
+      id: 'prod-1', productName: 'Widget', productType: 'STANDARD', sellByWeight: false, sellByPack: false, valuationMethod: 'WEIGHTED_AVERAGE',
       costPrice: 50, sellingPrice: 100, unit: 'PCS', taxRate: 18,
       reorderLevel: 10, reorderQuantity: 50, hsnCode: '1006'
     })

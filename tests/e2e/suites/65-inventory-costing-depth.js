@@ -37,6 +37,13 @@ async function run() {
   let newLocationId = null
   let poId = null
   let supplierId = null
+  // Phase 64 gap-closure additions (2026-08-27).
+  const valuationProductIds = []
+  let rawMaterialId = null
+  let jcProductId = null
+  let jcOrderId = null
+  const grnProductIds = []
+  const createdGrnIds = []
   try {
     page = await h.getMainWindow(app)
     await h.login(page)
@@ -295,6 +302,189 @@ async function run() {
       r.log('product-A-unit-cost-includes-landed-cost', !!histA && Math.abs(histA.unitCost - 200) < 1, JSON.stringify(histA))
       r.log('product-B-unit-cost-includes-landed-cost', !!histB && Math.abs(histB.unitCost - 100) < 1, JSON.stringify(histB))
     }))
+
+    // ── Stock valuation method switching: STANDARD_COST override, then a
+    // real FIFO newest-layers-first computation distinct from the
+    // Inventory.averageCost a naive full-average would give. ──────────────
+    let stdCostProductId, fifoProductId
+    await r.step('standard-cost-valuation-override', async () => {
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 100, sellingPrice: 150, taxRate: 18, openingQuantity: 5,
+      }), `${TEST_PREFIX} Valuation StdCost ${suffix}`)
+      stdCostProductId = prodRes?.data?.id
+      if (stdCostProductId) valuationProductIds.push(stdCostProductId)
+      r.log('std-cost-product-created', !!stdCostProductId, JSON.stringify(prodRes?.error || ''))
+
+      // products.update is a full-replace schema (productName/sellingPrice
+      // etc. are all required, not a partial patch) -- fetch the current
+      // row first and merge in the two fields under test.
+      const currentRes = await page.evaluate((id) => window.api.products.get(id), stdCostProductId)
+      const cur = currentRes?.data
+      const updRes = await page.evaluate((p) => window.api.products.update(p), {
+        id: stdCostProductId, productName: cur?.productName, productType: cur?.productType, unit: cur?.unit,
+        costPrice: cur?.costPrice, sellingPrice: cur?.sellingPrice, taxRate: cur?.taxRate,
+        reorderLevel: cur?.reorderLevel ?? 0, reorderQuantity: cur?.reorderQuantity ?? 0,
+        valuationMethod: 'STANDARD_COST', standardCost: 250,
+      })
+      r.log('valuation-method-set-to-standard-cost', updRes?.data?.valuationMethod === 'STANDARD_COST', JSON.stringify(updRes?.error || ''))
+
+      const afterRes = await page.evaluate(async () => window.api.reports.deadStockClearance({ days: 0 }))
+      const afterRow = (afterRes?.data?.rows || []).find((row) => row.productName === `${TEST_PREFIX} Valuation StdCost ${suffix}`)
+      // 250, NOT the 100 costPrice or whatever averageCost the opening
+      // stock posted at -- proves the override genuinely takes effect,
+      // not just that the field round-trips.
+      r.log('standard-cost-override-reflected-in-report', !!afterRow && Math.abs(afterRow.unitCost - 250) < 0.01, JSON.stringify(afterRow))
+    })
+
+    await r.step('fifo-valuation-newest-layers-first', async () => {
+      const fifoSupRes = await page.evaluate((name) => window.api.suppliers.create({ supplierName: name }), `${TEST_PREFIX} FIFO Vendor ${suffix}`)
+      const fifoSupplierId = fifoSupRes?.data?.id
+
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 40, sellingPrice: 100, taxRate: 0, valuationMethod: 'FIFO',
+      }), `${TEST_PREFIX} Valuation FIFO ${suffix}`)
+      fifoProductId = prodRes?.data?.id
+      if (fifoProductId) valuationProductIds.push(fifoProductId)
+
+      // Two purchases at different costs -- 5 units @ 50, then 5 units @ 70.
+      // Bill.create only records ProductCostHistory (cost tracking for AP),
+      // it deliberately does NOT touch Inventory.quantity (stock receipt is
+      // a separate GRN/PO-receive flow) -- so on-hand stays 0 here and
+      // must be set explicitly via a recount for the report to include it.
+      await page.evaluate(({ supplierId, productId }) => window.api.bills.create({
+        supplierId, items: [{ productId, quantity: 5, unitCost: 50, taxRate: 0 }],
+      }), { supplierId: fifoSupplierId, productId: fifoProductId })
+      await page.evaluate(({ supplierId, productId }) => window.api.bills.create({
+        supplierId, items: [{ productId, quantity: 5, unitCost: 70, taxRate: 0 }],
+      }), { supplierId: fifoSupplierId, productId: fifoProductId })
+
+      await page.evaluate((pid) => window.api.inventory.adjustStock({
+        productId: pid, quantity: 10, reason: 'E2E FIFO full-stock test', reasonCategory: 'RECOUNT',
+      }), fifoProductId)
+
+      // On-hand = 10 (both layers' full quantity) -- FIFO consumes BOTH
+      // layers fully: (5*70 + 5*50) / 10 = 60.
+      const fullRes = await page.evaluate(async () => window.api.reports.deadStockClearance({ days: 0 }))
+      const fullRow = (fullRes?.data?.rows || []).find((row) => row.productName === `${TEST_PREFIX} Valuation FIFO ${suffix}`)
+      r.log('fifo-full-stock-both-layers-blended-60', !!fullRow && Math.abs(fullRow.unitCost - 60) < 0.5, JSON.stringify(fullRow))
+
+      // Recount down to 5 (simulating 5 units sold) -- FIFO now only draws
+      // from the NEWEST layer (70), landing on a value the plain running
+      // Inventory.averageCost (still ~60, untouched by a recount) does not.
+      await page.evaluate((pid) => window.api.inventory.adjustStock({
+        productId: pid, quantity: 5, reason: 'E2E FIFO layer test', reasonCategory: 'RECOUNT',
+      }), fifoProductId)
+
+      const afterRes = await page.evaluate(async () => window.api.reports.deadStockClearance({ days: 0 }))
+      const afterRow = (afterRes?.data?.rows || []).find((row) => row.productName === `${TEST_PREFIX} Valuation FIFO ${suffix}`)
+      r.log('fifo-recognizes-newest-layer-only-after-recount-70', !!afterRow && Math.abs(afterRow.unitCost - 70) < 0.5, JSON.stringify(afterRow))
+
+      const invRow = h.withDb((db) => db.prepare('SELECT averageCost FROM Inventory WHERE productId = ?').get(fifoProductId))
+      r.log('fifo-cost-genuinely-differs-from-plain-average', invRow && Math.abs(invRow.averageCost - 70) > 1, `averageCost=${invRow?.averageCost} fifoCost=70`)
+
+      if (fifoSupplierId) h.withDb((db) => { try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(fifoSupplierId) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(fifoSupplierId) } })
+    })
+
+    // ── Job costing: itemized labor entries override a flat laborCost, and
+    // overhead allocation applies once configured. ─────────────────────────
+    await r.step('setup-bom-for-job-costing', async () => {
+      const rmRes = await page.evaluate((prefix) => window.api.rawMaterials.create({
+        name: `${prefix} JC Raw Material`, unit: 'KG', currentStock: 100, reorderLevel: 10, unitCost: 20,
+      }), TEST_PREFIX)
+      rawMaterialId = rmRes?.data?.id
+      r.log('jc-raw-material-created', !!rawMaterialId, JSON.stringify(rmRes?.error || ''))
+
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 80, sellingPrice: 200, taxRate: 18, openingQuantity: 0,
+      }), `${TEST_PREFIX} JC Manufactured Item ${suffix}`)
+      jcProductId = prodRes?.data?.id
+
+      if (rawMaterialId && jcProductId) {
+        const bomRes = await page.evaluate(({ productId, rawMaterialId }) => window.api.bom.upsert({
+          productId, outputQty: 1, items: [{ rawMaterialId, quantityNeeded: 2 }],
+        }), { productId: jcProductId, rawMaterialId })
+        r.log('jc-bom-created', !!bomRes?.success, JSON.stringify(bomRes?.error || ''))
+      }
+    })
+
+    await r.step('production-order-with-itemized-labor-overrides-flat-cost', async () => {
+      if (!jcProductId) return r.log('production-order-with-itemized-labor-overrides-flat-cost', false, 'no jcProductId')
+      const createRes = await page.evaluate((pid) => window.api.production.create({ productId: pid, plannedQty: 5 }), jcProductId)
+      jcOrderId = createRes?.data?.id
+      r.log('jc-production-order-created', !!jcOrderId, JSON.stringify(createRes?.error || ''))
+      if (!jcOrderId) return
+
+      const startRes = await page.evaluate((id) => window.api.production.start({ id }), jcOrderId)
+      r.log('jc-production-order-started', !!startRes?.success, JSON.stringify(startRes?.error || ''))
+
+      const l1 = await page.evaluate((id) => window.api.production.addLaborEntry({
+        productionOrderId: id, workerName: 'E2E Worker A', hoursWorked: 4, ratePerHour: 100,
+      }), jcOrderId)
+      const l2 = await page.evaluate((id) => window.api.production.addLaborEntry({
+        productionOrderId: id, workerName: 'E2E Worker B', hoursWorked: 2, ratePerHour: 150,
+      }), jcOrderId)
+      r.log('two-labor-entries-added', !!l1?.data?.id && !!l2?.data?.id, JSON.stringify({ l1: l1?.error, l2: l2?.error }))
+      // 4*100 + 2*150 = 700
+
+      // Overhead: PER_LABOR_HOUR at 50/hr, against 6 total itemized hours = 300.
+      await page.evaluate(async () => window.api.businessProfile.update({ overheadAllocationBasis: 'PER_LABOR_HOUR', overheadAllocationRate: 50 }))
+
+      // A flat laborCost is ALSO sent here, deliberately different (999) --
+      // must be ignored once real itemized entries exist.
+      const completeRes = await page.evaluate((id) => window.api.production.complete({ id, producedQty: 5, laborCost: 999 }), jcOrderId)
+      r.log('jc-production-order-completed', !!completeRes?.success, JSON.stringify(completeRes?.error || ''))
+
+      const orderRow = h.withDb((db) => db.prepare('SELECT laborCost, overheadCost FROM ProductionOrder WHERE id = ?').get(jcOrderId))
+      r.log('itemized-labor-sum-wins-over-flat-700-not-999', orderRow && Math.abs(orderRow.laborCost - 700) < 0.01, JSON.stringify(orderRow))
+      r.log('overhead-allocated-per-labor-hour-300', orderRow && Math.abs(orderRow.overheadCost - 300) < 0.01, JSON.stringify(orderRow))
+
+      // Restore -- must not leave every future production completion in
+      // this shared dev DB silently adding a 50/hr overhead charge.
+      await page.evaluate(async () => window.api.businessProfile.update({ overheadAllocationBasis: null, overheadAllocationRate: 0 }))
+    })
+
+    // ── Floating/variable UoM at GRN receiving ──────────────────────────────
+    await r.step('floating-uom-conversion-requires-pack-billing-enabled', async () => {
+      const badRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'KG', costPrice: 10, sellingPrice: 15, taxRate: 0,
+        sellByPack: false, floatingUnitConversion: true,
+      }), `${TEST_PREFIX} Floating Bad ${suffix}`)
+      r.log('floating-without-pack-billing-rejected', badRes?.success === false, JSON.stringify(badRes?.error))
+    })
+
+    await r.step('floating-uom-grn-uses-real-measured-quantity', async () => {
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'KG', costPrice: 10, sellingPrice: 15, taxRate: 0,
+        sellByPack: true, packUnit: 'BAG', unitsPerPack: 50, floatingUnitConversion: true,
+      }), `${TEST_PREFIX} Floating Rice ${suffix}`)
+      const floatingProductId = prodRes?.data?.id
+      if (floatingProductId) grnProductIds.push(floatingProductId)
+      r.log('floating-product-created', !!floatingProductId, JSON.stringify(prodRes?.error || ''))
+
+      const grnRes = await page.evaluate((productId) => window.api.logisticsGrn.create({
+        supplierName: 'E2E Costing64 Floating Supplier',
+        items: [{ productId, itemName: 'E2E Costing64 Rice Bag', receivedQty: 49.2, purchaseUnitQty: 1, unit: 'KG' }],
+      }), floatingProductId)
+      const grnId = grnRes?.data?.id
+      if (grnId) createdGrnIds.push(grnId)
+      r.log('floating-grn-created', !!grnId, JSON.stringify(grnRes?.error || ''))
+
+      const grnDetail = await page.evaluate((id) => window.api.logisticsGrn.get(id), grnId)
+      const item = (grnDetail?.data?.items || [])[0]
+      // effectiveConversionFactor = receivedQty / purchaseUnitQty = 49.2/1 = 49.2
+      // -- the REAL measured ratio, not the product's own nominal 50-per-bag.
+      r.log('effective-conversion-factor-is-real-measured-ratio-not-nominal-50', !!item && Math.abs(item.effectiveConversionFactor - 49.2) < 0.01, JSON.stringify(item))
+
+      const verifyRes = await page.evaluate((id) => window.api.logisticsGrn.update({ id, status: 'VERIFIED' }), grnId)
+      r.log('floating-grn-verified', !!verifyRes?.success, JSON.stringify(verifyRes?.error || ''))
+      const postRes = await page.evaluate((id) => window.api.logisticsGrn.post(id), grnId)
+      r.log('floating-grn-posted', !!postRes?.success, JSON.stringify(postRes?.error || ''))
+
+      const invRow = h.withDb((db) => db.prepare('SELECT quantity FROM Inventory WHERE productId = ?').get(floatingProductId))
+      // Stock increases by the REAL 49.2 measured qty, not 50 (nominal
+      // unitsPerPack) and not 1 (the bag count sent as purchaseUnitQty).
+      r.log('stock-increases-by-real-measured-qty-not-nominal', invRow && Math.abs(invRow.quantity - 49.2) < 0.01, JSON.stringify(invRow))
+    })
   } finally {
     let cleanup
     try {
@@ -327,6 +517,40 @@ async function run() {
       const cust = db.prepare('SELECT id FROM Customer WHERE customerName = ?').get(customerName)
       if (cust) { try { db.prepare('DELETE FROM Customer WHERE id = ?').run(cust.id) } catch { db.prepare('UPDATE Customer SET isActive = 0 WHERE id = ?').run(cust.id) } }
       if (supplierId) { try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(supplierId) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(supplierId) } }
+
+      // Phase 64 gap-closure cleanup (2026-08-27).
+      db.prepare('UPDATE BusinessProfile SET overheadAllocationBasis = NULL, overheadAllocationRate = 0').run()
+      for (const pid of valuationProductIds) {
+        del('ProductCostHistory', 'productId = ?', pid)
+        del('Inventory', 'productId = ?', pid)
+        try { db.prepare('DELETE FROM Product WHERE id = ?').run(pid) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(pid) }
+      }
+      if (jcOrderId) {
+        del('ProductionLaborEntry', 'productionOrderId = ?', jcOrderId)
+        del('ProductionMaterialUsage', 'productionOrderId = ?', jcOrderId)
+        del('ProductionOrder', 'id = ?', jcOrderId)
+      }
+      if (jcProductId) {
+        const bom = db.prepare('SELECT id FROM BillOfMaterial WHERE productId = ?').get(jcProductId)
+        if (bom) { del('BillOfMaterialItem', 'bomId = ?', bom.id); del('BillOfMaterial', 'id = ?', bom.id) }
+        del('Inventory', 'productId = ?', jcProductId)
+        del('InventoryMovement', 'productId = ?', jcProductId)
+        try { db.prepare('DELETE FROM Product WHERE id = ?').run(jcProductId) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(jcProductId) }
+      }
+      if (rawMaterialId) {
+        del('RawMaterialMovement', 'rawMaterialId = ?', rawMaterialId)
+        try { db.prepare('DELETE FROM RawMaterial WHERE id = ?').run(rawMaterialId) } catch { /* left in place if still referenced */ }
+      }
+      for (const gid of createdGrnIds) {
+        del('GRNItem', 'grnId = ?', gid)
+        del('GoodsReceiptNote', 'id = ?', gid)
+      }
+      for (const pid of grnProductIds) {
+        del('InventoryMovement', 'productId = ?', pid)
+        del('Inventory', 'productId = ?', pid)
+        try { db.prepare('DELETE FROM Product WHERE id = ?').run(pid) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(pid) }
+      }
+
       return counts
       })
     } catch (e) {

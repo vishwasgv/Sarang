@@ -179,6 +179,8 @@ export async function createProduct(payload: CreateProductPayload): Promise<ApiR
           rentalRates: JSON.stringify(payload.isRentable ? payload.rentalRates ?? [] : []),
           rentalSecurityDeposit: payload.isRentable ? payload.rentalSecurityDeposit ?? null : null,
           customFields: serializeCustomFieldValues(payload.customFields),
+          valuationMethod: payload.valuationMethod ?? 'WEIGHTED_AVERAGE',
+          standardCost: payload.valuationMethod === 'STANDARD_COST' ? (payload.standardCost ?? null) : null,
           ...jewelleryFieldsFor(payload),
         }
       })
@@ -317,6 +319,8 @@ export async function updateProduct(payload: UpdateProductPayload): Promise<ApiR
           rentalRates: JSON.stringify(payload.isRentable ? payload.rentalRates ?? [] : []),
           rentalSecurityDeposit: payload.isRentable ? payload.rentalSecurityDeposit ?? null : null,
           customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields,
+          valuationMethod: payload.valuationMethod ?? 'WEIGHTED_AVERAGE',
+          standardCost: payload.valuationMethod === 'STANDARD_COST' ? (payload.standardCost ?? null) : null,
           ...jewelleryFieldsFor(payload),
         }
       })

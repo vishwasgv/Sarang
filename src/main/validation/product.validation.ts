@@ -174,6 +174,13 @@ export const CreateProductSchema = z
     // it, same "generic field, motivated by one vertical" precedent as
     // defaultSupplierId.
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
+    // Phase 64 — stock valuation method switching. The renderer form has
+    // always collected these two fields, but they were never declared here
+    // (or written by product.service.ts), so every product silently stayed
+    // WEIGHTED_AVERAGE regardless of what was selected — a real, previously
+    // undiscovered gap, found while E2E-testing the feature.
+    valuationMethod: z.enum(['WEIGHTED_AVERAGE', 'FIFO', 'STANDARD_COST']).default('WEIGHTED_AVERAGE'),
+    standardCost: z.number().min(0, 'Standard cost cannot be negative').optional().nullable(),
     customFields: CustomFieldValuesSchema,
     ...rentalFields,
     ...looseBillingFields,
@@ -209,6 +216,13 @@ export const UpdateProductSchema = z
     isPrescriptionRequired: z.boolean().optional(),
     isScheduleH1X: z.boolean().optional(),
     expiryAlertLeadDays: z.number().int().min(1).max(1000).optional().nullable(),
+    // Phase 64 — stock valuation method switching. The renderer form has
+    // always collected these two fields, but they were never declared here
+    // (or written by product.service.ts), so every product silently stayed
+    // WEIGHTED_AVERAGE regardless of what was selected — a real, previously
+    // undiscovered gap, found while E2E-testing the feature.
+    valuationMethod: z.enum(['WEIGHTED_AVERAGE', 'FIFO', 'STANDARD_COST']).default('WEIGHTED_AVERAGE'),
+    standardCost: z.number().min(0, 'Standard cost cannot be negative').optional().nullable(),
     customFields: CustomFieldValuesSchema,
     ...rentalFields,
     ...looseBillingFields,
