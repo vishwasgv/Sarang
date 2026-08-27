@@ -716,6 +716,11 @@ interface TestScoreReport {
   rows: TestScoreReportRow[]
 }
 
+// Phase 68 §9.1 — Coaching Institute item 2: Batch Performance Trend.
+interface BatchPerformanceTrendPoint { period: string; avgPercentage: number; testCount: number }
+interface BatchPerformanceTrendRow { batchId: string; batchName: string; points: BatchPerformanceTrendPoint[] }
+interface BatchPerformanceTrendReport { dateFrom: string; dateTo: string; rows: BatchPerformanceTrendRow[] }
+
 // Phase 68 §9.1 — Coaching Institute item 3: Attendance vs. Performance Correlation.
 interface AttendancePerformanceRow {
   studentName: string; batchName: string; attendancePercent: number | null; avgTestPercentage: number | null
@@ -812,7 +817,7 @@ type ReportType =
   // Phase 68 §9.1 — Event Management items 2 & 5
   | 'vendorCostVsBudget' | 'vendorPerformanceHistory'
   // Phase 68 §9.1 — Coaching Institute items 3 & 4
-  | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
+  | 'batchPerformanceTrend' | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
   // Phase 68 §9.1 — Car Service Center items 3 & 4
   | 'carPartsVariance' | 'serviceTypeRevenue'
   // Phase 68 §9.1 — Tailor/Boutique items 2, 3 & 4
@@ -978,6 +983,8 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'repairTurnaroundByTechnician', icon: <Timer size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'repair_rma' },
   { id: 'variantStock', icon: <Shirt size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredModule: 'variant_tracking' },
   { id: 'testScores', icon: <GraduationCap size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
+  // Phase 68 §9.1 — Coaching Institute item 2. Real date-bounded trend.
+  { id: 'batchPerformanceTrend', icon: <LineChart size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'coaching_performances' },
   // Phase 68 §9.1 — Coaching Institute item 3. Current-state, no date range.
   { id: 'attendancePerformanceCorrelation', icon: <LineChart size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
   // Phase 68 §9.1 — Coaching Institute item 4. Current-state, no date range.
@@ -1758,6 +1765,9 @@ export function ReportsScreen() {
           break
         case 'testScores':
           res = await window.api.reports.testScores({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined })
+          break
+        case 'batchPerformanceTrend':
+          res = await window.api.reports.batchPerformanceTrend({ dateFrom, dateTo })
           break
         case 'attendancePerformanceCorrelation':
           res = await window.api.reports.attendancePerformanceCorrelation()
@@ -2907,6 +2917,13 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.studentName, r.batchName, r.subject, r.testName, r.marksObtained, r.maxMarks, r.percentage, r.grade, r.testDate])
         }
       }
+      case 'batchPerformanceTrend': {
+        const d = reportData as BatchPerformanceTrendReport
+        return {
+          headers: ['Batch', 'Period', 'Avg %', 'Tests'],
+          rows: d.rows.flatMap(r => r.points.map(p => [r.batchName, p.period, p.avgPercentage, p.testCount]))
+        }
+      }
       case 'attendancePerformanceCorrelation': {
         const d = reportData as AttendancePerformanceReport
         return {
@@ -3928,6 +3945,16 @@ export function ReportsScreen() {
           { label: t('reports.summary.studentCount'), value: String(d.summary.studentCount) }
         ]
       }
+      case 'batchPerformanceTrend': {
+        const d = reportData as BatchPerformanceTrendReport
+        const allPoints = d.rows.flatMap(r => r.points)
+        const totalTests = allPoints.reduce((s, p) => s + p.testCount, 0)
+        const weightedAvg = totalTests > 0 ? allPoints.reduce((s, p) => s + p.avgPercentage * p.testCount, 0) / totalTests : 0
+        return [
+          { label: 'Batches', value: String(d.rows.length) },
+          { label: 'Overall Avg %', value: `${Math.round(weightedAvg * 10) / 10}%` }
+        ]
+      }
       case 'attendancePerformanceCorrelation': {
         const d = reportData as AttendancePerformanceReport
         return [
@@ -4415,6 +4442,12 @@ export function ReportsScreen() {
       // existing bar/line/pie types can't honestly represent (same
       // reasoning as complianceTasks below), and the fee-due alert is a
       // worklist, not an aggregate metric.
+      // Phase 68 §9.1 — Coaching Institute item 2. Chart-free: the report is
+      // inherently multiple per-batch time series, and this chart type only
+      // renders one flat series — a single combined average line would
+      // misleadingly blend distinct batches' trends together. The per-batch
+      // table is the actionable artifact.
+      case 'batchPerformanceTrend': return []
       case 'attendancePerformanceCorrelation': return []
       case 'feeDueUnderperformanceAlert': return []
       // Phase 68 §9.1 — Car Service Center items 3 & 4. Chart-free, same as
@@ -5091,6 +5124,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'repairTurnaroundByTechnician': return <RepairTurnaroundByTechnicianView data={data as RepairTurnaroundByTechnicianReport} />
     case 'variantStock': return <VariantStockView data={data as VariantStockReport} />
     case 'testScores': return <TestScoreView data={data as TestScoreReport} />
+    case 'batchPerformanceTrend': return <BatchPerformanceTrendView data={data as BatchPerformanceTrendReport} />
     case 'attendancePerformanceCorrelation': return <AttendancePerformanceCorrelationView data={data as AttendancePerformanceReport} />
     case 'feeDueUnderperformanceAlert': return <FeeDueUnderperformanceAlertView data={data as FeeDueUnderperformanceReport} fmt={fmt} />
     case 'complianceTasks': return <ComplianceTaskView data={data as ComplianceTaskReport} />
@@ -10499,6 +10533,32 @@ function TestScoreView({ data }: { data: TestScoreReport }) {
           emptyText={t('reports.empty.testScores')}
         />
       </div>
+    </div>
+  )
+}
+
+// Phase 68 §9.1 — Coaching Institute item 2: Batch Performance Trend.
+function BatchPerformanceTrendView({ data }: { data: BatchPerformanceTrendReport }) {
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Batches', value: String(data.rows.length) },
+      ]} />
+      {data.rows.length === 0 ? (
+        <div className="text-center py-12 text-slate-400 text-sm">No test scores in this date range.</div>
+      ) : (
+        <div className="space-y-6">
+          {data.rows.map((r) => (
+            <div key={r.batchId} className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+              <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{r.batchName}</h3>
+              <DataTable
+                headers={['Period', 'Avg %', 'Tests']}
+                rows={r.points.map(p => [p.period, `${p.avgPercentage}%`, p.testCount])}
+              />
+            </div>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

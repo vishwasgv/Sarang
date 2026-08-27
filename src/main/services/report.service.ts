@@ -4927,7 +4927,7 @@ async function generateTestScoreReport(params: { dateFrom?: string; dateTo?: str
 
   const scores = await db.studentTestScore.findMany({
     where,
-    include: { enrollment: { include: { student: { select: { customerName: true } }, batch: { select: { batchName: true } } } } },
+    include: { enrollment: { include: { student: { select: { id: true, customerName: true } }, batch: { select: { batchName: true } } } } },
     orderBy: { testDate: 'desc' },
   })
 
@@ -4949,15 +4949,21 @@ async function generateTestScoreReport(params: { dateFrom?: string; dateTo?: str
     testDate: toLocalISODate(s.testDate),
   }))
 
-  const byStudent = new Map<string, { count: number; pctSum: number }>()
-  for (const r of rows) {
-    const entry = byStudent.get(r.studentName) ?? { count: 0, pctSum: 0 }
+  // Real bug found (Phase 68 §9.1 final evaluation): grouping by studentName
+  // (a plain display string) instead of a stable ID silently merges two
+  // different students who happen to share the same name into one rank-list
+  // row — a realistic occurrence at any real institute. Grouped by
+  // enrollment.student.id instead; the row still displays the name.
+  const byStudent = new Map<string, { studentName: string; count: number; pctSum: number }>()
+  scores.forEach((s, i) => {
+    const key = s.enrollment.student.id
+    const entry = byStudent.get(key) ?? { studentName: rows[i].studentName, count: 0, pctSum: 0 }
     entry.count += 1
-    entry.pctSum += r.percentage
-    byStudent.set(r.studentName, entry)
-  }
-  const studentSummaries: TestScoreReportStudentSummary[] = [...byStudent.entries()]
-    .map(([studentName, { count, pctSum }]) => ({ studentName, testCount: count, averagePercentage: Math.round((pctSum / count) * 10) / 10 }))
+    entry.pctSum += rows[i].percentage
+    byStudent.set(key, entry)
+  })
+  const studentSummaries: TestScoreReportStudentSummary[] = [...byStudent.values()]
+    .map(({ studentName, count, pctSum }) => ({ studentName, testCount: count, averagePercentage: Math.round((pctSum / count) * 10) / 10 }))
     .sort((a, b) => b.averagePercentage - a.averagePercentage)
 
   const averagePercentage = rows.length ? Math.round((rows.reduce((s, r) => s + r.percentage, 0) / rows.length) * 10) / 10 : 0
@@ -4973,6 +4979,59 @@ async function generateTestScoreReport(params: { dateFrom?: string; dateTo?: str
     studentSummaries,
     rows,
   }
+}
+
+// Phase 68 §9.1 — Coaching Institute item 2: batch performance trend. A real
+// finding from this phase's final evaluation: generateTestScoreReport's
+// studentSummaries (a single-snapshot per-student rank-list) does NOT
+// actually satisfy this item — a "trend" is a time series, not a ranking at
+// one point in time. Genuinely new: for each batch, average test % PER
+// MONTH across the range, so an institute can see whether a batch is
+// improving or declining, not just who's currently ahead.
+export interface BatchPerformanceTrendPoint { period: string; avgPercentage: number; testCount: number }
+export interface BatchPerformanceTrendRow { batchId: string; batchName: string; points: BatchPerformanceTrendPoint[] }
+export interface BatchPerformanceTrendReport {
+  dateFrom: string; dateTo: string
+  rows: BatchPerformanceTrendRow[]
+}
+
+async function generateBatchPerformanceTrendReport(params: { dateFrom: string; dateTo: string; batchId?: string }): Promise<BatchPerformanceTrendReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const scores = await db.studentTestScore.findMany({
+    where: {
+      testDate: { gte: from, lte: to },
+      ...(params.batchId ? { enrollment: { batchId: params.batchId } } : {}),
+    },
+    select: {
+      marksObtained: true, maxMarks: true, testDate: true,
+      enrollment: { select: { batchId: true, batch: { select: { batchName: true } } } },
+    },
+  })
+
+  const round1 = (n: number) => Math.round(n * 10) / 10
+  const byBatch = new Map<string, { batchName: string; byPeriod: Map<string, { pctSum: number; count: number }> }>()
+  for (const s of scores) {
+    const batchId = s.enrollment.batchId
+    const batch = byBatch.get(batchId) ?? { batchName: s.enrollment.batch.batchName, byPeriod: new Map<string, { pctSum: number; count: number }>() }
+    const period = `${s.testDate.getFullYear()}-${String(s.testDate.getMonth() + 1).padStart(2, '0')}`
+    const entry = batch.byPeriod.get(period) ?? { pctSum: 0, count: 0 }
+    entry.pctSum += (s.marksObtained / s.maxMarks) * 100
+    entry.count += 1
+    batch.byPeriod.set(period, entry)
+    byBatch.set(batchId, batch)
+  }
+
+  const rows: BatchPerformanceTrendRow[] = Array.from(byBatch.entries()).map(([batchId, b]) => ({
+    batchId, batchName: b.batchName,
+    points: Array.from(b.byPeriod.entries())
+      .map(([period, v]) => ({ period, avgPercentage: round1(v.pctSum / v.count), testCount: v.count }))
+      .sort((a, c) => a.period.localeCompare(c.period)),
+  })).sort((a, b) => a.batchName.localeCompare(b.batchName))
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows }
 }
 
 // Phase 68 §9.1 — Coaching Institute item 4: attendance-vs-performance
@@ -9291,6 +9350,7 @@ export const reportService = {
   generateEquipmentCheckoutReport,
   generateVendorCostVsBudgetReport,
   generateVendorPerformanceHistoryReport,
+  generateBatchPerformanceTrendReport,
   generateAttendancePerformanceCorrelationReport,
   generateFeeDueUnderperformanceAlertReport,
 }

@@ -2148,6 +2148,10 @@
         "label": "Test Score Report",
         "description": "Student test/exam scores across every batch — averages, below-50% flags"
       },
+      "batchPerformanceTrend": {
+        "label": "Batch Performance Trend",
+        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+      },
       "attendancePerformanceCorrelation": {
         "label": "Attendance vs. Performance",
         "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"

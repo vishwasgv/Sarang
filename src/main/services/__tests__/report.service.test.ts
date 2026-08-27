@@ -5024,7 +5024,7 @@ describe('reportService.generateTestScoreReport', () => {
     return {
       id: 'sts-1', testName: 'Unit Test 1', subject: 'Mathematics',
       marksObtained: 42, maxMarks: 50, testDate: new Date('2026-07-01'), grade: 'A',
-      enrollment: { student: { customerName: 'Riya Sharma' }, batch: { batchName: 'Batch A' } },
+      enrollment: { student: { id: 'stu-riya', customerName: 'Riya Sharma' }, batch: { batchName: 'Batch A' } },
       ...overrides,
     }
   }
@@ -5034,7 +5034,7 @@ describe('reportService.generateTestScoreReport', () => {
       studentTestScore: {
         findMany: vi.fn().mockResolvedValue([
           makeScoreRow({ marksObtained: 42, maxMarks: 50 }), // 84%
-          makeScoreRow({ id: 'sts-2', marksObtained: 15, maxMarks: 50, enrollment: { student: { customerName: 'Aman Verma' }, batch: { batchName: 'Batch A' } } }), // 30%
+          makeScoreRow({ id: 'sts-2', marksObtained: 15, maxMarks: 50, enrollment: { student: { id: 'stu-aman', customerName: 'Aman Verma' }, batch: { batchName: 'Batch A' } } }), // 30%
         ]),
       },
     }
@@ -5055,7 +5055,7 @@ describe('reportService.generateTestScoreReport', () => {
         findMany: vi.fn().mockResolvedValue([
           makeScoreRow({ id: 'sts-1', marksObtained: 40, maxMarks: 50 }), // 80%
           makeScoreRow({ id: 'sts-2', marksObtained: 45, maxMarks: 50 }), // 90%
-          makeScoreRow({ id: 'sts-3', marksObtained: 10, maxMarks: 50, enrollment: { student: { customerName: 'Aman Verma' }, batch: { batchName: 'Batch A' } } }), // 20%
+          makeScoreRow({ id: 'sts-3', marksObtained: 10, maxMarks: 50, enrollment: { student: { id: 'stu-aman', customerName: 'Aman Verma' }, batch: { batchName: 'Batch A' } } }), // 20%
         ]),
       },
     }
@@ -5066,6 +5066,29 @@ describe('reportService.generateTestScoreReport', () => {
     expect(result.studentSummaries).toHaveLength(2)
     expect(result.studentSummaries[0]).toMatchObject({ studentName: 'Riya Sharma', testCount: 2, averagePercentage: 85 })
     expect(result.studentSummaries[1]).toMatchObject({ studentName: 'Aman Verma', testCount: 1, averagePercentage: 20 })
+  })
+
+  // Real bug found+fixed (Phase 68 §9.1 final evaluation): studentSummaries
+  // used to group by the plain studentName STRING, not a stable ID — two
+  // different students who happen to share the same name would be silently
+  // merged into one rank-list row, double-counting their tests as one
+  // "student." Grouped by enrollment.student.id instead.
+  it('does NOT merge two different students who happen to share the same name', async () => {
+    const db = {
+      studentTestScore: {
+        findMany: vi.fn().mockResolvedValue([
+          makeScoreRow({ id: 'sts-1', marksObtained: 40, maxMarks: 50, enrollment: { student: { id: 'stu-1', customerName: 'Priya Sharma' }, batch: { batchName: 'Batch A' } } }), // 80%
+          makeScoreRow({ id: 'sts-2', marksObtained: 10, maxMarks: 50, enrollment: { student: { id: 'stu-2', customerName: 'Priya Sharma' }, batch: { batchName: 'Batch A' } } }), // 20%, different student, same name
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTestScoreReport({})
+
+    expect(result.summary.studentCount).toBe(2)
+    expect(result.studentSummaries).toHaveLength(2)
+    expect(result.studentSummaries.map(s => s.averagePercentage).sort((a, b) => a - b)).toEqual([20, 80])
   })
 
   it('filters by batchId via the enrollment relation', async () => {
@@ -5107,6 +5130,79 @@ describe('reportService.generateTestScoreReport', () => {
     const result = await reportService.generateTestScoreReport({})
 
     expect(result.rows[0].testDate).toBe('2026-07-01')
+  })
+})
+
+// ─── Batch Performance Trend (Phase 68 §9.1 final evaluation — Coaching Institute item 2) ─
+// Genuinely new: generateTestScoreReport's studentSummaries is a single-
+// snapshot per-student rank-list, not a time series, so it did NOT actually
+// satisfy "batch performance trend" as originally believed.
+
+describe('reportService.generateBatchPerformanceTrendReport', () => {
+  function makeScore(overrides: Record<string, unknown> = {}) {
+    return {
+      marksObtained: 40, maxMarks: 50, testDate: new Date('2026-01-15'),
+      enrollment: { batchId: 'batch-1', batch: { batchName: 'Batch A' } },
+      ...overrides,
+    }
+  }
+
+  it('groups by batch, then by month, computing the average percentage per period', async () => {
+    const db = {
+      studentTestScore: {
+        findMany: vi.fn().mockResolvedValue([
+          makeScore({ marksObtained: 40, maxMarks: 50, testDate: new Date('2026-01-10') }), // 80%
+          makeScore({ marksObtained: 30, maxMarks: 50, testDate: new Date('2026-01-20') }), // 60%
+          makeScore({ marksObtained: 45, maxMarks: 50, testDate: new Date('2026-02-05') }), // 90%
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBatchPerformanceTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-02-28' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0].batchName).toBe('Batch A')
+    expect(result.rows[0].points).toEqual([
+      { period: '2026-01', avgPercentage: 70, testCount: 2 },
+      { period: '2026-02', avgPercentage: 90, testCount: 1 },
+    ])
+  })
+
+  it('keeps separate batches as separate rows, sorted by batch name', async () => {
+    const db = {
+      studentTestScore: {
+        findMany: vi.fn().mockResolvedValue([
+          makeScore({ enrollment: { batchId: 'batch-2', batch: { batchName: 'Batch Z' } } }),
+          makeScore({ enrollment: { batchId: 'batch-1', batch: { batchName: 'Batch A' } } }),
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBatchPerformanceTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-02-28' })
+
+    expect(result.rows.map(r => r.batchName)).toEqual(['Batch A', 'Batch Z'])
+  })
+
+  it('filters by batchId when provided', async () => {
+    const db = { studentTestScore: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateBatchPerformanceTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-02-28', batchId: 'batch-1' })
+
+    expect(db.studentTestScore.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: expect.objectContaining({ enrollment: { batchId: 'batch-1' } })
+    }))
+  })
+
+  it('returns an empty rows array when there are no test scores in range', async () => {
+    const db = { studentTestScore: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateBatchPerformanceTrendReport({ dateFrom: '2026-01-01', dateTo: '2026-02-28' })
+
+    expect(result.rows).toEqual([])
   })
 })
 

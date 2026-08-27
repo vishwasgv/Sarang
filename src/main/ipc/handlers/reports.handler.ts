@@ -1209,6 +1209,16 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  // Phase 68 §9.1 — Coaching Institute item 2: Batch Performance Trend.
+  handle('reports:batchPerformanceTrend', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const { batchId } = (payload ?? {}) as { batchId?: string }
+    const data = await reportService.generateBatchPerformanceTrendReport({ ...parsed.data, batchId })
+    return { success: true, data }
+  })
+
   // Phase 68 §9.1 — Coaching Institute item 4: Attendance-vs-Performance Correlation.
   handle('reports:attendancePerformanceCorrelation', async (payload) => {
     const deny = await requirePermission('reports.sales'); if (deny) return deny

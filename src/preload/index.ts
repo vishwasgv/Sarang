@@ -469,6 +469,7 @@ const api: IpcChannels = {
     equipmentCheckout: () => invoke('reports:equipmentCheckout'),
     vendorCostVsBudget: () => invoke('reports:vendorCostVsBudget'),
     vendorPerformanceHistory: () => invoke('reports:vendorPerformanceHistory'),
+    batchPerformanceTrend: (p) => invoke('reports:batchPerformanceTrend', p),
     attendancePerformanceCorrelation: (p?: unknown) => invoke('reports:attendancePerformanceCorrelation', p),
     feeDueUnderperformanceAlert: () => invoke('reports:feeDueUnderperformanceAlert'),
   },

@@ -46,13 +46,19 @@ function emptyForm() {
 // A rough, common Indian grading scale — purely a convenience prefill, never
 // forced: grade stays a free-text field so an institute using a different
 // scale (or no letter grades at all) can just leave/overwrite it.
+// Real bug found (Phase 68 §9.1 final evaluation): this used to be a
+// DIFFERENT 7-tier scale (A+/A/B+/B/C/D/F at 90/80/70/60/50/33) than the
+// backend's own computeGrade in student-test-score.service.ts
+// (A+/A/B/C/D/F at 90/80/70/60/50) — and since this pre-fills form.grade
+// BEFORE submission, the backend's auto-calc never actually ran in the
+// normal UI flow; this renderer scale silently won every time. Must match
+// computeGrade's thresholds exactly, or re-introduce the same drift.
 function suggestGrade(pct: number): string {
   if (pct >= 90) return 'A+'
   if (pct >= 80) return 'A'
-  if (pct >= 70) return 'B+'
-  if (pct >= 60) return 'B'
-  if (pct >= 50) return 'C'
-  if (pct >= 33) return 'D'
+  if (pct >= 70) return 'B'
+  if (pct >= 60) return 'C'
+  if (pct >= 50) return 'D'
   return 'F'
 }
 

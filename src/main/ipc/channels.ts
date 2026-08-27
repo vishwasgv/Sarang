@@ -585,6 +585,7 @@ export interface IpcChannels {
     // Phase 68 §9.1 — Event Management item 5: Vendor Performance History.
     vendorPerformanceHistory: () => Promise<ApiResponse>
     // Phase 68 §9.1 — Coaching Institute item 4: Attendance-vs-Performance Correlation.
+    batchPerformanceTrend: (payload: { dateFrom: string; dateTo: string; batchId?: string }) => Promise<ApiResponse>
     attendancePerformanceCorrelation: (payload?: { batchId?: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Coaching Institute item 5: Fee-Due + Underperformance Alert.
     feeDueUnderperformanceAlert: () => Promise<ApiResponse>
