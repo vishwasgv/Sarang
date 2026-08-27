@@ -10,6 +10,27 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Drive'
 
+// Phase 68 §9.1 — Driving School item 4 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -159,6 +180,13 @@ async function run() {
         const expectedTotal = 600 * 1.18
         r.log('invoice-total-correct', Math.abs((invRes?.data?.totalAmount ?? 0) - expectedTotal) < 1, `expected=${expectedTotal} actual=${invRes?.data?.totalAmount}`)
       }
+    })
+
+    await r.step('learner-progress-funnel-report', () => checkReportTile(page, r, 'learnerProgressFunnel', 'Learner Progress Funnel', { needsDateRange: false }))
+
+    await r.step('learner-progress-funnel-has-our-learner-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.learnerProgressFunnel())
+      r.log('funnel-includes-our-learner', (res?.data?.summary?.totalEnrolled ?? 0) >= 1, JSON.stringify(res?.data?.summary))
     })
 
     await r.step('restore-business-type', async () => {
