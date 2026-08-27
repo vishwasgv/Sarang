@@ -8,6 +8,31 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Law'
 
+// Phase 68 §9.1 — Lawyer items 2/4 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange, expectNonEmpty, emptyStateText } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  if (expectNonEmpty && emptyStateText) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    r.log(`${tileId}-shows-real-data`, !bodyText.includes(emptyStateText), 'expected our seeded data to flow through, not the empty-state message')
+  }
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -112,6 +137,14 @@ async function run() {
       const retryRes = await page.evaluate(async (id) => window.api.timeEntry.generateInvoice({ ids: [id] }), entryId)
       r.log('double-invoicing-same-entry-rejected', retryRes?.success === false && retryRes?.error?.code === 'TE28-008', JSON.stringify(retryRes?.error))
     })
+
+    await r.step('case-aging-report', () => checkReportTile(page, r, 'caseAging', 'Case Aging', {
+      needsDateRange: false, expectNonEmpty: true, emptyStateText: 'No open cases right now.',
+    }))
+
+    await r.step('lawyer-billable-hours-report', () => checkReportTile(page, r, 'lawyerBillableHours', 'Billable Hours', {
+      needsDateRange: true, expectNonEmpty: true, emptyStateText: 'No time entries logged against a case in this date range.',
+    }))
 
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'LAWYER') {
