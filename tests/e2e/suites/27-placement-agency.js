@@ -9,6 +9,27 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Plc'
 
+// Phase 68 §9.1 — Placement Agency items 1-5 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -161,6 +182,51 @@ async function run() {
 
       const retryRes = await page.evaluate((id) => window.api.placement.generateInvoice(id), placementId)
       r.log('double-invoicing-placement-rejected', retryRes?.success === false && retryRes?.error?.code === 'PLC-003', JSON.stringify(retryRes?.error))
+    })
+
+    await r.step('candidate-pipeline-funnel-report', () => checkReportTile(page, r, 'candidatePipelineFunnel', 'Candidate Pipeline Funnel', { needsDateRange: false }))
+
+    await r.step('candidate-pipeline-funnel-shows-our-placed-candidate-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.candidatePipelineFunnel())
+      const stages = res?.data?.stages || []
+      const placed = stages.find((s) => s.stage === 'Placed')
+      r.log('funnel-shows-our-candidate-placed', !!placed && placed.candidateCount >= 1, JSON.stringify(stages))
+    })
+
+    await r.step('job-order-funnel-report', () => checkReportTile(page, r, 'jobOrderFunnel', 'Job Order Funnel', { needsDateRange: false }))
+
+    await r.step('job-order-funnel-has-nonzero-total-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.jobOrderFunnel())
+      r.log('funnel-has-our-job-order', (res?.data?.summary?.totalJobOrders ?? 0) >= 1, JSON.stringify(res?.data?.summary))
+    })
+
+    await r.step('fee-percentage-report', () => checkReportTile(page, r, 'feePercentage', 'Client Fee-Percentage Tracking', { needsDateRange: false }))
+
+    await r.step('fee-percentage-shows-our-job-order-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.feePercentage())
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.clientName === 'E2E Plc Hiring Co')
+      r.log('fee-percentage-includes-our-job-order', !!found && found.agreedFeePercent === 10 && found.placementCount >= 1, JSON.stringify(found))
+    })
+
+    await r.step('time-to-fill-report', () => checkReportTile(page, r, 'timeToFill', 'Time to Fill', { needsDateRange: true }))
+
+    await r.step('time-to-fill-shows-our-placement-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.reports.timeToFill({ dateFrom: from, dateTo: to }), { from, to })
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.jobTitle === 'E2E Plc Backend Engineer')
+      r.log('time-to-fill-includes-our-placement', !!found, JSON.stringify(found))
+    })
+
+    await r.step('source-effectiveness-report', () => checkReportTile(page, r, 'sourceEffectiveness', 'Source Effectiveness', { needsDateRange: false }))
+
+    await r.step('source-effectiveness-has-nonzero-placed-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.sourceEffectiveness())
+      const rows = res?.data?.rows || []
+      const totalPlaced = rows.reduce((s, row) => s + row.placedCount, 0)
+      r.log('source-effectiveness-shows-our-placement', totalPlaced >= 1, JSON.stringify(rows))
     })
 
     await r.step('restore-business-type', async () => {
