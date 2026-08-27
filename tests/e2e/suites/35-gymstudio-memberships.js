@@ -9,6 +9,33 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Gym'
 
+// Phase 68 §9.1 — Gym/Studio items 1/2/4 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange, expectNonEmpty, emptyStateText, dateFrom, dateTo } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    const from = dateFrom || h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+    const to = dateTo || h.toLocalISODate(new Date())
+    await dateInputs.nth(0).fill(from)
+    await dateInputs.nth(1).fill(to)
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  if (expectNonEmpty && emptyStateText) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    r.log(`${tileId}-shows-real-data`, !bodyText.includes(emptyStateText), 'expected our seeded data to flow through, not the empty-state message')
+  }
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -179,6 +206,38 @@ async function run() {
       await page.waitForTimeout(1000)
       r.log('enrollment-no-crash', !(await h.hasErrorBoundary(page)))
     })
+
+    let enrolledMemberId
+
+    await r.step('mark-class-attendance-for-heatmap-data', async () => {
+      // generateClassAttendanceHeatmapReport needs real BatchClassAttendance
+      // rows -- nothing else in this suite creates one.
+      if (!classId) return r.log('mark-class-attendance-for-heatmap-data', false, 'no classId captured')
+      const clsRes = await page.evaluate(async (id) => window.api.batchClass.get({ id }), classId)
+      const enrolledIds = clsRes?.data?.enrolledMemberIds ? JSON.parse(clsRes.data.enrolledMemberIds) : []
+      enrolledMemberId = enrolledIds[0]
+      r.log('roster-has-member', !!enrolledMemberId, JSON.stringify(enrolledIds))
+      if (enrolledMemberId) {
+        const today = h.toLocalISODate(new Date())
+        const res = await page.evaluate(({ classId, memberId, today }) => window.api.batchClass.markAttendance({
+          classId, memberIds: [memberId], sessionDate: today,
+        }), { classId, memberId: enrolledMemberId, today })
+        r.log('attendance-marked-no-crash', !!res?.success, JSON.stringify(res?.error || ''))
+      }
+    })
+
+    await r.step('membership-renewal-funnel-report', () => checkReportTile(page, r, 'membershipRenewalFunnel', 'Membership Renewal Funnel', {
+      needsDateRange: true, expectNonEmpty: true,
+      emptyStateText: 'No memberships expired in this date range.',
+      // The E2E Gym Monthly Plan is 30 days -- its endDate is ~30d from
+      // today, not in the past, so the default trailing window would miss
+      // it. Use a forward-looking window that spans the real endDate.
+      dateFrom: h.toLocalISODate(new Date()), dateTo: h.toLocalISODate(new Date(Date.now() + 35 * 24 * 3600000)),
+    }))
+
+    await r.step('class-attendance-heatmap-report', () => checkReportTile(page, r, 'classAttendanceHeatmap', 'Class Attendance Heatmap', {
+      needsDateRange: true, expectNonEmpty: true, emptyStateText: 'No class check-ins recorded in this date range.',
+    }))
 
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'GYM_STUDIO') {
