@@ -8,6 +8,27 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Photo'
 
+// Phase 68 §9.1 — Photo Studio items 1/2/3/4/5 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -115,6 +136,46 @@ async function run() {
       r.log('delivery-milestone-updated', !!res?.success, JSON.stringify(res?.error || ''))
     })
 
+    await r.step('delivery-pipeline-report', () => checkReportTile(page, r, 'deliveryPipeline', 'Delivery Pipeline', { needsDateRange: false }))
+
+    await r.step('delivery-pipeline-shows-our-booking-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.deliveryPipeline())
+      const total = (res?.data?.stages || []).reduce((s, st) => s + st.count, 0)
+      r.log('delivery-pipeline-has-nonzero-total', total >= 1, JSON.stringify(res?.data?.stages))
+    })
+
+    await r.step('shoot-type-revenue-mix-report', () => checkReportTile(page, r, 'shootTypeRevenueMix', 'Shoot-Type Revenue Mix', { needsDateRange: true }))
+
+    await r.step('shoot-type-revenue-mix-includes-our-booking-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.reports.shootTypeRevenueMix({ dateFrom: from, dateTo: to }), { from, to })
+      r.log('revenue-mix-has-nonzero-revenue', (res?.data?.summary?.totalRevenue ?? 0) >= 15000, JSON.stringify(res?.data?.summary))
+    })
+
+    await r.step('checkout-equipment-for-report', async () => {
+      const assetRes = await page.evaluate((today) => window.api.fixedAssets.create({
+        assetCode: `E2E-CAM-${Date.now()}`, assetName: 'E2E Photo Camera Body', purchaseDate: today, purchaseCost: 80000, usefulLifeMonths: 36,
+      }), h.toLocalISODate(new Date()))
+      const assetId = assetRes?.data?.id
+      r.log('equipment-asset-created', !!assetId, JSON.stringify(assetRes?.error || ''))
+      if (assetId) {
+        const coRes = await page.evaluate(({ assetId, today }) => window.api.equipmentCheckout.checkOut({
+          fixedAssetId: assetId, checkedOutDate: today,
+        }), { assetId, today: h.toLocalISODate(new Date()) })
+        r.log('equipment-checked-out', !!coRes?.data?.id, JSON.stringify(coRes?.error || ''))
+      }
+    })
+
+    await r.step('equipment-checkout-report', () => checkReportTile(page, r, 'equipmentCheckout', 'Equipment Checkout', { needsDateRange: false }))
+
+    await r.step('equipment-checkout-shows-our-camera-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.equipmentCheckout())
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.assetName === 'E2E Photo Camera Body')
+      r.log('equipment-checkout-includes-our-camera', !!found, JSON.stringify(found))
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'PHOTO_STUDIO') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -128,8 +189,16 @@ async function run() {
     console.log('cleanup:', JSON.stringify(cleaned))
     h.withDb((db) => {
       const ids = db.prepare("SELECT id FROM ShootBooking WHERE shootLocation LIKE 'E2E Photo%'").all().map((r2) => r2.id)
-      for (const id of ids) { try { db.prepare('DELETE FROM ShootBooking WHERE id = ?').run(id) } catch { /* noop */ } }
-      console.log('extra cleanup: bookings', ids.length)
+      for (const id of ids) {
+        try { db.prepare('DELETE FROM DeliveryTracker WHERE shootBookingId = ?').run(id) } catch { /* noop */ }
+        try { db.prepare('DELETE FROM ShootBooking WHERE id = ?').run(id) } catch { /* noop */ }
+      }
+      const assetIds = db.prepare("SELECT id FROM FixedAsset WHERE assetName LIKE 'E2E Photo%'").all().map((r2) => r2.id)
+      for (const aid of assetIds) {
+        try { db.prepare('DELETE FROM EquipmentCheckout WHERE fixedAssetId = ?').run(aid) } catch { /* noop */ }
+        try { db.prepare('DELETE FROM FixedAsset WHERE id = ?').run(aid) } catch { /* noop */ }
+      }
+      console.log('extra cleanup: bookings', ids.length, 'assets', assetIds.length)
     })
   }
 
