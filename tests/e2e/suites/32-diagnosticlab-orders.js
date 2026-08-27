@@ -135,6 +135,81 @@ async function run() {
       }
     })
 
+    // ── Phase 67 §9.1 item 23.1 gap-closure (2026-08-27) — target TAT
+    // snapshot + TAT compliance report, previously untested. Needs a real
+    // ServiceCatalog-linked order (targetTATHours only denormalizes onto an
+    // item when serviceCatalogId is set) and real elapsed time between
+    // sample collection and result -- backdate sampleCollectedAt directly
+    // rather than waiting real hours. ─────────────────────────────────────
+    let catalogId
+
+    await r.step('create-service-catalog-entry-with-target-tat', async () => {
+      const res = await page.evaluate(async () => window.api.serviceCatalog.create({
+        serviceName: 'E2E CBC Catalog Test', basePrice: 500, targetTATHours: 24,
+      }))
+      catalogId = res?.data?.id
+      r.log('catalog-entry-with-target-tat-created', !!catalogId && res?.data?.targetTATHours === 24, JSON.stringify(res?.error || ''))
+    })
+
+    async function createBackdatedTATOrder(patientName, hoursAgo) {
+      const orderRes = await page.evaluate(({ customerId, patientName, catalogId }) => window.api.labTestOrders.create({
+        customerId, patientName, items: [{ serviceCatalogId: catalogId, testName: 'E2E CBC Catalog Test', price: 500 }],
+      }), { customerId, patientName, catalogId })
+      const orderId = orderRes?.data?.id
+      if (!orderId) return { orderId: null, itemId: null }
+
+      const collectRes = await page.evaluate((id) => window.api.labTestOrders.markSampleCollected({ id }), orderId)
+      void collectRes
+
+      // Backdate sampleCollectedAt so the eventual result entry (right now)
+      // produces a real, specific elapsed TAT -- epoch-ms, not an ISO
+      // string (this project's DateTime columns store epoch-ms).
+      h.withDb((db) => db.prepare('UPDATE LabTestOrder SET sampleCollectedAt = ? WHERE id = ?').run(Date.now() - hoursAgo * 3600 * 1000, orderId))
+
+      const orderDetail = await page.evaluate((id) => window.api.labTestOrders.get({ id }), orderId)
+      const itemId = orderDetail?.data?.items?.[0]?.id
+      return { orderId, itemId }
+    }
+
+    let lateOrderId, onTimeOrderId
+
+    await r.step('create-late-order-actual-tat-exceeds-target', async () => {
+      if (!catalogId) return r.log('create-late-order-actual-tat-exceeds-target', false, 'no catalogId captured')
+      const { orderId, itemId } = await createBackdatedTATOrder('E2E Lab TAT Late Patient', 48)
+      lateOrderId = orderId
+      r.log('late-order-and-item-created', !!orderId && !!itemId, JSON.stringify({ orderId, itemId }))
+      if (itemId) {
+        const res = await page.evaluate((itemId) => window.api.labTestOrders.updateResult({
+          itemId, resultParameters: [{ parameter: 'Hemoglobin', value: '13.5', unit: 'g/dL' }],
+        }), itemId)
+        r.log('late-order-result-entered', !!res?.success, JSON.stringify(res?.error || ''))
+      }
+    })
+
+    await r.step('create-on-time-order-actual-tat-within-target', async () => {
+      if (!catalogId) return r.log('create-on-time-order-actual-tat-within-target', false, 'no catalogId captured')
+      const { orderId, itemId } = await createBackdatedTATOrder('E2E Lab TAT OnTime Patient', 2)
+      onTimeOrderId = orderId
+      r.log('on-time-order-and-item-created', !!orderId && !!itemId, JSON.stringify({ orderId, itemId }))
+      if (itemId) {
+        const res = await page.evaluate((itemId) => window.api.labTestOrders.updateResult({
+          itemId, resultParameters: [{ parameter: 'Hemoglobin', value: '13.2', unit: 'g/dL' }],
+        }), itemId)
+        r.log('on-time-order-result-entered', !!res?.success, JSON.stringify(res?.error || ''))
+      }
+    })
+
+    await r.step('lab-tat-report-shows-one-late-one-on-time', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 3 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date(Date.now() + 1 * 24 * 3600000))
+      const res = await page.evaluate(({ from, to }) => window.api.reports.labTAT({ dateFrom: from, dateTo: to }), { from, to })
+      const row = (res?.data?.rows || []).find((rr) => rr.testName === 'E2E CBC Catalog Test')
+      r.log('tat-report-includes-our-test', !!row, JSON.stringify(row))
+      r.log('tat-report-target-hours-snapshotted-correctly', row?.targetTATHours === 24, JSON.stringify(row?.targetTATHours))
+      r.log('tat-report-shows-exactly-one-late-one-on-time', row?.onTimeCount === 1 && row?.lateCount === 1, JSON.stringify({ onTime: row?.onTimeCount, late: row?.lateCount }))
+      r.log('tat-report-on-time-percent-is-50', row?.onTimePercent === 50, JSON.stringify(row?.onTimePercent))
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'DIAGNOSTIC_LAB') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -152,7 +227,9 @@ async function run() {
         try { db.prepare('DELETE FROM LabTestOrderItem WHERE labTestOrderId = ?').run(id) } catch { /* noop */ }
         try { db.prepare('DELETE FROM LabTestOrder WHERE id = ?').run(id) } catch { /* noop */ }
       }
-      console.log('extra cleanup: labOrders', ids.length)
+      const catalogIds = db.prepare("SELECT id FROM ServiceCatalog WHERE serviceName LIKE 'E2E CBC%'").all().map((r2) => r2.id)
+      for (const id of catalogIds) { try { db.prepare('DELETE FROM ServiceCatalog WHERE id = ?').run(id) } catch { /* noop */ } }
+      console.log('extra cleanup: labOrders', ids.length, 'serviceCatalog', catalogIds.length)
     })
   }
 
