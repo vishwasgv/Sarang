@@ -7,6 +7,31 @@ const h = require('../harness')
 
 const TEST_PREFIX = 'E2E SW'
 
+// Phase 68 §9.1 — Software Agency items 1/4/5 report-tile render sweep.
+async function checkReportTile(page, r, tileId, tileLabel, { needsDateRange, expectNonEmpty, emptyStateText } = {}) {
+  await h.gotoHash(page, '#/reports')
+  await page.waitForTimeout(700)
+  const tile = page.locator('button, [role="button"]', { hasText: tileLabel }).first()
+  const present = await tile.count() > 0
+  r.log(`${tileId}-tile-present`, present)
+  if (!present) return
+  await tile.click()
+  await page.waitForTimeout(500)
+  if (needsDateRange) {
+    const dateInputs = page.locator('input[type="date"]')
+    await dateInputs.nth(0).fill(h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000)))
+    await dateInputs.nth(1).fill(h.toLocalISODate(new Date()))
+  }
+  await page.locator('button:has-text("Generate Report")').click()
+  await page.waitForTimeout(1200)
+  r.log(`${tileId}-renders-no-crash`, !(await h.hasErrorBoundary(page)))
+  if (expectNonEmpty && emptyStateText) {
+    const bodyText = await page.locator('body').innerText().catch(() => '')
+    r.log(`${tileId}-shows-real-data`, !bodyText.includes(emptyStateText), 'expected our seeded data to flow through, not the empty-state message')
+  }
+  await h.shot(page, `report-${tileId}`)
+}
+
 async function run() {
   const r = h.makeResults()
   h.resetAdminPasswordForSuite()
@@ -79,6 +104,61 @@ async function run() {
       r.log('issue-status-is-in-progress', res?.data?.status === 'IN_PROGRESS', JSON.stringify(res?.data?.status))
     })
 
+    await r.step('issue-aging-report', () => checkReportTile(page, r, 'issueAging', 'Issue Aging', {
+      needsDateRange: false, expectNonEmpty: true, emptyStateText: 'No open issues right now.',
+    }))
+
+    await r.step('log-time-entry-for-team-utilization', async () => {
+      const joinDate = h.toLocalISODate(new Date())
+      const empRes = await page.evaluate((joinDate) => window.api.hr.createEmployee({
+        fullName: 'E2E SW Developer', phone: `8${String(Date.now()).slice(-9)}`, joinDate,
+      }), joinDate)
+      const employeeId = empRes?.data?.id
+      r.log('developer-created', !!employeeId, JSON.stringify(empRes?.error || ''))
+      if (employeeId) {
+        const teRes = await page.evaluate(({ pid, eid, today }) => window.api.timeEntry.create({
+          projectId: pid, employeeId: eid, date: today, description: 'E2E SW debugging work', hours: 3, ratePerHour: 800,
+        }), { pid: projectId, eid: employeeId, today: h.toLocalISODate(new Date()) })
+        r.log('project-time-entry-created', !!teRes?.data?.id, JSON.stringify(teRes?.error || ''))
+      }
+    })
+
+    await r.step('team-utilization-report', () => checkReportTile(page, r, 'teamUtilization', 'Team Utilization', {
+      needsDateRange: true, expectNonEmpty: true, emptyStateText: 'No hours logged against a project in this date range.',
+    }))
+
+    await r.step('team-utilization-shows-our-developer-via-api', async () => {
+      const from = h.toLocalISODate(new Date(Date.now() - 45 * 24 * 3600000))
+      const to = h.toLocalISODate(new Date())
+      const res = await page.evaluate(({ from, to }) => window.api.reports.teamUtilization({ dateFrom: from, dateTo: to }), { from, to })
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.employeeName === 'E2E SW Developer')
+      r.log('team-utilization-includes-our-developer', !!found && Number(found.billableHours) === 3, JSON.stringify(found))
+    })
+
+    await r.step('create-completed-sprint-for-billing-report', async () => {
+      const start = h.toLocalISODate(new Date(Date.now() - 14 * 24 * 3600000))
+      const end = h.toLocalISODate(new Date())
+      const sprintRes = await page.evaluate(({ pid, start, end }) => window.api.sprint.create({
+        projectId: pid, name: 'E2E SW Sprint 1', startDate: start, endDate: end,
+      }), { pid: projectId, start, end })
+      const sprintId = sprintRes?.data?.id
+      r.log('sprint-created', !!sprintId, JSON.stringify(sprintRes?.error || ''))
+      if (sprintId) {
+        const upd = await page.evaluate((id) => window.api.sprint.update({ id, status: 'COMPLETED' }), sprintId)
+        r.log('sprint-marked-completed', upd?.data?.status === 'COMPLETED', JSON.stringify(upd?.error || ''))
+      }
+    })
+
+    await r.step('sprint-billing-report', () => checkReportTile(page, r, 'sprintBilling', 'Sprint Billing', { needsDateRange: false }))
+
+    await r.step('sprint-billing-shows-our-sprint-via-api', async () => {
+      const res = await page.evaluate(async () => window.api.reports.sprintBilling())
+      const rows = res?.data?.rows || []
+      const found = rows.find((row) => row.sprintName === 'E2E SW Sprint 1')
+      r.log('sprint-billing-includes-our-sprint', !!found, JSON.stringify(found))
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'SOFTWARE_AGENCY') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -94,9 +174,13 @@ async function run() {
       const projIds = db.prepare("SELECT id FROM ServiceProject WHERE projectName LIKE 'E2E SW%'").all().map((r2) => r2.id)
       for (const id of projIds) {
         try { db.prepare('DELETE FROM Issue WHERE projectId = ?').run(id) } catch { /* noop */ }
+        try { db.prepare('DELETE FROM TimeEntry WHERE projectId = ?').run(id) } catch { /* noop */ }
+        try { db.prepare('DELETE FROM Sprint WHERE projectId = ?').run(id) } catch { /* noop */ }
         try { db.prepare('DELETE FROM ServiceProject WHERE id = ?').run(id) } catch { /* noop */ }
       }
-      console.log('extra cleanup: projects', projIds.length)
+      const empIds = db.prepare("SELECT id FROM Employee WHERE fullName LIKE 'E2E SW%'").all().map((r2) => r2.id)
+      for (const eid of empIds) { try { db.prepare('DELETE FROM Employee WHERE id = ?').run(eid) } catch { db.prepare('UPDATE Employee SET isActive = 0 WHERE id = ?').run(eid) } }
+      console.log('extra cleanup: projects', projIds.length, 'employees', empIds.length)
     })
   }
 
