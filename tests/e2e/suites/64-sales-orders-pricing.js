@@ -38,6 +38,14 @@ async function run() {
   const outsideWindowSchemeName = `${schemeName} Outside Window`
   let happyHourSchemeId = null
   let outsideWindowSchemeId = null
+  // Phase 63 gap-closure additions (2026-08-27).
+  const createdInvoiceTemplateIds = []
+  const createdRetainerCustomerIds = []
+  const createdQuotationIds = []
+  const createdNoteCustomerIds = []
+  const createdNoteSupplierIds = []
+  const createdChallanIds = []
+  let originalBusinessDefaultTemplateId
 
   let page
   try {
@@ -497,6 +505,136 @@ async function run() {
       const row = h.withDb((db) => db.prepare('SELECT status FROM SalesOrder WHERE id = ?').get(secondSoId))
       r.log('second-sales-order-confirmed-after-approval', row?.status === 'CONFIRMED', `status=${row?.status}`)
     })
+
+    // ── Invoice Templates: create, set as business default, then restore
+    // the original default -- never leave the shared dev DB printing every
+    // future invoice with this test's throwaway accent color. ─────────────
+    let invoiceTemplateId
+    await r.step('invoice-template-create-and-set-default-via-real-ui', async () => {
+      const before = await page.evaluate(async () => window.api.businessProfile.get())
+      originalBusinessDefaultTemplateId = before?.data?.defaultInvoiceTemplateId ?? null
+
+      await h.gotoHash(page, '#/settings')
+      await page.waitForTimeout(600)
+      await page.locator('button', { hasText: 'Invoice Templates' }).click()
+      await page.waitForTimeout(500)
+      await page.locator('button', { hasText: 'New Template' }).click()
+      await page.waitForTimeout(400)
+
+      const modal = page.locator('div.fixed.inset-0')
+      await modal.locator('label:text-is("Template Name") + input').fill(`${TEST_PREFIX} Template ${suffix}`)
+      await modal.getByPlaceholder('e.g. Thank you for your business!').fill('E2E Sales63 footer text')
+      await modal.locator('button', { hasText: 'Create Template' }).click()
+      await page.waitForTimeout(1000)
+      r.log('invoice-template-created-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const listRes = await page.evaluate(async () => window.api.invoiceTemplates.list())
+      const found = (listRes?.data || []).find((t) => t.name === `${TEST_PREFIX} Template ${suffix}`)
+      invoiceTemplateId = found?.id
+      if (invoiceTemplateId) createdInvoiceTemplateIds.push(invoiceTemplateId)
+      r.log('invoice-template-findable-via-api', !!invoiceTemplateId && found.config.footerText === 'E2E Sales63 footer text', JSON.stringify(found))
+
+      if (invoiceTemplateId) {
+        const setRes = await page.evaluate((id) => window.api.invoiceTemplates.setBusinessDefault({ id }), invoiceTemplateId)
+        r.log('template-set-as-business-default', !!setRes?.success, JSON.stringify(setRes?.error || ''))
+        const after = await page.evaluate(async () => window.api.businessProfile.get())
+        r.log('business-default-template-id-updated', after?.data?.defaultInvoiceTemplateId === invoiceTemplateId, JSON.stringify(after?.data?.defaultInvoiceTemplateId))
+
+        await page.evaluate((id) => window.api.invoiceTemplates.setBusinessDefault({ id }), originalBusinessDefaultTemplateId)
+      }
+    })
+
+    // ── Estimate -> Retainer conversion (Phase 63) ──────────────────────────
+    await r.step('estimate-to-retainer-conversion', async () => {
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Retainer Client ${suffix}`)
+      const retainerCustomerId = custRes?.data?.id
+      if (retainerCustomerId) createdRetainerCustomerIds.push(retainerCustomerId)
+
+      const quoteRes = await page.evaluate((cid) => window.api.quotations.create({
+        customerId: cid, retainerType: 'FIXED_FEE', items: [{ productName: 'E2E Sales63 Monthly Retainer', quantity: 1, unitPrice: 12000 }],
+      }), retainerCustomerId)
+      const quotationId = quoteRes?.data?.id
+      if (quotationId) createdQuotationIds.push(quotationId)
+      r.log('retainer-quotation-created', !!quotationId, JSON.stringify(quoteRes?.error || ''))
+
+      const convertRes = await page.evaluate((id) => window.api.quotations.convertToRetainer(id), quotationId)
+      r.log('quotation-converted-to-retainer', !!convertRes?.success, JSON.stringify(convertRes?.error || ''))
+      r.log('conversion-returns-retainer-and-invoice-ids', !!convertRes?.data?.retainerId && !!convertRes?.data?.invoiceId, JSON.stringify(convertRes?.data))
+
+      const retryRes = await page.evaluate((id) => window.api.quotations.convertToRetainer(id), quotationId)
+      r.log('reconvert-already-accepted-quotation-blocked-QT-002', retryRes?.success === false && retryRes?.error?.code === 'QT-002', JSON.stringify(retryRes?.error))
+
+      const nonRetainerQuoteRes = await page.evaluate((cid) => window.api.quotations.create({
+        customerId: cid, items: [{ productName: 'E2E Sales63 Plain Quote Item', quantity: 1, unitPrice: 500 }],
+      }), retainerCustomerId)
+      if (nonRetainerQuoteRes?.data?.id) createdQuotationIds.push(nonRetainerQuoteRes.data.id)
+      const convertPlainRes = await page.evaluate((id) => window.api.quotations.convertToRetainer(id), nonRetainerQuoteRes?.data?.id)
+      r.log('non-retainer-quotation-conversion-blocked-QT-004', convertPlainRes?.success === false && convertPlainRes?.error?.code === 'QT-004', JSON.stringify(convertPlainRes?.error))
+    })
+
+    // ── Credit Note / Debit Note with real product-or-service line items
+    // (Phase 63 upgrade) -- previously only the flat `amount` field was
+    // ever exercised anywhere in E2E. ───────────────────────────────────────
+    await r.step('credit-note-with-line-items', async () => {
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} CN Client ${suffix}`)
+      const cnCustomerId = custRes?.data?.id
+      if (cnCustomerId) createdNoteCustomerIds.push(cnCustomerId)
+
+      const cnRes = await page.evaluate((cid) => window.api.creditNotes.create({
+        customerId: cid, reason: 'E2E Sales63 returned goods',
+        items: [{ serviceDescription: 'E2E Sales63 Return line', quantity: 2, unitPrice: 300, taxRate: 18 }],
+      }), cnCustomerId)
+      r.log('credit-note-with-items-created', !!cnRes?.success, JSON.stringify(cnRes?.error || ''))
+      // amount is COMPUTED from the lines (2*300*1.18 = 708), ignoring any
+      // flat amount field since none was sent.
+      r.log('credit-note-amount-computed-from-items-708', Math.abs((cnRes?.data?.amount ?? -1) - 708) < 0.01, JSON.stringify(cnRes?.data?.amount))
+    })
+
+    await r.step('debit-note-with-line-items', async () => {
+      const supRes = await page.evaluate((name) => window.api.suppliers.create({ supplierName: name }), `${TEST_PREFIX} DN Vendor ${suffix}`)
+      const dnSupplierId = supRes?.data?.id
+      if (dnSupplierId) createdNoteSupplierIds.push(dnSupplierId)
+
+      const dnRes = await page.evaluate((sid) => window.api.debitNotes.create({
+        supplierId: sid, reason: 'E2E Sales63 vendor credit for damaged goods',
+        items: [{ serviceDescription: 'E2E Sales63 Damaged goods line', quantity: 1, unitPrice: 1000, taxRate: 12 }],
+      }), dnSupplierId)
+      r.log('debit-note-with-items-created', !!dnRes?.success, JSON.stringify(dnRes?.error || ''))
+      r.log('debit-note-amount-computed-from-items-1120', Math.abs((dnRes?.data?.amount ?? -1) - 1120) < 0.01, JSON.stringify(dnRes?.data?.amount))
+    })
+
+    // ── Delivery Note / Packing Slip from a real Invoice ────────────────────
+    await r.step('delivery-note-and-packing-slip-from-invoice', async () => {
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Challan Client ${suffix}`)
+      const challanCustomerId = custRes?.data?.id
+      if (challanCustomerId) createdNoteCustomerIds.push(challanCustomerId)
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 100, sellingPrice: 200, taxRate: 18, openingQuantity: 10
+      }), `${TEST_PREFIX} Challan Product ${suffix}`)
+      const challanProductId = prodRes?.data?.id
+
+      const invRes = await page.evaluate(({ customerId, productId }) => window.api.billing.createInvoice({
+        customerId, paymentMethod: 'CASH', items: [{ productId, quantity: 2, unitPrice: 200, taxRate: 18 }],
+      }), { customerId: challanCustomerId, productId: challanProductId })
+      const challanInvoiceId = invRes?.data?.id
+
+      const dnRes = await page.evaluate(({ customerId, invoiceId, productId }) => window.api.logisticsChallan.create({
+        challanType: 'DELIVERY_NOTE', customerId, customerName: 'E2E Sales63 Challan Client', invoiceId,
+        items: [{ productId, productName: 'E2E Sales63 Challan Product', quantity: 2, unit: 'PCS', unitValue: 200 }],
+      }), { customerId: challanCustomerId, invoiceId: challanInvoiceId, productId: challanProductId })
+      if (dnRes?.data?.id) createdChallanIds.push(dnRes.data.id)
+      r.log('delivery-note-created', !!dnRes?.success, JSON.stringify(dnRes?.error || ''))
+      r.log('delivery-note-type-persisted', dnRes?.data?.challanType === 'DELIVERY_NOTE', JSON.stringify(dnRes?.data?.challanType))
+      r.log('delivery-note-linked-to-invoice', dnRes?.data?.invoiceId === challanInvoiceId, JSON.stringify(dnRes?.data?.invoiceId))
+
+      const psRes = await page.evaluate(({ customerId, invoiceId, productId }) => window.api.logisticsChallan.create({
+        challanType: 'PACKING_SLIP', customerId, customerName: 'E2E Sales63 Challan Client', invoiceId,
+        items: [{ productId, productName: 'E2E Sales63 Challan Product', quantity: 2, unit: 'PCS' }],
+      }), { customerId: challanCustomerId, invoiceId: challanInvoiceId, productId: challanProductId })
+      if (psRes?.data?.id) createdChallanIds.push(psRes.data.id)
+      r.log('packing-slip-created', !!psRes?.success, JSON.stringify(psRes?.error || ''))
+      r.log('packing-slip-type-persisted', psRes?.data?.challanType === 'PACKING_SLIP', JSON.stringify(psRes?.data?.challanType))
+    })
   } finally {
     const cleanup = h.withDb((db) => {
       let counts = { soItems: 0, sos: 0, approvalActions: 0, approvalSteps: 0, approvalInstances: 0, workflows: 0, schemes: 0, priceListItems: 0, priceLists: 0, profiles: 0, category: 0, inventory: 0, products: 0, customers: 0, happyHourSchemes: 0, happyHourProducts: 0 }
@@ -537,6 +675,54 @@ async function run() {
       try { counts.products += db.prepare('DELETE FROM Product WHERE id = ?').run(productId).changes } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(productId) }
       db.prepare('UPDATE Customer SET priceListId = NULL WHERE id = ?').run(customerId)
       try { counts.customers += db.prepare('DELETE FROM Customer WHERE id = ?').run(customerId).changes } catch { db.prepare('UPDATE Customer SET isActive = 0 WHERE id = ?').run(customerId) }
+
+      // Phase 63 gap-closure cleanup (2026-08-27).
+      // Safety net: the inline restore already ran, but never leave the
+      // shared dev DB's business default pointing at a template we're
+      // about to delete.
+      db.prepare('UPDATE BusinessProfile SET defaultInvoiceTemplateId = ?').run(originalBusinessDefaultTemplateId ?? null)
+      for (const id of createdInvoiceTemplateIds) db.prepare('DELETE FROM InvoiceTemplate WHERE id = ?').run(id)
+
+      for (const cid of createdRetainerCustomerIds) {
+        const retainers = db.prepare('SELECT id FROM RetainerAgreement WHERE clientId = ?').all(cid)
+        for (const ret of retainers) db.prepare('DELETE FROM RetainerAgreement WHERE id = ?').run(ret.id)
+        const invs = db.prepare('SELECT id FROM Invoice WHERE customerId = ?').all(cid)
+        for (const inv of invs) {
+          db.prepare('DELETE FROM InvoiceItem WHERE invoiceId = ?').run(inv.id)
+          try { db.prepare('DELETE FROM Invoice WHERE id = ?').run(inv.id) } catch { /* left in place if still referenced */ }
+        }
+      }
+      for (const qid of createdQuotationIds) {
+        db.prepare('DELETE FROM QuotationItem WHERE quotationId = ?').run(qid)
+        db.prepare('DELETE FROM Quotation WHERE id = ?').run(qid)
+      }
+      for (const cid of createdNoteCustomerIds) {
+        db.prepare('DELETE FROM CreditNote WHERE customerId = ?').run(cid)
+        const invs = db.prepare('SELECT id FROM Invoice WHERE customerId = ?').all(cid)
+        for (const inv of invs) {
+          db.prepare('DELETE FROM DeliveryChallan WHERE invoiceId = ?').run(inv.id)
+          db.prepare('DELETE FROM InvoiceItem WHERE invoiceId = ?').run(inv.id)
+          try { db.prepare('DELETE FROM Invoice WHERE id = ?').run(inv.id) } catch { /* noop */ }
+        }
+        db.prepare('DELETE FROM CustomerLedger WHERE customerId = ?').run(cid)
+        try { db.prepare('DELETE FROM Customer WHERE id = ?').run(cid) } catch { db.prepare('UPDATE Customer SET isActive = 0 WHERE id = ?').run(cid) }
+      }
+      for (const cid of createdRetainerCustomerIds) {
+        db.prepare('DELETE FROM CustomerLedger WHERE customerId = ?').run(cid)
+        try { db.prepare('DELETE FROM Customer WHERE id = ?').run(cid) } catch { db.prepare('UPDATE Customer SET isActive = 0 WHERE id = ?').run(cid) }
+      }
+      for (const sid of createdNoteSupplierIds) {
+        db.prepare('DELETE FROM DebitNote WHERE supplierId = ?').run(sid)
+        db.prepare('DELETE FROM SupplierLedger WHERE supplierId = ?').run(sid)
+        try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(sid) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(sid) }
+      }
+      for (const id of createdChallanIds) { try { db.prepare('DELETE FROM DeliveryChallan WHERE id = ?').run(id) } catch { /* already removed via invoice cascade above */ } }
+      const challanProdIds = db.prepare("SELECT id FROM Product WHERE productName LIKE 'E2E Sales63 Challan Product%'").all()
+      for (const p of challanProdIds) {
+        db.prepare('DELETE FROM Inventory WHERE productId = ?').run(p.id)
+        try { db.prepare('DELETE FROM Product WHERE id = ?').run(p.id) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(p.id) }
+      }
+
       return counts
     })
     console.log('extra cleanup (Phase 63 tables):', JSON.stringify(cleanup))
