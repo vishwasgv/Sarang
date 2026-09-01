@@ -35,6 +35,13 @@ export function register(handle: HandleFn): void {
     return billingService.getOrCreateTipProduct()
   })
 
+  handle('billing:getOrCreateServiceProduct', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const { name, taxRate } = payload as { name: string; taxRate?: number }
+    if (!name?.trim()) return { success: false, error: { code: 'VAL-001', message: 'Service name is required.' } }
+    return billingService.getOrCreateServiceProduct({ name, taxRate })
+  })
+
   handle('billing:getFrequentlySoldProducts', async (payload) => {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
     const { limit } = (payload ?? {}) as { limit?: number }
@@ -86,6 +93,16 @@ export function register(handle: HandleFn): void {
   handle('billing:listInvoices', async (payload) => {
     const deny = await requirePermission('billing.view'); if (deny) return deny
     return billingService.listInvoices(payload as { status?: string; customerId?: string; dateFrom?: string; dateTo?: string; search?: string; page?: number; limit?: number } | undefined)
+  })
+
+  handle('billing:listScheduledDeliveries', async (payload) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    return billingService.listScheduledDeliveries(payload as { status?: string } | undefined)
+  })
+
+  handle('billing:updateDeliveryStatus', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    return billingService.updateDeliveryStatus(payload as { invoiceId: string; status: 'SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' })
   })
 
   handle('billing:cancelInvoice', async (payload) => {

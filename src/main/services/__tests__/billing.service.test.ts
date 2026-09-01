@@ -82,6 +82,11 @@ function makeMockDb(productOverrides: Record<string, unknown> = {}) {
       findUnique: vi.fn().mockResolvedValue(null),
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    // Phase 69 §11 — Furniture old-item trade-in, mirrors metalExchange exactly.
+    furnitureTradeIn: {
+      findUnique: vi.fn().mockResolvedValue(null),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
     restaurantTable: {
       // Claims every requested table by default (tests that want a partial
       // claim — simulating an already-occupied table — override this). The
@@ -1092,6 +1097,90 @@ describe('billingService.createInvoice — Jewellery hallmark snapshot + atomic 
   })
 })
 
+// Phase 69 §11 — Furniture old-item trade-in, mirrors the metal-exchange
+// atomic-claim tests above verbatim (same underlying mechanism, different table).
+describe('billingService.createInvoice — Furniture trade-in', () => {
+  it('rejects a furnitureTradeInId that does not exist', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, furnitureTradeInId: 'fti-missing' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-016')
+  })
+
+  it('rejects a furnitureTradeInId that is already linked to another invoice', async () => {
+    const db = makeMockDb()
+    db.furnitureTradeIn.findUnique.mockResolvedValue({ id: 'fti-1', tradeInValue: 2000, customerId: null, invoiceId: 'inv-other' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, furnitureTradeInId: 'fti-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-017')
+  })
+
+  it('folds a valid unlinked trade-in into the discount and atomically claims it', async () => {
+    const db = makeMockDb()
+    db.furnitureTradeIn.findUnique.mockResolvedValue({ id: 'fti-1', tradeInValue: 50, customerId: null, invoiceId: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, furnitureTradeInId: 'fti-1' })
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { discountAmount: number; totalAmount: number } }
+    expect(invoiceCreateCall.data.discountAmount).toBe(50)
+    expect(db.furnitureTradeIn.updateMany).toHaveBeenCalledWith({ where: { id: 'fti-1', invoiceId: null }, data: { invoiceId: 'inv-1' } })
+  })
+
+  it('rolls back the whole invoice if the trade-in claim loses a concurrent race', async () => {
+    const db = makeMockDb()
+    db.furnitureTradeIn.findUnique.mockResolvedValue({ id: 'fti-1', tradeInValue: 50, customerId: null, invoiceId: null })
+    db.furnitureTradeIn.updateMany.mockResolvedValue({ count: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, furnitureTradeInId: 'fti-1' })
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-017')
+  })
+})
+
+// Phase 69 §11 — Electrical/Plumbing job-site account tag + Plumbing scheduled delivery.
+describe('billingService.createInvoice — job-site account + scheduled delivery', () => {
+  it('writes jobSiteAccountId onto the invoice when provided', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, jobSiteAccountId: 'jsa-1' })
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { jobSiteAccountId: string | null } }
+    expect(invoiceCreateCall.data.jobSiteAccountId).toBe('jsa-1')
+  })
+
+  it('sets deliveryStatus to SCHEDULED only when a scheduledDeliveryDate is given', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, scheduledDeliveryDate: '2026-09-10', deliveryAddress: '12 MG Road' })
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { deliveryStatus: string | null; deliveryAddress: string | null } }
+    expect(invoiceCreateCall.data.deliveryStatus).toBe('SCHEDULED')
+    expect(invoiceCreateCall.data.deliveryAddress).toBe('12 MG Road')
+  })
+
+  it('leaves deliveryStatus null for an ordinary sale with no scheduled delivery', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
+    const invoiceCreateCall = vi.mocked(db.invoice.create).mock.calls[0][0] as { data: { deliveryStatus: string | null } }
+    expect(invoiceCreateCall.data.deliveryStatus).toBeNull()
+  })
+})
+
 // Real bug found live (2026-07-28 core-commerce audit): markSerialSoldTx used
 // to be an unconditional update with no re-check inside the transaction — a
 // serial's "is this still available" check only ever happened on a stale
@@ -1186,6 +1275,68 @@ describe('billingService.getOrCreateTipProduct', () => {
     expect(res.success).toBe(true)
     expect(product.create).not.toHaveBeenCalled()
     expect((res as { data: { id: string } }).data.id).toBe('tip-1')
+  })
+})
+
+// Phase 69 §11 — Stationery print/photocopy/binding, generalizes
+// getOrCreateTipProduct to an arbitrary preset name.
+describe('billingService.getOrCreateServiceProduct', () => {
+  it('creates a new SERVICE product by name on first call', async () => {
+    const product = { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue(makeProduct({ id: 'svc-1', productName: 'B&W Print (per page)', productType: 'SERVICE', sellingPrice: 0, taxRate: 0 })) }
+    vi.mocked(getPrisma).mockReturnValue({ product } as never)
+
+    const res = await billingService.getOrCreateServiceProduct({ name: 'B&W Print (per page)' })
+
+    expect(res.success).toBe(true)
+    expect(product.findFirst).toHaveBeenCalledWith({ where: { productName: 'B&W Print (per page)', isActive: true } })
+    expect(product.create).toHaveBeenCalledTimes(1)
+  })
+
+  it('reuses an existing service product with the same name instead of creating a duplicate', async () => {
+    const existing = makeProduct({ id: 'svc-1', productName: 'Photocopy (per page)', productType: 'SERVICE', sellingPrice: 0, taxRate: 0 })
+    const product = { findFirst: vi.fn().mockResolvedValue(existing), create: vi.fn() }
+    vi.mocked(getPrisma).mockReturnValue({ product } as never)
+
+    const res = await billingService.getOrCreateServiceProduct({ name: 'Photocopy (per page)' })
+
+    expect(res.success).toBe(true)
+    expect(product.create).not.toHaveBeenCalled()
+    expect((res as { data: { id: string } }).data.id).toBe('svc-1')
+  })
+})
+
+// Phase 69 §11 — Plumbing scheduled delivery.
+describe('billingService.listScheduledDeliveries / updateDeliveryStatus', () => {
+  it('only queries invoices with a scheduled delivery date set', async () => {
+    const invoice = { findMany: vi.fn().mockResolvedValue([]) }
+    vi.mocked(getPrisma).mockReturnValue({ invoice } as never)
+
+    await billingService.listScheduledDeliveries()
+
+    expect(invoice.findMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { scheduledDeliveryDate: { not: null } },
+    }))
+  })
+
+  it('rejects updating delivery status on an invoice with no scheduled delivery', async () => {
+    const invoice = { findUnique: vi.fn().mockResolvedValue({ id: 'inv-1', deliveryStatus: null }), update: vi.fn() }
+    vi.mocked(getPrisma).mockReturnValue({ invoice } as never)
+
+    const res = await billingService.updateDeliveryStatus({ invoiceId: 'inv-1', status: 'DELIVERED' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INVOC-020')
+    expect(invoice.update).not.toHaveBeenCalled()
+  })
+
+  it('updates delivery status on an invoice that has a scheduled delivery', async () => {
+    const invoice = { findUnique: vi.fn().mockResolvedValue({ id: 'inv-1', deliveryStatus: 'SCHEDULED' }), update: vi.fn().mockResolvedValue({ id: 'inv-1', deliveryStatus: 'OUT_FOR_DELIVERY' }) }
+    vi.mocked(getPrisma).mockReturnValue({ invoice } as never)
+
+    const res = await billingService.updateDeliveryStatus({ invoiceId: 'inv-1', status: 'OUT_FOR_DELIVERY' })
+
+    expect(res.success).toBe(true)
+    expect(invoice.update).toHaveBeenCalledWith({ where: { id: 'inv-1' }, data: { deliveryStatus: 'OUT_FOR_DELIVERY' } })
   })
 })
 

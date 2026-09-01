@@ -120,6 +120,10 @@ model User {
   approvalActions          ApprovalAction[]    @relation("ApprovalActionBy") // Phase 63
   priceMarkdownsCreated    PriceMarkdown[]     @relation("PriceMarkdownCreatedBy") // Phase 67 §9.1
   loyaltyRedemptions       LoyaltyRedemption[] @relation("LoyaltyRedeemedBy") // Phase 67 §9.1
+  jobSiteAccountsCreated    JobSiteAccount[]    @relation("JobSiteAccountCreatedBy") // Phase 69 §11
+  bulkListOrdersCreated     BulkListOrder[]     @relation("BulkListOrderCreatedBy") // Phase 69 §11
+  furnitureBookingsCreated  FurnitureBooking[]  @relation("FurnitureBookingCreatedBy") // Phase 69 §11
+  furnitureTradeInsCreated  FurnitureTradeIn[]  @relation("FurnitureTradeInCreatedBy") // Phase 69 §11
 }
 
 model Role {
@@ -267,6 +271,15 @@ model Product {
   packUnit              String? // e.g. "BOX", "CARTON", "CASE"
   unitsPerPack          Float?
   barcodeSource         String?
+
+  // Phase 69 §11 — length-based billing (Electrical/Plumbing wire/pipe sold
+  // off a coil). Mirrors sellByWeight/weightUnit/pricePerWeightUnit exactly,
+  // as its own parallel field trio rather than reusing the weight fields —
+  // storing a length unit ('M'/'FT') in a field named weightUnit would be a
+  // naming lie future readers would trip over.
+  sellByLength       Boolean @default(false)
+  lengthUnit         String? // 'M' | 'FT'
+  pricePerLengthUnit Float?
   // Compact sequential reference (0-99999) embedded in weight-embedded barcode labels for this
   // product — distinct from Product.barcode (which may be a real manufacturer code, or absent).
   // Assigned once, lazily, the first time this product is configured for loose billing.
@@ -372,6 +385,8 @@ model Product {
   kitComponents             KitComponent[]            @relation("KitParent") // Phase 64 — this product's own components, when isKit=true
   usedInKits                KitComponent[]            @relation("KitComponentProduct") // Phase 64 — kits that include this product as a component
   trialSessions             TrialSession[] // Phase 67 §9.1 — Footwear: trial-pair counter workflow
+  bulkListOrderItems        BulkListOrderItem[] // Phase 69 §11 — Stationery
+  furnitureBookingItems     FurnitureBookingItem[] // Phase 69 §11 — Furniture
 
   @@index([productName])
   @@index([isActive])
@@ -915,6 +930,11 @@ model Customer {
   convertedFromLeads        Lead[]                        @relation("LeadConvertedClient") // Fresh-audit fix (2026-07-23) — was an unconstrained bare String, see Lead.convertedClientId
   loyaltyCard               LoyaltyCard? // Phase 67 §9.1 — Retail: simple visit-based punch-card
   distributorBeatStops      DistributorBeatStop[] // Phase 67 §9.1 — Distributor: beat-plan route sequencing
+  jobSiteAccounts           JobSiteAccount[] // Phase 69 §11 — Electrical/Plumbing
+  bulkListOrders            BulkListOrder[] // Phase 69 §11 — Stationery
+  furnitureBookings         FurnitureBooking[] // Phase 69 §11 — Furniture
+  furnitureTradeIns         FurnitureTradeIn[] // Phase 69 §11 — Furniture
+  installedProductSerials   ProductSerial[] @relation("ProductSerialInstalledCustomer") // Phase 69 §11 — Plumbing installation warranty transfer
 
   @@index([customerName])
   @@index([phone])
@@ -1554,11 +1574,20 @@ model Invoice {
   // history instead of a fabricated projection from contractValue ×
   // frequency. Pre-existing invoices simply have no link until re-invoiced.
   pestContractId     String?
+  // Phase 69 §11 — Electrical/Plumbing job-site/contractor running account.
+  // Null for an ordinary walk-in sale even on these verticals.
+  jobSiteAccountId   String?
+  // Phase 69 §11 — Plumbing scheduled delivery (fragile sanitaryware). Null
+  // unless the scheduled_delivery module is on and this sale used it.
+  scheduledDeliveryDate DateTime?
+  deliveryAddress       String?
+  deliveryStatus        String? // SCHEDULED | OUT_FOR_DELIVERY | DELIVERED | CANCELLED
   createdById        String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   costCentre       CostCentre?       @relation(fields: [costCentreId], references: [id])
+  jobSiteAccount   JobSiteAccount?   @relation(fields: [jobSiteAccountId], references: [id])
   customer         Customer?         @relation(fields: [customerId], references: [id])
   cropSeason       CropSeason?       @relation(fields: [cropSeasonId], references: [id])
   createdBy        User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
@@ -1596,6 +1625,7 @@ model Invoice {
   @@index([costCentreId])
   @@index([cropSeasonId])
   @@index([pestContractId])
+  @@index([jobSiteAccountId])
 }
 
 // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms. A
@@ -1639,6 +1669,7 @@ model InvoiceItem {
   variantId               String?
   variantInfo             String?
   weightUnit              String?
+  lengthUnit              String? // Phase 69 §11 — length-billing snapshot, mirrors weightUnit above
   // Fresh-audit fix (2026-07-12): snapshot of the purity/weight/making-charge
   // breakdown a jewellery line was actually priced from — previously this was
   // computed correctly at billing time then silently discarded, so a printed
@@ -2198,16 +2229,27 @@ model ProductSerial {
   // vertical that never sets it.
   nextServiceDueDate DateTime?
   lastServicedDate   DateTime?
+  // Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer. Who
+  // the warranty is currently attributed to for claims purposes — distinct
+  // from invoiceId/soldDate (who BOUGHT the unit, e.g. a contractor on a
+  // job-site account) since the person who bought a fixture and the person
+  // who lives with it long enough to ever claim its warranty are often
+  // different. Null until the unit is actually installed at a site.
+  installedCustomerId  String?
+  installedAt          DateTime?
+  installationAddress  String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
 
   product                   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
+  installedCustomer         Customer?      @relation("ProductSerialInstalledCustomer", fields: [installedCustomerId], references: [id])
   repairTicketsAsOriginal   RepairTicket[] @relation("RepairTicketOriginalSerial") // Phase 58 §2 — Electronics repair/RMA
   repairTicketAsReplacement RepairTicket?  @relation("RepairTicketReplacementSerial") // Phase 58 §2 — Electronics repair/RMA
 
   @@index([productId])
   @@index([status])
   @@index([imeiNumber])
+  @@index([installedCustomerId])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -6955,5 +6997,163 @@ model DistributorBeatStop {
 
   @@unique([beatId, customerId])
   @@index([beatId])
+  @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// PHASE 69 §11 — FOUR NEW VERTICALS: ELECTRICAL, PLUMBING, STATIONERY, FURNITURE
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Electrical/Plumbing job-site/contractor running account. One account per
+// contractor+site combination — a contractor buying for several concurrent
+// sites needs separate running balances, not one lumped account per
+// Customer. Invoice.jobSiteAccountId tags a sale against this (optional — an
+// ordinary walk-in sale on the same vertical has none); the running balance
+// is derived (sum of tagged invoices' balanceAmount) rather than a stored
+// running total, matching this schema's "derive, don't cache a counter"
+// convention elsewhere (e.g. getRetainerHoursUsage).
+model JobSiteAccount {
+  id           String   @id @default(cuid())
+  accountName  String // e.g. "Sharma Residence — Wing B"
+  contractorId String // Customer this account bills against
+  siteAddress  String?
+  status       String   @default("ACTIVE") // ACTIVE | CLOSED
+  notes        String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  contractor Customer  @relation(fields: [contractorId], references: [id])
+  createdBy  User?     @relation("JobSiteAccountCreatedBy", fields: [createdById], references: [id])
+  invoices   Invoice[]
+
+  @@index([contractorId])
+  @@index([status])
+}
+
+// Stationery bulk/institutional order matched against a named supply list
+// (school booklist, office stationery list), then billed in one shot. A
+// staging area, not itself a sale — deliberately its own DRAFT->BILLED
+// lifecycle model rather than reused SalesOrder, matching this codebase's
+// existing convention of a dedicated model per vertical-specific
+// booking/order shape (RentalBooking, HotelBooking) over a generic shared
+// order table.
+model BulkListOrder {
+  id           String   @id @default(cuid())
+  orderNumber  String   @unique
+  customerId   String?
+  customerName String? // free-text institution name for a walk-in/no-Customer-record order
+  listName     String // e.g. "Grade 5 Booklist 2026-27"
+  status       String   @default("DRAFT") // DRAFT | BILLED | CANCELLED
+  invoiceId    String? // unenforced FK, deliberately — same atomic claim-sentinel
+  // convention RentalBooking.invoiceId/HotelBooking.invoiceId document: a
+  // placeholder string is written here before the real Invoice exists,
+  // which a real foreign key would reject.
+  notes        String?
+  createdById  String?
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  customer  Customer?           @relation(fields: [customerId], references: [id])
+  createdBy User?               @relation("BulkListOrderCreatedBy", fields: [createdById], references: [id])
+  items     BulkListOrderItem[]
+
+  @@index([customerId])
+  @@index([status])
+}
+
+model BulkListOrderItem {
+  id              String @id @default(cuid())
+  bulkListOrderId String
+  productId       String? // null until matched to a catalog product
+  itemLabel       String // the raw supply-list line text, e.g. "Notebook 200pg — 5 units"
+  requestedQty    Float
+  unitPrice       Float? // snapshotted once matched, before billing
+
+  bulkListOrder BulkListOrder @relation(fields: [bulkListOrderId], references: [id], onDelete: Cascade)
+  product       Product?      @relation(fields: [productId], references: [id])
+
+  @@index([bulkListOrderId])
+  @@index([productId])
+}
+
+// Furniture deposit + balance booking. Mirrors HotelBooking's
+// advance/invoice-at-completion pattern deliberately, NOT Rental's
+// security-deposit pattern — a furniture deposit is genuine advance revenue
+// collected against the sale itself, not a refundable damage-protection
+// holding kept off the invoice. advanceAmount is recorded as a real Payment
+// against the invoice generated at delivery, through the ordinary
+// payments:record path — see hotel.service.ts's generateHotelInvoice for the
+// exact call this mirrors.
+model FurnitureBooking {
+  id                   String    @id @default(cuid())
+  bookingNumber        String    @unique
+  customerId           String
+  deliveryDate         DateTime?
+  deliveryAddress      String?
+  advanceAmount        Float     @default(0)
+  advancePaymentMethod String    @default("CASH") // CASH | UPI | CARD | WALLET
+  status               String    @default("BOOKED") // BOOKED | DELIVERED | CANCELLED
+  invoiceId            String? // unenforced FK, same atomic claim-sentinel convention as BulkListOrder.invoiceId above
+  notes                String?
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  customer  Customer               @relation(fields: [customerId], references: [id])
+  createdBy User?                  @relation("FurnitureBookingCreatedBy", fields: [createdById], references: [id])
+  items     FurnitureBookingItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([deliveryDate])
+}
+
+model FurnitureBookingItem {
+  id                 String @id @default(cuid())
+  furnitureBookingId String
+  productId          String
+  quantity           Float
+  unitPrice          Float
+  // Made-to-order customization capture. Free text throughout (fabric/
+  // colour/dimension/finish naming conventions vary too much per showroom
+  // for a fixed enum, same reasoning as Product.season/recommendedCrop
+  // elsewhere in this schema).
+  customFabric     String?
+  customColor      String?
+  customDimensions String?
+  customFinish     String?
+
+  furnitureBooking FurnitureBooking @relation(fields: [furnitureBookingId], references: [id], onDelete: Cascade)
+  product          Product          @relation(fields: [productId], references: [id])
+
+  @@index([furnitureBookingId])
+  @@index([productId])
+}
+
+// Furniture old-item trade-in, mirrors MetalExchange exactly (shop-assessed
+// value credited against a new purchase, folded into createInvoice's
+// globalDiscount mechanism via a furnitureTradeInId payload param — see
+// billing.service.ts's metalExchangeId handling for the atomic
+// read-outside/claim-inside-the-transaction shape this reuses verbatim).
+// tradeInValue is a shop-assessed figure (condition/age-based), not a
+// formula the way MetalExchange's netWeight × ratePerGram is — furniture has
+// no live market rate to key off.
+model FurnitureTradeIn {
+  id              String   @id @default(cuid())
+  tradeInNumber   String   @unique
+  customerId      String?
+  customerName    String?
+  itemDescription String
+  condition       String? // free text, e.g. "Good — minor wear on left arm"
+  tradeInValue    Float
+  invoiceId       String? // set once applied against a purchase invoice
+  notes           String?
+  createdById     String?
+  createdAt       DateTime @default(now())
+
+  customer  Customer? @relation(fields: [customerId], references: [id])
+  createdBy User?     @relation("FurnitureTradeInCreatedBy", fields: [createdById], references: [id])
+
   @@index([customerId])
 }

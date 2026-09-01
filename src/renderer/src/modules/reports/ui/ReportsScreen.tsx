@@ -739,6 +739,68 @@ interface FeeDueUnderperformanceReport {
   summary: { alertCount: number }
 }
 
+// Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals.
+interface CoilWastageYieldRow {
+  productId: string; productName: string; sku: string | null; lengthUnit: string | null
+  receivedQty: number; soldQty: number; recordedAdjustment: number
+  yieldPercent: number; estimatedWastageQty: number
+}
+interface CoilWastageYieldReport {
+  dateFrom: string; dateTo: string
+  rows: CoilWastageYieldRow[]
+  summary: { totalReceived: number; totalSold: number; avgYieldPercent: number }
+}
+
+interface SafetyRegisterRow {
+  productId: string; productName: string; sku: string | null
+  serialNumber: string; status: string
+  purchaseDate: string | null; warrantyMonths: number | null
+  soldDate: string | null; invoiceId: string | null
+}
+interface SafetyRegisterReport {
+  rows: SafetyRegisterRow[]
+  summary: { totalUnits: number; soldUnits: number; availableUnits: number }
+}
+
+interface SeasonalDemandRow { month: number; monthName: string; unitsSold: number; revenue: number }
+interface SeasonalDemandForecastReport {
+  rows: SeasonalDemandRow[]
+  peakMonth: number | null
+  summary: { totalUnitsSold: number; totalRevenue: number; monthsOfHistory: number }
+}
+
+interface InstitutionalOrderRow {
+  orderId: string; orderNumber: string; institutionName: string; listName: string
+  status: string; itemCount: number; totalValue: number; createdAt: string
+}
+interface InstitutionalOrderHistoryReport {
+  dateFrom: string; dateTo: string
+  rows: InstitutionalOrderRow[]
+  summary: { totalOrders: number; billedOrders: number; totalValue: number }
+}
+
+interface LocationStockSplitRow {
+  productId: string; productName: string; sku: string | null
+  byLocation: Array<{ locationId: string; locationName: string; quantity: number }>
+  totalQty: number
+}
+interface LocationStockSplitReport {
+  locations: Array<{ id: string; name: string }>
+  rows: LocationStockSplitRow[]
+  summary: { productCount: number; totalQty: number }
+}
+
+interface DeliveryScheduleRow {
+  bookingId: string; bookingNumber: string; customerName: string
+  deliveryDate: string; deliveryAddress: string | null; status: string
+  itemCount: number; totalValue: number
+}
+interface DeliveryInstallationScheduleReport {
+  dateFrom: string; dateTo: string
+  rows: DeliveryScheduleRow[]
+  summary: { totalBookings: number; deliveredCount: number; pendingCount: number }
+}
+
 interface ComplianceTaskReportRow {
   clientName: string; title: string; category: string; dueDate: string
   daysUntilDue: number; status: string; priority: string
@@ -818,6 +880,7 @@ type ReportType =
   | 'vendorCostVsBudget' | 'vendorPerformanceHistory'
   // Phase 68 §9.1 — Coaching Institute items 3 & 4
   | 'batchPerformanceTrend' | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
+  | 'coilWastageYield' | 'isiBisSafetyRegister' | 'seasonalDemandForecast' | 'institutionalOrderHistory' | 'locationStockSplit' | 'deliveryInstallationSchedule'
   // Phase 68 §9.1 — Car Service Center items 3 & 4
   | 'carPartsVariance' | 'serviceTypeRevenue'
   // Phase 68 §9.1 — Tailor/Boutique items 2, 3 & 4
@@ -918,16 +981,26 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // margin above — the audit's own combo-chart note ("footwear returns
   // run higher than apparel; track it by brand").
   { id: 'brandMarginReturnRate', icon: <TrendingUp size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'FOOTWEAR' },
-  { id: 'basketComposition', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'RETAIL' },
+  // Phase 69 §11 — Plumbing item 3 "fitting compatibility cross-sell report"
+  // is the exact same co-purchase-pair analysis as Retail's own basket
+  // composition, just read for plumbing fittings instead of general retail —
+  // same reuse convention as seasonSellThrough's ['CLOTHING','FOOTWEAR'].
+  { id: 'basketComposition', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: ['RETAIL', 'PLUMBING'] },
   // Phase 67 §9.1 — General: Category Mix. What share of revenue each
   // user-defined ProductCategory contributes over a date range — distinct
   // from Category Sell-Through's own month-by-month rate-vs-stock view.
-  { id: 'categoryMix', icon: <PieChart size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'GENERAL' },
+  // Phase 69 §11 — Plumbing item 4 "material sales mix report" reuses this
+  // verbatim (categorize by material: pipes/fittings/sanitaryware/...).
+  { id: 'categoryMix', icon: <PieChart size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: ['GENERAL', 'PLUMBING'] },
   // Phase 67 §9.1 — Hardware: Fast-Mover vs. Slow-Mover Matrix. A scatter of
   // velocity x margin, quadrant-split by each axis's own median — see
   // report.service.ts's generateFastSlowMoverMatrixReport for why a median
   // split, not a fixed threshold.
-  { id: 'fastSlowMoverMatrix', icon: <Target size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: 'HARDWARE' },
+  // Phase 69 §11 — Electrical item 4 "spec-wise fast movers report" reuses
+  // this verbatim — under variant_tracking, productName/sku already encode
+  // the spec (wire gauge, fitting size), so a per-product velocity matrix IS
+  // spec-wise.
+  { id: 'fastSlowMoverMatrix', icon: <Target size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['HARDWARE', 'ELECTRICAL'] },
   { id: 'orderVolume', icon: <QrCode size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'qr_table_ordering' },
   // No requiredModule — bargained/negotiated line pricing writes to the
   // same InvoiceItem.discountAmount every PRODUCT-category business's
@@ -989,6 +1062,15 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'attendancePerformanceCorrelation', icon: <LineChart size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
   // Phase 68 §9.1 — Coaching Institute item 4. Current-state, no date range.
   { id: 'feeDueUnderperformanceAlert', icon: <AlertCircle size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'coaching_performances' },
+  // Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals.
+  // Genuinely applies to both wire (Electrical) and pipe (Plumbing) coils —
+  // the underlying query is scoped by Product.sellByLength, not by vertical.
+  { id: 'coilWastageYield', icon: <Repeat size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['ELECTRICAL', 'PLUMBING'] },
+  { id: 'isiBisSafetyRegister', icon: <ShieldCheck size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'ELECTRICAL' },
+  { id: 'seasonalDemandForecast', icon: <TrendingUp size={18} />, category: 'sales', requiresDateRange: false, permission: 'reports.sales', requiredBusinessType: 'STATIONERY' },
+  { id: 'institutionalOrderHistory', icon: <FileStack size={18} />, category: 'customers', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'STATIONERY' },
+  { id: 'locationStockSplit', icon: <Boxes size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'FURNITURE' },
+  { id: 'deliveryInstallationSchedule', icon: <Truck size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'FURNITURE' },
   { id: 'complianceTasks', icon: <ClipboardCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'compliance_tasks' },
   { id: 'rentalStatus', icon: <CalendarClock size={18} />, category: 'rental', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'rentalRevenue', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
@@ -1777,6 +1859,24 @@ export function ReportsScreen() {
           break
         case 'complianceTasks':
           res = await window.api.reports.complianceTasks()
+          break
+        case 'coilWastageYield':
+          res = await window.api.reports.coilWastageYield({ dateFrom, dateTo })
+          break
+        case 'isiBisSafetyRegister':
+          res = await window.api.reports.isiBisSafetyRegister()
+          break
+        case 'seasonalDemandForecast':
+          res = await window.api.reports.seasonalDemandForecast()
+          break
+        case 'institutionalOrderHistory':
+          res = await window.api.reports.institutionalOrderHistory({ dateFrom, dateTo })
+          break
+        case 'locationStockSplit':
+          res = await window.api.reports.locationStockSplit()
+          break
+        case 'deliveryInstallationSchedule':
+          res = await window.api.reports.deliveryInstallationSchedule({ dateFrom, dateTo })
           break
         default:
           return
@@ -2938,6 +3038,48 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.studentName, r.batchName, r.feeDueAmount.toFixed(2), r.avgTestPercentage])
         }
       }
+      case 'coilWastageYield': {
+        const d = reportData as CoilWastageYieldReport
+        return {
+          headers: ['Product', 'SKU', 'Unit', 'Received', 'Sold', 'Recorded Adjustment', 'Yield %', 'Est. Wastage'],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.lengthUnit ?? '—', r.receivedQty, r.soldQty, r.recordedAdjustment, r.yieldPercent, r.estimatedWastageQty])
+        }
+      }
+      case 'isiBisSafetyRegister': {
+        const d = reportData as SafetyRegisterReport
+        return {
+          headers: ['Product', 'SKU', 'Serial/Batch No.', 'Status', 'Purchase Date', 'Warranty (months)', 'Sold Date', 'Invoice ID'],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.serialNumber, r.status, r.purchaseDate ?? '—', r.warrantyMonths ?? '—', r.soldDate ?? '—', r.invoiceId ?? '—'])
+        }
+      }
+      case 'seasonalDemandForecast': {
+        const d = reportData as SeasonalDemandForecastReport
+        return {
+          headers: ['Month', 'Units Sold', `Revenue (${currencySymbol})`],
+          rows: d.rows.map(r => [r.monthName, r.unitsSold, r.revenue.toFixed(2)])
+        }
+      }
+      case 'institutionalOrderHistory': {
+        const d = reportData as InstitutionalOrderHistoryReport
+        return {
+          headers: ['Order #', 'Institution', 'List Name', 'Status', 'Items', `Total Value (${currencySymbol})`, 'Created'],
+          rows: d.rows.map(r => [r.orderNumber, r.institutionName, r.listName, r.status, r.itemCount, r.totalValue.toFixed(2), r.createdAt])
+        }
+      }
+      case 'locationStockSplit': {
+        const d = reportData as LocationStockSplitReport
+        return {
+          headers: ['Product', 'SKU', ...d.locations.map(l => l.name), 'Total'],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', ...d.locations.map(l => r.byLocation.find(b => b.locationId === l.id)?.quantity ?? 0), r.totalQty])
+        }
+      }
+      case 'deliveryInstallationSchedule': {
+        const d = reportData as DeliveryInstallationScheduleReport
+        return {
+          headers: ['Booking #', 'Customer', 'Delivery Date', 'Address', 'Status', 'Items', `Value (${currencySymbol})`],
+          rows: d.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, r.totalValue.toFixed(2)])
+        }
+      }
       case 'complianceTasks': {
         const d = reportData as ComplianceTaskReport
         return {
@@ -3977,6 +4119,54 @@ export function ReportsScreen() {
           { label: t('reports.summary.clientCount'), value: String(d.summary.clientCount) }
         ]
       }
+      case 'coilWastageYield': {
+        const d = reportData as CoilWastageYieldReport
+        return [
+          { label: 'Total Received', value: String(d.summary.totalReceived) },
+          { label: 'Total Sold', value: String(d.summary.totalSold) },
+          { label: 'Avg Yield %', value: `${d.summary.avgYieldPercent}%` }
+        ]
+      }
+      case 'isiBisSafetyRegister': {
+        const d = reportData as SafetyRegisterReport
+        return [
+          { label: 'Total Units', value: String(d.summary.totalUnits) },
+          { label: 'Sold Units', value: String(d.summary.soldUnits) },
+          { label: 'Available Units', value: String(d.summary.availableUnits) }
+        ]
+      }
+      case 'seasonalDemandForecast': {
+        const d = reportData as SeasonalDemandForecastReport
+        const monthName = d.peakMonth ? d.rows.find(r => r.month === d.peakMonth)?.monthName ?? '—' : '—'
+        return [
+          { label: 'Total Units Sold', value: String(d.summary.totalUnitsSold) },
+          { label: 'Total Revenue', value: fmt(d.summary.totalRevenue) },
+          { label: 'Peak Month', value: monthName }
+        ]
+      }
+      case 'institutionalOrderHistory': {
+        const d = reportData as InstitutionalOrderHistoryReport
+        return [
+          { label: 'Total Orders', value: String(d.summary.totalOrders) },
+          { label: 'Billed Orders', value: String(d.summary.billedOrders) },
+          { label: 'Total Value', value: fmt(d.summary.totalValue) }
+        ]
+      }
+      case 'locationStockSplit': {
+        const d = reportData as LocationStockSplitReport
+        return [
+          { label: 'Products', value: String(d.summary.productCount) },
+          { label: 'Total Stock Qty', value: String(d.summary.totalQty) }
+        ]
+      }
+      case 'deliveryInstallationSchedule': {
+        const d = reportData as DeliveryInstallationScheduleReport
+        return [
+          { label: 'Total Bookings', value: String(d.summary.totalBookings) },
+          { label: 'Delivered', value: String(d.summary.deliveredCount) },
+          { label: 'Pending', value: String(d.summary.pendingCount) }
+        ]
+      }
       default: return []
     }
   }
@@ -4450,6 +4640,26 @@ export function ReportsScreen() {
       case 'batchPerformanceTrend': return []
       case 'attendancePerformanceCorrelation': return []
       case 'feeDueUnderperformanceAlert': return []
+      case 'coilWastageYield': {
+        const d = reportData as CoilWastageYieldReport
+        const top = d.rows.filter(r => r.estimatedWastageQty > 0).slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Estimated Wastage by Product', data: top.map(r => ({ label: r.productName, value: r.estimatedWastageQty })) }] : []
+      }
+      // Register-shaped reports (a traceability log / order-history list /
+      // schedule), not an aggregate metric — same "chart-free" precedent as
+      // complianceTasks/Audit Log/Backup above.
+      case 'isiBisSafetyRegister': return []
+      case 'seasonalDemandForecast': {
+        const d = reportData as SeasonalDemandForecastReport
+        return [{ type: 'bar', title: 'Units Sold by Month', data: d.rows.map(r => ({ label: r.monthName.slice(0, 3), value: r.unitsSold })) }]
+      }
+      case 'institutionalOrderHistory': return []
+      case 'locationStockSplit': {
+        const d = reportData as LocationStockSplitReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Total Stock by Product', data: top.map(r => ({ label: r.productName, value: r.totalQty })) }] : []
+      }
+      case 'deliveryInstallationSchedule': return []
       // Phase 68 §9.1 — Car Service Center items 3 & 4. Chart-free, same as
       // this file's other worklist/breakdown-table reports (e.g.
       // channelPerformance, shootTypeRevenueMix above).
@@ -4847,7 +5057,7 @@ export function ReportsScreen() {
             )}
 
             {/* Optional date range for non-date-required, non-simple reports */}
-            {!def.requiresDateRange && activeReport !== 'inventory' && activeReport !== 'outstanding' && activeReport !== 'backup' && activeReport !== 'batchExpiry' && activeReport !== 'bloodStock' && activeReport !== 'serialWarranty' && activeReport !== 'variantStock' && activeReport !== 'complianceTasks' && activeReport !== 'rmaAging' && activeReport !== 'vendorRecoveryLedger' && activeReport !== 'repairTurnaroundByTechnician' && (
+            {!def.requiresDateRange && activeReport !== 'inventory' && activeReport !== 'outstanding' && activeReport !== 'backup' && activeReport !== 'batchExpiry' && activeReport !== 'bloodStock' && activeReport !== 'serialWarranty' && activeReport !== 'variantStock' && activeReport !== 'complianceTasks' && activeReport !== 'rmaAging' && activeReport !== 'vendorRecoveryLedger' && activeReport !== 'repairTurnaroundByTechnician' && activeReport !== 'isiBisSafetyRegister' && activeReport !== 'seasonalDemandForecast' && activeReport !== 'locationStockSplit' && (
               <>
                 <div>
                   <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.dateFrom')}</label>
@@ -5127,6 +5337,12 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'batchPerformanceTrend': return <BatchPerformanceTrendView data={data as BatchPerformanceTrendReport} />
     case 'attendancePerformanceCorrelation': return <AttendancePerformanceCorrelationView data={data as AttendancePerformanceReport} />
     case 'feeDueUnderperformanceAlert': return <FeeDueUnderperformanceAlertView data={data as FeeDueUnderperformanceReport} fmt={fmt} />
+    case 'coilWastageYield': return <CoilWastageYieldView data={data as CoilWastageYieldReport} />
+    case 'isiBisSafetyRegister': return <SafetyRegisterView data={data as SafetyRegisterReport} />
+    case 'seasonalDemandForecast': return <SeasonalDemandForecastView data={data as SeasonalDemandForecastReport} fmt={fmt} />
+    case 'institutionalOrderHistory': return <InstitutionalOrderHistoryView data={data as InstitutionalOrderHistoryReport} fmt={fmt} />
+    case 'locationStockSplit': return <LocationStockSplitView data={data as LocationStockSplitReport} />
+    case 'deliveryInstallationSchedule': return <DeliveryInstallationScheduleView data={data as DeliveryInstallationScheduleReport} fmt={fmt} />
     case 'complianceTasks': return <ComplianceTaskView data={data as ComplianceTaskReport} />
     default: return null
   }
@@ -10627,6 +10843,160 @@ function ComplianceTaskView({ data }: { data: ComplianceTaskReport }) {
           emptyText={t('reports.empty.complianceTasks')}
         />
       </div>
+    </div>
+  )
+}
+
+// Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals.
+// English-only for now, same deliberate scope-fork convention as the rest of
+// Phase 69's new UI — full-language translation is a later task.
+function CoilWastageYieldView({ data }: { data: CoilWastageYieldReport }) {
+  const s = data.summary
+  const chartRows = data.rows.filter(r => r.estimatedWastageQty > 0).slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Received', value: String(s.totalReceived) },
+        { label: 'Total Sold', value: String(s.totalSold) },
+        { label: 'Avg Yield %', value: `${s.avgYieldPercent}%` }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Estimated Wastage by Product</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows.map(r => ({ label: r.productName, value: r.estimatedWastageQty }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name="Estimated Wastage" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.danger} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={['Product', 'SKU', 'Unit', 'Received', 'Sold', 'Recorded Adjustment', 'Yield %', 'Est. Wastage']}
+        rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.lengthUnit ?? '—', r.receivedQty, r.soldQty, r.recordedAdjustment, `${r.yieldPercent}%`, r.estimatedWastageQty])}
+        emptyText="No length-billed products with movement in this range."
+      />
+    </div>
+  )
+}
+
+function SafetyRegisterView({ data }: { data: SafetyRegisterReport }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Units', value: String(s.totalUnits) },
+        { label: 'Sold Units', value: String(s.soldUnits) },
+        { label: 'Available Units', value: String(s.availableUnits) }
+      ]} />
+      <DataTable
+        headers={['Product', 'SKU', 'Serial/Batch No.', 'Status', 'Purchase Date', 'Warranty (mo.)', 'Sold Date', 'Invoice ID']}
+        rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.serialNumber, r.status, r.purchaseDate ?? '—', r.warrantyMonths ?? '—', r.soldDate ?? '—', r.invoiceId ?? '—'])}
+        emptyText="No serial-tracked units recorded yet."
+      />
+    </div>
+  )
+}
+
+function SeasonalDemandForecastView({ data, fmt }: { data: SeasonalDemandForecastReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  const peakName = data.peakMonth ? data.rows.find(r => r.month === data.peakMonth)?.monthName ?? '—' : '—'
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Units Sold', value: String(s.totalUnitsSold) },
+        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
+        { label: 'Peak Month', value: peakName },
+        { label: 'Months of History', value: String(s.monthsOfHistory) }
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Units Sold by Month (All-Time)</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={data.rows.map(r => ({ label: r.monthName.slice(0, 3), value: r.unitsSold }))}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+            <Bar dataKey="value" name="Units Sold" radius={[4, 4, 0, 0]} fill={STATUS_COLORS.brand} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <DataTable
+        headers={['Month', 'Units Sold', 'Revenue']}
+        rows={data.rows.map(r => [r.monthName, r.unitsSold, fmt(r.revenue)])}
+        emptyText="No sales history yet."
+      />
+    </div>
+  )
+}
+
+function InstitutionalOrderHistoryView({ data, fmt }: { data: InstitutionalOrderHistoryReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Orders', value: String(s.totalOrders) },
+        { label: 'Billed Orders', value: String(s.billedOrders) },
+        { label: 'Total Value', value: fmt(s.totalValue) }
+      ]} />
+      <DataTable
+        headers={['Order #', 'Institution', 'List Name', 'Status', 'Items', 'Total Value', 'Created']}
+        rows={data.rows.map(r => [r.orderNumber, r.institutionName, r.listName, r.status, r.itemCount, fmt(r.totalValue), r.createdAt])}
+        emptyText="No bulk-list orders in this range."
+      />
+    </div>
+  )
+}
+
+function LocationStockSplitView({ data }: { data: LocationStockSplitReport }) {
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Products', value: String(s.productCount) },
+        { label: 'Total Stock Qty', value: String(s.totalQty) }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Total Stock by Product</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows.map(r => ({ label: r.productName, value: r.totalQty }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name="Total Qty" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={['Product', 'SKU', ...data.locations.map(l => l.name), 'Total']}
+        rows={data.rows.map(r => [r.productName, r.sku ?? '—', ...data.locations.map(l => r.byLocation.find(b => b.locationId === l.id)?.quantity ?? 0), r.totalQty])}
+        emptyText="No stock recorded at any location yet."
+      />
+    </div>
+  )
+}
+
+function DeliveryInstallationScheduleView({ data, fmt }: { data: DeliveryInstallationScheduleReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Bookings', value: String(s.totalBookings) },
+        { label: 'Delivered', value: String(s.deliveredCount) },
+        { label: 'Pending', value: String(s.pendingCount) }
+      ]} />
+      <DataTable
+        headers={['Booking #', 'Customer', 'Delivery Date', 'Address', 'Status', 'Items', 'Value']}
+        rows={data.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, fmt(r.totalValue)])}
+        emptyText="No deliveries scheduled in this range."
+      />
     </div>
   )
 }

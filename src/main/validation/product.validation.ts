@@ -4,6 +4,7 @@ import { CustomFieldValuesSchema } from './custom-field.validation'
 
 const PRODUCT_TYPE = z.enum(['STANDARD', 'SERVICE', 'AREA_BASED']).default('STANDARD')
 const WEIGHT_UNIT = z.enum(['kg', 'g', 'L', 'mL'])
+const LENGTH_UNIT = z.enum(['M', 'FT'])
 // Phase 48: apparel gender — nullable/optional, only meaningful for CLOTHING/
 // FOOTWEAR-style businesses (surfaced in the UI when variant_tracking is on).
 const GENDER = z.enum(['MENS', 'WOMENS', 'UNISEX']).optional().nullable()
@@ -44,6 +45,35 @@ function refineLooseBilling<T extends { sellByWeight?: boolean; weightUnit?: str
     }
     if (data.pricePerWeightUnit === null || data.pricePerWeightUnit === undefined) {
       ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerWeightUnit'], message: 'Set a price per unit for loose/weight-based selling.' })
+    }
+  }
+}
+
+// Phase 69 §11 — Electrical/Plumbing length-based billing (wire/pipe off a
+// coil), structural mirror of looseBillingFields/refineLooseBilling above —
+// a parallel field trio, never reusing the weight fields (see
+// schema.prisma's Product.sellByLength comment for why).
+const lengthBillingFields = {
+  // Deliberately .optional() not .default(false) — same reasoning as
+  // isRentable/floatingUnitConversion's own comments above: a .default()
+  // field makes z.infer's Payload type non-optional, forcing every existing
+  // test/call site to start passing it explicitly. product.service.ts
+  // already falls back to `payload.sellByLength ?? false`.
+  sellByLength: z.boolean().optional(),
+  lengthUnit: LENGTH_UNIT.optional().nullable(),
+  pricePerLengthUnit: z.number().min(0, 'Price per unit cannot be negative').optional().nullable()
+}
+
+function refineLengthBilling<T extends { sellByLength?: boolean; lengthUnit?: string | null; pricePerLengthUnit?: number | null }>(
+  data: T,
+  ctx: z.RefinementCtx
+): void {
+  if (data.sellByLength) {
+    if (!data.lengthUnit) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lengthUnit'], message: 'Select a unit (m, ft) for length-based selling.' })
+    }
+    if (data.pricePerLengthUnit === null || data.pricePerLengthUnit === undefined) {
+      ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerLengthUnit'], message: 'Set a price per unit for length-based selling.' })
     }
   }
 }
@@ -184,10 +214,12 @@ export const CreateProductSchema = z
     customFields: CustomFieldValuesSchema,
     ...rentalFields,
     ...looseBillingFields,
+    ...lengthBillingFields,
     ...packBillingFields,
     ...jewelleryFields
   })
   .superRefine(refineLooseBilling)
+  .superRefine(refineLengthBilling)
   .superRefine(refinePackBilling)
   .superRefine(refineJewellery)
 
@@ -226,10 +258,12 @@ export const UpdateProductSchema = z
     customFields: CustomFieldValuesSchema,
     ...rentalFields,
     ...looseBillingFields,
+    ...lengthBillingFields,
     ...packBillingFields,
     ...jewelleryFields
   })
   .superRefine(refineLooseBilling)
+  .superRefine(refineLengthBilling)
   .superRefine(refinePackBilling)
   .superRefine(refineJewellery)
 

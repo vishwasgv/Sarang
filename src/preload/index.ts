@@ -62,7 +62,8 @@ const api: IpcChannels = {
     deleteCustomerClassPrice: (p) => invoke('products:deleteCustomerClassPrice', p),
     getKitComponents: (kitProductId) => invoke('products:getKitComponents', kitProductId),
     setKitComponents: (p) => invoke('products:setKitComponents', p),
-    clearKit: (kitProductId) => invoke('products:clearKit', kitProductId)
+    clearKit: (kitProductId) => invoke('products:clearKit', kitProductId),
+    suggestKitComponents: (p) => invoke('products:suggestKitComponents', p)
   },
   categories: {
     list: () => invoke('categories:list'),
@@ -283,9 +284,12 @@ const api: IpcChannels = {
     createInvoice: (p) => invoke('billing:createInvoice', p),
     getInvoice: (id) => invoke('billing:getInvoice', id),
     listInvoices: (p) => invoke('billing:listInvoices', p),
+    listScheduledDeliveries: (p) => invoke('billing:listScheduledDeliveries', p),
+    updateDeliveryStatus: (p) => invoke('billing:updateDeliveryStatus', p),
     cancelInvoice: (p) => invoke('billing:cancelInvoice', p),
     generateInvoiceNumber: () => invoke('billing:generateInvoiceNumber'),
     getOrCreateTipProduct: () => invoke('billing:getOrCreateTipProduct'),
+    getOrCreateServiceProduct: (p) => invoke('billing:getOrCreateServiceProduct', p),
     getFrequentlySoldProducts: (p) => invoke('billing:getFrequentlySoldProducts', p),
     splitInvoice: (p) => invoke('billing:splitInvoice', p)
   },
@@ -472,6 +476,12 @@ const api: IpcChannels = {
     batchPerformanceTrend: (p) => invoke('reports:batchPerformanceTrend', p),
     attendancePerformanceCorrelation: (p?: unknown) => invoke('reports:attendancePerformanceCorrelation', p),
     feeDueUnderperformanceAlert: () => invoke('reports:feeDueUnderperformanceAlert'),
+    coilWastageYield: (p) => invoke('reports:coilWastageYield', p),
+    isiBisSafetyRegister: () => invoke('reports:isiBisSafetyRegister'),
+    seasonalDemandForecast: () => invoke('reports:seasonalDemandForecast'),
+    institutionalOrderHistory: (p) => invoke('reports:institutionalOrderHistory', p),
+    locationStockSplit: () => invoke('reports:locationStockSplit'),
+    deliveryInstallationSchedule: (p) => invoke('reports:deliveryInstallationSchedule', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -691,6 +701,7 @@ const api: IpcChannels = {
     updateServiceInfo: (p) => invoke('serials:updateServiceInfo', p),
     dueForService: (p) => invoke('serials:dueForService', p),
     scheduleServiceReminder: (p) => invoke('serials:scheduleServiceReminder', p),
+    transferInstallationWarranty: (p) => invoke('serials:transferInstallationWarranty', p),
   },
   variants: {
     list: (p) => invoke('variants:list', p),
@@ -887,6 +898,35 @@ const api: IpcChannels = {
     create: (p: unknown) => invoke('metalExchange:create', p),
     linkToInvoice: (p: unknown) => invoke('metalExchange:linkToInvoice', p),
     delete: (p: unknown) => invoke('metalExchange:delete', p),
+  },
+  jobSiteAccount: {
+    list: (p?: unknown) => invoke('jobSiteAccount:list', p),
+    create: (p: unknown) => invoke('jobSiteAccount:create', p),
+    balance: (p: unknown) => invoke('jobSiteAccount:balance', p),
+    update: (p: unknown) => invoke('jobSiteAccount:update', p),
+    close: (p: unknown) => invoke('jobSiteAccount:close', p),
+  },
+  bulkListOrder: {
+    list: (p?: unknown) => invoke('bulkListOrder:list', p),
+    create: (p: unknown) => invoke('bulkListOrder:create', p),
+    matchItem: (p: unknown) => invoke('bulkListOrder:matchItem', p),
+    delete: (p: unknown) => invoke('bulkListOrder:delete', p),
+    bill: (p: unknown) => invoke('bulkListOrder:bill', p),
+    reorderReminders: () => invoke('bulkListOrder:reorderReminders'),
+  },
+  furnitureBooking: {
+    list: (p?: unknown) => invoke('furnitureBooking:list', p),
+    create: (p: unknown) => invoke('furnitureBooking:create', p),
+    updateStatus: (p: unknown) => invoke('furnitureBooking:updateStatus', p),
+    delete: (p: unknown) => invoke('furnitureBooking:delete', p),
+    generateInvoice: (p: unknown) => invoke('furnitureBooking:generateInvoice', p),
+    cashFlowForecast: () => invoke('furnitureBooking:cashFlowForecast'),
+  },
+  furnitureTradeIn: {
+    list: (p?: unknown) => invoke('furnitureTradeIn:list', p),
+    create: (p: unknown) => invoke('furnitureTradeIn:create', p),
+    linkToInvoice: (p: unknown) => invoke('furnitureTradeIn:linkToInvoice', p),
+    delete: (p: unknown) => invoke('furnitureTradeIn:delete', p),
   },
   goldSavings: {
     list: (p?: unknown) => invoke('goldSavings:list', p),

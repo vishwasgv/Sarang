@@ -1155,8 +1155,14 @@ export default function PropertiesScreen() {
                     )}
                   </div>
 
-                  {/* Phase 68 §9.1 — Real Estate item 5: property price-history tracking */}
-                  {details.priceHistory.length > 0 && (
+                  {/* Phase 68 §9.1 — Real Estate item 5: property price-history tracking.
+                      `details` can still be undefined here — this block sits
+                      after the `!details ? loading : (...)` ternary above
+                      closes, not inside it, so it renders during the same
+                      brief expanded-but-not-yet-loaded window the Photos
+                      section right above already guards against via `p`
+                      (the raw property prop) instead of `details`. */}
+                  {details && details.priceHistory.length > 0 && (
                     <div className="mt-4 border-t pt-3 dark:border-slate-800">
                       <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide dark:text-slate-400 mb-2">Price History ({details.priceHistory.length})</p>
                       <div className="space-y-1">

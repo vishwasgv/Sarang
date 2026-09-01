@@ -174,6 +174,24 @@ export const billingService = {
     return { success: true, data: product }
   },
 
+  // Phase 69 — Stationery print/photocopy/binding billed alongside products.
+  // Same lookup-or-create-by-name SERVICE-line pattern as getOrCreateTipProduct
+  // just above, generalized to an arbitrary preset name (B&W Print, Color
+  // Print, Photocopy, Binding, Lamination, ...) instead of one fixed product —
+  // no new schema needed, productType='SERVICE' already exists for exactly
+  // this.
+  async getOrCreateServiceProduct(payload: { name: string; taxRate?: number }) {
+    const db = getPrisma()
+    const name = payload.name.trim()
+    let product = await db.product.findFirst({ where: { productName: name, isActive: true } })
+    if (!product) {
+      product = await db.product.create({
+        data: { productName: name, productType: 'SERVICE', sellingPrice: 0, taxRate: payload.taxRate ?? 0, unit: 'NOS', isActive: true },
+      })
+    }
+    return { success: true, data: product }
+  },
+
   // Phase 58 §2 — Retail's "fast favorites/frequently-sold grid" on
   // Billing. Ranked by units sold (not revenue) across every non-returned
   // active invoice ever recorded — a genuine walk-up POS convenience
@@ -297,6 +315,7 @@ export const billingService = {
       variantId: string | null; variantInfo: string | null
       serialId: string | null
       weightUnit: string | null
+      lengthUnit: string | null
       jewelleryMetalType: string | null; jewelleryPurity: string | null
       jewelleryNetWeight: number | null; jewelleryRatePerGram: number | null
       jewelleryMakingCharge: number | null; jewelleryHallmarkNumber: string | null
@@ -451,6 +470,7 @@ export const billingService = {
         variantInfo: item.variantInfo ?? null,
         serialId: item.serialId ?? null,
         weightUnit: item.weightUnit ?? null,
+        lengthUnit: item.lengthUnit ?? null,
         jewelleryMetalType: item.jewelleryMetalType ?? null,
         jewelleryPurity: item.jewelleryPurity ?? null,
         jewelleryNetWeight: item.jewelleryNetWeight ?? null,
@@ -480,13 +500,26 @@ export const billingService = {
       metalExchangeDiscount = exchange.valueGiven
     }
 
+    // Phase 69 — Furniture trade-in, same atomic read-outside/claim-inside-tx shape as
+    // metalExchangeId directly above.
+    let furnitureTradeInDiscount = 0
+    if (payload.furnitureTradeInId) {
+      const tradeIn = await db.furnitureTradeIn.findUnique({ where: { id: payload.furnitureTradeInId } })
+      if (!tradeIn) return { success: false, error: { code: 'INVOC-016', message: 'Trade-in not found.' } }
+      if (tradeIn.invoiceId) return { success: false, error: { code: 'INVOC-017', message: 'This trade-in is already linked to another invoice.' } }
+      if (tradeIn.customerId && payload.customerId && tradeIn.customerId !== payload.customerId) {
+        return { success: false, error: { code: 'INVOC-018', message: 'This trade-in belongs to a different customer.' } }
+      }
+      furnitureTradeInDiscount = tradeIn.tradeInValue
+    }
+
     // Compute invoice-level totals. Summed via Decimal (sumCurrency), not a
     // plain-float reduce — accumulating many lineTax/discount values with
     // `+=` on floats is exactly where binary representation error compounds
     // across a multi-line invoice.
     const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice), currencyDecimals)
     const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount), currencyDecimals)
-    const globalDiscount = (payload.globalDiscount ?? 0) + metalExchangeDiscount
+    const globalDiscount = (payload.globalDiscount ?? 0) + metalExchangeDiscount + furnitureTradeInDiscount
     const discountAmount = roundCurrency(totalLineDiscount + globalDiscount, currencyDecimals)
     // Fresh-audit fix (2026-08-11) — real GST compliance bug, not a stylistic choice: this
     // used to subtract globalDiscount/metalExchangeDiscount from the total only AFTER
@@ -614,6 +647,10 @@ export const billingService = {
             cropSeasonId: payload.cropSeasonId ?? null,
             ewayBillNumber: payload.ewayBillNumber?.trim() || null,
             tableId: payload.tableIds?.[0] ?? null,
+            jobSiteAccountId: payload.jobSiteAccountId ?? null,
+            scheduledDeliveryDate: payload.scheduledDeliveryDate ? parseLocalDateStart(payload.scheduledDeliveryDate) : null,
+            deliveryAddress: payload.deliveryAddress ?? null,
+            deliveryStatus: payload.scheduledDeliveryDate ? 'SCHEDULED' : null,
             notes: customerTaxExempt
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')
               : (payload.notes ?? null),
@@ -670,6 +707,16 @@ export const billingService = {
           }
         }
 
+        if (payload.furnitureTradeInId) {
+          const claim = await tx.furnitureTradeIn.updateMany({
+            where: { id: payload.furnitureTradeInId, invoiceId: null },
+            data: { invoiceId: inv.id }
+          })
+          if (claim.count === 0) {
+            throw new ServiceError('INVOC-017', 'This trade-in is already linked to another invoice.')
+          }
+        }
+
         // Create invoice items — productName snapshotted at time of sale (RULE: historical invoices must show original name)
         for (const item of validatedItems) {
           await tx.invoiceItem.create({
@@ -688,6 +735,7 @@ export const billingService = {
               variantId: item.variantId,
               variantInfo: item.variantInfo,
               weightUnit: item.weightUnit,
+              lengthUnit: item.lengthUnit,
               jewelleryMetalType: item.jewelleryMetalType,
               jewelleryPurity: item.jewelleryPurity,
               jewelleryNetWeight: item.jewelleryNetWeight,
@@ -938,6 +986,30 @@ export const billingService = {
     ])
 
     return { success: true, data: { invoices, total } }
+  },
+
+  // Phase 69 — Plumbing scheduled delivery. Only invoices with a
+  // scheduledDeliveryDate set (i.e. deliveryStatus non-null) are relevant here.
+  async listScheduledDeliveries(filters?: { status?: string }) {
+    const db = getPrisma()
+    const where: Record<string, unknown> = { scheduledDeliveryDate: { not: null } }
+    if (filters?.status) where.deliveryStatus = filters.status
+    const invoices = await db.invoice.findMany({
+      where,
+      include: { customer: { select: { id: true, customerName: true, phone: true } } },
+      orderBy: { scheduledDeliveryDate: 'asc' }
+    })
+    return { success: true, data: invoices }
+  },
+
+  async updateDeliveryStatus(payload: { invoiceId: string; status: 'SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' }) {
+    const db = getPrisma()
+    const existing = await db.invoice.findUnique({ where: { id: payload.invoiceId }, select: { id: true, deliveryStatus: true } })
+    if (!existing) return { success: false, error: { code: 'INVOC-019', message: 'Invoice not found.' } }
+    if (!existing.deliveryStatus) return { success: false, error: { code: 'INVOC-020', message: 'This invoice has no scheduled delivery.' } }
+    const updated = await db.invoice.update({ where: { id: payload.invoiceId }, data: { deliveryStatus: payload.status } })
+    await logAction({ action: 'DELIVERY_STATUS_UPDATED', entityType: 'Invoice', entityId: payload.invoiceId, newValue: { status: payload.status } })
+    return { success: true, data: updated }
   },
 
   // RULE B010: Cancelled invoices remain visible — soft cancel only
@@ -1239,6 +1311,7 @@ export const billingService = {
                 variantId: item.variantId,
                 variantInfo: item.variantInfo,
                 weightUnit: item.weightUnit,
+                lengthUnit: item.lengthUnit,
               }
             })
           }

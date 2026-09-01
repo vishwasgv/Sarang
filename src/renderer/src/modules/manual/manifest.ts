@@ -100,6 +100,11 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'business/rental', group: 'business', title: 'Rental Business', businessTypes: ['RENTAL'] },
   { slug: 'business/jewellery', group: 'business', title: 'Jewellery', businessTypes: ['JEWELLERY'] },
   { slug: 'business/hotel-lodge', group: 'business', title: 'Hotel / Lodge', businessTypes: ['HOTEL_LODGE'] },
+  // Phase 69 — Electrical/Plumbing/Stationery/Furniture new verticals.
+  { slug: 'business/electrical', group: 'business', title: 'Electrical', businessTypes: ['ELECTRICAL'] },
+  { slug: 'business/plumbing', group: 'business', title: 'Plumbing', businessTypes: ['PLUMBING'] },
+  { slug: 'business/stationery', group: 'business', title: 'Stationery', businessTypes: ['STATIONERY'] },
+  { slug: 'business/furniture', group: 'business', title: 'Furniture', businessTypes: ['FURNITURE'] },
 ]
 
 export const MANUAL_LOCALES = ['en', 'hi', 'mr', 'gu', 'kn', 'ta', 'te', 'ml', 'es', 'fr', 'ar', 'pt', 'id'] as const

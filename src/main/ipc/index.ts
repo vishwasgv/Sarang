@@ -175,6 +175,11 @@ import { register as registerLicense } from './handlers/license.handler'
 import { register as registerTutorial } from './handlers/tutorial.handler'
 // Share Bill/Report via WhatsApp & Email
 import { register as registerShare } from './handlers/share.handler'
+// Phase 69 — Electrical/Plumbing/Stationery/Furniture new verticals
+import { register as registerJobSiteAccount } from './handlers/job-site-account.handler'
+import { register as registerBulkListOrder } from './handlers/bulk-list-order.handler'
+import { register as registerFurnitureBooking } from './handlers/furniture-booking.handler'
+import { register as registerFurnitureTradeIn } from './handlers/furniture-trade-in.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -369,6 +374,11 @@ export function registerAllIpcHandlers(): void {
   registerTutorial(h)
   // Share Bill/Report via WhatsApp & Email
   registerShare(h)
+  // Phase 69 — Electrical/Plumbing/Stationery/Furniture new verticals
+  registerJobSiteAccount(h)
+  registerBulkListOrder(h)
+  registerFurnitureBooking(h)
+  registerFurnitureTradeIn(h)
 
   console.log('[IPC] All handlers registered')
 }

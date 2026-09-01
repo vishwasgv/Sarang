@@ -3,6 +3,7 @@ import { motion } from 'framer-motion'
 import {
   UtensilsCrossed, ShoppingBag, Hammer, Truck, CheckCircle2, RefreshCw, AlertTriangle, Pill, Smartphone, Shirt, Footprints, Factory, Briefcase, Wrench, UserCheck, Tractor, Droplet, CalendarClock, Gem,
   PawPrint, Stethoscope, HeartPulse, Smile, Activity, Microscope, Sparkles, Dumbbell, Car, Scale, Calculator, FileText, Compass, HardHat, Home, UserCog, Megaphone, Code2, Camera, PartyPopper, GraduationCap, CarFront, Scissors, Bug, Users, Hotel,
+  Zap, Droplets, PenTool, Armchair,
 } from 'lucide-react'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
@@ -130,6 +131,38 @@ const TEMPLATES: Template[] = [
     icon: <Hotel size={22} />,
     modules: ['hotel_bookings'],
     moduleLabels: ['Room Roster', 'Booking & Availability', 'Guest ID Registration', 'In-Stay Charges', 'Checkout Billing'],
+  },
+  {
+    type: 'ELECTRICAL',
+    label: 'Electrical Store',
+    description: 'Wire/cable billed by the running metre off a coil, per-site contractor running accounts, serial + warranty tracking on fittings and appliances.',
+    icon: <Zap size={22} />,
+    modules: ['variant_tracking', 'serial_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'outstanding_analytics', 'length_billing', 'job_site_accounts'],
+    moduleLabels: ['Size/Spec Variants', 'Serial Tracking', 'Warranty Management', 'Credit Limit Enforcement', 'Outstanding Analytics', 'Length-Based Billing', 'Job-Site Accounts'],
+  },
+  {
+    type: 'PLUMBING',
+    label: 'Plumbing / Sanitaryware Store',
+    description: 'Pipe billed by the running metre off a coil, scheduled delivery for fragile sanitaryware, per-site contractor running accounts.',
+    icon: <Droplets size={22} />,
+    modules: ['variant_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'outstanding_analytics', 'length_billing', 'job_site_accounts', 'scheduled_delivery'],
+    moduleLabels: ['Size/Spec Variants', 'Warranty Management', 'Credit Limit Enforcement', 'Outstanding Analytics', 'Length-Based Billing', 'Job-Site Accounts', 'Scheduled Delivery'],
+  },
+  {
+    type: 'STATIONERY',
+    label: 'Stationery / Book Store',
+    description: 'Bulk order against a school/office supply list billed in one shot, print/photocopy/binding services billed alongside products.',
+    icon: <PenTool size={22} />,
+    modules: ['returns', 'credit_limit_enforcement', 'outstanding_analytics', 'bulk_list_order', 'print_service_billing'],
+    moduleLabels: ['Returns Workflow', 'Credit Limit Enforcement', 'Outstanding Analytics', 'Bulk List Orders', 'Print & Copy Service Billing'],
+  },
+  {
+    type: 'FURNITURE',
+    label: 'Furniture Store',
+    description: 'Deposit + balance booking for made-to-order pieces, fabric/colour/dimension/finish customization capture, old-furniture trade-in against a new purchase.',
+    icon: <Armchair size={22} />,
+    modules: ['variant_tracking', 'serial_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'returns', 'deposit_booking', 'trade_in_exchange'],
+    moduleLabels: ['Variant Tracking', 'Serial Tracking', 'Warranty Management', 'Credit Limit Enforcement', 'Returns Workflow', 'Deposit Booking', 'Old-Furniture Trade-In'],
   },
   {
     type: 'MANUFACTURING',

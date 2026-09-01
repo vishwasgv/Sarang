@@ -551,7 +551,27 @@ const PERMISSIONS = [
   // drawer), same trust level as the reports.print end-of-shift workflow
   // Cashier already has.
   { permissionKey: 'billing.manageReturns', permissionName: 'Process Sales Returns' },
-  { permissionKey: 'billing.cashClose', permissionName: 'Close Cash Drawer' }
+  { permissionKey: 'billing.cashClose', permissionName: 'Close Cash Drawer' },
+
+  // Phase 69 — Electrical/Plumbing job-site contractor running accounts.
+  // Viewing balances is bounded read access (Cashier needs it to pick an
+  // account while billing); creating/closing an account is back-office
+  // ledger setup, Manager+ only.
+  { permissionKey: 'jobSiteAccount.view', permissionName: 'View Job-Site Accounts' },
+  { permissionKey: 'jobSiteAccount.manage', permissionName: 'Create & Close Job-Site Accounts' },
+  // Stationery institutional bulk/supply-list orders — matching lines to
+  // catalog products and billing in one shot is back-office curation work,
+  // Manager+ only; Cashier gets read-only status visibility.
+  { permissionKey: 'bulkListOrder.view', permissionName: 'View Bulk-List Orders' },
+  { permissionKey: 'bulkListOrder.manage', permissionName: 'Create, Match & Bill Bulk-List Orders' },
+  // Furniture deposit booking + delivery invoicing — same bounded,
+  // per-transaction counter trust level as hotel.manage/rental.manage.
+  { permissionKey: 'furnitureBooking.view', permissionName: 'View Furniture Bookings' },
+  { permissionKey: 'furnitureBooking.manage', permissionName: 'Create Furniture Bookings & Generate Delivery Invoices' },
+  // Furniture old-item trade-in — same bounded counter trust level as
+  // jewellery.manageExchanges.
+  { permissionKey: 'furnitureTradeIn.view', permissionName: 'View Furniture Trade-Ins' },
+  { permissionKey: 'furnitureTradeIn.manage', permissionName: 'Record Furniture Trade-Ins' }
 ]
 
 // Role → permission assignments from PERMISSIONS_MATRIX.md
@@ -645,7 +665,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'tailoringOrders.create', 'tailoringOrders.manage',
     'pestControl.manage',
     'placements.manage',
-    'billing.manageReturns', 'billing.cashClose'
+    'billing.manageReturns', 'billing.cashClose',
+    'jobSiteAccount.view', 'jobSiteAccount.manage',
+    'bulkListOrder.view', 'bulkListOrder.manage',
+    'furnitureBooking.view', 'furnitureBooking.manage',
+    'furnitureTradeIn.view', 'furnitureTradeIn.manage'
   ],
   Cashier: [
     'auth.login', 'auth.changeOwnPassword',
@@ -716,7 +740,14 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'coachingEnrollment.create', // enrolling a student into a batch at the front desk
     'carJobCard.create', // opening a job card at intake — same tier as repairTickets.create
     'tailoringOrders.create', // taking a new order / recording measurements at the counter
-    'billing.cashClose' // counting/recording their own drawer at end of shift, same tier as reports.print
+    'billing.cashClose', // counting/recording their own drawer at end of shift, same tier as reports.print
+    // Phase 69 — job-site account view (to tag a CREDIT sale while billing),
+    // furniture booking + trade-in are counter transactions same tier as
+    // hotel.manage/jewellery.manageExchanges above. Bulk-list order matching
+    // stays Manager+ (back-office curation, not a counter action).
+    'jobSiteAccount.view',
+    'furnitureBooking.view', 'furnitureBooking.manage',
+    'furnitureTradeIn.view', 'furnitureTradeIn.manage'
   ],
   Staff: [
     'auth.login', 'auth.changeOwnPassword',
@@ -728,7 +759,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'rental.view',
     'hotel.view',
     'jewellery.view',
-    'repairTickets.view'
+    'repairTickets.view',
+    'jobSiteAccount.view', 'bulkListOrder.view', 'furnitureBooking.view', 'furnitureTradeIn.view'
   ],
   'Kitchen Staff': [
     'auth.login', 'auth.changeOwnPassword',

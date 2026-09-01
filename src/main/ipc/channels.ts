@@ -122,6 +122,8 @@ export interface IpcChannels {
     getKitComponents: (kitProductId: string) => Promise<ApiResponse>
     setKitComponents: (payload: { kitProductId: string; components: Array<{ componentProductId: string; quantity: number }> }) => Promise<ApiResponse>
     clearKit: (kitProductId: string) => Promise<ApiResponse>
+    // Phase 69 — Electrical wow feature: Job Kit Builder suggestion.
+    suggestKitComponents: (payload: { anchorProductId: string; limit?: number }) => Promise<ApiResponse>
   }
   categories: {
     list: () => Promise<ApiResponse>
@@ -357,9 +359,13 @@ export interface IpcChannels {
     createInvoice: (payload: unknown) => Promise<ApiResponse>
     getInvoice: (id: string) => Promise<ApiResponse>
     listInvoices: (payload?: unknown) => Promise<ApiResponse>
+    // Phase 69 — Plumbing scheduled delivery.
+    listScheduledDeliveries: (payload?: { status?: string }) => Promise<ApiResponse>
+    updateDeliveryStatus: (payload: { invoiceId: string; status: 'SCHEDULED' | 'OUT_FOR_DELIVERY' | 'DELIVERED' | 'CANCELLED' }) => Promise<ApiResponse>
     cancelInvoice: (payload: { invoiceId: string; reason: string }) => Promise<ApiResponse>
     generateInvoiceNumber: () => Promise<ApiResponse<string>>
     getOrCreateTipProduct: () => Promise<ApiResponse>
+    getOrCreateServiceProduct: (payload: { name: string; taxRate?: number }) => Promise<ApiResponse>
     getFrequentlySoldProducts: (payload?: { limit?: number }) => Promise<ApiResponse>
     // Phase 58 §2 (2026-07-21) — real split-bill: divides one invoice's
     // (allocated) line quantities across N brand-new invoices.
@@ -589,6 +595,13 @@ export interface IpcChannels {
     attendancePerformanceCorrelation: (payload?: { batchId?: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Coaching Institute item 5: Fee-Due + Underperformance Alert.
     feeDueUnderperformanceAlert: () => Promise<ApiResponse>
+    // Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals.
+    coilWastageYield: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    isiBisSafetyRegister: () => Promise<ApiResponse>
+    seasonalDemandForecast: () => Promise<ApiResponse>
+    institutionalOrderHistory: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    locationStockSplit: () => Promise<ApiResponse>
+    deliveryInstallationSchedule: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -887,6 +900,8 @@ export interface IpcChannels {
     updateServiceInfo: (payload: { id: string; nextServiceDueDate?: string | null; lastServicedDate?: string | null }) => Promise<ApiResponse>
     dueForService: (payload?: { dueSoonDays?: number }) => Promise<ApiResponse<Array<{ serialId: string; serialNumber: string; productName: string; nextServiceDueDate: string; lastServicedDate: string | null; dueForService: boolean; overdue: boolean }>>>
     scheduleServiceReminder: (payload: { serialId: string; daysBefore?: number }) => Promise<ApiResponse>
+    // Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer.
+    transferInstallationWarranty: (payload: { serialId: string; customerId: string; installationAddress?: string }) => Promise<ApiResponse>
   }
   variants: {
     list: (payload: { productId: string }) => Promise<ApiResponse>
@@ -1101,6 +1116,41 @@ export interface IpcChannels {
     list: (payload?: { customerId?: string; unlinkedOnly?: boolean }) => Promise<ApiResponse>
     create: (payload: { customerId?: string; customerName?: string; metalType: string; purity: string; grossWeight: number; deductionWeight?: number; notes?: string }) => Promise<ApiResponse>
     linkToInvoice: (payload: { exchangeId: string; invoiceId: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  // Phase 69 — Electrical/Plumbing job-site contractor running accounts.
+  jobSiteAccount: {
+    list: (payload?: { contractorId?: string; status?: string }) => Promise<ApiResponse>
+    create: (payload: { accountName: string; contractorId: string; siteAddress?: string; notes?: string }) => Promise<ApiResponse>
+    balance: (payload: { id: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; accountName?: string; siteAddress?: string | null; notes?: string | null }) => Promise<ApiResponse>
+    close: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  // Phase 69 — Stationery institutional bulk/supply-list orders.
+  bulkListOrder: {
+    list: (payload?: { customerId?: string; status?: string }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; customerName?: string; listName: string; notes?: string; items: Array<{ itemLabel: string; requestedQty: number; productId?: string; unitPrice?: number }> }) => Promise<ApiResponse>
+    matchItem: (payload: { itemId: string; productId: string; unitPrice: number }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    bill: (payload: { orderId: string; paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT' }) => Promise<ApiResponse>
+    // Phase 69 — Stationery wow feature: Annual Reorder Reminder.
+    reorderReminders: () => Promise<ApiResponse>
+  }
+  // Phase 69 — Furniture deposit + balance booking.
+  furnitureBooking: {
+    list: (payload?: { customerId?: string; status?: string }) => Promise<ApiResponse>
+    create: (payload: { customerId: string; deliveryDate?: string; deliveryAddress?: string; advanceAmount?: number; advancePaymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET'; notes?: string; items: Array<{ productId: string; quantity: number; unitPrice: number; customFabric?: string; customColor?: string; customDimensions?: string; customFinish?: string }> }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: 'BOOKED' | 'DELIVERED' | 'CANCELLED' }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+    // Phase 69 — Furniture wow feature: Booked-Order Cash Flow Forecast.
+    cashFlowForecast: () => Promise<ApiResponse>
+  }
+  // Phase 69 — Furniture old-item trade-in.
+  furnitureTradeIn: {
+    list: (payload?: { customerId?: string; unlinkedOnly?: boolean }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; customerName?: string; itemDescription: string; condition?: string; tradeInValue: number; notes?: string }) => Promise<ApiResponse>
+    linkToInvoice: (payload: { tradeInId: string; invoiceId: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
   // Phase 67 §9.1 — Jewellery item 1: gold savings (chit) scheme ledger.

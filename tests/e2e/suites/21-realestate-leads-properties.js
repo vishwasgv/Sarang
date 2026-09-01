@@ -100,6 +100,75 @@ async function run() {
       r.log('property-findable-via-api', !!propertyId, JSON.stringify({ area: found?.area, askingPrice: found?.askingPrice }))
     })
 
+    // Phase 68 §9.1 — Real Estate item 5: property price-history tracking,
+    // never given live E2E coverage when Phase 68 itself was built (its own
+    // audit confirmed this vertical had zero new report tiles, but this
+    // feature is a real schema addition + UI panel, genuinely untested
+    // before this pass).
+    await r.step('editing-asking-price-logs-price-history-via-real-ui', async () => {
+      if (!propertyId) return r.log('editing-asking-price-logs-price-history-via-real-ui', false, 'no propertyId captured')
+
+      const locationText = page.locator('p', { hasText: 'E2E RE Test Address, Mumbai' }).first()
+      const row = locationText.locator('xpath=ancestor::div[contains(@class,"cursor-pointer")][1]')
+      await row.locator('button:has(svg.lucide-pencil)').click()
+      await page.waitForTimeout(500)
+      const modal = h.topModal(page)
+      const askingPriceDiv = modal.locator('div', { has: page.locator('label', { hasText: 'Asking Price' }) }).last()
+      await askingPriceDiv.locator('input').fill('5500000')
+      await page.waitForTimeout(200)
+      await modal.getByRole('button', { name: 'Save Changes' }).click()
+      await page.waitForTimeout(1000)
+      r.log('first-price-edit-no-crash', !(await h.hasErrorBoundary(page)))
+
+      await row.locator('button:has(svg.lucide-pencil)').click()
+      await page.waitForTimeout(500)
+      const modal2 = h.topModal(page)
+      const askingPriceDiv2 = modal2.locator('div', { has: page.locator('label', { hasText: 'Asking Price' }) }).last()
+      await askingPriceDiv2.locator('input').fill('6000000')
+      await page.waitForTimeout(200)
+      await modal2.getByRole('button', { name: 'Save Changes' }).click()
+      await page.waitForTimeout(1000)
+      r.log('second-price-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('verify-price-history-recorded-two-changes', async () => {
+      if (!propertyId) return
+      const res = await page.evaluate((id) => window.api.property.priceHistory(id), propertyId)
+      r.log('price-history-api-succeeds', !!res?.success, JSON.stringify(res?.error || ''))
+      const rows = res?.data || []
+      r.log('price-history-has-two-rows', rows.length === 2, JSON.stringify(rows.map((r2) => r2.askingPrice)))
+      // Each row logs the value the price was changed TO, not the prior
+      // value — the original creation price (5,000,000) is never itself
+      // logged since createProperty doesn't touch PropertyPriceHistory.
+      const askingPrices = rows.map((r2) => Number(r2.askingPrice)).sort((a, b) => a - b)
+      r.log('price-history-values-match-both-edits', askingPrices[0] === 5500000 && askingPrices[1] === 6000000, JSON.stringify(askingPrices))
+    })
+
+    await r.step('re-saving-without-a-price-change-does-not-log-a-spurious-row', async () => {
+      if (!propertyId) return
+      const res = await page.evaluate((id) => window.api.property.update({ id, notes: 'E2E RE no-op re-save' }), propertyId)
+      r.log('no-op-update-succeeds', !!res?.success, JSON.stringify(res?.error || ''))
+      const historyRes = await page.evaluate((id) => window.api.property.priceHistory(id), propertyId)
+      r.log('price-history-still-has-two-rows-not-three', (historyRes?.data || []).length === 2, JSON.stringify(historyRes?.data?.length))
+    })
+
+    await r.step('price-history-panel-visible-in-expanded-property-details', async () => {
+      // The Price History panel only renders inside the EXPANDED row detail
+      // view (loadPropertyDetails) — editing via the pencil icon never
+      // itself expands the row, so expand it explicitly first.
+      const locationText = page.locator('p', { hasText: 'E2E RE Test Address, Mumbai' }).first()
+      await locationText.click()
+      await page.waitForTimeout(1500)
+      r.log('expand-no-error-boundary-crash', !(await h.hasErrorBoundary(page)))
+      // Same [[feedback_uppercase_css_innertext_gotcha]] as elsewhere — the
+      // label's own CSS text-transform:uppercase makes innerText read back
+      // as "PRICE HISTORY", not the JSX source's "Price History".
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      const found = /price history/i.test(bodyText)
+      const idx = bodyText.indexOf('E2E RE Test Address')
+      r.log('price-history-panel-visible-on-screen', found, found ? '' : bodyText.slice(idx, idx + 1200))
+    })
+
     let dealId
 
     await r.step('create-deal-mark-registered-generate-invoice', async () => {

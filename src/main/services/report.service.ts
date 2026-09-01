@@ -9199,6 +9199,278 @@ async function generateProjectStageProgressReport(): Promise<ProjectStageProgres
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Electrical item 3 — coil wastage & yield. receivedQty/adjustedQty come from
+// InventoryMovement (the same PURCHASE/ADJUSTMENT vocabulary every other
+// stock-movement report in this file already reads); soldQty is summed from
+// length-billed InvoiceItem lines (lengthUnit set), RETURN-sign-corrected the
+// same way fastSlowMoverMatrix is. wastageQty is a derived estimate, not a
+// recorded fact — adjustedQty is the only actually-recorded wastage (staff
+// enter it as a stock write-off), surfaced separately so a shop can tell "we
+// recorded this much wastage" from "this much is unaccounted for."
+export interface CoilWastageYieldRow {
+  productId: string; productName: string; sku: string | null; lengthUnit: string | null
+  receivedQty: number; soldQty: number; recordedAdjustment: number
+  yieldPercent: number; estimatedWastageQty: number
+}
+export interface CoilWastageYieldReport {
+  dateFrom: string; dateTo: string
+  rows: CoilWastageYieldRow[]
+  summary: { totalReceived: number; totalSold: number; avgYieldPercent: number }
+}
+
+async function generateCoilWastageYieldReport(params: { dateFrom: string; dateTo: string }): Promise<CoilWastageYieldReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const products = await db.product.findMany({
+    where: { sellByLength: true },
+    select: { id: true, productName: true, sku: true, lengthUnit: true }
+  })
+  if (products.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalReceived: 0, totalSold: 0, avgYieldPercent: 0 } }
+  const productIds = products.map(p => p.id)
+
+  const movements = await db.inventoryMovement.groupBy({
+    by: ['productId', 'movementType'],
+    where: { productId: { in: productIds }, createdAt: { gte: from, lte: to }, movementType: { in: ['PURCHASE', 'ADJUSTMENT'] } },
+    _sum: { quantity: true }
+  })
+  const receivedByProduct = new Map<string, number>()
+  const adjustedByProduct = new Map<string, number>()
+  for (const m of movements) {
+    if (m.movementType === 'PURCHASE') receivedByProduct.set(m.productId, (receivedByProduct.get(m.productId) ?? 0) + (m._sum.quantity ?? 0))
+    else adjustedByProduct.set(m.productId, (adjustedByProduct.get(m.productId) ?? 0) + (m._sum.quantity ?? 0))
+  }
+
+  const items = await db.invoiceItem.findMany({
+    where: { productId: { in: productIds }, lengthUnit: { not: null }, invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } } },
+    select: { productId: true, quantity: true, invoice: { select: { invoiceType: true } } }
+  })
+  const soldByProduct = new Map<string, number>()
+  for (const item of items) {
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    soldByProduct.set(item.productId, (soldByProduct.get(item.productId) ?? 0) + sign * item.quantity)
+  }
+
+  const rows: CoilWastageYieldRow[] = products.map(p => {
+    const receivedQty = receivedByProduct.get(p.id) ?? 0
+    const soldQty = Math.max(0, soldByProduct.get(p.id) ?? 0)
+    const recordedAdjustment = adjustedByProduct.get(p.id) ?? 0
+    const yieldPercent = receivedQty > 0 ? Math.round((soldQty / receivedQty) * 1000) / 10 : 0
+    const estimatedWastageQty = Math.max(0, Math.round((receivedQty - soldQty + recordedAdjustment) * 1000) / 1000)
+    return { productId: p.id, productName: p.productName, sku: p.sku, lengthUnit: p.lengthUnit, receivedQty, soldQty, recordedAdjustment, yieldPercent, estimatedWastageQty }
+  }).filter(r => r.receivedQty > 0 || r.soldQty > 0)
+    .sort((a, b) => b.receivedQty - a.receivedQty)
+
+  const totalReceived = rows.reduce((s, r) => s + r.receivedQty, 0)
+  const totalSold = rows.reduce((s, r) => s + r.soldQty, 0)
+  const yieldedRows = rows.filter(r => r.receivedQty > 0)
+  const avgYieldPercent = yieldedRows.length > 0 ? Math.round((yieldedRows.reduce((s, r) => s + r.yieldPercent, 0) / yieldedRows.length) * 10) / 10 : 0
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows, summary: { totalReceived: Math.round(totalReceived * 1000) / 1000, totalSold: Math.round(totalSold * 1000) / 1000, avgYieldPercent } }
+}
+
+// Electrical item 5 — ISI/BIS batch safety register. ProductSerial doubles
+// as the batch/lot traceability record (Electrical uses serial_tracking, not
+// batch_tracking — ProductBatch's required expiryDate makes it wrong for a
+// non-perishable coil/fitting unit) — a genuine recall-traceability register:
+// which unit, when received, when/to whom sold.
+export interface SafetyRegisterRow {
+  productId: string; productName: string; sku: string | null
+  serialNumber: string; status: string
+  purchaseDate: string | null; warrantyMonths: number | null
+  soldDate: string | null; invoiceId: string | null
+}
+export interface SafetyRegisterReport {
+  rows: SafetyRegisterRow[]
+  summary: { totalUnits: number; soldUnits: number; availableUnits: number }
+}
+
+async function generateIsiBisSafetyRegisterReport(): Promise<SafetyRegisterReport> {
+  const db = getPrisma()
+  const serials = await db.productSerial.findMany({
+    include: { product: { select: { productName: true, sku: true } } },
+    orderBy: { createdAt: 'desc' }
+  })
+  const rows: SafetyRegisterRow[] = serials.map(s => ({
+    productId: s.productId, productName: s.product.productName, sku: s.product.sku,
+    serialNumber: s.serialNumber, status: s.status,
+    purchaseDate: s.purchaseDate ? toLocalISODate(s.purchaseDate) : null,
+    warrantyMonths: s.warrantyMonths,
+    soldDate: s.soldDate ? toLocalISODate(s.soldDate) : null,
+    invoiceId: s.invoiceId
+  }))
+  return {
+    rows,
+    summary: { totalUnits: rows.length, soldUnits: rows.filter(r => r.status === 'SOLD').length, availableUnits: rows.filter(r => r.status === 'AVAILABLE').length }
+  }
+}
+
+// Stationery item 3 — seasonal demand forecast. Aggregates every ACTIVE sale
+// ever recorded (not date-range-scoped — a single season's worth of history
+// is too thin to reveal a seasonal pattern) by calendar month, RETURN-sign-
+// corrected. peakMonth flags the busiest month so a shop can plan next
+// occurrence's stock-up, matching how a real institutional-supply business
+// (school reopening, exam season) actually plans reorders.
+export interface SeasonalDemandRow { month: number; monthName: string; unitsSold: number; revenue: number }
+export interface SeasonalDemandForecastReport {
+  rows: SeasonalDemandRow[]
+  peakMonth: number | null
+  summary: { totalUnitsSold: number; totalRevenue: number; monthsOfHistory: number }
+}
+
+const MONTH_NAMES = ['January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December']
+
+async function generateSeasonalDemandForecastReport(): Promise<SeasonalDemandForecastReport> {
+  const db = getPrisma()
+  const items = await db.invoiceItem.findMany({
+    where: { invoice: { status: 'ACTIVE' } },
+    select: { quantity: true, lineTotal: true, invoice: { select: { invoiceType: true, invoiceDate: true } } }
+  })
+
+  const byMonth = new Map<number, { unitsSold: number; revenue: number }>()
+  let earliestDate: Date | null = null
+  for (const item of items) {
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const month = item.invoice.invoiceDate.getMonth()
+    const existing = byMonth.get(month) ?? { unitsSold: 0, revenue: 0 }
+    existing.unitsSold += sign * item.quantity
+    existing.revenue += sign * item.lineTotal
+    byMonth.set(month, existing)
+    if (!earliestDate || item.invoice.invoiceDate < earliestDate) earliestDate = item.invoice.invoiceDate
+  }
+
+  const rows: SeasonalDemandRow[] = Array.from({ length: 12 }, (_, month) => {
+    const v = byMonth.get(month) ?? { unitsSold: 0, revenue: 0 }
+    return { month: month + 1, monthName: MONTH_NAMES[month], unitsSold: Math.round(v.unitsSold * 100) / 100, revenue: roundCurrency(v.revenue) }
+  })
+
+  const peak = rows.reduce((best, r) => (r.unitsSold > (best?.unitsSold ?? -1) ? r : best), null as SeasonalDemandRow | null)
+  const monthsOfHistory = earliestDate ? Math.max(1, Math.round((Date.now() - earliestDate.getTime()) / (30 * 86400000))) : 0
+
+  return {
+    rows,
+    peakMonth: peak && peak.unitsSold > 0 ? peak.month : null,
+    summary: {
+      totalUnitsSold: Math.round(rows.reduce((s, r) => s + r.unitsSold, 0) * 100) / 100,
+      totalRevenue: roundCurrency(rows.reduce((s, r) => s + r.revenue, 0)),
+      monthsOfHistory
+    }
+  }
+}
+
+// Stationery item 4 — institutional order history. Straight read of
+// BulkListOrder for renewal planning ("this school reorders every August").
+export interface InstitutionalOrderRow {
+  orderId: string; orderNumber: string; institutionName: string; listName: string
+  status: string; itemCount: number; totalValue: number; createdAt: string
+}
+export interface InstitutionalOrderHistoryReport {
+  dateFrom: string; dateTo: string
+  rows: InstitutionalOrderRow[]
+  summary: { totalOrders: number; billedOrders: number; totalValue: number }
+}
+
+async function generateInstitutionalOrderHistoryReport(params: { dateFrom: string; dateTo: string }): Promise<InstitutionalOrderHistoryReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const orders = await db.bulkListOrder.findMany({
+    where: { createdAt: { gte: from, lte: to } },
+    include: { customer: { select: { customerName: true } }, items: true },
+    orderBy: { createdAt: 'desc' }
+  })
+
+  const rows: InstitutionalOrderRow[] = orders.map(o => ({
+    orderId: o.id, orderNumber: o.orderNumber,
+    institutionName: o.customer?.customerName ?? o.customerName ?? 'Walk-in',
+    listName: o.listName, status: o.status, itemCount: o.items.length,
+    totalValue: roundCurrency(o.items.reduce((s, i) => s + (i.unitPrice ?? 0) * i.requestedQty, 0)),
+    createdAt: toLocalISODate(o.createdAt)
+  }))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalOrders: rows.length, billedOrders: rows.filter(r => r.status === 'BILLED').length, totalValue: roundCurrency(rows.reduce((s, r) => s + r.totalValue, 0)) }
+  }
+}
+
+// Furniture item 3 — showroom-floor-vs-warehouse stock split. Genuinely the
+// existing generic multi-location LocationStock feature (Phase 64), pivoted
+// per product — a shop names its own Locations "Showroom"/"Warehouse", this
+// just surfaces the real per-location breakdown rather than only the summed
+// total Product.currentStock every other screen shows.
+export interface LocationStockSplitRow {
+  productId: string; productName: string; sku: string | null
+  byLocation: Array<{ locationId: string; locationName: string; quantity: number }>
+  totalQty: number
+}
+export interface LocationStockSplitReport {
+  locations: Array<{ id: string; name: string }>
+  rows: LocationStockSplitRow[]
+  summary: { productCount: number; totalQty: number }
+}
+
+async function generateLocationStockSplitReport(): Promise<LocationStockSplitReport> {
+  const db = getPrisma()
+  const locations = await db.location.findMany({ select: { id: true, name: true }, orderBy: { name: 'asc' } })
+  const stocks = await db.locationStock.findMany({
+    where: { quantity: { gt: 0 } },
+    include: { product: { select: { id: true, productName: true, sku: true } }, location: { select: { id: true, name: true } } }
+  })
+
+  const byProduct = new Map<string, LocationStockSplitRow>()
+  for (const s of stocks) {
+    const existing = byProduct.get(s.productId) ?? { productId: s.productId, productName: s.product.productName, sku: s.product.sku, byLocation: [], totalQty: 0 }
+    existing.byLocation.push({ locationId: s.locationId, locationName: s.location.name, quantity: s.quantity })
+    existing.totalQty += s.quantity
+    byProduct.set(s.productId, existing)
+  }
+
+  const rows = Array.from(byProduct.values()).sort((a, b) => b.totalQty - a.totalQty)
+  return { locations, rows, summary: { productCount: rows.length, totalQty: Math.round(rows.reduce((s, r) => s + r.totalQty, 0) * 100) / 100 } }
+}
+
+// Furniture item 4 — delivery & installation schedule.
+export interface DeliveryScheduleRow {
+  bookingId: string; bookingNumber: string; customerName: string
+  deliveryDate: string; deliveryAddress: string | null; status: string
+  itemCount: number; totalValue: number
+}
+export interface DeliveryInstallationScheduleReport {
+  dateFrom: string; dateTo: string
+  rows: DeliveryScheduleRow[]
+  summary: { totalBookings: number; deliveredCount: number; pendingCount: number }
+}
+
+async function generateDeliveryInstallationScheduleReport(params: { dateFrom: string; dateTo: string }): Promise<DeliveryInstallationScheduleReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const bookings = await db.furnitureBooking.findMany({
+    where: { deliveryDate: { gte: from, lte: to } },
+    include: { customer: { select: { customerName: true } }, items: true },
+    orderBy: { deliveryDate: 'asc' }
+  })
+
+  const rows: DeliveryScheduleRow[] = bookings.map(b => ({
+    bookingId: b.id, bookingNumber: b.bookingNumber, customerName: b.customer.customerName,
+    deliveryDate: toLocalISODate(b.deliveryDate as Date), deliveryAddress: b.deliveryAddress, status: b.status,
+    itemCount: b.items.length, totalValue: roundCurrency(b.items.reduce((s, i) => s + i.quantity * i.unitPrice, 0))
+  }))
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalBookings: rows.length, deliveredCount: rows.filter(r => r.status === 'DELIVERED').length, pendingCount: rows.filter(r => r.status === 'BOOKED').length }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -9353,4 +9625,10 @@ export const reportService = {
   generateBatchPerformanceTrendReport,
   generateAttendancePerformanceCorrelationReport,
   generateFeeDueUnderperformanceAlertReport,
+  generateCoilWastageYieldReport,
+  generateIsiBisSafetyRegisterReport,
+  generateSeasonalDemandForecastReport,
+  generateInstitutionalOrderHistoryReport,
+  generateLocationStockSplitReport,
+  generateDeliveryInstallationScheduleReport,
 }

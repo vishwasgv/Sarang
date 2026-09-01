@@ -5,7 +5,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
 
 import { getPrisma } from '../../database/db'
-import { updateSerialStatus, updateSerialServiceInfo, listEquipmentDueForService, scheduleEquipmentServiceReminder } from '../serial.service'
+import { updateSerialStatus, updateSerialServiceInfo, listEquipmentDueForService, scheduleEquipmentServiceReminder, transferInstallationWarranty } from '../serial.service'
 
 beforeEach(() => vi.clearAllMocks())
 
@@ -250,6 +250,66 @@ describe('serial.service.scheduleEquipmentServiceReminder', () => {
     expect(res.success).toBe(true)
     expect(create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ notificationType: 'EQUIPMENT_SERVICE_DUE_REMINDER', customerId: 'cust-1' })
+    }))
+  })
+})
+
+// Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer.
+describe('serial.service.transferInstallationWarranty', () => {
+  function makeMockDb(opts: { status?: string } = {}) {
+    const db: Record<string, any> = {
+      productSerial: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'ser-1', status: opts.status ?? 'SOLD' }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1', customerName: 'Homeowner' }) },
+    }
+    return db
+  }
+
+  it('rejects a unit that was not found', async () => {
+    const db = makeMockDb()
+    db.productSerial.findUnique = vi.fn().mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await transferInstallationWarranty({ serialId: 'ser-missing', customerId: 'cust-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SER-013')
+  })
+
+  it('rejects a unit that has not been sold yet', async () => {
+    const db = makeMockDb({ status: 'AVAILABLE' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await transferInstallationWarranty({ serialId: 'ser-1', customerId: 'cust-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SER-014')
+    expect(db.productSerial.update).not.toHaveBeenCalled()
+  })
+
+  it('rejects a customer that does not exist', async () => {
+    const db = makeMockDb()
+    db.customer.findUnique = vi.fn().mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await transferInstallationWarranty({ serialId: 'ser-1', customerId: 'cust-missing' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CUST-001')
+  })
+
+  it('sets installedCustomerId/installedAt/installationAddress on a sold unit', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await transferInstallationWarranty({ serialId: 'ser-1', customerId: 'cust-1', installationAddress: '12 MG Road' })
+
+    expect(res.success).toBe(true)
+    expect(db.productSerial.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'ser-1' },
+      data: expect.objectContaining({ installedCustomerId: 'cust-1', installationAddress: '12 MG Road' })
     }))
   })
 })

@@ -13,6 +13,8 @@ const InvoiceItemSchema = z.object({
   // Phase 38: snapshot of the unit this line was billed in (e.g. "kg") — null/absent
   // for a normal pack-quantity line. See PHASE_38_TECHNICAL_SPEC.md Section 1.2.
   weightUnit: z.string().optional(),
+  // Phase 69 §11 — length-billing snapshot, mirrors weightUnit above.
+  lengthUnit: z.string().optional(),
   // Fresh-audit fix (2026-07-12): the purity/weight/making-charge breakdown a
   // jewellery cart line was actually priced from — snapshotted from the
   // renderer (which already computed it against today's metal rate at
@@ -58,6 +60,15 @@ export const CreateInvoiceSchema = z.object({
   // of the old two-step "type the same number into globalDiscount, then
   // separately call metalExchange.linkToInvoice" manual process.
   metalExchangeId: z.string().optional(),
+  // Phase 69 — Furniture trade-in, applied the same atomic way as metalExchangeId above.
+  furnitureTradeInId: z.string().optional(),
+  // Phase 69 — tags a CREDIT sale against a contractor's job-site running account.
+  jobSiteAccountId: z.string().optional(),
+  // Phase 69 — Plumbing scheduled delivery (fragile sanitaryware). Both
+  // optional — deliveryStatus is set server-side to 'SCHEDULED' whenever
+  // scheduledDeliveryDate is present, not client-settable at creation time.
+  scheduledDeliveryDate: z.string().optional(),
+  deliveryAddress: z.string().max(500).optional(),
   // Phase 58 §2 — optional payment due date for CREDIT sales (e.g. Agri
   // Inputs' harvest-tied credit terms). Invoice.dueDate already existed in
   // the schema and report.service.ts's aging already reads it — this was

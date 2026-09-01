@@ -2172,6 +2172,30 @@
         "label": "Fee-Due Underperformance Alert",
         "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
       },
+      "coilWastageYield": {
+        "label": "Coil Wastage & Yield",
+        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+      },
+      "isiBisSafetyRegister": {
+        "label": "ISI/BIS Safety Register",
+        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+      },
+      "seasonalDemandForecast": {
+        "label": "Seasonal Demand Forecast",
+        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+      },
+      "institutionalOrderHistory": {
+        "label": "Institutional Order History",
+        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+      },
+      "locationStockSplit": {
+        "label": "Showroom-vs-Warehouse Stock",
+        "description": "Per-product stock split across every Location"
+      },
+      "deliveryInstallationSchedule": {
+        "label": "Delivery & Installation Schedule",
+        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+      },
       "complianceTasks": {
         "label": "Compliance Task Report",
         "description": "Pending and overdue statutory tasks across every client"
@@ -4228,6 +4252,26 @@
       "budgets": {
         "title": "Budgets",
         "body": "Set a monthly budget for a cost centre, a specific account, or the whole company, then check back after the month to see how real spend compared."
+      },
+      "jobSiteAccounts": {
+        "title": "Job-Site Accounts",
+        "body": "Open a running account for a contractor working one site — tag CREDIT invoices to it while billing and see the account's own running balance, separate from their general ledger."
+      },
+      "bulkListOrders": {
+        "title": "Bulk-List Orders",
+        "body": "Enter a school or office supply list as raw lines, match each to a catalog product and price, then bill the whole order in one shot once everything's matched."
+      },
+      "furnitureBookings": {
+        "title": "Furniture Bookings",
+        "body": "Book a made-to-order piece with a deposit, capture the customization, then generate the delivery invoice once it's ready — the advance is applied automatically."
+      },
+      "furnitureTradeIns": {
+        "title": "Furniture Trade-Ins",
+        "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
+      },
+      "scheduledDeliveries": {
+        "title": "Scheduled Deliveries",
+        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
       }
     }
   },

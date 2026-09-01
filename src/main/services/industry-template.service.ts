@@ -43,6 +43,11 @@ export type BusinessType =
   // extra charges that RENTAL's short-term-checkout model has no equivalent
   // of.
   | 'HOTEL_LODGE'
+  // Phase 69 §11 — Four new verticals (PRODUCT category, day-to-day-grounded
+  // module sets reusing existing architecture rather than inventing new
+  // mechanics where an equivalent already exists — see the module flags
+  // below).
+  | 'ELECTRICAL' | 'PLUMBING' | 'STATIONERY' | 'FURNITURE'
 
 export type TemplateModule =
   // Phase 1 modules
@@ -211,6 +216,38 @@ export type TemplateModule =
   | 'loyalty_program'
   // Phase 67 §9.1 — General: Custom Document Builder.
   | 'custom_documents'
+  // Phase 69 §11 — Electrical/Plumbing length-based billing (wire/pipe sold
+  // off a coil). Structural mirror of loose_billing, but ships as a default
+  // for ELECTRICAL/PLUMBING below (it's the headline ask for those two
+  // verticals, not an optional add-on) rather than the universal opt-in-only
+  // convention loose_billing itself uses — same "core to this vertical, but
+  // still a plain toggle-able flag" shape as field_order_capture/repair_rma.
+  | 'length_billing'
+  // Phase 69 §11 — Electrical/Plumbing job-site/contractor running account.
+  // ELECTRICAL/PLUMBING default.
+  | 'job_site_accounts'
+  // Phase 69 §11 — Plumbing scheduled delivery for fragile sanitaryware.
+  // PLUMBING default.
+  | 'scheduled_delivery'
+  // Phase 69 §11 — Stationery bulk/institutional supply-list order, matched
+  // to catalog and billed in one shot. STATIONERY default.
+  | 'bulk_list_order'
+  // Phase 69 §11 — Stationery print/photocopy/binding service pricing
+  // alongside products. Needs no new schema — reuses the existing
+  // productType='SERVICE' convention (Tip/Service Charge, Automotive Labor
+  // already use it) — this flag seeds a starter set of print-service catalog
+  // items and surfaces a quick per-page/per-copy entry panel on Billing.
+  // STATIONERY default.
+  | 'print_service_billing'
+  // Phase 69 §11 — Furniture deposit + balance booking, mirrors Hotel/Lodge's
+  // advance-at-booking/invoice-at-delivery pattern (not Rental's off-invoice
+  // security-deposit pattern — a furniture deposit is real advance revenue).
+  // FURNITURE default.
+  | 'deposit_booking'
+  // Phase 69 §11 — Furniture old-item trade-in against a new purchase,
+  // mirrors Jewellery's MetalExchange discount-folding pattern. FURNITURE
+  // default.
+  | 'trade_in_exchange'
 
 export interface TemplateConfig {
   businessType: string
@@ -316,6 +353,18 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // REPAIR above). Not in SERVICE_TEMPLATE_TYPES, so businessCategory:
   // 'PRODUCT' and languageLock: 'multi' both fall out automatically.
   JEWELLERY: ['jewellery_pricing', 'returns', ...LOGISTICS_MODULES],
+  // Phase 69 §11 — four new verticals. barcode_generation deliberately
+  // excluded from every default below despite appearing in the source
+  // audit's proposed module list — it's a cross-cutting opt-in-only module
+  // (see its own TemplateModule comment), never added to any vertical's
+  // defaults, so its absence here matches every other vertical, not a gap.
+  // LOGISTICS_MODULES included on all four — each routinely receives formal
+  // supplier consignments and/or runs its own delivery, same reasoning as
+  // HARDWARE/JEWELLERY/RENTAL above.
+  ELECTRICAL: ['variant_tracking', 'serial_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'outstanding_analytics', 'length_billing', 'job_site_accounts', ...LOGISTICS_MODULES],
+  PLUMBING: ['variant_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'outstanding_analytics', 'length_billing', 'job_site_accounts', 'scheduled_delivery', ...LOGISTICS_MODULES],
+  STATIONERY: ['returns', 'credit_limit_enforcement', 'outstanding_analytics', 'bulk_list_order', 'print_service_billing', ...LOGISTICS_MODULES],
+  FURNITURE: ['variant_tracking', 'serial_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'returns', 'deposit_booking', 'trade_in_exchange', ...LOGISTICS_MODULES],
   // Phase 4 (legacy generic). Fresh-audit fix (2026-07-12): LOGISTICS_MODULES
   // removed from these 3 — none of them operate a fleet of goods-delivery
   // vehicles or receive formal goods shipments by default (SERVICE/CONSULTANT
@@ -445,6 +494,14 @@ const DASHBOARD_LAYOUTS: Record<string, string> = {
   AGRI_INPUTS: 'agri',
   // Phase 51
   BLOOD_BANK: 'bloodbank',
+  // Phase 69 §11 — reuse the closest existing layout rather than falling
+  // back to 'general': Electrical/Plumbing are contractor-facing trade-goods
+  // businesses like Hardware; Stationery/Furniture are ordinary retail
+  // floors like Retail.
+  ELECTRICAL: 'hardware',
+  PLUMBING: 'hardware',
+  STATIONERY: 'retail',
+  FURNITURE: 'retail',
   // Phase 4
   SERVICE:    'service',
   CONSULTANT: 'service',

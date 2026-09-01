@@ -55,7 +55,8 @@
     "logisticsAnalytics": "Análisis de Logística",
     "tailoring": "Sastrería",
     "costCentres": "Centros de Costo",
-    "budgets": "Presupuestos"
+    "budgets": "Presupuestos",
+    "serviceCombos": "Service Combos"
   },
   "common": {
     "of": "de",
@@ -1994,6 +1995,214 @@
       "vetCaseTypeVolume": {
         "label": "Tendencia de Volumen por Tipo de Caso",
         "description": "Cuántos casos atendió por tipo de caso — consultas, cuidado preventivo, vacunaciones, y otros en su Catálogo de Servicios — mes a mes."
+      },
+      "stylistRepeatClient": {
+        "label": "Stylist Repeat-Client Rate",
+        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+      },
+      "retailAttachRate": {
+        "label": "Retail Attach Rate",
+        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+      },
+      "membershipRenewalFunnel": {
+        "label": "Membership Renewal Funnel",
+        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+      },
+      "classAttendanceHeatmap": {
+        "label": "Class Attendance Heatmap",
+        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+      },
+      "learnerProgressFunnel": {
+        "label": "Learner Progress Funnel",
+        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+      },
+      "caseAging": {
+        "label": "Case Aging",
+        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+      },
+      "lawyerBillableHours": {
+        "label": "Billable Hours",
+        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+      },
+      "feeRealization": {
+        "label": "Fee Realization",
+        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+      },
+      "drawingApprovalCycleTime": {
+        "label": "Drawing Approval Cycle Time",
+        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+      },
+      "projectStageProgress": {
+        "label": "Project Stage Progress",
+        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+      },
+      "siteVisitBilling": {
+        "label": "Site Visit Billing",
+        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+      },
+      "materialTestResults": {
+        "label": "Material Test Results",
+        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+      },
+      "retainerUtilization": {
+        "label": "Retainer Utilization",
+        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+      },
+      "proposalWinRate": {
+        "label": "Proposal Win Rate",
+        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+      },
+      "clientRevenueConcentration": {
+        "label": "Client Revenue Concentration",
+        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+      },
+      "campaignROI": {
+        "label": "Campaign ROI",
+        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+      },
+      "deliverableStatusPipeline": {
+        "label": "Deliverable Status Pipeline",
+        "description": "Every content-calendar deliverable by status, with how many are overdue"
+      },
+      "channelPerformance": {
+        "label": "Channel Performance",
+        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+      },
+      "retainerWorkDelivered": {
+        "label": "Retainer Work Delivered",
+        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+      },
+      "issueAging": {
+        "label": "Issue Aging",
+        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+      },
+      "teamUtilization": {
+        "label": "Team Utilization",
+        "description": "Billable vs. non-billable hours logged per team member against a client project"
+      },
+      "sprintBilling": {
+        "label": "Sprint Billing",
+        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+      },
+      "deliveryPipeline": {
+        "label": "Delivery Pipeline",
+        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+      },
+      "shootTypeRevenueMix": {
+        "label": "Shoot-Type Revenue Mix",
+        "description": "Revenue, booking count, and average ticket per shoot type"
+      },
+      "equipmentCheckout": {
+        "label": "Equipment Checkout",
+        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+      },
+      "vendorCostVsBudget": {
+        "label": "Vendor Cost vs. Budget",
+        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+      },
+      "vendorPerformanceHistory": {
+        "label": "Vendor Performance History",
+        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+      },
+      "occupancyTrend": {
+        "label": "Occupancy Trend",
+        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+      },
+      "roomWiseADR": {
+        "label": "Room-wise ADR",
+        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+      },
+      "adrRevPAR": {
+        "label": "ADR & RevPAR",
+        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+      },
+      "carPartsVariance": {
+        "label": "Parts Cost Variance",
+        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+      },
+      "serviceTypeRevenue": {
+        "label": "Revenue by Service Type",
+        "description": "Which services bring in the most revenue, across every job card"
+      },
+      "orderTurnaround": {
+        "label": "Order Turnaround Time",
+        "description": "How many days it actually takes from order to delivery, per order"
+      },
+      "fittingStageTracker": {
+        "label": "Fitting-Stage Tracker",
+        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+      },
+      "fabricPopularity": {
+        "label": "Fabric / Design Popularity",
+        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+      },
+      "renewalFunnel": {
+        "label": "Renewal Funnel",
+        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+      },
+      "chemicalUsageCompliance": {
+        "label": "Chemical Usage / Compliance Log",
+        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+      },
+      "pestRecurringValueTrend": {
+        "label": "Recurring Contract Value Trend",
+        "description": "Actual AMC contract-fee revenue billed, trended by month"
+      },
+      "candidatePipelineFunnel": {
+        "label": "Candidate Pipeline Funnel",
+        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+      },
+      "jobOrderFunnel": {
+        "label": "Job Order Funnel",
+        "description": "Open client job orders by status — the fill-progress view from the client side"
+      },
+      "feePercentage": {
+        "label": "Client Fee-Percentage Tracking",
+        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+      },
+      "timeToFill": {
+        "label": "Time to Fill",
+        "description": "How many days it actually takes from job order to a candidate joining"
+      },
+      "sourceEffectiveness": {
+        "label": "Source Effectiveness",
+        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+      },
+      "batchPerformanceTrend": {
+        "label": "Batch Performance Trend",
+        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+      },
+      "attendancePerformanceCorrelation": {
+        "label": "Attendance vs. Performance",
+        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+      },
+      "feeDueUnderperformanceAlert": {
+        "label": "Fee-Due Underperformance Alert",
+        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+      },
+      "coilWastageYield": {
+        "label": "Coil Wastage & Yield",
+        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+      },
+      "isiBisSafetyRegister": {
+        "label": "ISI/BIS Safety Register",
+        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+      },
+      "seasonalDemandForecast": {
+        "label": "Seasonal Demand Forecast",
+        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+      },
+      "institutionalOrderHistory": {
+        "label": "Institutional Order History",
+        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+      },
+      "locationStockSplit": {
+        "label": "Showroom-vs-Warehouse Stock",
+        "description": "Per-product stock split across every Location"
+      },
+      "deliveryInstallationSchedule": {
+        "label": "Delivery & Installation Schedule",
+        "description": "Furniture bookings with a delivery date in range, as a real schedule"
       }
     },
     "summary": {
@@ -2236,7 +2445,54 @@
       "billedRatePercent": "Tasa de Facturación",
       "dosesEvaluated": "Dosis Evaluadas",
       "totalCases": "Casos Totales",
-      "distinctCaseTypes": "Tipos de Caso Distintos"
+      "distinctCaseTypes": "Tipos de Caso Distintos",
+      "totalEnrolled": "Total Enrolled",
+      "overallCompletionPercent": "DL Completion Rate %",
+      "totalOpenCases": "Open Cases",
+      "avgDaysInCurrentStage": "Avg. Days in Stage",
+      "staleCaseCount": "Stale Cases (90+ days)",
+      "totalApproved": "Drawings Approved",
+      "avgDaysToApprove": "Avg. Days to Approve",
+      "totalActiveProjects": "Active Projects",
+      "avgDaysInStage": "Avg. Days in Stage",
+      "totalBillableAmount": "Total Billable",
+      "totalBilledAmount": "Total Billed",
+      "totalUnbilledAmount": "Total Unbilled",
+      "unbilledCount": "Unbilled Visits",
+      "passCount": "Passed",
+      "failCount": "Failed",
+      "pendingCount": "Pending",
+      "passRatePercent": "Pass Rate %",
+      "totalRetainers": "Retainers",
+      "overUtilizedCount": "Over-Utilized",
+      "wonCount": "Won",
+      "lostCount": "Lost",
+      "winRatePercent": "Win Rate %",
+      "wonValue": "Won Value",
+      "topClientSharePercent": "Top Client Share %",
+      "top3SharePercent": "Top 3 Clients Share %",
+      "totalCampaigns": "Campaigns",
+      "totalBudget": "Total Budget",
+      "totalActualSpend": "Total Actual Spend",
+      "overBudgetCount": "Over Budget",
+      "totalDeliverables": "Deliverables",
+      "zeroDeliveredCount": "Zero Delivered",
+      "totalOpenIssues": "Open Issues",
+      "breachedCount": "SLA Breached",
+      "totalBillableHours": "Total Billable Hours",
+      "totalNonBillableHours": "Total Non-Billable Hours",
+      "totalCompletedSprints": "Completed Sprints",
+      "unlinkedCount": "Unbilled Sprints",
+      "totalActive": "Active Bookings",
+      "deliveredCount": "Delivered",
+      "avgRevisionRounds": "Avg. Revision Rounds",
+      "totalBookings": "Total Bookings",
+      "totalEvents": "Events",
+      "totalVendorCost": "Total Vendor Cost",
+      "totalRatedVendors": "Rated Vendors",
+      "overallAvgRating": "Overall Avg. Rating",
+      "correlationCoefficient": "Attendance–Performance Correlation",
+      "alertCount": "Students Flagged"
     },
     "aging": {
       "current": "Al Día",
@@ -2338,7 +2594,9 @@
       "treatmentAcceptanceFunnelChart": "Propuesto → Aceptado → Facturado",
       "complianceByRecallType": "Cumplimiento por Tipo de Recitación",
       "complianceByVaccine": "Cumplimiento por Vacuna",
-      "caseTypeVolumeChart": "Tendencia de Volumen de Casos"
+      "caseTypeVolumeChart": "Tendencia de Volumen de Casos",
+      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
+      "feeDueUnderperformanceDetails": "Flagged Students"
     },
     "empty": {
       "discounts": "No se otorgaron descuentos ni precios negociados en este rango de fechas.",
@@ -2435,7 +2693,40 @@
       "treatmentAcceptanceRate": "No hay planes de tratamiento propuestos en este rango de fechas.",
       "dentalRecallCompliance": "No hay períodos de recitación cerrados en este rango de fechas.",
       "vaccinationCompliance": "No hay dosis de seguimiento con una fecha de vencimiento anterior en este rango de fechas.",
-      "vetCaseTypeVolume": "No hay casos registrados en este rango de fechas."
+      "vetCaseTypeVolume": "No hay casos registrados en este rango de fechas.",
+      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
+      "serviceTypeRevenue": "No service items billed in this date range.",
+      "orderTurnaround": "No orders delivered in this date range.",
+      "fittingStageTracker": "No orders currently at Trial or Alterations.",
+      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
+      "chemicalUsageCompliance": "No completed visits in this date range.",
+      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
+      "attendancePerformanceCorrelation": "No enrolled students yet.",
+      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
+      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
+      "retailAttachRate": "No invoiced appointments in this date range.",
+      "membershipRenewalFunnel": "No memberships expired in this date range.",
+      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
+      "caseAging": "No open cases right now.",
+      "lawyerBillableHours": "No time entries logged against a case in this date range.",
+      "feeRealization": "No active, priced engagements right now.",
+      "drawingApprovalCycleTime": "No approved drawings on file yet.",
+      "projectStageProgress": "No active projects with a stage set right now.",
+      "siteVisitBilling": "No billable site visits recorded yet.",
+      "materialTestResults": "No material test results recorded yet.",
+      "retainerUtilization": "No active hourly retainers right now.",
+      "clientRevenueConcentration": "No invoiced revenue in this date range.",
+      "campaignROI": "No marketing campaigns recorded yet.",
+      "channelPerformance": "No campaigns with a channel set yet.",
+      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
+      "issueAging": "No open issues right now.",
+      "teamUtilization": "No hours logged against a project in this date range.",
+      "sprintBilling": "No completed sprints yet.",
+      "deliveryPipeline": "No bookings with a revision round logged yet.",
+      "shootTypeRevenueMix": "No priced bookings in this date range.",
+      "equipmentCheckout": "No equipment currently checked out.",
+      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
+      "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
       "invoiceNumber": "Número de Factura",
@@ -2731,7 +3022,94 @@
       "stage": "Etapa",
       "recallType": "Tipo de Recitación",
       "vaccineName": "Vacuna",
-      "doses": "Dosis"
+      "doses": "Dosis",
+      "stylist": "Stylist",
+      "totalClients": "Total Clients",
+      "repeatClients": "Repeat Clients",
+      "totalInvoices": "Total Invoices",
+      "withAttach": "With Retail Attach",
+      "attachRatePercent": "Attach Rate %",
+      "planName": "Plan",
+      "expiredCount": "Expired",
+      "renewedCount": "Renewed",
+      "renewalRatePercent": "Renewal Rate %",
+      "className": "Class",
+      "checkInCount": "Check-Ins",
+      "learnerCount": "Learners",
+      "caseNumber": "Case Number",
+      "caseTitle": "Case Title",
+      "clientName": "Client",
+      "daysInStage": "Days in Stage",
+      "daysSinceFiling": "Days Since Filing",
+      "advocate": "Advocate",
+      "billedAmount": "Billed",
+      "unbilledAmount": "Unbilled",
+      "engagement": "Engagement",
+      "expectedFee": "Expected Fee",
+      "realizedFee": "Realized Fee",
+      "realizationPercent": "Realization %",
+      "invoicedThisPeriod": "Invoiced This Period",
+      "drawingNumber": "Drawing No.",
+      "revisionNumber": "Rev.",
+      "discipline": "Discipline",
+      "issuedDate": "Issued Date",
+      "approvedDate": "Approved Date",
+      "daysToApprove": "Days to Approve",
+      "stageProgress": "Stage Progress %",
+      "attendancePercent": "Attendance %",
+      "avgTestPercentage": "Avg. Test %",
+      "feeDueAmount": "Fee Due",
+      "visitType": "Visit Type",
+      "billableAmount": "Billable Amount",
+      "billedStatus": "Billed Status",
+      "testType": "Test Type",
+      "materialDescription": "Material",
+      "testValue": "Test Value",
+      "requiredMinValue": "Pass Minimum",
+      "result": "Result",
+      "testedDate": "Tested Date",
+      "hoursPerMonth": "Hours/Month",
+      "hoursUsed": "Hours Used",
+      "monthlyAmount": "Monthly Amount",
+      "billedThisPeriod": "Billed This Period",
+      "revenueSharePercent": "Revenue Share %",
+      "cumulativeSharePercent": "Cumulative Share %",
+      "targetChannel": "Channel",
+      "adSpendBudget": "Ad Spend Budget",
+      "actualSpend": "Actual Spend",
+      "budgetVariancePercent": "Budget Variance %",
+      "conversions": "Conversions",
+      "costPerConversion": "Cost/Conversion",
+      "campaignCount": "Campaigns",
+      "totalImpressions": "Impressions",
+      "totalClicks": "Clicks",
+      "totalConversions": "Conversions",
+      "ctrPercent": "CTR %",
+      "deliveredCount": "Delivered",
+      "daysOpen": "Days Open",
+      "slaThresholdDays": "SLA (days)",
+      "slaBreached": "SLA Breached",
+      "employeeName": "Employee",
+      "totalHours": "Total Hours",
+      "sprintNumber": "Sprint #",
+      "sprintName": "Sprint Name",
+      "milestoneStatus": "Milestone Status",
+      "milestoneAmount": "Milestone Amount",
+      "shootType": "Shoot Type",
+      "revisionRounds": "Revision Rounds",
+      "avgTicket": "Avg. Ticket",
+      "assetName": "Equipment",
+      "checkedOutToName": "Checked Out To",
+      "checkedOutDate": "Checked Out",
+      "expectedReturnDate": "Expected Return",
+      "daysOut": "Days Out",
+      "isOverdue": "Overdue",
+      "eventName": "Event",
+      "clientBudget": "Client Budget",
+      "totalVendorCost": "Total Vendor Cost",
+      "vendorName": "Vendor",
+      "ratedEventCount": "Rated Events",
+      "avgRating": "Avg. Rating"
     },
     "legend": {
       "schemeCost": "Costo del Esquema",
@@ -3797,6 +4175,26 @@
       "budgets": {
         "title": "Presupuestos",
         "body": "Defina un presupuesto mensual para un centro de costo, una cuenta específica o toda la empresa, y luego, después del mes, compruebe cómo se comparó el gasto real."
+      },
+      "jobSiteAccounts": {
+        "title": "Job-Site Accounts",
+        "body": "Open a running account for a contractor working one site — tag CREDIT invoices to it while billing and see the account's own running balance, separate from their general ledger."
+      },
+      "bulkListOrders": {
+        "title": "Bulk-List Orders",
+        "body": "Enter a school or office supply list as raw lines, match each to a catalog product and price, then bill the whole order in one shot once everything's matched."
+      },
+      "furnitureBookings": {
+        "title": "Furniture Bookings",
+        "body": "Book a made-to-order piece with a deposit, capture the customization, then generate the delivery invoice once it's ready — the advance is applied automatically."
+      },
+      "furnitureTradeIns": {
+        "title": "Furniture Trade-Ins",
+        "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
+      },
+      "scheduledDeliveries": {
+        "title": "Scheduled Deliveries",
+        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
       }
     }
   },
@@ -4936,6 +5334,10 @@
       "saving": "Guardando...",
       "updateOrder": "Actualizar Pedido",
       "createOrder": "Crear Pedido"
+    },
+    "staleMeasurements": {
+      "title": "{{count}} order(s) may be using outdated measurements",
+      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
     }
   },
   "rental": {
@@ -5288,6 +5690,29 @@
     "empty": {
       "title": "No hay presupuesto para este mes",
       "body": "Defina un presupuesto para un centro de costo, una cuenta específica o toda la empresa — luego, a fin de mes, vea cómo se comparó el gasto real."
+    }
+  },
+  "serviceCombos": {
+    "title": "Service Combos",
+    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
+    "comboName": "Combo Name",
+    "services": "Services",
+    "comboPrice": "Combo Price",
+    "savings": "Savings",
+    "newCombo": "New Combo",
+    "editCombo": "Edit Combo",
+    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
+    "nameRequired": "Combo name is required.",
+    "priceRequired": "Combo price must be greater than zero.",
+    "needTwoServices": "A combo needs at least 2 distinct services.",
+    "selectServices": "Select Services",
+    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
+    "memberTotalHint": "Individual price total: {{amount}}",
+    "couldNotLoad": "Could not load service combos.",
+    "couldNotSave": "Could not save this service combo.",
+    "empty": {
+      "title": "No service combos yet",
+      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
     }
   }
 }

@@ -136,6 +136,16 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Old-Metal Exchange', path: '/jewellery/exchanges', icon: Repeat, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
   // Phase 67 §9.1 — Jewellery item 1
   { label: 'Gold Savings', path: '/jewellery/gold-savings', icon: PiggyBank, permissionKey: 'jewellery.view', requiredModule: 'jewellery_pricing' },
+  // Phase 69 — Electrical/Plumbing job-site contractor running accounts
+  { label: 'Job-Site Accounts', path: '/job-site-accounts', icon: HardHat, permissionKey: 'jobSiteAccount.view', requiredModule: 'job_site_accounts' },
+  // Phase 69 — Stationery institutional bulk/supply-list orders
+  { label: 'Bulk-List Orders', path: '/stationery/bulk-orders', icon: PackagePlus, permissionKey: 'bulkListOrder.view', requiredModule: 'bulk_list_order' },
+  // Phase 69 — Furniture deposit + balance booking
+  { label: 'Furniture Bookings', path: '/furniture/bookings', icon: CalendarClock, permissionKey: 'furnitureBooking.view', requiredModule: 'deposit_booking' },
+  // Phase 69 — Furniture old-item trade-in
+  { label: 'Furniture Trade-Ins', path: '/furniture/trade-ins', icon: Repeat, permissionKey: 'furnitureTradeIn.view', requiredModule: 'trade_in_exchange' },
+  // Phase 69 — Plumbing scheduled delivery for fragile sanitaryware
+  { label: 'Scheduled Deliveries', path: '/plumbing/scheduled-deliveries', icon: Send, permissionKey: 'billing.view', requiredModule: 'scheduled_delivery' },
   // Phase 25 — Dental
   { label: 'Recall Schedule', path: '/dental/recalls', icon: Smile, permissionKey: 'billing.view', requiredModule: 'dental_recall' },
   // Phase 67 — GP Clinic

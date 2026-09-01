@@ -1233,4 +1233,47 @@ export function register(handle: HandleFn): void {
     const data = await reportService.generateFeeDueUnderperformanceAlertReport()
     return { success: true, data }
   })
+
+  // Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals.
+  handle('reports:coilWastageYield', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateCoilWastageYieldReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:isiBisSafetyRegister', async () => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const data = await reportService.generateIsiBisSafetyRegisterReport()
+    return { success: true, data }
+  })
+
+  handle('reports:seasonalDemandForecast', async () => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const data = await reportService.generateSeasonalDemandForecastReport()
+    return { success: true, data }
+  })
+
+  handle('reports:institutionalOrderHistory', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateInstitutionalOrderHistoryReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:locationStockSplit', async () => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const data = await reportService.generateLocationStockSplitReport()
+    return { success: true, data }
+  })
+
+  handle('reports:deliveryInstallationSchedule', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateDeliveryInstallationScheduleReport(parsed.data)
+    return { success: true, data }
+  })
 }

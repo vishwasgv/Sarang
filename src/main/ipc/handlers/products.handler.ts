@@ -2,6 +2,7 @@ import * as productService from '../../services/product.service'
 import * as categoryService from '../../services/category.service'
 import * as barcodeService from '../../services/barcode.service'
 import { kitService } from '../../services/kit.service'
+import { suggestKitComponents } from '../../services/job-kit.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import {
@@ -183,5 +184,13 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('products.update'); if (deny) return deny
     const bad = validateId(kitProductId, 'kit product ID'); if (bad) return bad
     return kitService.clearKit(kitProductId as string, getCurrentSession()?.userId)
+  })
+
+  // Phase 69 — Electrical wow feature: Job Kit Builder suggestion query.
+  handle('products:suggestKitComponents', async (payload) => {
+    const deny = await requirePermission('products.view'); if (deny) return deny
+    const { anchorProductId, limit } = payload as { anchorProductId?: string; limit?: number }
+    const bad = validateId(anchorProductId, 'anchor product ID'); if (bad) return bad
+    return suggestKitComponents(anchorProductId as string, limit)
   })
 }

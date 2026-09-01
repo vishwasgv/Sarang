@@ -8,6 +8,7 @@ import { Button } from '@shared/ui/atoms/Button'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
+import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 
@@ -121,6 +122,11 @@ export function SerialTrackingScreen() {
   // wants the repair workflow (e.g. Phase 49 Agri equipment) — gate the
   // per-row entry point on the module flag, same convention as imeiEnabled.
   const repairRmaEnabled = useIndustryStore(s => s.isModuleEnabled('repair_rma'))
+  // Phase 69 §11 — Installation Warranty Transfer. Gated on the job-site-
+  // accounts module (the actual "buyer differs from installed-site" scenario
+  // this feature addresses) rather than a hardcoded businessType, so it
+  // reaches Electrical too, not only Plumbing.
+  const jobSiteAccountsEnabled = useIndustryStore(s => s.isModuleEnabled('job_site_accounts'))
   const [serials, setSerials] = useState<SerialRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -137,6 +143,13 @@ export function SerialTrackingScreen() {
   const [serviceLookupSearch, setServiceLookupSearch] = useState('')
   const [serviceLookupResult, setServiceLookupResult] = useState<ServiceLookupResult | null>(null)
   const [serviceLookupNotFound, setServiceLookupNotFound] = useState(false)
+  // Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer.
+  const [warrantySearch, setWarrantySearch] = useState('')
+  const [warrantyResult, setWarrantyResult] = useState<ServiceLookupResult | null>(null)
+  const [warrantyNotFound, setWarrantyNotFound] = useState(false)
+  const [warrantyCustomer, setWarrantyCustomer] = useState<CustomerLite | null>(null)
+  const [warrantyAddress, setWarrantyAddress] = useState('')
+  const [transferring, setTransferring] = useState(false)
   const [form, setForm] = useState<SerialFormState>({
     productId: '', serialNumber: '', imeiNumber: '', imei2Number: '',
     warrantyMonths: '', purchaseDate: '', unitCost: ''
@@ -201,6 +214,41 @@ export function SerialTrackingScreen() {
     } catch {
       setServiceLookupResult(null)
       setServiceLookupNotFound(true)
+    }
+  }
+
+  async function handleWarrantySearch() {
+    if (!warrantySearch.trim()) return
+    try {
+      const res = await window.api.repairTickets.lookupSerialService({ search: warrantySearch.trim() })
+      if (res.success) {
+        setWarrantyResult(res.data as ServiceLookupResult)
+        setWarrantyNotFound(false)
+      } else {
+        setWarrantyResult(null)
+        setWarrantyNotFound(true)
+      }
+    } catch {
+      setWarrantyResult(null)
+      setWarrantyNotFound(true)
+    }
+  }
+
+  async function handleTransferWarranty() {
+    if (!warrantyResult || !warrantyCustomer) return
+    setTransferring(true)
+    try {
+      const res = await window.api.serials.transferInstallationWarranty({
+        serialId: warrantyResult.serial.id, customerId: warrantyCustomer.id, installationAddress: warrantyAddress.trim() || undefined
+      })
+      if (res.success) {
+        toastSuccess('Warranty Transferred', `Installation warranty for S/N ${warrantyResult.serial.serialNumber} now attributed to ${warrantyCustomer.customerName}.`)
+        setWarrantyResult(null); setWarrantySearch(''); setWarrantyCustomer(null); setWarrantyAddress('')
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not transfer warranty.')
+      }
+    } finally {
+      setTransferring(false)
     }
   }
 
@@ -472,6 +520,51 @@ export function SerialTrackingScreen() {
                   ))}
                 </div>
               </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Phase 69 §11 — Plumbing wow feature: Installation Warranty
+          Transfer. Re-attributes a sold unit's warranty to whoever the
+          installation is actually for (often not the buyer — a contractor
+          bought it on a job-site account, installs it at the homeowner's
+          site). English-only for now, same deliberate scope-fork convention
+          as the rest of Phase 69's new UI. */}
+      {jobSiteAccountsEnabled && (
+        <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
+          <p className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2"><History size={16} /> Installation Warranty Transfer</p>
+          <div className="flex gap-3">
+            <input value={warrantySearch} onChange={e => setWarrantySearch(e.target.value)}
+              onKeyDown={e => e.key === 'Enter' && handleWarrantySearch()}
+              placeholder="Search by serial number"
+              className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+            <Button size="md" variant="outline" onClick={handleWarrantySearch}>
+              <Search size={16} className="me-1.5" /> {t('common.search')}
+            </Button>
+          </div>
+          {warrantyNotFound && <p className="text-sm text-danger">No unit found with this serial number.</p>}
+          {warrantyResult && (
+            <div className="bg-white dark:bg-slate-900 border border-brand/30 rounded-lg p-4 space-y-3">
+              <div className="space-y-1">
+                <p className="text-base font-semibold text-dark dark:text-slate-100">{warrantyResult.serial.productName}</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">S/N: {warrantyResult.serial.serialNumber}</p>
+                {warrantyResult.serial.warrantyExpiryDate && <p className="text-sm text-slate-500 dark:text-slate-400">Warranty until {formatDate(new Date(warrantyResult.serial.warrantyExpiryDate))}</p>}
+                {warrantyResult.purchase?.customerName && <p className="text-sm text-slate-500 dark:text-slate-400">Originally purchased by: {warrantyResult.purchase.customerName}</p>}
+              </div>
+              {warrantyResult.serial.status !== 'SOLD' ? (
+                <p className="text-sm text-slate-400">Only a sold unit can have its installation warranty transferred.</p>
+              ) : (
+                <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2">
+                  <CustomerPicker value={warrantyCustomer} onChange={setWarrantyCustomer} label="Transfer warranty to" />
+                  <input value={warrantyAddress} onChange={e => setWarrantyAddress(e.target.value)}
+                    placeholder="Installation address (optional)"
+                    className="w-full h-10 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                  <Button size="sm" onClick={handleTransferWarranty} loading={transferring} disabled={!warrantyCustomer}>
+                    Transfer Warranty
+                  </Button>
+                </div>
+              )}
             </div>
           )}
         </div>

@@ -9880,3 +9880,175 @@ describe('reportService.generateVendorPerformanceHistoryReport', () => {
     expect(result.summary).toEqual({ totalRatedVendors: 0, overallAvgRating: 0 })
   })
 })
+
+// ─── Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals ───
+
+describe('reportService.generateCoilWastageYieldReport', () => {
+  it('computes yield% as sold/received and estimated wastage as received - sold + recorded adjustment', async () => {
+    const db = {
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', productName: '2.5mm Wire', sku: 'W25', lengthUnit: 'M' }]) },
+      inventoryMovement: {
+        groupBy: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', movementType: 'PURCHASE', _sum: { quantity: 100 } },
+          { productId: 'prod-1', movementType: 'ADJUSTMENT', _sum: { quantity: -5 } }, // recorded wastage write-off
+        ]),
+      },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', quantity: 80, invoice: { invoiceType: 'SALE' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCoilWastageYieldReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ receivedQty: 100, soldQty: 80, recordedAdjustment: -5, yieldPercent: 80, estimatedWastageQty: 15 })
+  })
+
+  it('returns an honest empty result when no sellByLength products exist', async () => {
+    const db = { product: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCoilWastageYieldReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalReceived: 0, totalSold: 0, avgYieldPercent: 0 })
+  })
+
+  it('sign-corrects RETURN invoice lines the same way every other report does', async () => {
+    const db = {
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', productName: 'Wire', sku: null, lengthUnit: 'M' }]) },
+      inventoryMovement: { groupBy: vi.fn().mockResolvedValue([{ productId: 'prod-1', movementType: 'PURCHASE', _sum: { quantity: 50 } }]) },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', quantity: 30, invoice: { invoiceType: 'SALE' } },
+          { productId: 'prod-1', quantity: 10, invoice: { invoiceType: 'RETURN' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCoilWastageYieldReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows[0].soldQty).toBe(20) // 30 sold - 10 returned
+  })
+})
+
+describe('reportService.generateIsiBisSafetyRegisterReport', () => {
+  it('surfaces every serial as a traceability row with product/status/dates', async () => {
+    const db = {
+      productSerial: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 's1', productId: 'prod-1', serialNumber: 'SN-001', status: 'SOLD', purchaseDate: new Date('2024-01-01'), warrantyMonths: 12, soldDate: new Date('2024-02-01'), invoiceId: 'inv-1', product: { productName: 'MCB 32A', sku: 'MCB32' } },
+          { id: 's2', productId: 'prod-1', serialNumber: 'SN-002', status: 'AVAILABLE', purchaseDate: new Date('2024-01-01'), warrantyMonths: 12, soldDate: null, invoiceId: null, product: { productName: 'MCB 32A', sku: 'MCB32' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateIsiBisSafetyRegisterReport()
+
+    expect(result.summary).toEqual({ totalUnits: 2, soldUnits: 1, availableUnits: 1 })
+    expect(result.rows[0]).toMatchObject({ serialNumber: 'SN-001', productName: 'MCB 32A', status: 'SOLD' })
+  })
+})
+
+describe('reportService.generateSeasonalDemandForecastReport', () => {
+  it('aggregates all-time sales by calendar month and flags the peak month', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { quantity: 10, lineTotal: 1000, invoice: { invoiceType: 'SALE', invoiceDate: new Date('2024-06-01') } },
+          { quantity: 50, lineTotal: 5000, invoice: { invoiceType: 'SALE', invoiceDate: new Date('2023-06-15') } }, // same month, different year
+          { quantity: 5, lineTotal: 500, invoice: { invoiceType: 'SALE', invoiceDate: new Date('2024-01-01') } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSeasonalDemandForecastReport()
+
+    expect(result.peakMonth).toBe(6) // June — 10 + 50 = 60 units, more than January's 5
+    expect(result.rows.find(r => r.month === 6)?.unitsSold).toBe(60)
+    expect(result.summary.totalUnitsSold).toBe(65)
+  })
+
+  it('returns null peakMonth when there is no sales history at all', async () => {
+    const db = { invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSeasonalDemandForecastReport()
+
+    expect(result.peakMonth).toBeNull()
+    expect(result.rows.length).toBe(12) // every calendar month still present, just zeroed
+  })
+})
+
+describe('reportService.generateInstitutionalOrderHistoryReport', () => {
+  it('computes each order\'s total value from its matched items', async () => {
+    const db = {
+      bulkListOrder: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'blo-1', orderNumber: 'BLO-00001', listName: 'Grade 5 Booklist', status: 'BILLED',
+            customerName: null, createdAt: new Date('2024-08-01'),
+            customer: { customerName: 'DPS School' },
+            items: [{ unitPrice: 50, requestedQty: 10 }, { unitPrice: 20, requestedQty: 5 }],
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateInstitutionalOrderHistoryReport({ dateFrom: '2024-08-01', dateTo: '2024-08-31' })
+
+    expect(result.rows[0]).toMatchObject({ institutionName: 'DPS School', itemCount: 2, totalValue: 600 })
+    expect(result.summary).toMatchObject({ totalOrders: 1, billedOrders: 1, totalValue: 600 })
+  })
+})
+
+describe('reportService.generateLocationStockSplitReport', () => {
+  it('pivots LocationStock into one row per product with a per-location breakdown', async () => {
+    const db = {
+      location: { findMany: vi.fn().mockResolvedValue([{ id: 'loc-showroom', name: 'Showroom' }, { id: 'loc-warehouse', name: 'Warehouse' }]) },
+      locationStock: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', locationId: 'loc-showroom', quantity: 3, product: { id: 'prod-1', productName: 'Sofa Set', sku: 'SOFA1' }, location: { id: 'loc-showroom', name: 'Showroom' } },
+          { productId: 'prod-1', locationId: 'loc-warehouse', quantity: 12, product: { id: 'prod-1', productName: 'Sofa Set', sku: 'SOFA1' }, location: { id: 'loc-warehouse', name: 'Warehouse' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLocationStockSplitReport()
+
+    expect(result.rows[0].totalQty).toBe(15)
+    expect(result.rows[0].byLocation).toEqual(expect.arrayContaining([
+      { locationId: 'loc-showroom', locationName: 'Showroom', quantity: 3 },
+      { locationId: 'loc-warehouse', locationName: 'Warehouse', quantity: 12 },
+    ]))
+  })
+})
+
+describe('reportService.generateDeliveryInstallationScheduleReport', () => {
+  it('lists FurnitureBookings within the delivery-date range with computed item totals', async () => {
+    const db = {
+      furnitureBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'fbk-1', bookingNumber: 'FBK-00001', deliveryDate: new Date('2024-09-10'), deliveryAddress: '12 MG Road', status: 'BOOKED',
+            customer: { customerName: 'Ramesh' },
+            items: [{ quantity: 2, unitPrice: 3000 }],
+          },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeliveryInstallationScheduleReport({ dateFrom: '2024-09-01', dateTo: '2024-09-30' })
+
+    expect(result.rows[0]).toMatchObject({ bookingNumber: 'FBK-00001', customerName: 'Ramesh', itemCount: 1, totalValue: 6000 })
+    expect(result.summary).toEqual({ totalBookings: 1, deliveredCount: 0, pendingCount: 1 })
+  })
+})

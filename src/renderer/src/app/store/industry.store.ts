@@ -119,6 +119,18 @@ export type TemplateModule =
   | 'loyalty_program'
   // Phase 67 §9.1 — General: Custom Document Builder.
   | 'custom_documents'
+  // Phase 69 §11 — four new verticals (Electrical/Plumbing/Stationery/
+  // Furniture). See industry-template.service.ts's matching comments for
+  // what each flag does — kept byte-for-byte in sync with that file's own
+  // TemplateModule union, same manual-sync convention this whole union
+  // already follows.
+  | 'length_billing'
+  | 'job_site_accounts'
+  | 'scheduled_delivery'
+  | 'bulk_list_order'
+  | 'print_service_billing'
+  | 'deposit_booking'
+  | 'trade_in_exchange'
 
 interface IndustryState {
   businessType: string

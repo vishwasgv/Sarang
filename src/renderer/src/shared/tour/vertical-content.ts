@@ -168,7 +168,13 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   // 4 new report screens live inside the already-toured universal Reports
   // screen instead of getting their own entries.
   { path: '/cost-centres', key: 'costCentres' },
-  { path: '/budgets', key: 'budgets' }
+  { path: '/budgets', key: 'budgets' },
+  // Phase 69 — Electrical/Plumbing/Stationery/Furniture new verticals.
+  { path: '/job-site-accounts', key: 'jobSiteAccounts' },
+  { path: '/stationery/bulk-orders', key: 'bulkListOrders' },
+  { path: '/furniture/bookings', key: 'furnitureBookings' },
+  { path: '/furniture/trade-ins', key: 'furnitureTradeIns' },
+  { path: '/plumbing/scheduled-deliveries', key: 'scheduledDeliveries' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(

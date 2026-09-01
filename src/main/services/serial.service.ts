@@ -385,6 +385,34 @@ export async function listEquipmentDueForService(dueSoonDays = 14): Promise<{ su
   }
 }
 
+// Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer.
+// Re-attributes an already-sold unit's warranty to whoever actually lives
+// with the installation (often not the buyer — a contractor bought it on
+// a job-site account, installs it at the homeowner's site) so a future
+// warranty claim resolves against the right customer record.
+export async function transferInstallationWarranty(
+  payload: { serialId: string; customerId: string; installationAddress?: string },
+  userId?: string
+): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const existing = await db.productSerial.findUnique({ where: { id: payload.serialId } })
+    if (!existing) return { success: false, error: { code: 'SER-013', message: 'Unit not found.' } }
+    if (existing.status !== 'SOLD') return { success: false, error: { code: 'SER-014', message: 'Only a sold unit can have its installation warranty transferred.' } }
+    const customer = await db.customer.findUnique({ where: { id: payload.customerId } })
+    if (!customer) return { success: false, error: { code: 'CUST-001', message: 'Customer not found.' } }
+
+    await db.productSerial.update({
+      where: { id: payload.serialId },
+      data: { installedCustomerId: payload.customerId, installedAt: new Date(), installationAddress: payload.installationAddress ?? null }
+    })
+    await logAction({ userId, action: 'INSTALLATION_WARRANTY_TRANSFERRED', entityType: 'ProductSerial', entityId: payload.serialId, newValue: { installedCustomerId: payload.customerId } })
+    return { success: true }
+  } catch (err) {
+    return { success: false, error: { code: 'SER-015', message: err instanceof Error ? err.message : 'Could not transfer installation warranty.' } }
+  }
+}
+
 export async function scheduleEquipmentServiceReminder(
   serialId: string,
   daysBefore = 3

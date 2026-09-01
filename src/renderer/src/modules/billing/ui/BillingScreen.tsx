@@ -20,6 +20,7 @@ interface Product {
   unavailableUntil?: string | null
   inventory?: { quantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
+  sellByLength?: boolean; lengthUnit?: string | null; pricePerLengthUnit?: number | null
   metalType?: string | null; purity?: string | null; netWeight?: number | null
   makingChargeType?: string | null; makingChargeValue?: number | null
   hallmarkNumber?: string | null
@@ -51,6 +52,7 @@ interface CartItem {
   serialId?: string
   serialInfo?: string
   weightUnit?: string
+  lengthUnit?: string
   // Phase 38: set only for a weight-embedded scan — lets addLooseWeightItem
   // detect an accidental double-scan of the exact same physical label.
   scannedBarcode?: string
@@ -160,6 +162,10 @@ export function BillingScreen() {
   // at checkout. Any of the three turns scanning on.
   const barcodeScanEnabled = isModuleEnabled('barcode_generation') || isModuleEnabled('barcode_printing') || isModuleEnabled('loose_billing')
   const jewelleryPricingEnabled = isModuleEnabled('jewellery_pricing')
+  // Phase 69 — Electrical/Plumbing job-site accounts, Plumbing scheduled delivery.
+  const jobSiteAccountsEnabled = isModuleEnabled('job_site_accounts')
+  const scheduledDeliveryEnabled = isModuleEnabled('scheduled_delivery')
+  const furnitureTradeInEnabled = isModuleEnabled('trade_in_exchange')
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
 
@@ -183,6 +189,13 @@ export function BillingScreen() {
   const [showTipModal, setShowTipModal] = useState(false)
   const [tipAmount, setTipAmount] = useState('')
   const [addingTip, setAddingTip] = useState(false)
+  // Phase 69 — Stationery print/photocopy/binding quick-add.
+  const printServiceBillingEnabled = isModuleEnabled('print_service_billing')
+  const [showServiceModal, setShowServiceModal] = useState(false)
+  const [serviceName, setServiceName] = useState('B&W Print (per page)')
+  const [serviceQty, setServiceQty] = useState('1')
+  const [servicePrice, setServicePrice] = useState('')
+  const [addingService, setAddingService] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [globalDiscount, setGlobalDiscount] = useState(0)
   // Phase 58 §2 — Jewellery old-metal exchange, applied atomically via
@@ -190,6 +203,16 @@ export function BillingScreen() {
   // "type the same number into globalDiscount, then separately link"
   // two-step manual process.
   const [selectedExchange, setSelectedExchange] = useState<{ id: string; exchangeNumber: string; valueGiven: number } | null>(null)
+  // Phase 69 — Furniture old-item trade-in, applied atomically the same way
+  // as the jewellery exchange above (billing.service.ts's furnitureTradeInId).
+  // Fixes a real gap found via E2E: FurnitureTradeInScreen's "Mark Applied"
+  // only links a record after the fact — it never itself discounts an
+  // invoice, so without this picker there was no way to actually apply a
+  // trade-in credit to a real sale.
+  const [selectedTradeIn, setSelectedTradeIn] = useState<{ id: string; tradeInNumber: string; tradeInValue: number } | null>(null)
+  const [showTradeInPicker, setShowTradeInPicker] = useState(false)
+  const [tradeInSearch, setTradeInSearch] = useState('')
+  const [tradeInResults, setTradeInResults] = useState<Array<{ id: string; tradeInNumber: string; tradeInValue: number; customerName: string | null; customer?: { customerName: string } | null }>>([])
   // Phase 58 §2 — optional payment due date for CREDIT sales
   const [dueDate, setDueDate] = useState('')
   // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
@@ -212,6 +235,11 @@ export function BillingScreen() {
   // Phase 61 — lives on Invoice directly, independent of the opt-in
   // Logistics module (which only tracks it at shipment level).
   const [ewayBillNumber, setEwayBillNumber] = useState('')
+  // Phase 69 — Electrical/Plumbing job-site account tag + Plumbing scheduled delivery.
+  const [jobSiteAccountId, setJobSiteAccountId] = useState('')
+  const [jobSiteAccounts, setJobSiteAccounts] = useState<Array<{ id: string; accountName: string }>>([])
+  const [scheduledDeliveryDate, setScheduledDeliveryDate] = useState('')
+  const [deliveryAddress, setDeliveryAddress] = useState('')
   // Phase 65 — Reporting Tags / Cost & Profit Centres. Self-hides when zero
   // cost centres exist yet, same convention as Price List's own picker.
   const [costCentres, setCostCentres] = useState<{ id: string; name: string }[]>([])
@@ -295,7 +323,7 @@ export function BillingScreen() {
   // billing.service.ts's createInvoice computes server-side (globalDiscount
   // + the exchange's valueGiven), so what the cashier sees before submit is
   // what actually gets charged.
-  const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0)
+  const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0) + (selectedTradeIn?.tradeInValue ?? 0)
   const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount), [cart, effectiveGlobalDiscount])
 
   // Phase 63 — re-evaluate scheme suggestions whenever the cart's real
@@ -623,6 +651,16 @@ export function BillingScreen() {
     })
   }, [cropSeasonId])
 
+  // Phase 69 — Electrical/Plumbing job-site accounts belong to a specific
+  // contractor Customer, so the picker is only meaningful once that customer
+  // is selected on a CREDIT sale.
+  useEffect(() => {
+    if (!jobSiteAccountsEnabled || paymentMethod !== 'CREDIT' || !customer) { setJobSiteAccounts([]); setJobSiteAccountId(''); return }
+    window.api.jobSiteAccount.list({ contractorId: customer.id, status: 'ACTIVE' }).then(res => {
+      if (res.success) setJobSiteAccounts((res.data as Array<{ id: string; accountName: string }>) ?? [])
+    })
+  }, [jobSiteAccountsEnabled, paymentMethod, customer])
+
   async function reloadCropSeasons() {
     const res = await window.api.cropSeason.list()
     if (res.success) setCropSeasons(res.data ?? [])
@@ -733,6 +771,41 @@ export function BillingScreen() {
     }
   }
 
+  async function handleConfirmService() {
+    const qty = Number(serviceQty)
+    const price = Number(servicePrice)
+    if (!serviceName.trim()) { toastError(t('common.error'), 'Enter a service name.'); return }
+    if (!Number.isFinite(qty) || qty <= 0) { toastError(t('common.error'), 'Enter a valid quantity.'); return }
+    if (!Number.isFinite(price) || price < 0) { toastError(t('common.error'), 'Enter a valid price.'); return }
+    setAddingService(true)
+    try {
+      const res = await window.api.billing.getOrCreateServiceProduct({ name: serviceName.trim() })
+      if (!res.success) {
+        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        return
+      }
+      const serviceProduct = res.data as Product
+      setCart(prev => [...prev, {
+        productId: serviceProduct.id,
+        productName: serviceProduct.productName,
+        unit: serviceProduct.unit,
+        productType: serviceProduct.productType,
+        quantity: qty,
+        unitPrice: price,
+        discountAmount: 0,
+        taxRate: serviceProduct.taxRate ?? 0,
+        availableQty: 0,
+      }])
+      setShowServiceModal(false)
+      setServicePrice('')
+      setServiceQty('1')
+    } catch {
+      toastError(t('common.error'), t('common.error'))
+    } finally {
+      setAddingService(false)
+    }
+  }
+
   // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow. Records the
   // session first (the actual analytics deliverable), then — only if the
   // customer bought one of the tried pairs — adds it to the cart via the
@@ -785,6 +858,11 @@ export function BillingScreen() {
     // Default to 1 of the configured weightUnit — a real, sane, editable
     // starting point the cashier adjusts via the 0.1-stepped quantity field.
     const isLoose = product.sellByWeight && product.weightUnit && product.pricePerWeightUnit != null
+    // Phase 69 §11 — length-based billing (Electrical/Plumbing wire/pipe off
+    // a coil). Structural mirror of isLoose above — same "loose OR fixed,
+    // never both" reasoning, added as its own separate flag rather than
+    // folded into isLoose since the two never overlap on one product.
+    const isLengthSold = product.sellByLength && product.lengthUnit && product.pricePerLengthUnit != null
     // Fresh-audit build (2026-07-12) — Jewellery. A jewellery item's real
     // price is netWeight × today's metal rate + making charge, computed at
     // billing time (the rate fluctuates daily) — Product.sellingPrice is
@@ -799,17 +877,17 @@ export function BillingScreen() {
       // A prescription line always gets its own new cart entry — never
       // silently merged into an existing one, since two prescriptions for
       // the same drug shouldn't be combined into one anonymized quantity.
-      const existing = !serialId && !isLoose && !isJewellery && !rxDetail && prev.find(i => (i.variantId ?? i.productId) === cartKey)
+      const existing = !serialId && !isLoose && !isLengthSold && !isJewellery && !rxDetail && prev.find(i => (i.variantId ?? i.productId) === cartKey)
       if (existing) {
         return prev.map(i => (i.variantId ?? i.productId) === cartKey ? { ...i, quantity: i.quantity + 1 } : i)
       }
       return [...prev, {
         productId: product.id,
         productName: product.productName,
-        unit: isLoose ? product.weightUnit! : product.unit,
+        unit: isLoose ? product.weightUnit! : isLengthSold ? product.lengthUnit! : product.unit,
         productType: product.productType,
         quantity: 1,
-        unitPrice: isLoose ? product.pricePerWeightUnit! : isJewellery ? 0 : product.sellingPrice + (variant?.additionalPrice ?? 0),
+        unitPrice: isLoose ? product.pricePerWeightUnit! : isLengthSold ? product.pricePerLengthUnit! : isJewellery ? 0 : product.sellingPrice + (variant?.additionalPrice ?? 0),
         discountAmount: 0,
         taxRate: product.taxRate ?? 0,
         availableQty: variant ? variant.stockQty : (product.inventory?.quantity ?? 0),
@@ -818,6 +896,7 @@ export function BillingScreen() {
         serialId,
         serialInfo,
         weightUnit: isLoose ? product.weightUnit! : undefined,
+        lengthUnit: isLengthSold ? product.lengthUnit! : undefined,
         isJewellery,
         prescriptionPatientName: rxDetail?.patientName,
         prescriptionDoctorName: rxDetail?.doctorName,
@@ -826,6 +905,9 @@ export function BillingScreen() {
     })
     if (isLoose) {
       toastSuccess('Loose Item Added', `${product.productName} added at 1 ${product.weightUnit} — adjust the quantity to the actual weight before checkout.`)
+    }
+    if (isLengthSold) {
+      toastSuccess('Length Item Added', `${product.productName} added at 1 ${product.lengthUnit} — adjust the quantity to the actual length before checkout.`)
     }
     if (isJewellery) {
       void loadJewelleryPriceForCartLine(product, cartKey)
@@ -843,10 +925,10 @@ export function BillingScreen() {
     // already checks both. Skipped for loose/jewellery lines (already have
     // their own pricing formula) and when no customer is selected yet (a
     // walk-in sale has no counterparty to resolve against).
-    if (customer?.id && !isLoose && !isJewellery && product.productType === 'STANDARD') {
+    if (customer?.id && !isLoose && !isLengthSold && !isJewellery && product.productType === 'STANDARD') {
       void loadResolvedPriceForCartLine(customer.id, product.id, cartKey)
     }
-    if (batchTrackingEnabled && product.productType === 'STANDARD' && !isLoose) {
+    if (batchTrackingEnabled && product.productType === 'STANDARD' && !isLoose && !isLengthSold) {
       void loadBatchInfoForCartLine(product.id, cartKey)
     }
     setProductQuery('')
@@ -968,6 +1050,16 @@ export function BillingScreen() {
       if (res.success && res.data) setExchangeResults(res.data as typeof exchangeResults)
     })
   }, [showExchangePicker])
+
+  // Phase 69 — Furniture trade-in picker, mirrors the jewellery exchange
+  // picker above exactly (not scoped to the current customer alone — a
+  // walk-in trade-in has no Customer record to match against).
+  useEffect(() => {
+    if (!showTradeInPicker) return
+    window.api.furnitureTradeIn.list({ unlinkedOnly: true }).then(res => {
+      if (res.success && res.data) setTradeInResults(res.data as typeof tradeInResults)
+    })
+  }, [showTradeInPicker])
 
   // Phase 38: a scanned weight-embedded label always adds a brand-new line —
   // each label represents one physically weighed-and-priced parcel, so unlike
@@ -1113,6 +1205,7 @@ export function BillingScreen() {
           variantInfo: i.variantInfo,
           serialId: i.serialId,
           weightUnit: i.weightUnit,
+          lengthUnit: i.lengthUnit,
           jewelleryMetalType: i.jewelleryDetail?.metalType,
           jewelleryPurity: i.jewelleryDetail?.purity,
           jewelleryNetWeight: i.jewelleryDetail?.netWeight,
@@ -1134,12 +1227,16 @@ export function BillingScreen() {
         gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
+        furnitureTradeInId: selectedTradeIn?.id,
         dueDate: paymentMethod === 'CREDIT' && dueDate ? dueDate : undefined,
         // Phase 67 §9.1 — Agri Inputs item 1: when a season is linked,
         // billing.service.ts recomputes the real dueDate server-side from
         // it, overriding whatever's in the manual dueDate field above.
         cropSeasonId: paymentMethod === 'CREDIT' && isAgriInputs && cropSeasonId ? cropSeasonId : undefined,
-        tableIds: tableId ? [tableId] : undefined
+        tableIds: tableId ? [tableId] : undefined,
+        jobSiteAccountId: paymentMethod === 'CREDIT' && jobSiteAccountId ? jobSiteAccountId : undefined,
+        scheduledDeliveryDate: scheduledDeliveryEnabled && scheduledDeliveryDate ? scheduledDeliveryDate : undefined,
+        deliveryAddress: scheduledDeliveryEnabled && scheduledDeliveryDate && deliveryAddress.trim() ? deliveryAddress.trim() : undefined
       })
 
       if (res.success) {
@@ -1192,7 +1289,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -1312,6 +1409,15 @@ export function BillingScreen() {
           >
             <HandCoins size={13} /> {t('billing.addTipOrServiceCharge')}
           </button>
+
+          {printServiceBillingEnabled && (
+            <button
+              onClick={() => setShowServiceModal(true)}
+              className="mt-1 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors"
+            >
+              <HandCoins size={13} /> Add Print / Copy Service
+            </button>
+          )}
 
           {frequentProducts.length > 0 && productResults.length === 0 && (
             <div className="mt-3">
@@ -1609,19 +1715,19 @@ export function BillingScreen() {
                         kilogram. */}
                     <div className="flex flex-col items-center gap-1">
                       <div className="flex items-center gap-1">
-                        <button onClick={() => updateQty(ck, Math.round((item.quantity - (item.weightUnit ? 0.1 : 1)) * 1000) / 1000)}
+                        <button onClick={() => updateQty(ck, Math.round((item.quantity - ((item.weightUnit || item.lengthUnit) ? 0.1 : 1)) * 1000) / 1000)}
                           disabled={!!item.serialId || !!item.isJewellery}
                           className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-brand transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                           <Minus size={12} />
                         </button>
                         <input
-                          type="number" min="0.001" step={item.weightUnit ? '0.001' : '1'} value={item.quantity}
+                          type="number" min="0.001" step={(item.weightUnit || item.lengthUnit) ? '0.001' : '1'} value={item.quantity}
                           disabled={!!item.serialId || !!item.isJewellery}
-                          onChange={e => updateQty(ck, parseFloat(e.target.value) || (item.weightUnit ? 0.001 : 1))}
+                          onChange={e => updateQty(ck, parseFloat(e.target.value) || ((item.weightUnit || item.lengthUnit) ? 0.001 : 1))}
                           className="w-14 text-center text-sm font-semibold text-dark h-7 rounded border border-slate-200 focus:outline-none focus:ring-1 focus:ring-brand disabled:opacity-60"
                         />
-                        {item.weightUnit && <span className="text-xs text-slate-500">{item.weightUnit}</span>}
-                        <button onClick={() => updateQty(ck, Math.round((item.quantity + (item.weightUnit ? 0.1 : 1)) * 1000) / 1000)}
+                        {(item.weightUnit || item.lengthUnit) && <span className="text-xs text-slate-500">{item.weightUnit || item.lengthUnit}</span>}
+                        <button onClick={() => updateQty(ck, Math.round((item.quantity + ((item.weightUnit || item.lengthUnit) ? 0.1 : 1)) * 1000) / 1000)}
                           disabled={!!item.serialId || !!item.isJewellery}
                           className="w-7 h-7 rounded-lg border border-slate-200 flex items-center justify-center text-slate-500 hover:bg-slate-50 hover:border-brand transition-colors disabled:opacity-30 disabled:cursor-not-allowed">
                           <Plus size={12} />
@@ -1857,6 +1963,21 @@ export function BillingScreen() {
                 )}
               </div>
 
+              {/* Phase 69 — Electrical/Plumbing job-site/contractor running account. */}
+              {jobSiteAccountsEnabled && customer && (
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 uppercase mb-1">Job-Site Account ({t('common.optional')})</label>
+                  <select
+                    value={jobSiteAccountId}
+                    onChange={e => setJobSiteAccountId(e.target.value)}
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+                  >
+                    <option value="">None</option>
+                    {jobSiteAccounts.map(a => <option key={a.id} value={a.id}>{a.accountName}</option>)}
+                  </select>
+                </div>
+              )}
+
               {/* Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned
                   credit terms. Lets a shop link the invoice to a real
                   harvest occurrence instead of a flat 30/60/90-day count —
@@ -2011,6 +2132,51 @@ export function BillingScreen() {
                 >
                   {t('jewellery.applyExchange')}
                 </button>
+              )}
+            </div>
+          )}
+
+          {/* Phase 69 — Furniture old-item trade-in (applied atomically on checkout) */}
+          {furnitureTradeInEnabled && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">Apply Trade-In</p>
+              {selectedTradeIn ? (
+                <div className="flex items-center justify-between gap-2 border border-brand/30 bg-brand/5 rounded-xl px-3 py-2">
+                  <p className="text-xs text-brand">{selectedTradeIn.tradeInNumber} — {formatCurrency(selectedTradeIn.tradeInValue)} credit applied</p>
+                  <button onClick={() => setSelectedTradeIn(null)} className="text-xs text-slate-400 hover:text-danger shrink-0">Remove</button>
+                </div>
+              ) : (
+                <button
+                  onClick={() => setShowTradeInPicker(true)}
+                  className="w-full h-9 px-3 rounded-xl border border-dashed border-slate-300 text-xs text-slate-500 hover:border-brand hover:text-brand transition-colors"
+                >
+                  Apply Trade-In
+                </button>
+              )}
+            </div>
+          )}
+
+          {/* Phase 69 — Plumbing scheduled delivery (fragile sanitaryware). */}
+          {scheduledDeliveryEnabled && (
+            <div className="space-y-2 p-3 rounded-xl bg-brand/5 border border-brand/20">
+              <p className="text-xs font-semibold text-brand">Scheduled Delivery ({t('common.optional')})</p>
+              <div>
+                <label className="block text-[11px] text-slate-500 mb-1">Delivery Date</label>
+                <input
+                  type="date" value={scheduledDeliveryDate}
+                  onChange={e => setScheduledDeliveryDate(e.target.value)}
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+                />
+              </div>
+              {scheduledDeliveryDate && (
+                <div>
+                  <label className="block text-[11px] text-slate-500 mb-1">Delivery Address</label>
+                  <input
+                    value={deliveryAddress}
+                    onChange={e => setDeliveryAddress(e.target.value)}
+                    className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700"
+                  />
+                </div>
               )}
             </div>
           )}
@@ -2356,6 +2522,54 @@ export function BillingScreen() {
         </div>
       )}
 
+      {/* Phase 69 — Stationery print/photocopy/binding quick-add modal */}
+      {showServiceModal && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+            <h2 className="text-base font-bold text-dark dark:text-slate-100 flex items-center gap-2"><HandCoins size={18} /> Add Print / Copy Service</h2>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Service</label>
+              <select
+                value={serviceName}
+                onChange={e => setServiceName(e.target.value)}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              >
+                <option>B&W Print (per page)</option>
+                <option>Color Print (per page)</option>
+                <option>Photocopy (per page)</option>
+                <option>Binding</option>
+                <option>Lamination</option>
+              </select>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Quantity</label>
+                <input
+                  type="number" min="1" step="1" value={serviceQty}
+                  onChange={e => setServiceQty(e.target.value)}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">Price/Unit</label>
+                <input
+                  type="number" min="0" step="0.01" value={servicePrice}
+                  onChange={e => setServicePrice(e.target.value)}
+                  placeholder="e.g. 2"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  autoFocus
+                  onKeyDown={e => { if (e.key === 'Enter') handleConfirmService() }}
+                />
+              </div>
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowServiceModal(false); setServicePrice('') }}>{t('common.cancel')}</Button>
+              <Button className="flex-1" onClick={handleConfirmService} loading={addingService}>{t('billing.confirmAddToCart')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Phase 58 §2 — Jewellery old-metal exchange picker */}
       {showExchangePicker && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
@@ -2395,6 +2609,50 @@ export function BillingScreen() {
             </div>
             <div className="flex gap-3 pt-1">
               <Button variant="outline" className="flex-1" onClick={() => { setShowExchangePicker(false); setExchangeSearch('') }}>{t('common.cancel')}</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phase 69 — Furniture trade-in picker */}
+      {showTradeInPicker && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[80vh] overflow-y-auto">
+            <h2 className="text-base font-bold text-dark dark:text-slate-100">Apply Trade-In</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400">Select an unlinked trade-in to credit against this sale.</p>
+            <input
+              value={tradeInSearch}
+              onChange={e => setTradeInSearch(e.target.value)}
+              placeholder="Search by trade-in number or customer…"
+              className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+              autoFocus
+            />
+            <div className="space-y-2">
+              {tradeInResults
+                .filter(ti => {
+                  const q = tradeInSearch.trim().toLowerCase()
+                  if (!q) return true
+                  return ti.tradeInNumber.toLowerCase().includes(q) || (ti.customer?.customerName ?? ti.customerName ?? '').toLowerCase().includes(q)
+                })
+                .map(ti => (
+                  <button
+                    key={ti.id}
+                    onClick={() => { setSelectedTradeIn(ti); setShowTradeInPicker(false); setTradeInSearch('') }}
+                    className="w-full flex items-center justify-between border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-start hover:border-brand transition-colors"
+                  >
+                    <div>
+                      <p className="text-sm font-mono text-dark dark:text-slate-100">{ti.tradeInNumber}</p>
+                      <p className="text-xs text-slate-400">{ti.customer?.customerName ?? ti.customerName ?? '—'}</p>
+                    </div>
+                    <span className="text-sm font-semibold text-brand">{formatCurrency(ti.tradeInValue)}</span>
+                  </button>
+                ))}
+              {tradeInResults.length === 0 && (
+                <p className="text-xs text-slate-400 text-center py-4">No unlinked trade-ins found.</p>
+              )}
+            </div>
+            <div className="flex gap-3 pt-1">
+              <Button variant="outline" className="flex-1" onClick={() => { setShowTradeInPicker(false); setTradeInSearch('') }}>{t('common.cancel')}</Button>
             </div>
           </div>
         </div>

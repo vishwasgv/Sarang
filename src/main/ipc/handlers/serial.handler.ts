@@ -1,4 +1,4 @@
-import { listSerials, createSerial, bulkCreateSerials, updateSerialStatus, searchByImei, updateSerialServiceInfo, listEquipmentDueForService, scheduleEquipmentServiceReminder } from '../../services/serial.service'
+import { listSerials, createSerial, bulkCreateSerials, updateSerialStatus, searchByImei, updateSerialServiceInfo, listEquipmentDueForService, scheduleEquipmentServiceReminder, transferInstallationWarranty } from '../../services/serial.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { CreateSerialSchema, BulkCreateSerialsSchema, UpdateSerialStatusSchema } from '../../validation/serial.validation'
@@ -57,5 +57,13 @@ export function register(handle: HandleFn): void {
     const p = (payload ?? {}) as { serialId: string; daysBefore?: number }
     if (!p.serialId) return { success: false, error: { code: 'VAL-001', message: 'Serial ID is required.' } }
     return scheduleEquipmentServiceReminder(p.serialId, p.daysBefore)
+  })
+
+  // Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer.
+  handle('serials:transferInstallationWarranty', async (payload) => {
+    const deny = await requirePermission('inventory.adjustStock'); if (deny) return deny
+    const p = (payload ?? {}) as { serialId: string; customerId: string; installationAddress?: string }
+    if (!p.serialId || !p.customerId) return { success: false, error: { code: 'VAL-001', message: 'Serial ID and customer are required.' } }
+    return transferInstallationWarranty(p, getCurrentSession()?.userId)
   })
 }

@@ -2,7 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
-import { ImagePlus, X, Barcode as BarcodeIcon, Search, Plus } from 'lucide-react'
+import { ImagePlus, X, Barcode as BarcodeIcon, Search, Plus, Wand2 } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
@@ -59,6 +59,12 @@ const schema = z.object({
   sellByWeight: z.boolean().default(false),
   weightUnit: z.enum(['kg', 'g', 'L', 'mL']).optional(),
   pricePerWeightUnit: z.coerce.number().min(0).optional(),
+  // Phase 69 §11 — Electrical/Plumbing length-based billing (wire/pipe off a
+  // coil), structural mirror of sellByWeight above — its own parallel field
+  // trio, never combined with sellByWeight on one product.
+  sellByLength: z.boolean().default(false),
+  lengthUnit: z.enum(['M', 'FT']).optional(),
+  pricePerLengthUnit: z.coerce.number().min(0).optional(),
   // Phase 58 §2 — carton/box-to-loose-piece unit conversion.
   sellByPack: z.boolean().default(false),
   packUnit: z.string().max(20).optional(),
@@ -106,6 +112,10 @@ const schema = z.object({
     if (!data.weightUnit) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['weightUnit'], message: 'Select a unit for loose/weight-based selling.' })
     if (data.pricePerWeightUnit === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerWeightUnit'], message: 'Set a price per unit.' })
   }
+  if (data.sellByLength) {
+    if (!data.lengthUnit) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['lengthUnit'], message: 'Select a unit for length-based selling.' })
+    if (data.pricePerLengthUnit === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['pricePerLengthUnit'], message: 'Set a price per unit.' })
+  }
   if (data.sellByPack) {
     if (!data.packUnit?.trim()) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['packUnit'], message: 'Name the pack unit (e.g. BOX, CARTON).' })
     if (data.unitsPerPack === undefined) ctx.addIssue({ code: z.ZodIssueCode.custom, path: ['unitsPerPack'], message: 'Set how many base units are in 1 pack.' })
@@ -128,6 +138,7 @@ interface Category { id: string; name: string }
 interface Product {
   id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; mrp?: number | null; taxRate: number; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
+  sellByLength?: boolean; lengthUnit?: string | null; pricePerLengthUnit?: number | null
   sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null
   // Phase 64
   floatingUnitConversion?: boolean
@@ -229,6 +240,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   // Phase 38: opt-in, off by default for every business type — see
   // TEMPLATE_DEFAULTS in industry-template.service.ts.
   const looseBillingEnabled = isModuleEnabled('loose_billing')
+  const lengthBillingEnabled = isModuleEnabled('length_billing')
   const packBillingEnabled = isModuleEnabled('pack_billing')
   const barcodeGenerationEnabled = isModuleEnabled('barcode_generation')
   // Phase 48 — same flag CLOTHING/FOOTWEAR already default to, no new flag needed.
@@ -262,11 +274,13 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   const [kitRows, setKitRows] = useState<{ componentProductId: string; quantity: number }[]>([])
   const [kitCandidates, setKitCandidates] = useState<PickableProduct[]>([])
   const [savingKit, setSavingKit] = useState(false)
+  // Phase 69 — Electrical wow feature: Job Kit Builder suggestion.
+  const [suggestingKit, setSuggestingKit] = useState(false)
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
+    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByLength: false, sellByPack: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
   })
   const { businessType } = useIndustryStore()
   const isPharmacy = businessType === 'PHARMACY'
@@ -321,6 +335,33 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
     setKitRows(prev => prev.filter((_, i) => i !== index))
   }
 
+  // Phase 69 — Electrical wow feature: Job Kit Builder. Suggests companions
+  // from real co-purchase history and merges them into kitRows — the owner
+  // still reviews/edits/removes rows before Save Kit Components actually
+  // commits anything, same as every other row here.
+  async function suggestKitFromHistory() {
+    if (!product) return
+    setSuggestingKit(true)
+    try {
+      const res = await window.api.products.suggestKitComponents({ anchorProductId: product.id, limit: 8 })
+      if (!res.success) { toastError('Error', res.error?.message ?? 'Could not fetch suggestions.'); return }
+      const suggestions = (res.data as { suggestions: Array<{ productId: string; suggestedQuantity: number }> }).suggestions
+      if (suggestions.length === 0) { toastError('No Suggestions', 'No past orders paired this product with anything else yet.'); return }
+      setKitRows(prev => {
+        const existingIds = new Set(prev.map(r => r.componentProductId))
+        const merged = prev.filter(r => r.componentProductId)
+        for (const s of suggestions) {
+          if (!existingIds.has(s.productId)) merged.push({ componentProductId: s.productId, quantity: s.suggestedQuantity })
+        }
+        return merged
+      })
+    } catch {
+      toastError('Error', 'Could not fetch suggestions.')
+    } finally {
+      setSuggestingKit(false)
+    }
+  }
+
   async function saveKitComponents() {
     if (!product) return
     const valid = kitRows.filter(r => r.componentProductId && r.quantity > 0)
@@ -346,6 +387,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   const isPrescriptionRequiredWatch = watch('isPrescriptionRequired')
   const imagePath = watch('imagePath')
   const sellByWeight = watch('sellByWeight')
+  const sellByLength = watch('sellByLength')
   const sellByPack = watch('sellByPack')
   const valuationMethod = watch('valuationMethod')
   const currentBarcode = watch('barcode')
@@ -401,6 +443,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           sellByWeight: product.sellByWeight ?? false,
           weightUnit: (product.weightUnit as FormValues['weightUnit']) ?? undefined,
           pricePerWeightUnit: product.pricePerWeightUnit ?? undefined,
+          sellByLength: product.sellByLength ?? false,
+          lengthUnit: (product.lengthUnit as FormValues['lengthUnit']) ?? undefined,
+          pricePerLengthUnit: product.pricePerLengthUnit ?? undefined,
           sellByPack: product.sellByPack ?? false,
           packUnit: product.packUnit ?? undefined,
           unitsPerPack: product.unitsPerPack ?? undefined,
@@ -424,7 +469,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         setRateLines(product.rentalRates ?? [])
         setCustomFieldValues(parseCustomFields(product.customFields))
       } else {
-        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
+        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByLength: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
         setRateLines([])
         setCustomFieldValues({})
       }
@@ -630,6 +675,31 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           </div>
         )}
 
+        {/* Phase 69 §11 — Electrical/Plumbing length-based billing (wire/pipe
+            off a coil), structural mirror of the loose/weight-billing block
+            above. Opt-in, hidden entirely unless length_billing is on. */}
+        {lengthBillingEnabled && productType === 'STANDARD' && (
+          <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
+            <label className="flex items-center gap-2 cursor-pointer">
+              <input type="checkbox" {...register('sellByLength')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Sell this product by length, off a coil</span>
+            </label>
+            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. wire or pipe sold per metre instead of by the reel. Stock for this product is tracked directly in the unit below.</p>
+            {sellByLength && (
+              <div className="grid grid-cols-2 gap-4 mt-3 ms-6">
+                <div>
+                  <Select label="Unit *" {...register('lengthUnit')} error={errors.lengthUnit?.message}>
+                    <option value="">Select…</option>
+                    <option value="M">m</option>
+                    <option value="FT">ft</option>
+                  </Select>
+                </div>
+                <Input label="Price per Unit *" type="number" step="0.01" min="0" placeholder="e.g. 25 for ₹25/m" {...register('pricePerLengthUnit')} error={errors.pricePerLengthUnit?.message} />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Phase 58 §2 — carton/box-to-loose-piece unit conversion. Stock
             and sale are always in the base unit above; this only records
             how many base units a purchased pack contains, as a Stock
@@ -713,9 +783,16 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                   </div>
                 ))}
                 <div className="flex items-center justify-between pt-1">
-                  <button type="button" onClick={addKitRow} className="flex items-center gap-1 text-xs text-brand hover:underline">
-                    <Plus size={12} /> Add component
-                  </button>
+                  <div className="flex items-center gap-3">
+                    <button type="button" onClick={addKitRow} className="flex items-center gap-1 text-xs text-brand hover:underline">
+                      <Plus size={12} /> Add component
+                    </button>
+                    {lengthBillingEnabled && (
+                      <button type="button" onClick={suggestKitFromHistory} disabled={suggestingKit} className="flex items-center gap-1 text-xs text-brand hover:underline disabled:opacity-50">
+                        <Wand2 size={12} /> {suggestingKit ? 'Suggesting…' : 'Suggest from past orders'}
+                      </button>
+                    )}
+                  </div>
                   <Button type="button" variant="secondary" size="sm" onClick={saveKitComponents} loading={savingKit}>
                     Save Kit Components
                   </Button>

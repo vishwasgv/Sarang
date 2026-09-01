@@ -127,6 +127,12 @@ import { AiAssistantScreen } from '@modules/ai/ui/AiAssistantScreen'
 import { MetalRatesScreen } from '@modules/jewellery/ui/MetalRatesScreen'
 import { MetalExchangeScreen } from '@modules/jewellery/ui/MetalExchangeScreen'
 import { GoldSavingsScreen } from '@modules/jewellery/ui/GoldSavingsScreen'
+// Phase 69 — Electrical/Plumbing/Stationery/Furniture new verticals
+import { JobSiteAccountsScreen } from '@modules/jobsite/ui/JobSiteAccountsScreen'
+import { BulkListOrderScreen } from '@modules/stationery/ui/BulkListOrderScreen'
+import { FurnitureBookingScreen } from '@modules/furniture/ui/FurnitureBookingScreen'
+import { FurnitureTradeInScreen } from '@modules/furniture/ui/FurnitureTradeInScreen'
+import { ScheduledDeliveriesScreen } from '@modules/plumbing/ui/ScheduledDeliveriesScreen'
 // Phase 25 — Dental
 import { DentalPatientScreen } from '@modules/service-business/ui/DentalPatientScreen'
 import { RecallListScreen } from '@modules/service-business/ui/RecallListScreen'
@@ -411,6 +417,12 @@ export function AppRouter() {
         <Route path="/jewellery/metal-rates" element={<ProtectedRoute permission="jewellery.view"><MetalRatesScreen /></ProtectedRoute>} />
         <Route path="/jewellery/exchanges" element={<ProtectedRoute permission="jewellery.view"><MetalExchangeScreen /></ProtectedRoute>} />
         <Route path="/jewellery/gold-savings" element={<ProtectedRoute permission="jewellery.view"><GoldSavingsScreen /></ProtectedRoute>} />
+        {/* Phase 69 — Electrical/Plumbing/Stationery/Furniture new verticals */}
+        <Route path="/job-site-accounts" element={<ProtectedRoute permission="jobSiteAccount.view"><JobSiteAccountsScreen /></ProtectedRoute>} />
+        <Route path="/stationery/bulk-orders" element={<ProtectedRoute permission="bulkListOrder.view"><BulkListOrderScreen /></ProtectedRoute>} />
+        <Route path="/furniture/bookings" element={<ProtectedRoute permission="furnitureBooking.view"><FurnitureBookingScreen /></ProtectedRoute>} />
+        <Route path="/furniture/trade-ins" element={<ProtectedRoute permission="furnitureTradeIn.view"><FurnitureTradeInScreen /></ProtectedRoute>} />
+        <Route path="/plumbing/scheduled-deliveries" element={<ProtectedRoute permission="billing.view"><ScheduledDeliveriesScreen /></ProtectedRoute>} />
         {/* Phase 25 — Dental */}
         <Route path="/dental/patient/:patientId" element={<ProtectedRoute permission="clinicalNotes.view"><DentalPatientScreen /></ProtectedRoute>} />
         <Route path="/dental/recalls" element={<ProtectedRoute permission="billing.view"><RecallListScreen /></ProtectedRoute>} />
