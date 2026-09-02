@@ -14,7 +14,7 @@ const customerKindFields = {
 
 export const CreateCustomerSchema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
-  phone: z.string().max(30).optional(),
+  phone: z.string().min(1, 'Phone number is required').max(30),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   address: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
@@ -39,7 +39,7 @@ export const CreateCustomerSchema = z.object({
 export const UpdateCustomerSchema = z.object({
   id: z.string().min(1),
   customerName: z.string().min(1, 'Customer name is required').max(200),
-  phone: z.string().max(30).optional(),
+  phone: z.string().min(1, 'Phone number is required').max(30),
   email: z.string().email('Invalid email').optional().or(z.literal('')),
   address: z.string().max(500).optional(),
   city: z.string().max(100).optional(),

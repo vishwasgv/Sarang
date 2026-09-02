@@ -49,8 +49,8 @@ async function run() {
       const cc2 = await page.evaluate(async (n) => window.api.costCentres.create({ name: n }), uptownName)
       downtownId = cc1?.data?.id
       uptownId = cc2?.data?.id
-      const custA = await page.evaluate(async (n) => window.api.customers.create({ customerName: n }), customerAName)
-      const custB = await page.evaluate(async (n) => window.api.customers.create({ customerName: n }), customerBName)
+      const custA = await page.evaluate(async (n) => window.api.customers.create({ customerName: n, phone: `9${String(Date.now()).slice(-9)}` }), customerAName)
+      const custB = await page.evaluate(async (n) => window.api.customers.create({ customerName: n, phone: `8${String(Date.now()).slice(-9)}` }), customerBName)
       customerAId = custA?.data?.id
       customerBId = custB?.data?.id
       const prod = await page.evaluate(async (n) => window.api.products.create({

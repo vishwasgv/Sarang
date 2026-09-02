@@ -337,7 +337,7 @@ async function run() {
     })
 
     await r.step('seed-loyalty-customer-and-product', async () => {
-      const custRes = await page.evaluate(() => window.api.customers.create({ customerName: 'E2E Retail Loyalty Customer' }))
+      const custRes = await page.evaluate(() => window.api.customers.create({ customerName: 'E2E Retail Loyalty Customer', phone: `9${String(Date.now()).slice(-9)}` }))
       loyaltyCustomerId = custRes?.data?.id
       r.log('loyalty-customer-created', !!custRes?.success, JSON.stringify(custRes?.error || ''))
 

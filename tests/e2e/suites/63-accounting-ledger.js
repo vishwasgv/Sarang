@@ -382,7 +382,7 @@ async function run() {
     // elsewhere for pre-schema fields. ─────────────────────────────────────
     let overdueCustomerId
     await r.step('credit-interest-calculate-and-post', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Overdue Customer ${suffix}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Overdue Customer ${suffix}`)
       overdueCustomerId = custRes?.data?.id
       if (overdueCustomerId) createdCustomerIds.push(overdueCustomerId)
       const prodRes = await page.evaluate((name) => window.api.products.create({
@@ -497,7 +497,7 @@ async function run() {
       const updRes = await page.evaluate(async () => window.api.businessProfile.update({ gstScheme: 'COMPOSITION' }))
       r.log('gst-scheme-set-to-composition', !!updRes?.success, JSON.stringify(updRes?.error || ''))
 
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Composition Customer ${suffix}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Composition Customer ${suffix}`)
       if (custRes?.data?.id) createdCustomerIds.push(custRes.data.id)
       const prodRes = await page.evaluate((name) => window.api.products.create({
         productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 100, sellingPrice: 200, taxRate: 18, openingQuantity: 5

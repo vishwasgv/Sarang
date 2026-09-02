@@ -59,7 +59,7 @@ async function run() {
       const kit = await page.evaluate(async (name) => window.api.products.create({
         productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 300, taxRate: 18, openingQuantity: 0
       }), kitName)
-      const cust = await page.evaluate(async (name) => window.api.customers.create({ customerName: name }), customerName)
+      const cust = await page.evaluate(async (name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}` }), customerName)
       productIds.comp1 = comp1?.data?.id
       productIds.comp2 = comp2?.data?.id
       productIds.kit = kit?.data?.id

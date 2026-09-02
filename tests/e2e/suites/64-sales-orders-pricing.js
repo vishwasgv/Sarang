@@ -546,7 +546,7 @@ async function run() {
 
     // ── Estimate -> Retainer conversion (Phase 63) ──────────────────────────
     await r.step('estimate-to-retainer-conversion', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Retainer Client ${suffix}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Retainer Client ${suffix}`)
       const retainerCustomerId = custRes?.data?.id
       if (retainerCustomerId) createdRetainerCustomerIds.push(retainerCustomerId)
 
@@ -576,7 +576,7 @@ async function run() {
     // (Phase 63 upgrade) -- previously only the flat `amount` field was
     // ever exercised anywhere in E2E. ───────────────────────────────────────
     await r.step('credit-note-with-line-items', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} CN Client ${suffix}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} CN Client ${suffix}`)
       const cnCustomerId = custRes?.data?.id
       if (cnCustomerId) createdNoteCustomerIds.push(cnCustomerId)
 
@@ -605,7 +605,7 @@ async function run() {
 
     // ── Delivery Note / Packing Slip from a real Invoice ────────────────────
     await r.step('delivery-note-and-packing-slip-from-invoice', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Challan Client ${suffix}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Challan Client ${suffix}`)
       const challanCustomerId = custRes?.data?.id
       if (challanCustomerId) createdNoteCustomerIds.push(challanCustomerId)
       const prodRes = await page.evaluate((name) => window.api.products.create({

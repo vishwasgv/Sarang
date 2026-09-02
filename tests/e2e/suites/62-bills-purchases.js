@@ -212,7 +212,7 @@ async function run() {
     // ── Customer.customerKind + individual/business fields ─────────────────
     await r.step('customer-business-kind-persists-with-registration-and-contact-fields', async () => {
       const custRes = await page.evaluate((name) => window.api.customers.create({
-        customerName: name, customerKind: 'BUSINESS', companyRegistrationNumber: 'E2E-CIN-12345', contactPersonName: 'E2E Contact Person', creditLimit: 0, taxExempt: false
+        customerName: name, phone: `9${String(Date.now()).slice(-9)}`, customerKind: 'BUSINESS', companyRegistrationNumber: 'E2E-CIN-12345', contactPersonName: 'E2E Contact Person', creditLimit: 0, taxExempt: false
       }), `${TEST_PREFIX} Business Customer ${Date.now()}`)
       r.log('business-customer-created', !!custRes?.success, JSON.stringify(custRes?.error || ''))
       if (custRes?.data?.id) createdCustomerIds.push(custRes.data.id)
@@ -234,7 +234,7 @@ async function run() {
 
     // ── Invoice.ewayBillNumber persists ────────────────────────────────────
     await r.step('invoice-eway-bill-number-persists', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Eway Customer ${Date.now()}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Eway Customer ${Date.now()}`)
       if (custRes?.data?.id) createdCustomerIds.push(custRes.data.id)
       const prodRes = await page.evaluate((name) => window.api.products.create({
         productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 100, sellingPrice: 150, taxRate: 18, openingQuantity: 10
@@ -255,7 +255,7 @@ async function run() {
     // DISCOUNTED base, not the original (the third of the three live bugs
     // fixed at the start of this phase) ────────────────────────────────────
     await r.step('global-discount-gst-computed-on-discounted-base-not-original', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Discount Customer ${Date.now()}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Discount Customer ${Date.now()}`)
       if (custRes?.data?.id) createdCustomerIds.push(custRes.data.id)
       const prodRes = await page.evaluate((name) => window.api.products.create({
         productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 500, sellingPrice: 1000, taxRate: 18, openingQuantity: 10
@@ -319,7 +319,7 @@ async function run() {
       const supRes = await makeSupplier({ supplierName: `${TEST_PREFIX} Expense Vendor` })
       const expSupplierId = supRes?.data?.id
 
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Billable Client ${Date.now()}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL' }), `${TEST_PREFIX} Billable Client ${Date.now()}`)
       if (custRes?.data?.id) createdCustomerIds.push(custRes.data.id)
       const billableCustomerId = custRes?.data?.id
 

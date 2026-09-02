@@ -142,7 +142,7 @@ async function run() {
     // ── UAT: Credit Interest card renders on a real customer, no crash ─────
     let interestCustomerId
     await r.step('uat-credit-interest-setup-customer', async () => {
-      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name }), `${TEST_PREFIX} Customer ${Date.now()}`)
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}` }), `${TEST_PREFIX} Customer ${Date.now()}`)
       interestCustomerId = custRes?.data?.id
       r.log('uat-credit-interest-customer-created', !!interestCustomerId, JSON.stringify(custRes?.error || ''))
     })

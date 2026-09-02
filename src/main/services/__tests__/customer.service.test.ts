@@ -127,15 +127,6 @@ describe('customerService.createCustomer', () => {
     expect((result as { error: { code: string } }).error.code).toBe('CUS-002')
   })
 
-  it('allows customer creation without phone (phone uniqueness only applies when provided)', async () => {
-    vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
-
-    const result = await customerService.createCustomer({
-      customerName: 'Walk-in Customer', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL'
-    })
-
-    expect(result.success).toBe(true)
-  })
 })
 
 describe('customerService.updateCustomer', () => {
@@ -143,7 +134,7 @@ describe('customerService.updateCustomer', () => {
     vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
 
     const result = await customerService.updateCustomer({
-      id: 'cust-1', customerName: 'Updated Name', creditLimit: 100000, taxExempt: false, customerKind: 'INDIVIDUAL', country: 'IN'
+      id: 'cust-1', customerName: 'Updated Name', phone: '9999999999', creditLimit: 100000, taxExempt: false, customerKind: 'INDIVIDUAL', country: 'IN'
     })
 
     expect(result.success).toBe(true)
@@ -158,7 +149,7 @@ describe('customerService.updateCustomer', () => {
     db.customer.findUnique = vi.fn().mockResolvedValue(null)
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    const result = await customerService.updateCustomer({ id: 'ghost', customerName: 'Name', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL', country: 'IN' })
+    const result = await customerService.updateCustomer({ id: 'ghost', customerName: 'Name', phone: '9999999999', creditLimit: 0, taxExempt: false, customerKind: 'INDIVIDUAL', country: 'IN' })
 
     expect(result.success).toBe(false)
   })

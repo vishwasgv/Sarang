@@ -12,7 +12,7 @@ import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/Cust
 
 const schema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
-  phone: z.string().max(30).optional(),
+  phone: z.string().min(1, 'Phone number is required').max(30),
   email: z.string().email('Invalid email').max(100).optional().or(z.literal('')),
   address: z.string().max(500).optional(),
   city: z.string().max(100).optional(),
@@ -178,7 +178,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Phone" placeholder="+91 98765 43210" {...register('phone')} error={errors.phone?.message} />
+          <Input label="Phone *" placeholder="+91 98765 43210" {...register('phone')} error={errors.phone?.message} />
           <Input label="Email" type="email" placeholder="customer@example.com" {...register('email')} error={errors.email?.message} />
         </div>
         <Input label="Address" placeholder="Street address" {...register('address')} error={errors.address?.message} />

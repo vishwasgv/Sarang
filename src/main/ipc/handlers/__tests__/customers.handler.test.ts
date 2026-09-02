@@ -31,7 +31,7 @@ describe('customers.handler — creditLimit change requires customers.modifyCred
   }
 
   const basePayload = {
-    id: 'cust-1', customerName: 'Acme Traders', creditLimit: 5000
+    id: 'cust-1', customerName: 'Acme Traders', phone: '9999999999', creditLimit: 5000
   }
 
   beforeEach(() => {

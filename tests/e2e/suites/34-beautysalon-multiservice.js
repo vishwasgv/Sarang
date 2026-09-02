@@ -178,7 +178,7 @@ async function run() {
       // here. Build genuine repeat-client data directly via the API (the
       // status-transition UI path is already covered by the commission test
       // above; this step is purely about feeding the report real data).
-      const custRes = await page.evaluate(async () => window.api.customers.create({ customerName: 'E2E Salon Repeat Client' }))
+      const custRes = await page.evaluate(async () => window.api.customers.create({ customerName: 'E2E Salon Repeat Client', phone: `9${String(Date.now()).slice(-9)}` }))
       const custId = custRes?.data?.id
       r.log('repeat-client-customer-created', !!custId, JSON.stringify(custRes?.error || ''))
 

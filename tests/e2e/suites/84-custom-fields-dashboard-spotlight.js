@@ -103,7 +103,7 @@ async function run() {
 
     await r.step('attach-custom-field-values-to-real-records', async () => {
       const custRes = await page.evaluate(({ fieldId }) => window.api.customers.create({
-        customerName: 'E2E Phase66 Tagged Customer', creditLimit: 0, taxExempt: false,
+        customerName: 'E2E Phase66 Tagged Customer', phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false,
         customFields: { [fieldId]: 'Google' },
       }), { fieldId: customerFieldId })
       taggedCustomerId = custRes?.data?.id
