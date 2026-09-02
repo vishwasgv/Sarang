@@ -47,6 +47,8 @@ interface Invoice {
   id: string; invoiceNumber: string; invoiceType: string; status: string; createdAt: string
   subtotal: number; discountAmount: number; taxAmount: number; roundingAmount: number
   totalAmount: number; paidAmount: number; balanceAmount: number; paymentStatus: string
+  // 2026-09 — foreign-currency overlay, see Invoice's own schema comment.
+  foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null; foreignTotalAmount?: number | null
   // Phase 58 §2 — optional payment due date on CREDIT sales (e.g. Agri
   // Inputs' harvest-tied credit terms).
   dueDate?: string | null
@@ -107,6 +109,15 @@ export function InvoiceDetailScreen() {
   const [paymentRef, setPaymentRef] = useState('')
   const [paymentRemarks, setPaymentRemarks] = useState('')
   const [recordingPayment, setRecordingPayment] = useState(false)
+  // 2026-09 — foreign-currency settlement, an alternate mode of the same
+  // modal (only offered when the invoice itself has a foreign currency set)
+  // that settles the invoice IN FULL via its foreign amount + the rate at
+  // settlement, recording any realized FX gain/loss — see
+  // payment.service.ts's recordForeignCurrencySettlement.
+  const [fxSettlementMode, setFxSettlementMode] = useState(false)
+  const [fxForeignAmount, setFxForeignAmount] = useState('')
+  const [fxSettlementRate, setFxSettlementRate] = useState('')
+  const [fxSettling, setFxSettling] = useState(false)
 
   // Cancel modal state
   const [showCancelModal, setShowCancelModal] = useState(false)
@@ -174,6 +185,35 @@ export function InvoiceDetailScreen() {
     } catch {
       toastError('Failed', 'Could not record payment.')
     } finally { setRecordingPayment(false) }
+  }
+
+  async function handleFxSettlement() {
+    if (!invoice) return
+    const foreignAmount = parseFloat(fxForeignAmount)
+    const settlementRate = parseFloat(fxSettlementRate)
+    if (!foreignAmount || foreignAmount <= 0) { toastError('Invalid Amount', 'Enter the foreign-currency amount received.'); return }
+    if (!settlementRate || settlementRate <= 0) { toastError('Invalid Rate', 'Enter the exchange rate at settlement.'); return }
+    setFxSettling(true)
+    try {
+      const res = await window.api.payments.recordForeignCurrencySettlement({
+        invoiceId: invoice.id,
+        foreignAmount,
+        settlementRate,
+        paymentMethod,
+        referenceNumber: paymentRef.trim() || undefined,
+        remarks: paymentRemarks.trim() || undefined
+      })
+      if (res.success) {
+        toastSuccess('Invoice Settled', `${invoice.foreignCurrencyCode} ${foreignAmount.toFixed(2)} recorded for ${invoice.invoiceNumber}.`)
+        setShowPaymentModal(false)
+        setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
+        loadInvoice()
+      } else {
+        toastError('Failed', res.error?.message ?? 'Could not settle invoice.')
+      }
+    } catch {
+      toastError('Failed', 'Could not settle invoice.')
+    } finally { setFxSettling(false) }
   }
 
   async function handleCancel() {
@@ -665,10 +705,24 @@ export function InvoiceDetailScreen() {
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
-            <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('billing.recordPayment')}</h2>
+            <h2 className="text-lg font-bold text-dark dark:text-slate-100">{fxSettlementMode ? t('billing.foreignCurrency.settleTitle') : t('billing.recordPayment')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('billing.invoiceNumber')}: <strong className="dark:text-slate-200">{invoice.invoiceNumber}</strong> · {t('billing.outstanding')}: <strong className="text-danger">{formatCurrency(invoice.balanceAmount)}</strong>
+              {invoice.foreignCurrencyCode && invoice.foreignTotalAmount != null && (
+                <> · {invoice.foreignCurrencyCode} {invoice.foreignTotalAmount.toFixed(2)}</>
+              )}
             </p>
+
+            {/* 2026-09 — only offered when this invoice was actually raised in
+                a foreign currency; a plain-currency invoice never sees this
+                toggle at all. */}
+            {invoice.foreignCurrencyCode && (
+              <label className="flex items-center gap-2 cursor-pointer -mt-2">
+                <input type="checkbox" checked={fxSettlementMode} onChange={e => setFxSettlementMode(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{t('billing.foreignCurrency.settleToggle', { code: invoice.foreignCurrencyCode })}</span>
+              </label>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.paymentMethod')}</label>
               <div className="grid grid-cols-3 gap-2">
@@ -682,14 +736,36 @@ export function InvoiceDetailScreen() {
                 ))}
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.amountLabel', { symbol: currSym })}</label>
-              <input type="number" min="0.01" step="0.01" value={paymentAmount}
-                onChange={e => setPaymentAmount(e.target.value)}
-                placeholder={invoice.balanceAmount.toFixed(2)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
+            {fxSettlementMode ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.foreignCurrency.amountReceived', { code: invoice.foreignCurrencyCode })}</label>
+                  <input type="number" min="0.01" step="0.01" value={fxForeignAmount}
+                    onChange={e => setFxForeignAmount(e.target.value)}
+                    placeholder={invoice.foreignTotalAmount?.toFixed(2)}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.foreignCurrency.settlementRate')}</label>
+                  <input type="number" min="0.0001" step="0.0001" value={fxSettlementRate}
+                    onChange={e => setFxSettlementRate(e.target.value)}
+                    placeholder={invoice.foreignExchangeRate != null ? String(invoice.foreignExchangeRate) : undefined}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-slate-400">{t('billing.foreignCurrency.settleNote')}</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.amountLabel', { symbol: currSym })}</label>
+                <input type="number" min="0.01" step="0.01" value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  placeholder={invoice.balanceAmount.toFixed(2)}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+            )}
             {(paymentMethod === 'UPI' || paymentMethod === 'CARD') && (
               <div>
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.referenceNumber')}</label>
@@ -703,8 +779,12 @@ export function InvoiceDetailScreen() {
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
             <div className="flex gap-3 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => setShowPaymentModal(false)}>{t('common.cancel')}</Button>
-              <Button className="flex-1" onClick={handleRecordPayment} loading={recordingPayment}>{t('billing.recordPayment')}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setShowPaymentModal(false); setFxSettlementMode(false) }}>{t('common.cancel')}</Button>
+              {fxSettlementMode ? (
+                <Button className="flex-1" onClick={handleFxSettlement} loading={fxSettling}>{t('billing.foreignCurrency.settleAction')}</Button>
+              ) : (
+                <Button className="flex-1" onClick={handleRecordPayment} loading={recordingPayment}>{t('billing.recordPayment')}</Button>
+              )}
             </div>
           </div>
         </div>

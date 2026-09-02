@@ -14,6 +14,9 @@ const SEASON = z.string().max(100).optional().nullable()
 // Phase 67 §9.1 — Agri Inputs item 3: crop-linked product advisory. Free
 // text ("Wheat", "Cotton", "Paddy"...), same gate reasoning as SEASON above.
 const RECOMMENDED_CROP = z.string().max(100).optional().nullable()
+// 2026-09-02 — Restaurant/Bakery diet-type marker, same "small controlled
+// set, nullable/optional" gate reasoning as GENDER above.
+const FOOD_TYPE = z.enum(['VEG', 'EGG', 'NON_VEG']).optional().nullable()
 
 // Phase 38: a 13-digit barcode is validated as EAN-13 (catches fat-finger typos and
 // bad scans); anything else (UPC-A, Code39, etc.) passes through unchecked since we
@@ -190,6 +193,7 @@ export const CreateProductSchema = z
     defaultSupplierId: z.string().optional().nullable(),
     openingQuantity: z.number().min(0).default(0),
     gender: GENDER,
+    foodType: FOOD_TYPE,
     season: SEASON,
     recommendedCrop: RECOMMENDED_CROP,
     // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag
@@ -243,6 +247,7 @@ export const UpdateProductSchema = z
     reorderQuantity: z.number().min(0).default(0),
     defaultSupplierId: z.string().optional().nullable(),
     gender: GENDER,
+    foodType: FOOD_TYPE,
     season: SEASON,
     recommendedCrop: RECOMMENDED_CROP,
     isPrescriptionRequired: z.boolean().optional(),

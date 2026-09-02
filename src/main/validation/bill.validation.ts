@@ -41,6 +41,9 @@ export const CreateBillSchema = z.object({
   landedCosts: z.array(BillLandedCostSchema).optional(),
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId: z.string().min(1).optional(),
+  // 2026-09 — foreign-currency overlay, same shape as CreateInvoiceSchema's own.
+  foreignCurrencyCode: z.string().max(10).optional(),
+  foreignExchangeRate: z.number().positive().optional(),
 })
 
 export const VoidBillSchema = z.object({

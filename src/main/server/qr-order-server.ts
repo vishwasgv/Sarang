@@ -5,7 +5,7 @@ import { join } from 'path'
 import { app } from 'electron'
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from '../services/industry-template.service'
-import { listMenuProducts, createOrderRequest, getBusinessDisplayInfo } from '../services/restaurant-order.service'
+import { listMenuProducts, createOrderRequest, getBusinessDisplayInfo, type MenuProduct } from '../services/restaurant-order.service'
 import { logger } from '../utils/logger'
 
 // Phase 47 — a small, deliberately dependency-free local HTTP server so a
@@ -115,6 +115,42 @@ function sendJson(res: http.ServerResponse, status: number, body: unknown): void
   res.end(JSON.stringify(body))
 }
 
+// Perf fix (2026-09-02, founder-reported real-device latency scanning a
+// table QR): GET /api/menu and /api/business previously re-ran the full
+// Prisma query (+ category join, + result mapping) on every single request
+// with zero caching, even though menu/business-profile data changes on the
+// order of "staff edits a price occasionally," not "every few seconds." In
+// a real restaurant, several tables can scan around the same moment (a
+// party being seated together, a lunch rush), and the Electron main process
+// is single-threaded — every one of those customers' requests, plus
+// whatever else Sarang's own UI is doing on the same process at that
+// moment (billing, KOT, reports), serializes through one JS thread. A short
+// TTL cache turns N near-simultaneous menu loads into 1 real DB round trip
+// + N-1 near-instant in-memory hits, which is the concrete, measurable win
+// here — cheap, safe (rate-limiting still runs unconditionally before this,
+// unaffected), and reset on server stop so tests (each getting a fresh
+// server per `it()`, per qr-order-server.test.ts's own afterEach) never see
+// a stale entry from a previous test's mock.
+const MENU_CACHE_TTL_MS = 10_000
+let menuCache: { data: MenuProduct[]; expiresAt: number } | null = null
+let businessInfoCache: { data: { businessName: string; currencySymbol: string }; expiresAt: number } | null = null
+
+async function getCachedMenu(): Promise<MenuProduct[]> {
+  const now = Date.now()
+  if (menuCache && menuCache.expiresAt > now) return menuCache.data
+  const data = await listMenuProducts()
+  menuCache = { data, expiresAt: now + MENU_CACHE_TTL_MS }
+  return data
+}
+
+async function getCachedBusinessInfo(): Promise<{ businessName: string; currencySymbol: string }> {
+  const now = Date.now()
+  if (businessInfoCache && businessInfoCache.expiresAt > now) return businessInfoCache.data
+  const data = await getBusinessDisplayInfo()
+  businessInfoCache = { data, expiresAt: now + MENU_CACHE_TTL_MS }
+  return data
+}
+
 function getMenuPagePath(): string {
   // Dev-mode depth matches createSplashWindow()'s splash.html resolution in
   // main/index.ts exactly — electron-vite bundles every main-process file
@@ -199,14 +235,14 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
     if (req.method === 'GET' && url.pathname === '/api/menu') {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      const menu = await listMenuProducts()
+      const menu = await getCachedMenu()
       sendJson(res, 200, { success: true, data: menu })
       return
     }
 
     if (req.method === 'GET' && url.pathname === '/api/business') {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      const info = await getBusinessDisplayInfo()
+      const info = await getCachedBusinessInfo()
       sendJson(res, 200, { success: true, data: info })
       return
     }
@@ -228,6 +264,38 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return
     }
 
+    // 2026-09-02 — the customer's own "Checkout" action (alongside "Place
+    // order"), so both exist before the final bill as requested. This never
+    // bills anything itself — it only flags the table so staff know the
+    // customer is ready, exactly like a printed "bring the bill" request.
+    // Actual billing only ever happens via restaurant.service.ts's
+    // checkoutTable, from RestaurantTablesScreen.
+    if (req.method === 'POST' && url.pathname === '/api/checkout-request') {
+      if (isRateLimited(ip, 'order', RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+
+      const body = await readBody(req)
+      let parsed: { tableId?: string }
+      try {
+        parsed = JSON.parse(body)
+      } catch {
+        sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } })
+        return
+      }
+      if (!parsed.tableId) { sendJson(res, 400, { success: false, error: { message: 'Table not recognized.' } }); return }
+      try {
+        const db = getPrisma()
+        const table = await db.restaurantTable.findUnique({ where: { id: parsed.tableId } })
+        if (!table) { sendJson(res, 404, { success: false, error: { message: 'Table not recognized.' } }); return }
+        await db.restaurantTable.update({ where: { id: parsed.tableId }, data: { checkoutRequestedAt: new Date() } })
+        sendJson(res, 200, { success: true, data: null })
+      } catch (err) {
+        logger.error('[QROrderServer] Checkout request failed:', err)
+        sendJson(res, 500, { success: false, error: { message: 'Could not send checkout request.' } })
+      }
+      return
+    }
+
     res.writeHead(404); res.end('Not found')
   } catch (err) {
     logger.error('[QROrderServer] Request handling failed:', err)
@@ -246,26 +314,46 @@ export async function ensureQrOrderServerState(): Promise<void> {
     // unreachable from the network, so there's no security cost, and it's
     // what staff on the same machine (and this codebase's own test suite)
     // use to reach the server directly.
-    const bindAddresses = [...getLanIPv4Addresses(), '127.0.0.1']
-    try {
-      const started: http.Server[] = []
-      for (const address of bindAddresses) {
-        const instance = http.createServer((req, res) => { void handleRequest(req, res) })
+    // Loopback first, unconditionally — it's the one address that must
+    // never fail to bind (staff on the same machine, and this codebase's
+    // own test suite, both rely on it), so it's attempted before any LAN
+    // adapter that might not cooperate.
+    const bindAddresses = ['127.0.0.1', ...getLanIPv4Addresses()]
+    // Real bug found+fixed 2026-09-02: this used to bind every address
+    // inside ONE try/catch — a single adapter failing to bind (a stale
+    // VPN/VMware/Hyper-V host-only adapter still enumerated by the OS but
+    // not actually bindable, common on a real small-business Windows PC
+    // that also runs other software) aborted the ENTIRE server, including
+    // loopback, with only a log line — QR ordering silently dead with no
+    // way for the owner to tell why the printed QR codes stopped working.
+    // Each address now binds independently; one failure no longer takes
+    // down the others. Only genuinely fatal if loopback itself — the one
+    // address that's never a real network adapter — fails.
+    const started: http.Server[] = []
+    const failed: string[] = []
+    for (const address of bindAddresses) {
+      const instance = http.createServer((req, res) => { void handleRequest(req, res) })
+      try {
         await new Promise<void>((resolve, reject) => {
           instance.once('error', reject)
           instance.listen(port, address, () => resolve())
         })
         started.push(instance)
+      } catch (err) {
+        failed.push(address)
+        logger.error(`[QROrderServer] Could not bind ${address}:${port}, skipping this address:`, err)
       }
+    }
+    if (started.length === 0) {
+      logger.error('[QROrderServer] Failed to start: no address could be bound (including loopback).')
+      servers = []
+      activePort = null
+    } else {
       servers = started
       activePort = port
       sweepInterval = setInterval(sweepStaleRateLimitEntries, RATE_LIMIT_WINDOW_MS)
-      logger.info(`[QROrderServer] Listening on port ${port} (${bindAddresses.join(', ')}).`)
-    } catch (err) {
-      logger.error('[QROrderServer] Failed to start:', err)
-      await Promise.all(servers.map((s) => new Promise<void>((resolve) => s.close(() => resolve())))).catch(() => {})
-      servers = []
-      activePort = null
+      const boundAddresses = bindAddresses.filter((a) => !failed.includes(a))
+      logger.info(`[QROrderServer] Listening on port ${port} (${boundAddresses.join(', ')})${failed.length > 0 ? `; could not bind: ${failed.join(', ')}` : ''}.`)
     }
   } else if (!enabled && servers.length > 0) {
     await stopQrOrderServer()
@@ -280,5 +368,7 @@ export async function stopQrOrderServer(): Promise<void> {
   if (sweepInterval) { clearInterval(sweepInterval); sweepInterval = null }
   requestLog.clear()
   cachedMenuPageHtml = undefined
+  menuCache = null
+  businessInfoCache = null
   logger.info('[QROrderServer] Stopped.')
 }

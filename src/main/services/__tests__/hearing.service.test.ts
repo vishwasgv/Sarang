@@ -14,8 +14,14 @@ import { parseLocalDateStart, toLocalISODate } from '../../utils/date.util'
 // with rescheduleHearingReminder: cancels the pending reminder computed from
 // the old date, then schedules a fresh one for the new date.
 
-const FAR_FUTURE_OLD = '2026-08-01'
-const FAR_FUTURE_NEW = '2026-09-01'
+// Computed relative to today rather than hardcoded — a fixed calendar date
+// eventually becomes "today" or the past, at which point
+// scheduleHearingReminder's `if (twoDaysBefore <= now) return` guard makes it
+// stop scheduling a reminder at all, and this test starts failing for a
+// reason that has nothing to do with the code under test (found live
+// 2026-09-01: the old hardcoded FAR_FUTURE_NEW had become exactly today).
+const FAR_FUTURE_OLD = toLocalISODate(new Date(Date.now() + 60 * 86_400_000))
+const FAR_FUTURE_NEW = toLocalISODate(new Date(Date.now() + 90 * 86_400_000))
 
 function makeHearing(overrides: Record<string, unknown> = {}) {
   return {

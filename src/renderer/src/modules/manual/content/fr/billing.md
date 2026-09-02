@@ -72,6 +72,14 @@ Si un client ou un fournisseur n'a aucun numéro de téléphone enregistré, le 
 
 Ouvrir WhatsApp de cette façon lance WhatsApp Desktop s'il est installé, ou WhatsApp Web dans votre navigateur sinon. Ouvrir E-mail lance l'application définie comme messagerie par défaut sur votre ordinateur — si aucune n'est définie, Windows vous demandera d'en choisir une ; c'est normal.
 
+## Facturation et règlement en devise étrangère
+
+Si vous vendez à des clients qui paient en devise étrangère — une vente à l'export, un client à l'étranger — cochez **Bill in foreign currency** lors de la création de la facture. Saisissez le code de devise à trois lettres (p. ex. `USD`) et le taux de change au moment de la facturation (p. ex. `83.25`) ; un aperçu en direct affiche le total de la facture converti à ce taux. La facture elle-même continue de se totaliser et de s'imprimer normalement dans votre devise locale — le montant en devise étrangère est une ligne de référence supplémentaire, à l'écran comme sur le document imprimé (`≈ USD 1,200.00 @ 83.25`), pas une seconde comptabilité.
+
+Les taux de change évoluent entre le jour où vous émettez la facture et le jour où vous êtes réellement payé, donc **régler** une facture en devise étrangère est une étape à part entière. Ouvrez la facture et cliquez sur **Record Payment** : comme elle porte une devise étrangère, une option **Settle in {code} (records the actual amount received and any exchange-rate gain/loss)** apparaît. Activez-la, saisissez le montant réellement reçu en devise étrangère et le taux de change du jour du règlement (qui peut différer du taux appliqué à l'émission de la facture), puis confirmez. Sarang convertit ce montant dans votre devise locale, règle intégralement la facture, et enregistre automatiquement l'écart entre la valeur de la facture au taux d'origine et sa valeur au taux de règlement sous forme d'écriture de **Gain** ou **Perte de Change Réalisé** (voir le chapitre Grand Livre et Écritures de Journal) — vous n'avez jamais à calculer ni à enregistrer cet ajustement manuellement.
+
+Le même processus de facturation et de règlement en devise étrangère est disponible côté achats pour les Factures fournisseur que vous enregistrez — voir le chapitre Factures et Paiements Effectués.
+
 ## Notes sur la taxe et l'arrondi
 
 Chaque total de facture est arrondi à l'unité monétaire entière la plus proche, la différence d'arrondi étant affichée sur sa propre ligne afin que le calcul reste toujours visiblement cohérent. Sous le modèle fiscal GST, la taxe s'imprime en CGST+SGST pour une vente intra-État ou en une seule ligne IGST pour une vente inter-États, selon la case cochée lors de la création de la facture.

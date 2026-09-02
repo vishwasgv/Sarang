@@ -17,6 +17,10 @@ Cada línea es una de estas dos opciones:
 
 Cada línea también lleva su propio monto de descuento y tasa de impuesto, de modo que los totales de la factura se calculan correctamente por línea antes de sumarse — el mismo orden de descuento-luego-impuesto que ya sigue cualquier otro documento en Sarang.
 
+## Facturas de proveedor en moneda extranjera
+
+Una factura de un proveedor extranjero puede registrarse igual que una factura de venta — marque **Bill in foreign currency** al registrarla, introduzca el código de moneda y el tipo de cambio, y la factura llevará un importe de referencia convertido junto a su total en moneda local, mostrado tanto en pantalla como al imprimir. Cuando la liquide (vea abajo), aparece una opción **Settle in {code}** igual que en las facturas de venta, y cualquier ganancia o pérdida entre el tipo al que se registró la factura y el tipo del día en que realmente paga se registra automáticamente como un asiento de Ganancia/Pérdida Cambiaria Realizada — vea el capítulo Facturación y Documentos para el recorrido completo de cómo funcionan el interruptor, la vista previa y el cálculo de la liquidación; aquí se comporta exactamente igual.
+
 ## Registrar un Pago contra una Factura
 
 Abre una factura y haz clic en **Registrar Pago**. Los pagos a proveedores aceptan Efectivo, UPI, Tarjeta, Transferencia Bancaria o Cheque — un conjunto más amplio que los pagos de cara al cliente, ya que los pagos B2B suelen hacerse por transferencia bancaria o cheque. Un pago puede ser parcial; el saldo y el estado de la factura se actualizan de inmediato, y el monto se deduce de lo que le debes a ese proveedor.

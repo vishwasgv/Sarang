@@ -51,10 +51,32 @@ export const DeleteRecipeSchema = z.object({
   recipeId: z.string().min(1, 'recipeId is required'),
 })
 
+// 2026-09-02 — accepting an order only sends it to the kitchen now (no
+// longer bills it immediately, see restaurant-order.service.ts's
+// acceptOrderRequest header comment) — paymentMethod/customerId moved to
+// CheckoutTableSchema below, the one place billing actually happens.
 export const AcceptOrderRequestSchema = z.object({
   requestId: z.string().min(1, 'requestId is required'),
+})
+
+export const CheckoutTableSchema = z.object({
+  tableId: z.string().min(1, 'tableId is required'),
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'WALLET', 'CREDIT', 'SPLIT']),
   customerId: z.string().optional(),
+})
+
+// 2026-09-02 — staff-facing "send this round to the kitchen" from
+// BillingScreen's dine-in flow, mirroring the QR path: creates a KOT with
+// no invoice yet, added to the table's running tab. Billing happens once,
+// later, via CheckoutTableSchema above.
+export const SendTableOrderSchema = z.object({
+  tableId: z.string().min(1, 'tableId is required'),
+  items: z.array(z.object({
+    productId: z.string().min(1),
+    quantity: z.number().positive(),
+    unitPrice: z.number().min(0),
+    taxRate: z.number().min(0).optional(),
+  })).min(1, 'At least one item is required'),
 })
 
 export const RejectOrderRequestSchema = z.object({

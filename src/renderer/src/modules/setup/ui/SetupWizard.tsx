@@ -1,6 +1,6 @@
 import React, { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { ChevronRight, Check, Upload, X, Sparkles, Copy, ShieldAlert } from 'lucide-react'
+import { ChevronRight, Check, Upload, X, Sparkles, Copy, ShieldAlert, RotateCcw } from 'lucide-react'
 import { BrandIcon, AszurexMark } from '@shared/ui/atoms/Brand'
 import { useForm, FormProvider, useFormContext } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
@@ -31,6 +31,9 @@ const BUSINESS_TYPES = [
   { value: 'PLUMBING', label: 'Plumbing / Sanitaryware Store', icon: '🚰' },
   { value: 'STATIONERY', label: 'Stationery / Book Store', icon: '✏️' },
   { value: 'FURNITURE', label: 'Furniture Store', icon: '🛋️' },
+  { value: 'GROCERY', label: 'Grocery / Kirana Store', icon: '🛒' },
+  { value: 'BAKERY', label: 'Bakery / Sweet Shop', icon: '🎂' },
+  { value: 'TOURS_TRAVELS', label: 'Tours & Travels', icon: '🚌' },
   { value: 'SERVICE', label: 'Service Business / Agency / IT', icon: '🛎️' },
   { value: 'CONSULTANT', label: 'Consultant / Freelancer', icon: '🧑‍💼' },
   { value: 'REPAIR', label: 'Repair Shop / Service Centre', icon: '🪛' },
@@ -329,6 +332,35 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
 // ─── Step Components ────────────────────────────────────────────────────────
 
 function WelcomeStep() {
+  const [restoring, setRestoring] = useState(false)
+  const [restoreError, setRestoreError] = useState<string | null>(null)
+
+  // Covers the "switched to a new/reinstalled device, backup file is on a USB
+  // drive" gap: a fresh install has no Backup rows of its own to restore
+  // from (listBackups() only ever looks up THIS database's own history), so
+  // this goes straight to a file picker + restoreFromFile instead. On
+  // success the main process itself relaunches the app (see
+  // backup.service.ts's restoreFromZipPath) — there's nothing to do here but
+  // wait; only a failure needs surfacing.
+  async function handleRestoreFromFile() {
+    setRestoreError(null)
+    try {
+      const picked = await api.backup.pickBackupFile()
+      if (!picked.success) { setRestoreError(picked.error?.message ?? 'Could not open file picker.'); return }
+      if (!picked.data) return // user cancelled
+      setRestoring(true)
+      const res = await api.backup.restoreFromFile({ filePath: picked.data.filePath })
+      if (!res.success) {
+        setRestoreError(res.error?.message ?? 'Could not restore from this backup file.')
+        setRestoring(false)
+      }
+      // On success the app relaunches itself — stay in the loading state.
+    } catch {
+      setRestoreError('Could not restore from this backup file.')
+      setRestoring(false)
+    }
+  }
+
   return (
     <div className="text-center py-2">
       <h2 className="text-xl font-bold text-dark dark:text-slate-100 mb-2">Welcome to your business command centre</h2>
@@ -339,7 +371,7 @@ function WelcomeStep() {
         {[
           { icon: '🔒', title: 'Privacy First', desc: 'Your data never leaves your device' },
           { icon: '📴', title: 'Works Offline', desc: 'No internet needed for daily use' },
-          { icon: '🆓', title: 'Free for 12 Months', desc: 'A small annual license after that' }
+          { icon: '🆓', title: 'Free for 100 Days', desc: 'A small annual license after that' }
         ].map((item) => (
           <div key={item.title} className="bg-slate-50 dark:bg-slate-800 rounded-lg p-3">
             <div className="text-xl mb-1">{item.icon}</div>
@@ -348,9 +380,18 @@ function WelcomeStep() {
           </div>
         ))}
       </div>
-      <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 text-start">
+      <div className="bg-brand/5 border border-brand/20 rounded-lg p-3 text-start mb-4">
         <p className="text-xs font-semibold text-brand mb-1">Setup takes about 2 minutes</p>
         <p className="text-xs text-slate-500 dark:text-slate-400">We'll ask about your business type, location, tax preferences, and create your admin account.</p>
+      </div>
+      <div className="border-t border-slate-100 dark:border-slate-800 pt-4 text-start">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+          Switching from another device and already have a Sarang backup file (e.g. on a USB drive)?
+        </p>
+        <Button type="button" variant="secondary" size="sm" onClick={handleRestoreFromFile} loading={restoring} icon={<RotateCcw size={13} />}>
+          {restoring ? 'Restoring…' : 'Restore from Backup File'}
+        </Button>
+        {restoreError && <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-md px-3 py-2 mt-2">{restoreError}</p>}
       </div>
     </div>
   )

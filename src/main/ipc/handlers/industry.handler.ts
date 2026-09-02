@@ -20,9 +20,9 @@ import * as distributorBeatService from '../../services/distributor-beat.service
 import { getCustomerCreditRisk } from '../../services/distributor-credit-risk.service'
 import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
-  DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema,
+  DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema, SendTableOrderSchema,
   AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema, MergeTableIntoInvoiceSchema,
-  SetWifiConfigSchema,
+  SetWifiConfigSchema, CheckoutTableSchema,
 } from '../../validation/industry.validation'
 
 const WIFI_SSID_SETTING_KEY = 'restaurant_wifi_ssid'
@@ -128,7 +128,20 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('restaurant.viewKOT'); if (deny) return deny
     const parsed = CreateKOTSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    return restaurantService.createKOT(parsed.data.invoiceId, parsed.data.tableId, getCurrentSession()?.userId)
+    // "Send to Kitchen" from an already-existing invoice (InvoiceDetailScreen)
+    // — a non-table-tab (counter/takeaway) sale that was already billed
+    // immediately, so this still links the KOT to that invoice right away
+    // rather than deferring, unlike the table-tab path (createOrderRequest/
+    // acceptOrderRequest) which never passes invoiceId here.
+    const db = getPrisma()
+    const invoice = await db.invoice.findUnique({ where: { id: parsed.data.invoiceId }, include: { items: true } })
+    if (!invoice) return { success: false, error: { code: 'RST-011', message: 'Invoice not found.' } }
+    return restaurantService.createKOT(
+      invoice.items.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, taxRate: i.taxRate })),
+      parsed.data.tableId,
+      getCurrentSession()?.userId,
+      parsed.data.invoiceId
+    )
   })
 
   handle('restaurant:updateKOTStatus', async (payload) => {
@@ -182,6 +195,40 @@ export function register(handle: HandleFn): void {
     return restaurantService.mergeTableIntoInvoice(parsed.data.tableId, parsed.data.invoiceId, getCurrentSession()?.userId)
   })
 
+  // 2026-09-02 — the "click table, see everything ordered" view: every
+  // un-invoiced KOT round currently open for this table, aggregated.
+  handle('restaurant:getTableOrderSummary', async (payload) => {
+    const deny = await requirePermission('restaurant.viewKOT'); if (deny) return deny
+    const { tableId } = (payload ?? {}) as { tableId: string }
+    if (!tableId) return { success: false, error: { code: 'VAL-001', message: 'tableId is required.' } }
+    return restaurantService.getTableOrderSummary(tableId)
+  })
+
+  // 2026-09-02 — the ONE place a dine-in table's running tab actually gets
+  // billed: consolidates every un-invoiced KOT round into a single
+  // invoice. See restaurant.service.ts's checkoutTable header comment.
+  handle('restaurant:checkoutTable', async (payload) => {
+    const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
+    const parsed = CheckoutTableSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.checkoutTable(
+      parsed.data.tableId,
+      { paymentMethod: parsed.data.paymentMethod, customerId: parsed.data.customerId },
+      getCurrentSession()?.userId
+    )
+  })
+
+  // 2026-09-02 — staff-facing "send to kitchen" from BillingScreen's dine-in
+  // flow (a table's first round, or any later round staff enters manually
+  // rather than via QR). Mirrors acceptOrderRequest: creates a KOT with no
+  // invoice yet, added to the table's running tab — never bills directly.
+  handle('restaurant:sendTableOrder', async (payload) => {
+    const deny = await requirePermission('restaurant.viewKOT'); if (deny) return deny
+    const parsed = SendTableOrderSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.createKOT(parsed.data.items, parsed.data.tableId, getCurrentSession()?.userId)
+  })
+
   // ── Phase 47 — QR Table Ordering ────────────────────────────────────────────
 
   handle('restaurant:getQrOrderingStatus', async () => {
@@ -199,11 +246,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('restaurant.manageOrderRequests'); if (deny) return deny
     const parsed = AcceptOrderRequestSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    return restaurantOrderService.acceptOrderRequest(
-      parsed.data.requestId,
-      { paymentMethod: parsed.data.paymentMethod, customerId: parsed.data.customerId },
-      getCurrentSession()?.userId
-    )
+    return restaurantOrderService.acceptOrderRequest(parsed.data.requestId, getCurrentSession()?.userId)
   })
 
   handle('restaurant:rejectOrderRequest', async (payload) => {

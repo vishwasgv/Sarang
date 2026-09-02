@@ -72,6 +72,14 @@ Jika pelanggan atau pemasok tidak memiliki nomor telepon yang tercatat, tombol W
 
 Membuka WhatsApp dengan cara ini akan menjalankan WhatsApp Desktop jika terpasang, atau WhatsApp Web di browser Anda jika tidak. Membuka Email akan menjalankan aplikasi mana pun yang diatur sebagai aplikasi email default komputer Anda — jika belum ada yang diatur, Windows akan meminta Anda memilih satu; ini normal.
 
+## Penagihan dan penyelesaian mata uang asing
+
+Jika Anda menjual kepada pelanggan yang membayar dalam mata uang asing — penjualan ekspor, klien di luar negeri — centang **Bill in foreign currency** saat membuat faktur. Masukkan kode mata uang tiga huruf (misalnya `USD`) dan nilai tukar saat penagihan (misalnya `83.25`); pratinjau langsung menampilkan total faktur yang dikonversi pada nilai tukar tersebut. Faktur itu sendiri tetap dijumlahkan dan dicetak dalam mata uang lokal Anda seperti biasa — angka mata uang asing hanyalah baris referensi tambahan, baik di layar maupun pada dokumen cetak (`≈ USD 1,200.00 @ 83.25`), bukan pembukuan kedua.
+
+Nilai tukar berubah antara hari Anda membuat faktur dan hari Anda benar-benar menerima pembayaran, sehingga **menyelesaikan (settle)** faktur mata uang asing adalah langkah tersendiri. Buka faktur dan klik **Record Payment**: karena faktur ini memuat mata uang asing, akan muncul sakelar **Settle in {code} (records the actual amount received and any exchange-rate gain/loss)**. Aktifkan, masukkan jumlah yang benar-benar Anda terima dalam mata uang asing dan nilai tukar pada hari penyelesaian (yang bisa berbeda dari nilai tukar saat faktur dibuat), lalu konfirmasi. Sarang mengonversinya ke mata uang lokal Anda, menyelesaikan faktur sepenuhnya, dan secara otomatis mencatat selisih antara nilai faktur pada nilai tukar awal dan nilainya pada nilai tukar penyelesaian sebagai entri jurnal **Laba** atau **Rugi Selisih Kurs Terealisasi** (lihat bab Buku Besar dan Jurnal) — Anda tidak perlu menghitung atau mencatat penyesuaian itu secara manual.
+
+Alur penagihan dan penyelesaian mata uang asing yang sama juga tersedia di sisi pembelian untuk Tagihan pemasok yang Anda catat — lihat bab Tagihan dan Pembayaran yang Dilakukan.
+
 ## Catatan tentang pajak dan pembulatan
 
 Setiap total faktur dibulatkan ke unit mata uang bulat terdekat, dengan selisih pembulatan ditampilkan sebagai barisnya sendiri sehingga perhitungannya selalu terlihat jelas. Pada model pajak GST, pajak dicetak sebagai CGST+SGST untuk penjualan dalam satu negara bagian atau satu baris IGST untuk penjualan antar-negara bagian, berdasarkan kotak centang yang diatur saat faktur dibuat.

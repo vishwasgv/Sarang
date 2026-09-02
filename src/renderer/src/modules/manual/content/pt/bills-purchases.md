@@ -17,6 +17,10 @@ Cada linha é uma destas duas opções:
 
 Cada linha também tem o seu próprio valor de desconto e taxa de imposto, pelo que os totais da fatura são calculados corretamente linha a linha antes de serem somados — a mesma ordem desconto-depois-imposto que qualquer outro documento no Sarang já segue.
 
+## Faturas de fornecedor em moeda estrangeira
+
+Uma fatura de um fornecedor estrangeiro pode ser registada da mesma forma que uma fatura de venda — marque **Bill in foreign currency** ao registá-la, informe o código de moeda e a taxa de câmbio, e a fatura passará a ter um valor de referência convertido além do seu total em moeda local, exibido tanto na tela quanto na impressão. Ao liquidá-la (veja abaixo), aparece uma opção **Settle in {code}** da mesma forma que nas faturas de venda, e qualquer ganho ou perda entre a taxa em que a fatura foi registada e a taxa do dia em que você efetivamente paga é lançado automaticamente como um lançamento de Ganho/Perda Cambial Realizada — veja o capítulo Faturamento e Documentos para o passo a passo completo de como o alternador, a pré-visualização e o cálculo da liquidação funcionam; aqui funciona exatamente da mesma forma.
+
 ## Registar um Pagamento contra uma Fatura
 
 Abra uma fatura e clique em **Registar Pagamento**. Os pagamentos a fornecedores aceitam Dinheiro, UPI, Cartão, Transferência Bancária ou Cheque — um conjunto mais amplo do que os pagamentos voltados para o cliente, já que os pagamentos B2B são feitos regularmente por transferência bancária ou cheque. Um pagamento pode ser parcial; o saldo e o estado da fatura são atualizados de imediato, e o valor é deduzido do que deve a esse fornecedor.

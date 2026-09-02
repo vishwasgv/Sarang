@@ -96,6 +96,11 @@ export const CreateInvoiceSchema = z.object({
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId: z.string().min(1).optional(),
   customFields: CustomFieldValuesSchema,
+  // 2026-09 — foreign-currency overlay. Both optional; a rate with no
+  // currency code (or vice versa) is treated as "not foreign" by the
+  // service layer (see billing.service.ts's createInvoice).
+  foreignCurrencyCode: z.string().max(10).optional(),
+  foreignExchangeRate: z.number().positive().optional(),
 })
 
 export const CancelInvoiceSchema = z.object({

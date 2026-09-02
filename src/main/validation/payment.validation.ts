@@ -14,6 +14,19 @@ export const RecordPaymentSchema = z.object({
   paymentDate: z.string().optional(),
 })
 
+// 2026-09 — settling a foreign-currency invoice in full, in its own
+// currency. See payment.service.ts's recordForeignCurrencySettlement for
+// why this is a separate payload/schema from RecordPaymentSchema above.
+export const RecordForeignCurrencySettlementSchema = z.object({
+  invoiceId: z.string().min(1, 'Invoice ID is required'),
+  foreignAmount: z.number().positive('Amount must be greater than zero'),
+  settlementRate: z.number().positive('Exchange rate must be greater than zero'),
+  paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'WALLET']),
+  referenceNumber: z.string().max(100).optional(),
+  remarks: z.string().max(255).optional(),
+  paymentDate: z.string().optional(),
+})
+
 export const RecordSplitPaymentSchema = z.object({
   invoiceId: z.string().min(1, 'Invoice ID is required'),
   legs: z.array(z.object({
@@ -29,5 +42,6 @@ export const ReversePaymentSchema = z.object({
 })
 
 export type RecordPaymentPayload = z.infer<typeof RecordPaymentSchema>
+export type RecordForeignCurrencySettlementPayload = z.infer<typeof RecordForeignCurrencySettlementSchema>
 export type RecordSplitPaymentPayload = z.infer<typeof RecordSplitPaymentSchema>
 export type ReversePaymentPayload = z.infer<typeof ReversePaymentSchema>

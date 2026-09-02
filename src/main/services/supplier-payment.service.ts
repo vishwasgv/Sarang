@@ -7,7 +7,7 @@ import { roundCurrency } from './currency.service'
 import { assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
-import type { RecordSupplierPaymentPayload, ReverseSupplierPaymentPayload, RecordBulkSupplierPaymentPayload } from '../validation/supplier-payment.validation'
+import type { RecordSupplierPaymentPayload, RecordForeignCurrencyBillSettlementPayload, ReverseSupplierPaymentPayload, RecordBulkSupplierPaymentPayload } from '../validation/supplier-payment.validation'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -69,6 +69,120 @@ async function suggestTds(amount: number): Promise<{ applicable: boolean; sugges
   return { applicable, suggestedAmount: applicable ? roundCurrency(amount * ratePercent / 100) : 0, thresholdAmount, ratePercent }
 }
 
+// 2026-09 — realized FX gain/loss on fully settling a foreign-currency Bill
+// at a different rate than it was raised at. Mirrors payment.service.ts's
+// own recordForeignCurrencySettlement exactly (same reasoning for why this
+// is a separate function, not a branch inside recordSupplierPayment — see
+// that function's header comment), with the gain/loss direction flipped
+// since this is a payable, not a receivable: paying LESS cash than the
+// bill's book value is a GAIN here (Dr Accounts Payable / Cr Realized FX
+// Gain — book value owed was more than what was actually paid), and paying
+// MORE cash than book value is a LOSS (Dr Realized FX Loss / Cr Cash — the
+// extra cash that had to go out beyond book value).
+async function recordForeignCurrencyBillSettlement(
+  payload: RecordForeignCurrencyBillSettlementPayload,
+  userId?: string
+) {
+  const db = getPrisma()
+  try {
+    const payment = await db.$transaction(async (tx) => {
+      const bill = await tx.bill.findUnique({ where: { id: payload.billId } })
+      if (!bill) throw new ServiceError('BILL-002', 'Bill not found.')
+      if (bill.status === 'VOID') throw new ServiceError('SPM-001', 'Cannot record payment for a void bill.')
+      if (!bill.foreignCurrencyCode || bill.foreignExchangeRate == null) {
+        throw new ServiceError('SPM-008', 'This bill was not raised in a foreign currency.')
+      }
+      const balanceBefore = bill.balanceAmount
+      if (balanceBefore <= 0) throw new ServiceError('SPM-002', 'This bill is already fully paid.')
+
+      const resolvedPaymentDate = payload.paymentDate ? parsePaymentDate(payload.paymentDate) : new Date()
+      await assertNotLockedOrThrow(tx, resolvedPaymentDate)
+
+      const computedBaseAmount = roundCurrency(payload.foreignAmount * payload.settlementRate)
+      const appliedAmount = Math.min(computedBaseAmount, balanceBefore)
+
+      const pmt = await tx.supplierPayment.create({
+        data: {
+          billId: payload.billId,
+          supplierId: bill.supplierId,
+          paymentMethod: payload.paymentMethod,
+          amount: appliedAmount,
+          referenceNumber: payload.referenceNumber ?? null,
+          remarks: payload.remarks ?? null,
+          paymentDate: resolvedPaymentDate,
+          recordedById: userId ?? null,
+          tdsAmount: 0,
+          foreignCurrencyCode: bill.foreignCurrencyCode,
+          foreignAmount: payload.foreignAmount,
+          foreignExchangeRate: payload.settlementRate
+        }
+      })
+
+      // Same "always reaches exactly zero, paidAmount absorbs the full old
+      // balance" reasoning as payment.service.ts's own settlement function.
+      await tx.bill.update({
+        where: { id: payload.billId },
+        data: { paidAmount: roundCurrency(bill.paidAmount + balanceBefore), balanceAmount: 0, status: 'PAID' }
+      })
+
+      await supplierLedgerService.addEntry({
+        supplierId: bill.supplierId,
+        referenceType: 'BILL_PAYMENT',
+        referenceId: pmt.id,
+        debitAmount: 0,
+        creditAmount: balanceBefore,
+        remarks: `Foreign-currency settlement for Bill ${bill.billNumber}`
+      }, tx)
+
+      await postSupplierPaymentJournalEntry(tx, { paymentId: pmt.id, billNumber: bill.billNumber, amount: appliedAmount, tdsAmount: 0 })
+
+      const gainLoss = roundCurrency(computedBaseAmount - balanceBefore)
+      if (Math.abs(gainLoss) >= 0.01) {
+        const fxAccount = await chartOfAccountsService.getOrCreateSystemAccountByCode('4200', tx)
+        const apAccount = await chartOfAccountsService.getSystemAccountByCode('2000', tx)
+        const magnitude = Math.abs(gainLoss)
+        if (gainLoss > 0) {
+          // Paid MORE cash than book value — a loss, and extra cash beyond
+          // what the normal posting above already recorded.
+          const cashAccount = await chartOfAccountsService.getSystemAccountByCode('1000', tx)
+          await journalEntryService.postSystemEntry(tx, {
+            sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: pmt.id,
+            narration: `Realized loss on Bill ${bill.billNumber} settlement (rate ${bill.foreignExchangeRate} → ${payload.settlementRate})`,
+            lines: [
+              { accountId: fxAccount.id, bankAccountId: null, debitAmount: magnitude, creditAmount: 0 },
+              { accountId: cashAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: magnitude }
+            ]
+          })
+        } else {
+          // Paid LESS cash than book value — a gain, and the normal posting
+          // above only cleared AP by appliedAmount, leaving this much of the
+          // book value still open — write it off as a gain.
+          await journalEntryService.postSystemEntry(tx, {
+            sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: pmt.id,
+            narration: `Realized gain on Bill ${bill.billNumber} settlement (rate ${bill.foreignExchangeRate} → ${payload.settlementRate})`,
+            lines: [
+              { accountId: apAccount.id, bankAccountId: null, debitAmount: magnitude, creditAmount: 0 },
+              { accountId: fxAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: magnitude }
+            ]
+          })
+        }
+      }
+
+      return pmt
+    })
+
+    await logAction({
+      userId, action: 'SUPPLIER_PAYMENT_RECORDED', entityType: 'SupplierPayment', entityId: payment.id,
+      newValue: { billId: payload.billId, foreignAmount: payload.foreignAmount, settlementRate: payload.settlementRate, method: payload.paymentMethod }
+    })
+    return { success: true, data: payment }
+  } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+    const msg = err instanceof Error ? err.message : 'Failed to record foreign-currency settlement.'
+    return { success: false, error: { code: 'SYS-001', message: msg } }
+  }
+}
+
 // Phase 61 — "Payments Made" against a specific Bill, distinct from
 // supplierLedgerService.recordPayment (an ad-hoc payment against a
 // supplier's overall balance, not tied to any one bill). Both post to the
@@ -77,6 +191,8 @@ async function suggestTds(amount: number): Promise<{ applicable: boolean; sugges
 // specific Bill's balanceAmount, mirroring paymentService.recordPayment's
 // relationship to Invoice.
 export const supplierPaymentService = {
+  recordForeignCurrencyBillSettlement,
+
   async suggestTds(amount: number) {
     try {
       return { success: true, data: await suggestTds(amount) }

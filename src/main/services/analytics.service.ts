@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from './industry-template.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
-import { getLicenseState, LICENSE_WARNING_AFTER_DAYS, LICENSE_EXPIRES_AFTER_DAYS } from './license.service'
+import { getLicenseState, LICENSE_WARNING_WINDOW_DAYS } from './license.service'
 import { checkForUpdatesIfDue } from './update-check.service'
 import { getProductCostsBatch } from './valuation.service'
 
@@ -648,28 +648,26 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   // new banner component: this list already composes multiple simultaneous
   // alerts cleanly (backup/low-stock/outstanding/etc. above), so a license
   // alert plugs into a design that already solved the "several banners at
-  // once" problem rather than needing a new one. WARNING (335-364 days) and
-  // EXPIRED (365+) map onto this list's existing warning/danger severity
-  // split — applies to a PAID key's paid year exactly the same as a TRIAL
-  // key's free year since 2026-07-28 (see license.service.ts's
-  // getLicenseState() doc comment: a PAID key used to be exempt from this
-  // entirely, silently granting a lifetime license after the first payment).
+  // once" problem rather than needing a new one. Each tier's own WARNING/
+  // EXPIRED thresholds (see license.service.ts — a TRIAL key's 100-day trial
+  // vs. a PAID key's 365-day paid year, both with the same 30-day warning
+  // window) map onto this list's existing warning/danger severity split.
   // NOT_ACTIVATED (pre-activation, shouldn't reach a logged-in dashboard at
   // all) produces no alert.
   const licenseState = await getLicenseState()
   if (licenseState.status === 'WARNING' && licenseState.daysRemaining !== null) {
     const message = licenseState.tier === 'PAID'
       ? `Your license renews in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
-      : `Your free year ends in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
+      : `Your free trial ends in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
     alerts.push({
       type: 'LICENSE_EXPIRING',
       message,
-      severity: licenseState.daysRemaining <= (LICENSE_EXPIRES_AFTER_DAYS - LICENSE_WARNING_AFTER_DAYS) / 3 ? 'danger' : 'warning'
+      severity: licenseState.daysRemaining <= LICENSE_WARNING_WINDOW_DAYS / 3 ? 'danger' : 'warning'
     })
   } else if (licenseState.status === 'EXPIRED') {
     const message = licenseState.tier === 'PAID'
       ? 'Your license has expired. Renew to keep creating new invoices — all your existing data stays fully accessible.'
-      : 'Your free year has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.'
+      : 'Your free trial has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.'
     alerts.push({
       type: 'LICENSE_EXPIRED',
       message,

@@ -10,7 +10,7 @@ import { decrementVariantStockTx } from './variant.service'
 import { deductBatchStockFIFO, restoreBatchStockFIFO, hasEnoughNonExpiredBatchStock } from './batch.service'
 import { markSerialSoldTx, markSerialAvailableTx } from './serial.service'
 import { SequenceContendedError } from './sequence.service'
-import { releaseTablesForInvoiceTx } from './restaurant.service'
+import { releaseTablesForInvoiceTx, deductIngredients } from './restaurant.service'
 import { getLicenseState } from './license.service'
 import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.service'
 import { serializeCustomFieldValues } from './custom-field.service'
@@ -659,7 +659,16 @@ export const billingService = {
             // Phase 65 — Reporting Tags / Cost & Profit Centres.
             costCentreId: payload.costCentreId ?? null,
             // Phase 66 — Custom Fields.
-            customFields: serializeCustomFieldValues(payload.customFields)
+            customFields: serializeCustomFieldValues(payload.customFields),
+            // 2026-09 — foreign-currency overlay (see Invoice's own schema
+            // comment): totalAmount above stays base-currency regardless —
+            // this is purely a documentary conversion for display/print.
+            // Both fields required together — a rate with no currency code
+            // (or vice versa) is meaningless, so it's treated as "not
+            // foreign" rather than storing a half-complete state.
+            foreignCurrencyCode: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? payload.foreignCurrencyCode : null,
+            foreignExchangeRate: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? payload.foreignExchangeRate : null,
+            foreignTotalAmount: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? roundCurrency(totalAmount / payload.foreignExchangeRate) : null
           }
         })
 
@@ -851,6 +860,24 @@ export const billingService = {
         entityId: invoice.id,
         newValue: { invoiceNumber: invoice.invoiceNumber, totalAmount, paymentMethod: payload.paymentMethod }
       })
+
+      // 2026-09 §12 — Bakery item 1: recipe-based ingredient deduction at
+      // sale time. RESTAURANT already deducts recipe ingredients when its
+      // KOT reaches DONE (restaurant.service.ts's updateKOTStatus) — Bakery
+      // has ingredient_tracking/recipes too but deliberately no KOT (a
+      // bakery counter sale isn't a dine-in ticket flow), so there's no
+      // KOT-completion event to hang this off. Call the exact same,
+      // already-proven deductIngredients() directly here instead — gated on
+      // kot being OFF so a KOT-enabled business (Restaurant) never
+      // double-deducts (once here, once again when its KOT completes).
+      if (await isModuleEnabled('ingredient_tracking') && !(await isModuleEnabled('kot'))) {
+        await deductIngredients(validatedItems.map(i => ({ productId: i.productId, quantity: i.quantity })), userId).catch(() => {
+          // deductIngredients already handles its own per-ingredient
+          // failures (notification + audit log) — a rejection here would
+          // only happen for something outside that, and must never fail
+          // the sale itself.
+        })
+      }
 
       // R15: Check for low-stock after deducting inventory for STANDARD products
       for (const item of validatedItems) {

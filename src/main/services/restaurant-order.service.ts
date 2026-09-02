@@ -1,6 +1,5 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { billingService } from './billing.service'
 import { createKOT } from './restaurant.service'
 import { generateUpiQr, canShowUpiQr } from './print.service'
 
@@ -9,8 +8,12 @@ import { generateUpiQr, canShowUpiQr } from './print.service'
 // the authenticated IPC bridge, and only ever creates a PENDING
 // TableOrderRequest — it can never touch Invoice/KOT/inventory on its own.
 // Staff must explicitly call acceptOrderRequest (IPC, permissioned) to turn
-// it into a real invoice, reusing billingService.createInvoice + the
-// existing createKOT exactly as the manual staff-driven flow already does.
+// it into a KOT sent to the kitchen. 2026-09-02 — this no longer bills the
+// order immediately: the resulting KOT joins the table's running,
+// un-invoiced tab (restaurant.service.ts's createKOT), and the whole
+// table only ever gets billed once, at checkoutTable() — the fix for a
+// customer scanning again mid-meal landing on a SEPARATE invoice instead
+// of the same running bill.
 
 const MAX_ITEMS_PER_ORDER = 30
 const MAX_QUANTITY_PER_ITEM = 50
@@ -21,6 +24,11 @@ export interface MenuProduct {
   sellingPrice: number
   imagePath: string | null
   categoryName: string | null
+  // 2026-09-02 — VEG|EGG|NON_VEG|null. Surfaced on the customer-facing QR
+  // menu as the standard green/yellow/brown-red dot regardless of whether
+  // food_diet_type is enabled — a null value just renders no dot, so this
+  // never needs its own module gate on the read side.
+  foodType: string | null
 }
 
 export async function getBusinessDisplayInfo(): Promise<{ businessName: string; currencySymbol: string }> {
@@ -38,7 +46,7 @@ export async function listMenuProducts(): Promise<MenuProduct[]> {
     // the kitchen has explicitly marked out for today.
     where: { isActive: true, OR: [{ unavailableUntil: null }, { unavailableUntil: { lte: new Date() } }] },
     select: {
-      id: true, productName: true, sellingPrice: true, imagePath: true,
+      id: true, productName: true, sellingPrice: true, imagePath: true, foodType: true,
       category: { select: { name: true } }
     },
     orderBy: { productName: 'asc' }
@@ -47,7 +55,7 @@ export async function listMenuProducts(): Promise<MenuProduct[]> {
   // customer-facing surface — select only what a printed menu would show.
   return products.map(p => ({
     id: p.id, productName: p.productName, sellingPrice: p.sellingPrice,
-    imagePath: p.imagePath, categoryName: p.category?.name ?? null
+    imagePath: p.imagePath, categoryName: p.category?.name ?? null, foodType: p.foodType
   }))
 }
 
@@ -179,11 +187,16 @@ export async function listOrderRequests(status?: string) {
 // its own comment below for why this is needed.
 const QR_ORDER_CLAIM_SENTINEL = 'PROCESSING'
 
-export async function acceptOrderRequest(
-  requestId: string,
-  payload: { paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'; customerId?: string },
-  userId?: string
-) {
+// 2026-09-02 — accepting an order no longer bills it immediately. It now
+// only sends the order to the kitchen (creates a KOT, no invoice), the
+// same as any other round added to a table's running tab (see
+// restaurant.service.ts's createKOT/checkoutTable header comments) — this
+// is what lets a customer scan again mid-meal and have the second order
+// land on the SAME eventual bill, instead of each accepted order becoming
+// its own separate invoice. Billing now only ever happens once, at
+// checkoutTable(), so `paymentMethod`/`customerId` are no longer accepted
+// here — they belong to that later step.
+export async function acceptOrderRequest(requestId: string, userId?: string) {
   const db = getPrisma()
   try {
     // Real bug found live (2026-07-28 product-vertical audit): the
@@ -191,12 +204,11 @@ export async function acceptOrderRequest(
     // the eventual `status: 'ACCEPTED'` write happening unconditionally
     // afterward — a customer's table-side double-tap on "Accept" in the
     // staff UI, or two staff members accepting the same QR order moments
-    // apart, could both pass the stale check and both call
-    // billingService.createInvoice + createKOT, silently billing the
-    // customer twice for one order. Claim the request atomically first
-    // (updateMany with a status guard, matching the pattern
-    // hotel/rental/metal-exchange's invoice-claim sentinels already
-    // establish) — the loser fails cleanly instead of double-invoicing.
+    // apart, could both pass the stale check and both call createKOT,
+    // silently sending the same order to the kitchen twice. Claim the
+    // request atomically first (updateMany with a status guard, matching
+    // the pattern hotel/rental/metal-exchange's invoice-claim sentinels
+    // already establish) — the loser fails cleanly instead of duplicating.
     const claim = await db.tableOrderRequest.updateMany({
       where: { id: requestId, status: 'PENDING' },
       data: { status: QR_ORDER_CLAIM_SENTINEL },
@@ -228,31 +240,25 @@ export async function acceptOrderRequest(
         return { success: false, error: { code: 'QRO-022', message: 'One or more items in this order are no longer available — reject it and ask the customer to reorder.' } }
       }
 
-      const invoiceResult = await billingService.createInvoice({
-        customerId: payload.customerId,
-        paymentMethod: payload.paymentMethod,
-        items: request.items.map(i => {
+      const kotResult = await createKOT(
+        request.items.map(i => {
           const p = byId.get(i.productId)!
-          return { productId: i.productId, quantity: i.quantity, unitPrice: p.sellingPrice, discountAmount: 0, taxRate: p.taxRate }
+          return { productId: i.productId, quantity: i.quantity, unitPrice: p.sellingPrice, taxRate: p.taxRate }
         }),
-        globalDiscount: 0,
-        referenceNumber: `QR-${request.tableId.slice(-6)}`
-      }, userId)
-
-      if (!invoiceResult.success || !invoiceResult.data) {
+        request.tableId,
+        userId
+      )
+      if (!kotResult.success || !kotResult.data) {
         await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } })
-        return { success: false, error: (invoiceResult as { error?: { code: string; message: string } }).error ?? { code: 'QRO-023', message: 'Could not create invoice from this order.' } }
+        return { success: false, error: (kotResult as { error?: { code: string; message: string } }).error ?? { code: 'QRO-023', message: 'Could not send this order to the kitchen.' } }
       }
-      const invoice = invoiceResult.data as { id: string }
-
-      await createKOT(invoice.id, request.tableId, userId)
 
       await db.tableOrderRequest.update({
         where: { id: requestId },
-        data: { status: 'ACCEPTED', invoiceId: invoice.id, resolvedAt: new Date() }
+        data: { status: 'ACCEPTED', resolvedAt: new Date() }
       })
-      await logAction(userId, 'QR_ORDER_ACCEPTED', 'TableOrderRequest', requestId, undefined, invoice.id)
-      return { success: true, data: { invoiceId: invoice.id } }
+      await logAction(userId, 'QR_ORDER_ACCEPTED', 'TableOrderRequest', requestId, undefined, kotResult.data.id)
+      return { success: true, data: { kotId: kotResult.data.id } }
     } catch (err) {
       await db.tableOrderRequest.update({ where: { id: requestId }, data: { status: 'PENDING' } }).catch(() => {})
       throw err

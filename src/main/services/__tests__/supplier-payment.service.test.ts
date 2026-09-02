@@ -344,3 +344,94 @@ describe('supplierPaymentService.reverseSupplierPayment', () => {
     )
   })
 })
+
+// 2026-09 — foreign-currency bill settlement. A $500 bill raised at 83.25
+// (totalAmount/balanceAmount = 41,625 base currency) is the fixture — the
+// mirror image of payment.service.test.ts's own invoice fixture, but with
+// the gain/loss direction flipped (paying LESS cash than book value is the
+// gain here, not the loss) — see recordForeignCurrencyBillSettlement's own
+// header comment in supplier-payment.service.ts.
+describe('supplierPaymentService.recordForeignCurrencyBillSettlement', () => {
+  function foreignBill(overrides: Record<string, unknown> = {}) {
+    return baseBill({
+      foreignCurrencyCode: 'USD', foreignExchangeRate: 83.25, foreignTotalAmount: 500,
+      balanceAmount: 41625, paidAmount: 0, totalAmount: 41625,
+      ...overrides,
+    })
+  }
+
+  function makeFxMockDb(billOverrides: Record<string, unknown> = {}) {
+    const db = makeMockDb(billOverrides)
+    const accountsByCode: Record<string, { id: string; accountCode: string; accountName: string; accountType: string }> = {
+      '1000': { id: 'coa-cash', accountCode: '1000', accountName: 'Cash & Bank', accountType: 'ASSET' },
+      '2000': { id: 'coa-ap', accountCode: '2000', accountName: 'Accounts Payable', accountType: 'LIABILITY' },
+    }
+    db.chartOfAccounts.findUnique = vi.fn(async ({ where }: { where: { accountCode: string } }) => accountsByCode[where.accountCode] ?? null)
+    db.chartOfAccounts.create = vi.fn(async ({ data }: { data: { accountCode: string } }) => {
+      const created = { id: `coa-${data.accountCode}`, ...data }
+      accountsByCode[data.accountCode] = created as never
+      return created
+    })
+    return db
+  }
+
+  it('rejects a bill that was not raised in a foreign currency', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeFxMockDb({ foreignCurrencyCode: null, foreignExchangeRate: null }) as never)
+
+    const res = await supplierPaymentService.recordForeignCurrencyBillSettlement({ billId: 'bill-1', foreignAmount: 500, settlementRate: 84, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SPM-008')
+  })
+
+  it('gain case: paying at a LOWER rate applies the actual (lower) cash amount and writes off the AP shortfall as a gain', async () => {
+    const db = makeFxMockDb(foreignBill())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 500*82 = 41,000 — LESS cash needed than the bill's own 41,625 book value.
+    const res = await supplierPaymentService.recordForeignCurrencyBillSettlement({ billId: 'bill-1', foreignAmount: 500, settlementRate: 82, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    expect(db.supplierPayment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ amount: 41000, foreignAmount: 500, foreignExchangeRate: 82, foreignCurrencyCode: 'USD' })
+    }))
+    expect(db.bill.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ paidAmount: 41625, balanceAmount: 0, status: 'PAID' })
+    }))
+    const journalCalls = vi.mocked(db.journalEntry.create).mock.calls
+    expect(journalCalls).toHaveLength(2)
+    const fxCall = journalCalls.find((c: any) => c[0].data.sourceType === 'REALIZED_FX_GAIN_LOSS')
+    expect(fxCall).toBeDefined()
+    const fxLines = fxCall![0].data.lines.create as Array<{ accountId: string; debitAmount: number; creditAmount: number }>
+    // 625 (41,625 - 41,000) written off as a gain: Dr AP / Cr FX-Gain — not touching Cash.
+    expect(fxLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: 'coa-ap', debitAmount: 625, creditAmount: 0 }),
+      expect.objectContaining({ accountId: 'coa-4200', debitAmount: 0, creditAmount: 625 }),
+    ]))
+  })
+
+  it('loss case: paying at a HIGHER rate applies the bill balance as SupplierPayment.amount and posts the extra cash out as a loss', async () => {
+    const db = makeFxMockDb(foreignBill())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // 500*84 = 42,000 — MORE cash needed than the bill's own 41,625 book value.
+    const res = await supplierPaymentService.recordForeignCurrencyBillSettlement({ billId: 'bill-1', foreignAmount: 500, settlementRate: 84, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    expect(db.supplierPayment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ amount: 41625, foreignAmount: 500, foreignExchangeRate: 84 })
+    }))
+    expect(db.bill.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ paidAmount: 41625, balanceAmount: 0, status: 'PAID' })
+    }))
+    const journalCalls = vi.mocked(db.journalEntry.create).mock.calls
+    const fxCall = journalCalls.find((c: any) => c[0].data.sourceType === 'REALIZED_FX_GAIN_LOSS')
+    expect(fxCall).toBeDefined()
+    const fxLines = fxCall![0].data.lines.create as Array<{ accountId: string; debitAmount: number; creditAmount: number }>
+    // 375 (42,000 - 41,625) extra cash paid out, a loss: Dr FX-Loss / Cr Cash.
+    expect(fxLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: 'coa-4200', debitAmount: 375, creditAmount: 0 }),
+      expect.objectContaining({ accountId: 'coa-cash', debitAmount: 0, creditAmount: 375 }),
+    ]))
+  })
+})

@@ -10,13 +10,14 @@ import { cn } from '@shared/utils/cn'
 // Deliberately no sidebar/filters/print button — this is meant to be glanced
 // at from across a kitchen, not operated like the full KOTScreen.
 
-interface KOTItem { id: string; product: { productName: string }; quantity: number }
+interface KOTItem { productId: string; productName: string; quantity: number }
 interface KOT {
   id: string
   status: string
   createdAt: string
   table?: { tableNumber: string; tableName?: string | null } | null
-  invoice: { invoiceNumber: string; items: KOTItem[] }
+  invoice?: { invoiceNumber: string } | null
+  items: KOTItem[]
 }
 
 const NEXT_STATUS: Record<string, string | null> = { PENDING: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: null }
@@ -30,14 +31,14 @@ function TicketCard({ kot, onAdvance, busy }: { kot: KOT; onAdvance: (kot: KOT) 
     <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
-          <p className="text-xl font-bold text-dark dark:text-slate-100">{kot.table?.tableName || kot.table?.tableNumber || kot.invoice.invoiceNumber}</p>
+          <p className="text-xl font-bold text-dark dark:text-slate-100">{kot.table?.tableName || kot.table?.tableNumber || kot.invoice?.invoiceNumber || `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
           <p className="text-sm text-slate-400">{new Date(kot.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
       </div>
       <div className="space-y-1.5">
-        {kot.invoice.items.map(item => (
-          <div key={item.id} className="flex justify-between text-lg text-dark dark:text-slate-100">
-            <span>{item.product.productName}</span>
+        {kot.items.map((item, idx) => (
+          <div key={idx} className="flex justify-between text-lg text-dark dark:text-slate-100">
+            <span>{item.productName}</span>
             <span className="font-bold">× {item.quantity}</span>
           </div>
         ))}

@@ -48,6 +48,27 @@ export type BusinessType =
   // mechanics where an equivalent already exists — see the module flags
   // below).
   | 'ELECTRICAL' | 'PLUMBING' | 'STATIONERY' | 'FURNITURE'
+  // 2026-09 §12 — Grocery/Kirana Store (PRODUCT category). Reuses an
+  // already-proven module combination (AGRI_INPUTS already ships
+  // batch_tracking+expiry_tracking+credit_limit_enforcement+
+  // outstanding_analytics together) rather than inventing a new one —
+  // loose_billing stays the pre-existing cross-cutting opt-in flag it
+  // already was, deliberately not defaulted on here, same convention as
+  // barcode_generation never being defaulted onto any vertical either.
+  | 'GROCERY'
+  // 2026-09 §12 — Bakery/Sweet Shop/Catering (PRODUCT category). Reuses
+  // Restaurant's recipes/ingredient_tracking (deliberately WITHOUT
+  // tables/kot — a bakery counter sale isn't a dine-in ticket flow, see
+  // billing.service.ts's createInvoice hook), Pharmacy's batch/expiry
+  // tracking (short shelf life), and Stationery's bulk_list_order verbatim
+  // for catering orders (a catering order is structurally identical to a
+  // school supply list — stage lines, match to catalog, bill in one shot).
+  | 'BAKERY'
+  // 2026-09 §12 — Tours & Travels (PRODUCT category — fleet/booking-shaped,
+  // not appointment-shaped, so deliberately not in SERVICE_TEMPLATE_TYPES).
+  // Cabs/tempo travellers/buses hired by the trip (CHARTER) or seat-in-coach
+  // tour packages (SEAT) — see the 6 new TripBooking-family models below.
+  | 'TOURS_TRAVELS'
 
 export type TemplateModule =
   // Phase 1 modules
@@ -248,6 +269,35 @@ export type TemplateModule =
   // mirrors Jewellery's MetalExchange discount-folding pattern. FURNITURE
   // default.
   | 'trade_in_exchange'
+  // 2026-09 — Gym/Studio: machine-based workout progress tracking (reps,
+  // weight, sets per exercise, logged per visit). GYM_STUDIO default.
+  | 'workout_tracking'
+  // 2026-09 — universal visit check-in/check-out log (WorkoutLog's sibling
+  // model CustomerCheckIn). Deliberately NOT defaulted onto any single
+  // vertical's array below — toggled on for any business type from Settings
+  // → Business Features, same universal opt-in convention as
+  // 'returns'/'time_entries'/'credit_limit_enforcement' — a coaching
+  // institute, clinic, co-working space, or gym can all use it without a
+  // Membership/plan concept getting involved.
+  | 'customer_checkin'
+  // 2026-09 §12 — Bakery custom order booking (a custom cake, for example),
+  // mirrors Furniture's deposit_booking pattern exactly (advance now,
+  // balance on pickup/delivery) — its own flag since it gates a genuinely
+  // new screen, same one-flag-per-new-screen granularity as
+  // deposit_booking/trade_in_exchange above. BAKERY default.
+  | 'custom_order_booking'
+  // 2026-09 §12 — Tours & Travels. Four flags, one per signature capability
+  // (same one-flag-per-new-screen granularity as deposit_booking/
+  // trade_in_exchange/custom_order_booking above). All TOURS_TRAVELS default.
+  | 'vehicle_fleet' | 'tour_packages' | 'trip_charter_booking' | 'driver_duty_settlement'
+  // 2026-09-02 — Restaurant/Bakery diet-type marker (Product.foodType,
+  // VEG|EGG|NON_VEG) surfaced on the Product form, Billing cart, Kitchen
+  // Display, and the QR customer-facing menu. RESTAURANT + BAKERY default.
+  | 'food_diet_type'
+  // 2026-09-02 — Catering event booking (menu, per-plate price vs. final
+  // bargained price, per-day meal/snack counts, per-role staffing cost).
+  // BAKERY default only (Bakery/Sweet Shop/Catering vertical).
+  | 'catering_events'
 
 export interface TemplateConfig {
   businessType: string
@@ -308,7 +358,7 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // restaurant that does want formal supplier-delivery tracking via the
   // "Additional Business Features" Logistics & Supply Chain toggle in
   // Settings (SettingsScreen.tsx's BusinessFeaturesSection).
-  RESTAURANT:  ['tables', 'kot', 'recipes', 'ingredient_tracking'],
+  RESTAURANT:  ['tables', 'kot', 'recipes', 'ingredient_tracking', 'food_diet_type'],
   RETAIL:      ['returns', 'price_markdowns', 'loyalty_program', ...LOGISTICS_MODULES],
   HARDWARE:    ['area_pricing', 'credit_limit_enforcement', ...LOGISTICS_MODULES],
   DISTRIBUTOR: ['credit_limit_enforcement', 'bulk_orders', 'outstanding_analytics', 'field_order_capture', ...LOGISTICS_MODULES],
@@ -435,7 +485,7 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // 'multi_service_booking' (Phase 46) replaces a hardcoded `businessType === 'BEAUTY_SALON'`
   // check in AppointmentsScreen.tsx that gated actual save-time validation/payload shape.
   BEAUTY_SALON:       [...SERVICE_BASE_MODULES, 'session_packs', 'staff_commission', 'multi_service_booking'],
-  GYM_STUDIO:         [...SERVICE_BASE_MODULES, 'session_packs', 'memberships', 'batch_classes', 'staff_commission'],
+  GYM_STUDIO:         [...SERVICE_BASE_MODULES, 'session_packs', 'memberships', 'batch_classes', 'staff_commission', 'workout_tracking'],
   DRIVING_SCHOOL:     [...SERVICE_BASE_MODULES, 'session_packs', 'learner_profiles', 'driving_sessions'],
   // Phase 22 — Professional
   LAWYER:                 [...SERVICE_BASE_MODULES, 'legal_cases', 'time_entries'],
@@ -474,6 +524,20 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // "one flag, no base spread" shape RENTAL uses for the identical reason
   // on the PRODUCT-category side.
   HOTEL_LODGE: ['hotel_bookings'],
+  // 2026-09 §12 — Grocery/Kirana Store. Same batch_tracking+expiry_tracking+
+  // credit_limit_enforcement+outstanding_analytics combination AGRI_INPUTS
+  // already ships (minus its equipment-specific serial/warranty/job_cards/
+  // agri_dashboard modules) — a Kirana shop extends running "khata" credit
+  // to regulars just as routinely as it stocks short-shelf-life goods.
+  GROCERY: ['batch_tracking', 'expiry_tracking', 'credit_limit_enforcement', 'outstanding_analytics', ...LOGISTICS_MODULES],
+  // 2026-09 §12 — Bakery/Sweet Shop/Catering. Deliberately no tables/kot
+  // (see the TemplateModule union comment above). 2026-09-02 added
+  // catering_events for the dedicated Catering feature (menu, per-plate vs.
+  // final bargained price, per-day meal/snack counts, per-role staff cost).
+  BAKERY: ['recipes', 'ingredient_tracking', 'batch_tracking', 'expiry_tracking', 'bulk_list_order', 'custom_order_booking', 'food_diet_type', 'catering_events', ...LOGISTICS_MODULES],
+  // 2026-09 §12 — Tours & Travels. No LOGISTICS_MODULES — this vertical
+  // doesn't receive formal goods shipments (it operates the fleet itself).
+  TOURS_TRAVELS: ['vehicle_fleet', 'tour_packages', 'trip_charter_booking', 'driver_duty_settlement', 'credit_limit_enforcement', 'outstanding_analytics'],
 }
 
 const DASHBOARD_LAYOUTS: Record<string, string> = {

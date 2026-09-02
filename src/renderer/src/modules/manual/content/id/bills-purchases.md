@@ -17,6 +17,10 @@ Setiap baris adalah salah satu dari:
 
 Setiap baris juga memiliki jumlah diskon dan tarif pajaknya sendiri, sehingga total tagihan dihitung dengan benar per baris sebelum dijumlahkan — urutan diskon-lalu-pajak yang sama yang sudah diikuti setiap dokumen lain di Sarang.
 
+## Tagihan mata uang asing
+
+Tagihan dari pemasok luar negeri dapat dicatat dengan cara yang sama seperti faktur — centang **Bill in foreign currency** saat mencatatnya, masukkan kode mata uang dan nilai tukar, dan tagihan tersebut akan memuat jumlah referensi terkonversi di samping totalnya dalam mata uang lokal, ditampilkan baik di layar maupun saat dicetak. Saat Anda menyelesaikannya (lihat di bawah), opsi **Settle in {code}** muncul dengan cara yang sama seperti pada faktur, dan setiap laba atau rugi antara nilai tukar saat tagihan dicatat dan nilai tukar pada hari Anda benar-benar membayar dicatat secara otomatis sebagai entri jurnal Laba/Rugi Selisih Kurs Terealisasi — lihat bab Penagihan & Dokumen untuk penjelasan lengkap tentang cara kerja sakelar, pratinjau, dan perhitungan penyelesaian; di sini caranya bekerja persis sama.
+
 ## Mencatat Pembayaran terhadap Tagihan
 
 Buka tagihan dan klik **Catat Pembayaran**. Pembayaran pemasok menerima Tunai, UPI, Kartu, Transfer Bank, atau Cek — kumpulan yang lebih luas daripada pembayaran yang menghadap pelanggan, karena pembayaran B2B secara rutin dilakukan melalui transfer bank atau cek. Pembayaran bisa sebagian; saldo dan status tagihan segera diperbarui, dan jumlahnya dikurangi dari yang Anda hutang ke pemasok tersebut.

@@ -28,6 +28,7 @@ export function register(handle: HandleFn): void {
     if (existing) return { success: false, error: { code: 'USER-001', message: 'This username is already in use. Choose a different username.' } }
     const passwordHash = await authService.hashPassword(password)
     const user = await db.user.create({ data: { fullName, username, passwordHash, roleId, email, phone } })
+    await authService.recordPasswordHistory(user.id, passwordHash)
     await auditService.logAction({ userId: authService.getCurrentSession()?.userId, action: 'USER_CREATED', entityType: 'User', entityId: user.id })
     return { success: true, data: { ...user, passwordHash: undefined } }
   })
@@ -71,8 +72,13 @@ export function register(handle: HandleFn): void {
     const lengthError = await authService.checkPasswordLength(newPassword)
     if (lengthError) return lengthError
     const db = getPrisma()
+    const target = await db.user.findUnique({ where: { id: userId }, select: { passwordHash: true } })
+    if (!target) return { success: false, error: { code: 'AUTH-001', message: 'User not found.' } }
+    const reuseError = await authService.checkPasswordNotReused(userId, newPassword, target.passwordHash)
+    if (reuseError) return reuseError
     const newHash = await authService.hashPassword(newPassword)
-    await db.user.update({ where: { id: userId }, data: { passwordHash: newHash, sessionToken: null, tokenExpiresAt: null } })
+    await db.user.update({ where: { id: userId }, data: { passwordHash: newHash, passwordChangedAt: new Date(), sessionToken: null, tokenExpiresAt: null } })
+    await authService.recordPasswordHistory(userId, newHash)
     await auditService.logAction({ userId: authService.getCurrentSession()?.userId, action: 'ADMIN_PASSWORD_RESET', entityType: 'User', entityId: userId })
     return { success: true }
   })

@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import type { ApiResponse } from '../ipc/channels'
+import { LICENSE_INTERNAL_SETTING_KEYS } from './license.service'
 
 export async function getSetting(key: string): Promise<ApiResponse> {
   try {
@@ -12,6 +13,17 @@ export async function getSetting(key: string): Promise<ApiResponse> {
 }
 
 export async function setSetting(key: string, value: string): Promise<ApiResponse> {
+  // 2026-09-02 hardening — license-internal Setting rows (license_key,
+  // license_enforcement_suspended, etc.) must only ever be written by
+  // license.service.ts's own functions, which write via raw db.setting.upsert
+  // directly and never route through here. This generic key/value setter has
+  // no per-key allowlist otherwise and is reachable from the renderer via
+  // settings:set, gated only by settings.modify — a permission the sole
+  // Admin/business-owner always holds. See license.service.ts's
+  // LICENSE_INTERNAL_SETTING_KEYS doc comment for the full threat this closes.
+  if (LICENSE_INTERNAL_SETTING_KEYS.has(key)) {
+    return { success: false, error: { code: 'LIC-003', message: 'This setting is managed internally and cannot be changed directly.' } }
+  }
   try {
     const db = getPrisma()
     await db.setting.upsert({

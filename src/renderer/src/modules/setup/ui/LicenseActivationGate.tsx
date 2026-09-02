@@ -62,7 +62,7 @@ export function LicenseActivationGate({ onComplete }: { onComplete: () => void }
         </div>
         <h2 className="text-lg font-bold text-dark dark:text-slate-100 mb-2">One more step</h2>
         <p className="text-sm text-slate-500 dark:text-slate-400 mb-6">
-          Your business account is already set up. Activate your license key to continue — Sarang is free for your first 12 months, with a small annual license after that.
+          Your business account is already set up. Activate your license key to continue — Sarang is free for your first 100 days, with a small annual license after that.
         </p>
 
         <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-start">
@@ -88,7 +88,7 @@ export function LicenseActivationGate({ onComplete }: { onComplete: () => void }
           )}
           <label className="flex items-start gap-2 cursor-pointer">
             <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5" />
-            <span className="text-xs text-slate-600 dark:text-slate-300">I understand Sarang is free for my first 12 months, then a small annual license keeps it running.</span>
+            <span className="text-xs text-slate-600 dark:text-slate-300">I understand Sarang is free for my first 100 days, then a small annual license keeps it running.</span>
           </label>
         </div>
 

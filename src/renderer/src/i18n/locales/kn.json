@@ -56,7 +56,13 @@
     "manual": "ಕೈಪಿಡಿ",
     "costCentres": "ವೆಚ್ಚ ಕೇಂದ್ರಗಳು",
     "budgets": "ಬಜೆಟ್‌ಗಳು",
-    "serviceCombos": "Service Combos"
+    "serviceCombos": "Service Combos",
+    "checkIn": "ಚೆಕ್-ಇನ್",
+    "customOrders": "ಕಸ್ಟಮ್ ಆರ್ಡರ್‌ಗಳು",
+    "cateringEvents": "ಕೇಟರಿಂಗ್ ಈವೆಂಟ್‌ಗಳು",
+    "vehicleFleet": "ವಾಹನ ಬೆಂಗಾವಲು",
+    "tourPackages": "ಪ್ರವಾಸ ಪ್ಯಾಕೇಜ್‌ಗಳು",
+    "tripBookings": "ಪ್ರಯಾಣ ಬುಕಿಂಗ್‌ಗಳು"
   },
   "common": {
     "save": "ಉಳಿಸಿ",
@@ -182,7 +188,9 @@
     "resetPassword": "ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಿ",
     "passwordResetSuccessTitle": "ಪಾಸ್‌ವರ್ಡ್ ಮರುಹೊಂದಿಸಲಾಗಿದೆ",
     "passwordResetSuccessBody": "ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ಬದಲಾಯಿಸಲಾಗಿದೆ. ಈಗ ನಿಮ್ಮ ಹೊಸ ಪಾಸ್‌ವರ್ಡ್‌ನೊಂದಿಗೆ ಸೈನ್ ಇನ್ ಮಾಡಬಹುದು.",
-    "backToSignIn": "ಸೈನ್ ಇನ್‌ಗೆ ಹಿಂತಿರುಗಿ"
+    "backToSignIn": "ಸೈನ್ ಇನ್‌ಗೆ ಹಿಂತಿರುಗಿ",
+    "passwordExpiredTitle": "ನಿಮ್ಮ ಪಾಸ್‌ವರ್ಡ್ ಅವಧಿ ಮುಗಿದಿದೆ",
+    "passwordExpiredBody": "ದಯವಿಟ್ಟು Settings → Security ನಿಂದ ಶೀಘ್ರದಲ್ಲೇ ಬದಲಾಯಿಸಿ."
   },
   "dashboard": {
     "title": "ಡ್ಯಾಶ್‌ಬೋರ್ಡ್",
@@ -364,6 +372,8 @@
     "invoiceCreated": "ಬಿಲ್ ಮಾಡಲಾಗಿದೆ",
     "creditInvoice": "ಉಧಾರ ಬಿಲ್ ಮಾಡಿ",
     "confirmSale": "ಮಾರಾಟ ಖಚಿತಪಡಿಸಿ",
+    "sendToKitchen": "ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸಿ",
+    "orderSentToKitchen": "ಆರ್ಡರ್ ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸಲಾಗಿದೆ",
     "clearCart": "ಎಲ್ಲ ತೆರವು",
     "customerRequired": "ಉಧಾರ ಮಾರಾಟಕ್ಕೆ ಗ್ರಾಹಕ ಅಗತ್ಯ",
     "paymentHistory": "ಪಾವತಿ ಇತಿಹಾಸ",
@@ -479,7 +489,19 @@
     "shareEmailSubject": "{{businessName}} ಇಂದ {{documentType}} {{number}}",
     "shareEmailBody": "ಮಾನ್ಯರೇ,\n\nದಯವಿಟ್ಟು {{businessName}} ಇಂದ {{documentType}} {{number}} ಅನ್ನು ಲಗತ್ತಿಸಲಾಗಿದೆ, ಒಟ್ಟು ಮೊತ್ತ {{amount}}.\n\nಧನ್ಯವಾದಗಳು.\n\n{{businessName}}",
     "bargainedPriceToggleHint": "{{currSym}} / % / ಚೌಕಾಶಿ (ಅಂತಿಮ) ಬೆಲೆ ನಡುವೆ ಬದಲಿಸಿ",
-    "bargainedPriceInputHint": "ಈ ಸಾಲಿಗೆ ಅಂತಿಮ ಒಪ್ಪಿಗೆಯಾದ ಬೆಲೆಯನ್ನು ಟೈಪ್ ಮಾಡಿ — ರಿಯಾಯಿತಿಯನ್ನು ನಿಮಗಾಗಿ ಲೆಕ್ಕಹಾಕಲಾಗುತ್ತದೆ."
+    "bargainedPriceInputHint": "ಈ ಸಾಲಿಗೆ ಅಂತಿಮ ಒಪ್ಪಿಗೆಯಾದ ಬೆಲೆಯನ್ನು ಟೈಪ್ ಮಾಡಿ — ರಿಯಾಯಿತಿಯನ್ನು ನಿಮಗಾಗಿ ಲೆಕ್ಕಹಾಕಲಾಗುತ್ತದೆ.",
+    "foreignCurrency": {
+      "toggle": "ವಿದೇಶಿ ಕರೆನ್ಸಿಯಲ್ಲಿ ಬಿಲ್ ಮಾಡಿ",
+      "codePlaceholder": "ಕರೆನ್ಸಿ ಕೋಡ್, ಉದಾ. USD",
+      "ratePlaceholder": "ವಿನಿಮಯ ದರ, ಉದಾ. 83.25",
+      "preview": "≈ {{code}} {{amount}}",
+      "settleTitle": "ವಿದೇಶಿ ಕರೆನ್ಸಿ ಇನ್‌ವಾಯ್ಸ್ ಇತ್ಯರ್ಥಗೊಳಿಸಿ",
+      "settleToggle": "{{code}} ನಲ್ಲಿ ಇತ್ಯರ್ಥಗೊಳಿಸಿ (ಪಡೆದ ನಿಜವಾದ ಮೊತ್ತ ಮತ್ತು ಯಾವುದೇ ವಿನಿಮಯ ದರ ಲಾಭ/ನಷ್ಟವನ್ನು ದಾಖಲಿಸುತ್ತದೆ)",
+      "amountReceived": "ಸ್ವೀಕರಿಸಿದ ಮೊತ್ತ ({{code}})",
+      "settlementRate": "ಇತ್ಯರ್ಥದ ಸಮಯದಲ್ಲಿ ವಿನಿಮಯ ದರ",
+      "settleNote": "ಇದು ಇನ್‌ವಾಯ್ಸ್ ಅನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ಇತ್ಯರ್ಥಗೊಳಿಸುತ್ತದೆ. ಅದನ್ನು ಎತ್ತಿದ ದರದಿಂದ ಯಾವುದೇ ವ್ಯತ್ಯಾಸವನ್ನು ನಿಜವಾದ ವಿನಿಮಯ ಲಾಭ ಅಥವಾ ನಷ್ಟವಾಗಿ ದಾಖಲಿಸಲಾಗುತ್ತದೆ.",
+      "settleAction": "ಇನ್‌ವಾಯ್ಸ್ ಇತ್ಯರ್ಥಗೊಳಿಸಿ"
+    }
   },
   "products": {
     "title": "ಉತ್ಪನ್ನಗಳು",
@@ -503,7 +525,7 @@
     "manageVariants": "ತಳಿಗಳನ್ನು ನಿರ್ವಹಿಸಿ",
     "description": "ವಿವರಣೆ",
     "productType": "ಉತ್ಪನ್ನ ಪ್ರಕಾರ",
-    "physical": "ಭೌತಿಕ",
+    "physical": "ಸರಕುಗಳು",
     "service": "ಸೇವೆ",
     "hsnCode": "HSN ಕೋಡ್",
     "reorderLevel": "ಮರುಆದೇಶ ಮಟ್ಟ",
@@ -697,7 +719,7 @@
     "noRepairHistory": "ಈ ಘಟಕಕ್ಕೆ ಇನ್ನೂ ಯಾವುದೇ ರಿಪೇರಿ ಟಿಕೆಟ್ ಇಲ್ಲ.",
     "deviceSerial": "ಸಾಧನ / ಸೀರಿಯಲ್",
     "warranty": "ವಾರಂಟಿ",
-    "changeStatus": "ಸ್ಥಿತಿ ಬದಲಿಸಿ",
+    "changeStatus": "ವಾಹನ ಸ್ಥಿತಿ ಬದಲಾಯಿಸಿ",
     "updateStatus": "ಸ್ಥಿತಿ ನವೀಕರಿಸಿ",
     "importBtn": "ಆಮದು",
     "importing": "ಆಮದು ಮಾಡಲಾಗುತ್ತಿದೆ…",
@@ -952,6 +974,26 @@
       "created": "ಚೆಕ್ ಪುಸ್ತಕ ಸೇರಿಸಲಾಗಿದೆ",
       "useNextNumber": "ಮುಂದಿನ ಚೆಕ್ ಪುಸ್ತಕ ಸಂಖ್ಯೆಯನ್ನು ಬಳಸಿ (#{{number}})"
     },
+    "bankDeposits": {
+      "title": "ಬ್ಯಾಂಕ್ ಠೇವಣಿಗಳು",
+      "depositsCount_one": "{{count}} ಠೇವಣಿ",
+      "depositsCount_other": "{{count}} ಠೇವಣಿಗಳು",
+      "newDeposit": "ಹೊಸ ಠೇವಣಿ",
+      "noDepositsYet": "ಇನ್ನೂ ಯಾವುದೇ ಬ್ಯಾಂಕ್ ಠೇವಣಿ ದಾಖಲಾಗಿಲ್ಲ",
+      "colDepositNumber": "ಠೇವಣಿ #",
+      "colDate": "ದಿನಾಂಕ",
+      "colCash": "ನಗದು",
+      "colCheques": "ಚೆಕ್‌ಗಳು",
+      "couldNotLoad": "ಬ್ಯಾಂಕ್ ಠೇವಣಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "couldNotCreate": "ಬ್ಯಾಂಕ್ ಠೇವಣಿ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "created": "ಠೇವಣಿ ಸ್ಲಿಪ್ ರಚಿಸಲಾಗಿದೆ",
+      "selectAccount": "ಬ್ಯಾಂಕ್ ಖಾತೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "needsCashOrCheques": "ಠೇವಣಿ ಸ್ಲಿಪ್ ಕನಿಷ್ಠ ಸ್ವಲ್ಪ ನಗದು ಅಥವಾ ಕನಿಷ್ಠ ಒಂದು ಚೆಕ್ ಅನ್ನು ಒಳಗೊಂಡಿರಬೇಕು.",
+      "denominationsLabel": "ನಗದು ಮುಖಬೆಲೆಗಳು",
+      "cashSubtotal": "ನಗದು ಉಪಮೊತ್ತ",
+      "includeCheques": "ಬಾಕಿ ಇರುವ ಚೆಕ್‌ಗಳನ್ನು ಸೇರಿಸಿ",
+      "chequeSubtotal": "ಚೆಕ್ ಉಪಮೊತ್ತ"
+    },
     "fixedAssets": {
       "title": "ಸ್ಥಿರ ಆಸ್ತಿಗಳು",
       "assetsCount_one": "{{count}} ಆಸ್ತಿ",
@@ -1106,6 +1148,17 @@
         "HANDLING": "ನಿರ್ವಹಣೆ",
         "OTHER": "ಇತರೆ"
       }
+    },
+    "foreignCurrency": {
+      "toggle": "ವಿದೇಶಿ ಕರೆನ್ಸಿಯಲ್ಲಿ ಬಿಲ್ ಮಾಡಿ",
+      "codePlaceholder": "ಕರೆನ್ಸಿ ಕೋಡ್, ಉದಾ. USD",
+      "ratePlaceholder": "ವಿನಿಮಯ ದರ, ಉದಾ. 83.25",
+      "settleTitle": "ವಿದೇಶಿ ಕರೆನ್ಸಿ ಬಿಲ್ ಇತ್ಯರ್ಥಗೊಳಿಸಿ",
+      "settleToggle": "{{code}} ನಲ್ಲಿ ಇತ್ಯರ್ಥಗೊಳಿಸಿ (ಪಾವತಿಸಿದ ನಿಜವಾದ ಮೊತ್ತ ಮತ್ತು ಯಾವುದೇ ವಿನಿಮಯ ದರ ಲಾಭ/ನಷ್ಟವನ್ನು ದಾಖಲಿಸುತ್ತದೆ)",
+      "amountPaid": "ಪಾವತಿಸಿದ ಮೊತ್ತ ({{code}})",
+      "settlementRate": "ಇತ್ಯರ್ಥದ ಸಮಯದಲ್ಲಿ ವಿನಿಮಯ ದರ",
+      "settleNote": "ಇದು ಬಿಲ್ ಅನ್ನು ಸಂಪೂರ್ಣವಾಗಿ ಇತ್ಯರ್ಥಗೊಳಿಸುತ್ತದೆ. ಅದನ್ನು ಎತ್ತಿದ ದರದಿಂದ ಯಾವುದೇ ವ್ಯತ್ಯಾಸವನ್ನು ನಿಜವಾದ ವಿನಿಮಯ ಲಾಭ ಅಥವಾ ನಷ್ಟವಾಗಿ ದಾಖಲಿಸಲಾಗುತ್ತದೆ.",
+      "settleAction": "ಬಿಲ್ ಇತ್ಯರ್ಥಗೊಳಿಸಿ"
     }
   },
   "salesOrders": {
@@ -2203,6 +2256,58 @@
       "deliveryInstallationSchedule": {
         "label": "Delivery & Installation Schedule",
         "description": "Furniture bookings with a delivery date in range, as a real schedule"
+      },
+      "specWiseFastMovers": {
+        "label": "ಸ್ಪೆಕ್-ವೈಸ್ ಫಾಸ್ಟ್ ಮೂವರ್ಸ್",
+        "description": "ಯಾವ ವ್ಯಾಟೇಜ್, ಗೇಜ್ ಅಥವಾ ಆಂಪಿಯರೇಜ್ ಸ್ಪೆಕ್ ನಿಜವಾಗಿ ಹೆಚ್ಚು ಮಾರಾಟವಾಗುತ್ತದೆ, ಯುನಿಟ್ ಮಾರಾಟದ ಆಧಾರದ ಮೇಲೆ ಶ್ರೇಣೀಕರಿಸಲಾಗಿದೆ"
+      },
+      "fittingCrossSell": {
+        "label": "ಫಿಟ್ಟಿಂಗ್ ಹೊಂದಾಣಿಕೆ ಕ್ರಾಸ್-ಸೆಲ್",
+        "description": "ಸಾಮಾನ್ಯವಾಗಿ ಜೊತೆಗೆ ಖರೀದಿಸುವ ಫಿಟ್ಟಿಂಗ್ ಅಥವಾ ಟೇಪ್ ಈ ಬಾರಿ ಖರೀದಿಸದ ಮಾರಾಟಗಳನ್ನು ಗುರುತಿಸುತ್ತದೆ"
+      },
+      "materialSalesMix": {
+        "label": "ಮೆಟೀರಿಯಲ್ ಸೇಲ್ಸ್ ಮಿಕ್ಸ್",
+        "description": "ಮೆಟೀರಿಯಲ್ ವರ್ಗದ ಪ್ರಕಾರ ಆದಾಯ ವಿಭಜನೆ — PVC, CPVC, GI, ತಾಮ್ರ"
+      },
+      "mrpViolation": {
+        "label": "MRP ಅನುಸರಣೆ",
+        "description": "ಯುನಿಟ್ ಬೆಲೆ ಉತ್ಪನ್ನದ ಮುದ್ರಿತ MRP ಅನ್ನು ಮೀರಿದ ಪ್ರತಿಯೊಂದು ಹಿಂದಿನ ಮಾರಾಟದ ಸಾಲು"
+      },
+      "perishableWastage": {
+        "label": "ಹಾಳಾಗುವ ವಸ್ತು ನಷ್ಟ",
+        "description": "ಅವಧಿ ಮೀರಿದ ಕಾರಣ ರೈಟ್-ಆಫ್ ಮಾಡಿದ ಸ್ಟಾಕ್, ಉತ್ಪನ್ನ ಮತ್ತು ಮೌಲ್ಯದ ಪ್ರಕಾರ"
+      },
+      "dailyRestockAlert": {
+        "label": "ದೈನಂದಿನ ಮರುಸ್ಟಾಕ್ ಎಚ್ಚರಿಕೆ",
+        "description": "ವೇಗವಾಗಿ ಮಾರಾಟವಾಗುತ್ತಿರುವ ಆದರೆ ಸ್ಟಾಕ್ ಕಡಿಮೆ ಇರುವ ಉತ್ಪನ್ನಗಳು, ಉಳಿದ ಸ್ಟಾಕ್ ದಿನಗಳ ಪ್ರಕಾರ ಶ್ರೇಣೀಕರಿಸಲಾಗಿದೆ"
+      },
+      "looseVsPackagedMix": {
+        "label": "ಸಡಿಲ ವಿರುದ್ಧ ಪ್ಯಾಕ್ ಮಾಡಿದ ಮಾರಾಟ ಮಿಶ್ರಣ",
+        "description": "ಸಡಿಲ (ತೂಕ-ಬಿಲ್ ಮಾಡಿದ) ಮತ್ತು ಪ್ಯಾಕ್ ಮಾಡಿದ ಉತ್ಪನ್ನಗಳ ನಡುವಿನ ಆದಾಯ ವಿಭಜನೆ"
+      },
+      "khataRisk": {
+        "label": "ಖಾತಾ ಅಪಾಯ ಹಂತ",
+        "description": "ಅಪಾಯದ ಪ್ರಕಾರ ಶ್ರೇಣೀಕರಿಸಿದ ಕ್ರೆಡಿಟ್ ಗ್ರಾಹಕರು — ಏಜಿಂಗ್ ಜೊತೆಗೆ 30-ದಿನದ ಬ್ಯಾಲೆನ್ಸ್ ಟ್ರೆಂಡ್, ಮತ್ತು ಒಂದು-ಟ್ಯಾಪ್ ವಾಟ್ಸಾಪ್ ರಿಮೈಂಡರ್"
+      },
+      "preOrderProductionSheet": {
+        "label": "ಪ್ರೀ-ಆರ್ಡರ್ ಪ್ರೊಡಕ್ಷನ್ ಶೀಟ್",
+        "description": "ಇಂದು ಏನು ತಯಾರಿಸಬೇಕು — ಬಾಕಿ ಇರುವ ಕಸ್ಟಮ್ ಆರ್ಡರ್‌ಗಳು ಮತ್ತು ಸಾಮಾನ್ಯ ಬೇಡಿಕೆ, ಅಗತ್ಯ ಪದಾರ್ಥಗಳಿಗೆ ವಿಸ್ತರಿಸಲಾಗಿದೆ"
+      },
+      "vehicleServiceDue": {
+        "label": "ವಾಹನ ಸೇವೆ ಬಾಕಿ",
+        "description": "ಕೊನೆಯ ಸೇವೆಯಿಂದ ಪ್ರತಿ ವಾಹನಕ್ಕೆ ಒಟ್ಟು ಚಾಲನೆ ಮಾಡಿದ ಕಿಮೀ, ಬಾಕಿ ಅಥವಾ ಮಿತಿ ಮೀರಿದ ವಾಹನಗಳನ್ನು ಗುರುತಿಸಲಾಗಿದೆ"
+      },
+      "commissionByAgent": {
+        "label": "ಏಜೆಂಟ್ ಪ್ರಕಾರ ಕಮಿಷನ್",
+        "description": "ಎಲ್ಲಾ ಪ್ರಯಾಣ ಬುಕಿಂಗ್‌ಗಳಲ್ಲಿ ಪ್ರತಿ ಏಜೆಂಟ್ ಗಳಿಸಿದ ಶಿಫಾರಸು ಕಮಿಷನ್"
+      },
+      "tripProfitability": {
+        "label": "ಪ್ರಯಾಣ ಲಾಭದಾಯಕತೆ",
+        "description": "ಪ್ರತಿ ಪೂರ್ಣಗೊಂಡ ಪ್ರಯಾಣಕ್ಕೆ: ಆದಾಯ ಮತ್ತು ಹೆಚ್ಚುವರಿ ಶುಲ್ಕಗಳು, ಚಾಲಕ ವೆಚ್ಚ, ಇಂಧನ, ನಿರ್ವಹಣೆ, ಮತ್ತು ಕಮಿಷನ್ ಕಳೆದು"
+      },
+      "eventProfitability": {
+        "label": "ಇವೆಂಟ್ ಲಾಭದಾಯಕತೆ",
+        "description": "ಪ್ರತಿ ಪೂರ್ಣಗೊಂಡ ಕೇಟರಿಂಗ್ ಇವೆಂಟ್‌ಗೆ: ಅಂತಿಮ ಒಪ್ಪಿದ ಬೆಲೆಯಿಂದ ಸಿಬ್ಬಂದಿ ವೆಚ್ಚ ಮತ್ತು ಅಂದಾಜು ಪದಾರ್ಥ ವೆಚ್ಚವನ್ನು ಕಳೆದು"
       }
     },
     "summary": {
@@ -3399,7 +3504,11 @@
     "destinationSaved": "ಬ್ಯಾಕಪ್ ಫೋಲ್ಡರ್ ನವೀಕರಿಸಲಾಗಿದೆ",
     "destinationSaveFailed": "ಬ್ಯಾಕಪ್ ಫೋಲ್ಡರ್ ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
     "destinationReset": "ಬ್ಯಾಕಪ್ ಫೋಲ್ಡರ್ ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಲಾಗಿದೆ",
-    "destinationUnreachable": "\"{{path}}\" ಪ್ರಸ್ತುತ ತಲುಪಲಾಗುತ್ತಿಲ್ಲ (ಅನ್‌ಪ್ಲಗ್ ಆಗಿದೆಯೇ?) — ಬದಲಿಗೆ ಡೀಫಾಲ್ಟ್ ಸ್ಥಳವನ್ನು ಬಳಸಲಾಗುತ್ತಿದೆ."
+    "destinationUnreachable": "\"{{path}}\" ಪ್ರಸ್ತುತ ತಲುಪಲಾಗುತ್ತಿಲ್ಲ (ಅನ್‌ಪ್ಲಗ್ ಆಗಿದೆಯೇ?) — ಬದಲಿಗೆ ಡೀಫಾಲ್ಟ್ ಸ್ಥಳವನ್ನು ಬಳಸಲಾಗುತ್ತಿದೆ.",
+    "restoreFromFile": "Restore from File",
+    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
+    "restoreFromFileConfirmTitle": "Restore from Backup File",
+    "pickBackupFileFailed": "Could not open file picker."
   },
   "audit": {
     "title": "ಆಡಿಟ್ ಲಾಗ್",
@@ -3480,17 +3589,17 @@
   },
   "license": {
     "title": "ಪರವಾನಗಿ",
-    "subtitle": "ಸಾರಂಗ್ ನಿಮ್ಮ ಮೊದಲ 12 ತಿಂಗಳುಗಳವರೆಗೆ ಉಚಿತ. ಅದರ ನಂತರ, ಒಂದು ಸಣ್ಣ ವಾರ್ಷಿಕ ಪರವಾನಗಿ ಅದನ್ನು ಚಾಲನೆಯಲ್ಲಿಡುತ್ತದೆ.",
+    "subtitle": "ಸಾರಂಗ್ ನಿಮ್ಮ ಮೊದಲ 100 ದಿನಗಳವರೆಗೆ ಉಚಿತ. ಅದರ ನಂತರ, ಒಂದು ಸಣ್ಣ ವಾರ್ಷಿಕ ಪರವಾನಗಿ ಅದನ್ನು ಚಾಲನೆಯಲ್ಲಿಡುತ್ತದೆ.",
     "statusActive": "ಸಕ್ರಿಯ",
     "statusActivePaid": "ಸಕ್ರಿಯ — ಪಾವತಿಸಲಾಗಿದೆ",
-    "statusWarning": "ಉಚಿತ ವರ್ಷ ಶೀಘ್ರದಲ್ಲೇ ಮುಗಿಯುತ್ತಿದೆ",
+    "statusWarning": "ಉಚಿತ ಟ್ರಯಲ್ ಶೀಘ್ರದಲ್ಲೇ ಮುಗಿಯುತ್ತಿದೆ",
     "statusWarningPaid": "ನವೀಕರಣ ಶೀಘ್ರದಲ್ಲೇ ಬಾಕಿ ಇದೆ",
-    "statusExpired": "ಉಚಿತ ವರ್ಷ ಮುಗಿದಿದೆ",
+    "statusExpired": "ಉಚಿತ ಟ್ರಯಲ್ ಮುಗಿದಿದೆ",
     "statusExpiredPaid": "ಲೈಸೆನ್ಸ್ ಅವಧಿ ಮುಗಿದಿದೆ",
     "statusNotActivated": "ಸಕ್ರಿಯಗೊಳಿಸಿಲ್ಲ",
-    "daysRemaining": "ನಿಮ್ಮ ಉಚಿತ ವರ್ಷದಲ್ಲಿ {{days}} ದಿನಗಳು ಉಳಿದಿವೆ",
+    "daysRemaining": "ನಿಮ್ಮ ಉಚಿತ ಟ್ರಯಲ್‌ನಲ್ಲಿ {{days}} ದಿನಗಳು ಉಳಿದಿವೆ",
     "daysRemainingPaid": "ನವೀಕರಣಕ್ಕೂ ಮೊದಲು {{days}} ದಿನಗಳು ಉಳಿದಿವೆ",
-    "freeYearEndedNotice": "ನಿಮ್ಮ ಉಚಿತ ವರ್ಷ ಮುಗಿದಿದೆ. ನೀವು ಇನ್ನೂ ನಿಮ್ಮ ಎಲ್ಲಾ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಡೇಟಾವನ್ನು ವೀಕ್ಷಿಸಬಹುದು, ಮುದ್ರಿಸಬಹುದು, ರಫ್ತು ಮಾಡಬಹುದು ಮತ್ತು ಬ್ಯಾಕಪ್ ಮಾಡಬಹುದು — ನೀವು ನವೀಕರಿಸುವವರೆಗೆ ಹೊಸ ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ರಚಿಸುವುದು ಮಾತ್ರ ಪರಿಣಾಮ ಬೀರುತ್ತದೆ.",
+    "freeYearEndedNotice": "ನಿಮ್ಮ ಉಚಿತ ಟ್ರಯಲ್ ಮುಗಿದಿದೆ. ನೀವು ಇನ್ನೂ ನಿಮ್ಮ ಎಲ್ಲಾ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಡೇಟಾವನ್ನು ವೀಕ್ಷಿಸಬಹುದು, ಮುದ್ರಿಸಬಹುದು, ರಫ್ತು ಮಾಡಬಹುದು ಮತ್ತು ಬ್ಯಾಕಪ್ ಮಾಡಬಹುದು — ನೀವು ನವೀಕರಿಸುವವರೆಗೆ ಹೊಸ ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ರಚಿಸುವುದು ಮಾತ್ರ ಪರಿಣಾಮ ಬೀರುತ್ತದೆ.",
     "licenseExpiredNoticePaid": "ನಿಮ್ಮ ಲೈಸೆನ್ಸ್ ಅವಧಿ ಮುಗಿದಿದೆ. ನೀವು ಇನ್ನೂ ನಿಮ್ಮ ಎಲ್ಲಾ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಡೇಟಾವನ್ನು ವೀಕ್ಷಿಸಬಹುದು, ಮುದ್ರಿಸಬಹುದು, ರಫ್ತು ಮಾಡಬಹುದು ಮತ್ತು ಬ್ಯಾಕಪ್ ಮಾಡಬಹುದು — ನೀವು ನವೀಕರಿಸುವವರೆಗೆ ಹೊಸ ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ರಚಿಸುವುದು ಮಾತ್ರ ಪರಿಣಾಮ ಬೀರುತ್ತದೆ.",
     "deviceBoundNotice": "ನಿಮ್ಮ ಪರವಾನಗಿ ಕೀ ಈ ಒಂದು ಸಾಧನಕ್ಕೆ ಸಂಬಂಧಿಸಿದೆ.",
     "machineMismatchNotice": "ಈ ಕೀ ಹಿಂದೆ ಬೇರೆ ಸಾಧನದಲ್ಲಿ ಸಕ್ರಿಯವಾಗಿತ್ತು. ಇದನ್ನು ಇಲ್ಲಿ ಮತ್ತೆ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ.",
@@ -3550,7 +3659,7 @@
       "backupTitle": "ಬ್ಯಾಕಪ್ ಮತ್ತು ಮರುಸ್ಥಾಪನೆ",
       "backupBody": "ನಿಮ್ಮ ಡೇಟಾ ಈ ಸಾಧನದಲ್ಲಿ ಮಾತ್ರ ಇರುತ್ತದೆ — ಈ ಸ್ಕ್ರೀನ್ ಅದನ್ನು ರಕ್ಷಿಸುವ ವಿಧಾನವಾಗಿದೆ. ನೀವು ಎಂದಿಗೂ ತೊಂದರೆಗೆ ಸಿಲುಕದಂತೆ ಇಲ್ಲಿ ಸ್ವಯಂಚಾಲಿತ ಬ್ಯಾಕಪ್‌ಗಳನ್ನು ಹೊಂದಿಸಿ.",
       "licenseTitle": "ನಿಮ್ಮ ಲೈಸೆನ್ಸ್",
-      "licenseBody": "ಸಾರಂಗ್ ನಿಮ್ಮ ಮೊದಲ 12 ತಿಂಗಳುಗಳಿಗೆ ಉಚಿತವಾಗಿದೆ. ಈ ಸ್ಕ್ರೀನ್ ಯಾವಾಗಲೂ ನೀವು ಎಲ್ಲಿ ನಿಂತಿದ್ದೀರಿ ಎಂಬುದನ್ನು ನಿಖರವಾಗಿ ತೋರಿಸುತ್ತದೆ, ಮತ್ತು ಸಮಯ ಬಂದಾಗ ನೀವು ಇಲ್ಲಿಂದಲೇ ನವೀಕರಿಸುತ್ತೀರಿ."
+      "licenseBody": "ಸಾರಂಗ್ ನಿಮ್ಮ ಮೊದಲ 100 ದಿನಗಳಿಗೆ ಉಚಿತವಾಗಿದೆ. ಈ ಸ್ಕ್ರೀನ್ ಯಾವಾಗಲೂ ನೀವು ಎಲ್ಲಿ ನಿಂತಿದ್ದೀರಿ ಎಂಬುದನ್ನು ನಿಖರವಾಗಿ ತೋರಿಸುತ್ತದೆ, ಮತ್ತು ಸಮಯ ಬಂದಾಗ ನೀವು ಇಲ್ಲಿಂದಲೇ ನವೀಕರಿಸುತ್ತೀರಿ."
     },
     "items": {
       "restaurantTables": {
@@ -4017,9 +4126,45 @@
         "title": "Furniture Trade-Ins",
         "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
       },
+      "jobSiteAccounts": {
+        "title": "ಜಾಬ್-ಸೈಟ್ ಖಾತೆಗಳು",
+        "body": "ಒಂದೇ ಸೈಟ್‌ನಲ್ಲಿ ಕೆಲಸ ಮಾಡುವ ಗುತ್ತಿಗೆದಾರರಿಗೆ ಚಾಲ್ತಿ ಖಾತೆ ತೆರೆಯಿರಿ — ಬಿಲ್ಲಿಂಗ್ ಮಾಡುವಾಗ CREDIT ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ಅದಕ್ಕೆ ಟ್ಯಾಗ್ ಮಾಡಿ ಮತ್ತು ಅವರ ಸಾಮಾನ್ಯ ಲೆಡ್ಜರ್‌ನಿಂದ ಪ್ರತ್ಯೇಕವಾಗಿ ಈ ಖಾತೆಯ ಸ್ವಂತ ಚಾಲ್ತಿ ಬಾಕಿಯನ್ನು ನೋಡಿ."
+      },
+      "bulkListOrders": {
+        "title": "ಬಲ್ಕ್-ಲಿಸ್ಟ್ ಆರ್ಡರ್‌ಗಳು",
+        "body": "ಶಾಲೆ ಅಥವಾ ಕಚೇರಿಯ ಸರಬರಾಜು ಪಟ್ಟಿಯನ್ನು ಕಚ್ಚಾ ಸಾಲುಗಳಾಗಿ ನಮೂದಿಸಿ, ಪ್ರತಿ ಸಾಲನ್ನು ಕ್ಯಾಟಲಾಗ್ ಉತ್ಪನ್ನ ಮತ್ತು ಬೆಲೆಗೆ ಹೊಂದಿಸಿ, ನಂತರ ಎಲ್ಲವೂ ಹೊಂದಾಣಿಕೆಯಾದ ಮೇಲೆ ಇಡೀ ಆರ್ಡರ್ ಅನ್ನು ಒಂದೇ ಬಾರಿಗೆ ಬಿಲ್ ಮಾಡಿ."
+      },
+      "furnitureBookings": {
+        "title": "ಪೀಠೋಪಕರಣ ಬುಕಿಂಗ್",
+        "body": "ಅಡ್ವಾನ್ಸ್‌ನೊಂದಿಗೆ ಕಸ್ಟಮ್-ಮೇಡ್ ವಸ್ತುವನ್ನು ಬುಕ್ ಮಾಡಿ, ಕಸ್ಟಮೈಸೇಶನ್ ದಾಖಲಿಸಿ, ನಂತರ ಸಿದ್ಧವಾದ ಮೇಲೆ ಡೆಲಿವರಿ ಇನ್‌ವಾಯ್ಸ್ ರಚಿಸಿ — ಅಡ್ವಾನ್ಸ್ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಅನ್ವಯವಾಗುತ್ತದೆ."
+      },
+      "furnitureTradeIns": {
+        "title": "ಪೀಠೋಪಕರಣ ಟ್ರೇಡ್-ಇನ್",
+        "body": "ಹೊಸ ಖರೀದಿಗೆ ಪ್ರತಿಯಾಗಿ ಅಂಗಡಿ ನಿರ್ಧರಿಸಿದ ಬೆಲೆಗೆ ಹಳೆಯ ವಸ್ತುವಿನ ಟ್ರೇಡ್-ಇನ್ ಅನ್ನು ದಾಖಲಿಸಿ, ನಂತರ ಆ ಗ್ರಾಹಕರಿಗೆ ಬಿಲ್ ಮಾಡುವಾಗ ಅದನ್ನು ರಿಯಾಯಿತಿಯಾಗಿ ಅನ್ವಯಿಸಿ."
+      },
       "scheduledDeliveries": {
-        "title": "Scheduled Deliveries",
-        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
+        "title": "ಶೆಡ್ಯೂಲ್ಡ್ ಡೆಲಿವರಿಗಳು",
+        "body": "ಬಿಲ್ಲಿಂಗ್ ಸಮಯದಲ್ಲಿ ಬುಕ್ ಮಾಡಿದ ಸೂಕ್ಷ್ಮ ವಸ್ತುವಿನ ಡೆಲಿವರಿಯನ್ನು ಶೆಡ್ಯೂಲ್ಡ್, ಔಟ್ ಫಾರ್ ಡೆಲಿವರಿ, ಮತ್ತು ಡೆಲಿವರ್ಡ್ ಮೂಲಕ ಟ್ರ್ಯಾಕ್ ಮಾಡಿ."
+      },
+      "bakeryCustomOrders": {
+        "title": "ಕಸ್ಟಮ್ ಆರ್ಡರ್‌ಗಳು",
+        "body": "ಬಲ್ಕ್ ಪ್ರೀ-ಆರ್ಡರ್ ತೆಗೆದುಕೊಳ್ಳಿ — ಮದುವೆಯ ಕೇಕ್, ಶಾಲೆಯ ಸ್ನ್ಯಾಕ್ ಆರ್ಡರ್ — ಒಂದು ನಿಗದಿತ ದಿನಾಂಕ ಮತ್ತು ಅಡ್ವಾನ್ಸ್ ಪಾವತಿಯೊಂದಿಗೆ, ಇದನ್ನು ನಿಮ್ಮ ಸಾಮಾನ್ಯ ವಾಕ್-ಇನ್ ಕೌಂಟರ್ ಮಾರಾಟದಿಂದ ಪ್ರತ್ಯೇಕವಾಗಿ ಟ್ರ್ಯಾಕ್ ಮಾಡಲಾಗುತ್ತದೆ."
+      },
+      "cateringEvents": {
+        "title": "ಕೇಟರಿಂಗ್ ಇವೆಂಟ್‌ಗಳು",
+        "body": "ಸಂಪೂರ್ಣ ಕೇಟರಿಂಗ್ ಇವೆಂಟ್ ಬುಕ್ ಮಾಡಿ: ಮೆನು, ಬಹು-ದಿನದ ಕಾರ್ಯಕ್ರಮಕ್ಕೆ ಪ್ರತಿದಿನದ ಊಟ ಮತ್ತು ತಿಂಡಿಯ ಎಣಿಕೆ, ಹಾಜರಿದ್ದವರ ಸಂಖ್ಯೆ, ಮತ್ತು ಅಡುಗೆಯವರು, ಸರ್ವರ್‌ಗಳು ಹಾಗೂ ಕ್ಲೀನರ್‌ಗಳಿಗೆ ಪ್ರತ್ಯೇಕ ವೆಚ್ಚದ ಸಾಲುಗಳು — ಒಪ್ಪಿಗೆಯಾದ ಮೇಲೆ ಅಂತಿಮ ಚೌಕಾಸಿ ಬೆಲೆಗೆ ಬಿಲ್ ಮಾಡಿ."
+      },
+      "toursFleet": {
+        "title": "ವಾಹನ ಫ್ಲೀಟ್",
+        "body": "ನಿಮ್ಮ ವಾಹನಗಳು, ಓಡೋಮೀಟರ್ ರೀಡಿಂಗ್ ಮತ್ತು ಸರ್ವಿಸ್ ಇತಿಹಾಸದೊಂದಿಗೆ — ಟ್ರಿಪ್ ಬುಕಿಂಗ್‌ಗಳು ಮತ್ತು ವೆಹಿಕಲ್ ಸರ್ವಿಸ್ ಡ್ಯೂ ವರದಿ ಎರಡೂ ಇದರಿಂದಲೇ ಮಾಹಿತಿ ಪಡೆಯುತ್ತವೆ."
+      },
+      "tourPackages": {
+        "title": "ಟೂರ್ ಪ್ಯಾಕೇಜ್‌ಗಳು",
+        "body": "ಮೊದಲೇ ನಿಗದಿಪಡಿಸಿದ ಟ್ರಿಪ್ ಪ್ಯಾಕೇಜ್‌ಗಳು, ಪ್ಯಾಕೇಜ್ ದರದೊಂದಿಗೆ, ಪ್ರತಿ ಟ್ರಿಪ್‌ಗೆ ಹೊಸದಾಗಿ ಬೆಲೆ ನಿಗದಿಪಡಿಸುವ ಬದಲು ಬುಕಿಂಗ್‌ಗೆ ನೇರವಾಗಿ ಜೋಡಿಸಲು ಸಿದ್ಧ."
+      },
+      "tripBookings": {
+        "title": "ಟ್ರಿಪ್ ಬುಕಿಂಗ್‌ಗಳು",
+        "body": "ವಾಹನ ಮತ್ತು ಪ್ಯಾಕೇಜ್ ಆಧಾರದ ಮೇಲೆ ಟ್ರಿಪ್ ಬುಕ್ ಮಾಡಿ, ಪ್ರತಿದಿನದ ಡ್ಯೂಟಿ (ಓಡಿಸಿದ ಕಿಲೋಮೀಟರ್, ಡ್ರೈವರ್ ಬತ್ತಾ, ಹೆಚ್ಚುವರಿ ಶುಲ್ಕ) ದಾಖಲಿಸಿ, ಮತ್ತು ಟ್ರಿಪ್ ಪೂರ್ಣಗೊಂಡ ಮೇಲೆ ಬಿಲ್ ಮಾಡಿ."
       }
     }
   },
@@ -5623,6 +5768,7 @@
     "seat": "ಆಸನ ನೀಡಿ",
     "noShow": "ಬರಲಿಲ್ಲ",
     "dayClosed": "ದಿನ ಮುಚ್ಚಲಾಗಿದೆ. ನೀಡಲಾದ KOT: {{kotCount}} | ಆದಾಯ: {{invoiceCount}} ಇನ್‌ವಾಯ್ಸ್‌ಗಳಿಂದ {{revenue}}.",
+    "unsettledTablesWarning": "{{count}} ಟೇಬಲ್‌ಗಳನ್ನು ಬಿಟ್ಟುಬಿಡಲಾಗಿದೆ — ಅವುಗಳಲ್ಲಿ ಇನ್ನೂ ಚೆಕ್‌ಔಟ್ ಆಗದ ಆರ್ಡರ್‌ಗಳಿವೆ.",
     "dailyCloseFailed": "ದೈನಂದಿನ ಮುಕ್ತಾಯ ವಿಫಲವಾಗಿದೆ: {{message}}",
     "dailyCloseFailedUnknown": "ದೈನಂದಿನ ಮುಕ್ತಾಯ ವಿಫಲವಾಗಿದೆ: ಅಪರಿಚಿತ ದೋಷ",
     "tableNumberPlaceholder": "ಟೇಬಲ್ ಸಂಖ್ಯೆ (ಉದಾ. T1)",
@@ -5649,7 +5795,18 @@
     "noFreeTablesToMerge": "ವಿಲೀನಗೊಳಿಸಲು ಯಾವುದೇ ಖಾಲಿ ಟೇಬಲ್‌ಗಳಿಲ್ಲ.",
     "print": "ಮುದ್ರಿಸಿ",
     "performDailyCloseConfirm": "ದೈನಂದಿನ ಮುಕ್ತಾಯ ನಿರ್ವಹಿಸಬೇಕೆ? ಇದು ಎಲ್ಲಾ ಆಕ್ರಮಿತ ಟೇಬಲ್‌ಗಳನ್ನು ಲಭ್ಯ ಎಂದು ಗುರುತಿಸುತ್ತದೆ ಮತ್ತು ಮುಕ್ತಾಯ ಸಾರಾಂಶವನ್ನು ದಾಖಲಿಸುತ್ತದೆ.",
-    "scanToOrder": "ಮೆನು ನೋಡಲು ಮತ್ತು ನಿಮ್ಮ ಆರ್ಡರ್ ನೀಡಲು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ"
+    "scanToOrder": "ಮೆನು ನೋಡಲು ಮತ್ತು ನಿಮ್ಮ ಆರ್ಡರ್ ನೀಡಲು ಸ್ಕ್ಯಾನ್ ಮಾಡಿ",
+    "viewOrder": "ಆರ್ಡರ್ ವೀಕ್ಷಿಸಿ",
+    "orderSummaryTitle": "ಆರ್ಡರ್ — {{name}}",
+    "noItemsOrderedYet": "ಇನ್ನೂ ಏನೂ ಆರ್ಡರ್ ಮಾಡಿಲ್ಲ.",
+    "estimatedTotal": "ಅಂದಾಜು ಒಟ್ಟು",
+    "checkout": "ಚೆಕ್‌ಔಟ್",
+    "checkingOut": "ಚೆಕ್‌ಔಟ್ ಆಗುತ್ತಿದೆ…",
+    "couldNotLoadOrderSummary": "ಈ ಟೇಬಲ್‌ನ ಆರ್ಡರ್ ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+    "couldNotCheckout": "ಈ ಟೇಬಲ್ ಚೆಕ್‌ಔಟ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+    "tableCheckedOut": "ಟೇಬಲ್ ಚೆಕ್‌ಔಟ್ ಆಗಿದೆ",
+    "billGenerated": "{{name}} ಗಾಗಿ ಬಿಲ್ ರಚಿಸಲಾಗಿದೆ.",
+    "billRequested": "ಬಿಲ್ ಕೋರಲಾಗಿದೆ"
   },
   "costCentres": {
     "title": "ವೆಚ್ಚ ಕೇಂದ್ರಗಳು",
@@ -5713,6 +5870,317 @@
     "empty": {
       "title": "No service combos yet",
       "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+    }
+  },
+  "checkin": {
+    "title": "ಗ್ರಾಹಕ ಚೆಕ್-ಇನ್",
+    "subtitle": "ಭೇಟಿಗಳನ್ನು ದಾಖಲಿಸಿ — ಈಗ ಯಾರು ಇಲ್ಲಿದ್ದಾರೆ, ಮತ್ತು ಇತ್ತೀಚಿನ ಚೆಕ್-ಇನ್/ಚೆಕ್-ಔಟ್ ಇತಿಹಾಸ",
+    "notEnabled": "ಗ್ರಾಹಕ ಚೆಕ್-ಇನ್ ನಿಮ್ಮ ವ್ಯಾಪಾರಕ್ಕೆ ಸಕ್ರಿಯಗೊಳಿಸಿಲ್ಲ.",
+    "checkInAction": "ಚೆಕ್ ಇನ್ ಮಾಡಿ",
+    "checkOutAction": "ಚೆಕ್ ಔಟ್ ಮಾಡಿ",
+    "customer": "ಗ್ರಾಹಕ",
+    "selectCustomer": "ಒಬ್ಬ ಗ್ರಾಹಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+    "checkedIn": "ಚೆಕ್ ಇನ್ ಆಗಿದೆ",
+    "checkedOut": "ಚೆಕ್ ಔಟ್ ಆಗಿದೆ",
+    "checkInFailed": "ಚೆಕ್ ಇನ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ.",
+    "currentlyIn": "ಪ್ರಸ್ತುತ ಚೆಕ್ ಇನ್ ಆಗಿರುವವರು ({{count}})",
+    "noOneIn": "ಪ್ರಸ್ತುತ ಯಾರೂ ಚೆಕ್ ಇನ್ ಆಗಿಲ್ಲ.",
+    "recentVisits": "ಇತ್ತೀಚಿನ ಭೇಟಿಗಳು",
+    "noVisits": "ಇನ್ನೂ ಯಾವುದೇ ಭೇಟಿ ದಾಖಲಾಗಿಲ್ಲ.",
+    "inAt": "ಇನ್ {{time}}",
+    "outAt": "ಔಟ್ {{time}}",
+    "stillIn": "ಇನ್ನೂ ಚೆಕ್ ಇನ್ ಆಗಿದ್ದಾರೆ"
+  },
+  "bakery": {
+    "customOrders": {
+      "title": "ಕಸ್ಟಮ್ ಆರ್ಡರ್‌ಗಳು",
+      "subtitle": "ಕಸ್ಟಮ್ ಕೇಕ್ ಮತ್ತು ವಿಶೇಷ ಆರ್ಡರ್ ಮಾಡಿದ ತಿನಿಸುಗಳಿಗಾಗಿ ಅಡ್ವಾನ್ಸ್ + ಬ್ಯಾಲೆನ್ಸ್ ಬುಕಿಂಗ್",
+      "refresh": "ರಿಫ್ರೆಶ್ ಮಾಡಿ",
+      "newOrder": "ಹೊಸ ಆರ್ಡರ್",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "book": "ಬುಕ್ ಮಾಡಿ",
+      "customer": "ಗ್ರಾಹಕ",
+      "dueDate": "ಬಾಕಿ ದಿನಾಂಕ",
+      "deliveryAddress": "ಡೆಲಿವರಿ ವಿಳಾಸ",
+      "itemsSection": "ವಸ್ತುಗಳು",
+      "searchProduct": "ಉತ್ಪನ್ನ ಹುಡುಕಿ…",
+      "noProductsMatch": "ಯಾವುದೇ ಉತ್ಪನ್ನ ಹೊಂದಿಕೆಯಾಗುವುದಿಲ್ಲ.",
+      "qty": "ಪ್ರಮಾಣ",
+      "price": "ಬೆಲೆ",
+      "flavorPlaceholder": "ಫ್ಲೇವರ್ / ಗಾತ್ರ",
+      "add": "ಸೇರಿಸಿ",
+      "total": "ಒಟ್ಟು",
+      "advanceAmount": "ಅಡ್ವಾನ್ಸ್ ಮೊತ್ತ ({{sym}})",
+      "advancePaymentMethod": "ಅಡ್ವಾನ್ಸ್ ಪಾವತಿ ವಿಧಾನ",
+      "cash": "ನಗದು",
+      "upi": "UPI",
+      "card": "ಕಾರ್ಡ್",
+      "wallet": "ವಾಲೆಟ್",
+      "notes": "ಟಿಪ್ಪಣಿಗಳು",
+      "selectCustomerError": "ಗ್ರಾಹಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "addItemError": "ಕನಿಷ್ಠ ಒಂದು ವಸ್ತುವನ್ನು ಸೇರಿಸಿ.",
+      "advanceExceedsError": "ಅಡ್ವಾನ್ಸ್ ಆರ್ಡರ್‌ನ ಒಟ್ಟು ಮೊತ್ತವನ್ನು ಮೀರುವಂತಿಲ್ಲ.",
+      "orderCreated": "ಆರ್ಡರ್ ರಚಿಸಲಾಗಿದೆ",
+      "orderCreateFailed": "ಆರ್ಡರ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "generateInvoice": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಿ",
+      "generatingInvoice": "ರಚಿಸಲಾಗುತ್ತಿದೆ…",
+      "invoiceGenerated": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ",
+      "invoiceGeneratedDetail": "ಡೆಲಿವರಿ ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ ಮತ್ತು ಅಡ್ವಾನ್ಸ್ ಅನ್ವಯಿಸಲಾಗಿದೆ.",
+      "invoiceGenerateFailed": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "noOrdersYet": "ಇನ್ನೂ ಯಾವುದೇ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ.",
+      "dueOn": "ಬಾಕಿ ದಿನಾಂಕ {{date}}",
+      "itemsCount": "{{count}} ವಸ್ತು(ಗಳು)",
+      "advanceLabel": "{{amount}} ಅಡ್ವಾನ್ಸ್",
+      "loadFailed": "ಆರ್ಡರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+    },
+    "cateringEvents": {
+      "title": "ಕೇಟರಿಂಗ್ ಈವೆಂಟ್‌ಗಳು",
+      "subtitle": "ಕೇಟರಿಂಗ್ ಈವೆಂಟ್‌ಗಳನ್ನು ಬುಕ್ ಮಾಡಿ — ಮೆನು, ಪ್ರತಿ ಪ್ಲೇಟ್ ಬೆಲೆ, ದಿನಕ್ಕೆ ಊಟ ಮತ್ತು ತಿಂಡಿ, ಮತ್ತು ಪಾತ್ರದ ಪ್ರಕಾರ ಸಿಬ್ಬಂದಿ ವೆಚ್ಚ",
+      "refresh": "ರಿಫ್ರೆಶ್ ಮಾಡಿ",
+      "newEvent": "ಹೊಸ ಈವೆಂಟ್",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "book": "ಈವೆಂಟ್ ಬುಕ್ ಮಾಡಿ",
+      "save": "ಉಳಿಸಿ",
+      "customer": "ಗ್ರಾಹಕ",
+      "venueAddress": "ಸ್ಥಳದ ವಿಳಾಸ",
+      "eventStartDate": "ಈವೆಂಟ್ ಪ್ರಾರಂಭ ದಿನಾಂಕ",
+      "eventEndDate": "ಈವೆಂಟ್ ಮುಕ್ತಾಯ ದಿನಾಂಕ",
+      "attendeeCount": "ಅತಿಥಿಗಳ ಸಂಖ್ಯೆ",
+      "pricePerPlate": "ಪ್ರತಿ ಪ್ಲೇಟ್ ಬೆಲೆ ({{sym}})",
+      "estimatedTotal": "ಅಂದಾಜು ಒಟ್ಟು",
+      "menuSection": "ಮೆನು",
+      "searchProduct": "ಉತ್ಪನ್ನ ಹುಡುಕಿ…",
+      "qty": "ಪ್ರಮಾಣ",
+      "price": "ಬೆಲೆ",
+      "add": "ಸೇರಿಸಿ",
+      "daysSection": "ದಿನಕ್ಕೆ ಊಟ ಮತ್ತು ತಿಂಡಿ",
+      "serviceDate": "ದಿನಾಂಕ",
+      "mealsCount": "ಊಟ",
+      "snacksCount": "ತಿಂಡಿ",
+      "addDay": "ದಿನ ಸೇರಿಸಿ",
+      "staffSection": "ಸಿಬ್ಬಂದಿ",
+      "role": "ಪಾತ್ರ",
+      "cook": "ಅಡುಗೆಯವರು",
+      "server": "ಸರ್ವರ್",
+      "cleaner": "ಸ್ವಚ್ಛತಾ ಸಿಬ್ಬಂದಿ",
+      "other": "ಇತರೆ",
+      "workerCount": "ಕೆಲಸಗಾರರ ಸಂಖ್ಯೆ",
+      "ratePerWorker": "ಪ್ರತಿ ಕೆಲಸಗಾರರ ದರ ({{sym}})",
+      "addStaff": "ಸಿಬ್ಬಂದಿ ಸೇರಿಸಿ",
+      "staffCostTotal": "ಒಟ್ಟು ಸಿಬ್ಬಂದಿ ವೆಚ್ಚ",
+      "advanceAmount": "ಅಡ್ವಾನ್ಸ್ ಮೊತ್ತ ({{sym}})",
+      "advancePaymentMethod": "ಅಡ್ವಾನ್ಸ್ ಪಾವತಿ ವಿಧಾನ",
+      "cash": "ನಗದು",
+      "upi": "UPI",
+      "card": "ಕಾರ್ಡ್",
+      "wallet": "ವಾಲೆಟ್",
+      "notes": "ಟಿಪ್ಪಣಿಗಳು",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "noEventsYet": "ಇನ್ನೂ ಯಾವುದೇ ಕೇಟರಿಂಗ್ ಈವೆಂಟ್‌ಗಳಿಲ್ಲ.",
+      "attendeesLabel": "{{count}} ಅತಿಥಿಗಳು",
+      "finalPriceLabel": "{{amount}} ಒಪ್ಪಿಗೆಯಾಗಿದೆ",
+      "quotedLabel": "{{amount}} ನಮೂದಿಸಲಾಗಿದೆ",
+      "advanceLabel": "{{amount}} ಅಡ್ವಾನ್ಸ್",
+      "recordFinalPrice": "ಅಂತಿಮ ಬೆಲೆ ದಾಖಲಿಸಿ",
+      "finalPricePrompt": "ಅಂತಿಮ ಒಪ್ಪಿಗೆಯಾದ ಬೆಲೆ ({{sym}})",
+      "finalPriceRecorded": "ಅಂತಿಮ ಬೆಲೆ ದಾಖಲಾಗಿದೆ",
+      "finalPriceRecordFailed": "ಅಂತಿಮ ಬೆಲೆ ದಾಖಲಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "recordingPrice": "ಉಳಿಸಲಾಗುತ್ತಿದೆ…",
+      "generateInvoice": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಿ",
+      "generatingInvoice": "ರಚಿಸಲಾಗುತ್ತಿದೆ…",
+      "invoiceGenerated": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ",
+      "invoiceGeneratedDetail": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ ಮತ್ತು ಅಡ್ವಾನ್ಸ್ ಅನ್ವಯಿಸಲಾಗಿದೆ.",
+      "invoiceGenerateFailed": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadFailed": "ಕೇಟರಿಂಗ್ ಈವೆಂಟ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "selectCustomerError": "ಗ್ರಾಹಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "eventStartDateError": "ಈವೆಂಟ್ ಪ್ರಾರಂಭ ದಿನಾಂಕ ಅಗತ್ಯವಿದೆ.",
+      "attendeeCountError": "ಅತಿಥಿಗಳ ಸಂಖ್ಯೆ ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
+      "pricePerPlateError": "ಪ್ರತಿ ಪ್ಲೇಟ್ ಬೆಲೆ ಅಗತ್ಯವಿದೆ.",
+      "advanceExceedsError": "ಅಡ್ವಾನ್ಸ್ ಅಂದಾಜು ಒಟ್ಟು ಮೊತ್ತವನ್ನು ಮೀರುವಂತಿಲ್ಲ.",
+      "eventCreated": "ಈವೆಂಟ್ ಬುಕ್ ಆಗಿದೆ",
+      "eventCreateFailed": "ಈವೆಂಟ್ ಬುಕ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+    }
+  },
+  "tours": {
+    "fleet": {
+      "title": "ವಾಹನ ಬೆಂಗಾವಲು",
+      "subtitle": "ಬೆಂಗಾವಲು, ಸೇವಾ ದಾಖಲೆ, ಮತ್ತು ೩೦-ದಿನಗಳ ಲಭ್ಯತೆ ಕ್ಯಾಲೆಂಡರ್",
+      "refresh": "ರಿಫ್ರೆಶ್",
+      "newVehicle": "ಹೊಸ ವಾಹನ",
+      "regNumber": "ನೋಂದಣಿ ಸಂಖ್ಯೆ",
+      "regNumberRequired": "ನೋಂದಣಿ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ.",
+      "vehicleType": "ವಾಹನ ಪ್ರಕಾರ",
+      "seatingCapacity": "ಆಸನ ಸಾಮರ್ಥ್ಯ",
+      "capacityRequired": "ಆಸನ ಸಾಮರ್ಥ್ಯ ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "add": "ವಾಹನ ಸೇರಿಸಿ",
+      "vehicleAdded": "ವಾಹನ ಸೇರಿಸಲಾಗಿದೆ",
+      "vehicleAddFailed": "ವಾಹನ ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "noVehiclesYet": "ಇನ್ನೂ ಯಾವುದೇ ವಾಹನವಿಲ್ಲ. ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ಮೊದಲ ವಾಹನ ಸೇರಿಸಿ.",
+      "loadFailed": "ವಾಹನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "seats": "{{count}} ಆಸನಗಳು",
+      "odometer": "{{km}} ಕಿಮೀ",
+      "serviceLog": "ಸೇವಾ ದಾಖಲೆ",
+      "serviceLogFor": "ಸೇವಾ ದಾಖಲೆ — {{reg}}",
+      "serviceDate": "ಸೇವಾ ದಿನಾಂಕ",
+      "serviceType": "ಪ್ರಕಾರ",
+      "odometerReading": "ಓಡೋಮೀಟರ್ ರೀಡಿಂಗ್",
+      "cost": "ವೆಚ್ಚ",
+      "close": "ಮುಚ್ಚಿ",
+      "logService": "ಸೇವೆ ದಾಖಲಿಸಿ",
+      "serviceLogged": "ಸೇವೆ ದಾಖಲಿಸಲಾಗಿದೆ",
+      "serviceLogFailed": "ಸೇವೆ ದಾಖಲಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "availabilityNext30Days": "ಬೆಂಗಾವಲು ಮತ್ತು ಆಸನ ಲಭ್ಯತೆ — ಮುಂದಿನ ೩೦ ದಿನಗಳು",
+      "free": "ಖಾಲಿ",
+      "bookedCount": "{{count}} ಬುಕಿಂಗ್",
+      "seatsRemaining": "{{count}} ಆಸನಗಳು ಬಾಕಿ",
+      "vehicleTypes": {
+        "SEDAN": "ಸೆಡಾನ್",
+        "SUV": "SUV / ಇನ್ನೋವಾ",
+        "TEMPO_TRAVELLER": "ಟೆಂಪೋ ಟ್ರಾವೆಲರ್",
+        "MINI_BUS": "ಮಿನಿ ಬಸ್",
+        "BUS": "ಬಸ್"
+      },
+      "serviceTypes": {
+        "SERVICE": "ಸೇವೆ",
+        "REPAIR": "ದುರಸ್ತಿ",
+        "MAINTENANCE": "ನಿರ್ವಹಣೆ"
+      },
+      "status": {
+        "ACTIVE": "ಸಕ್ರಿಯ",
+        "IN_SERVICE": "ಸೇವೆಯಲ್ಲಿ",
+        "INACTIVE": "ನಿಷ್ಕ್ರಿಯ"
+      },
+      "changeStatus": "Change vehicle status",
+      "statusUpdated": "ಸ್ಥಿತಿ ನವೀಕರಿಸಲಾಗಿದೆ",
+      "statusUpdateFailed": "ವಾಹನದ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+    },
+    "packages": {
+      "title": "ಪ್ರವಾಸ ಪ್ಯಾಕೇಜ್‌ಗಳು",
+      "subtitle": "ಪ್ಯಾಕೇಜ್ ಟೆಂಪ್ಲೇಟ್, ನಿರ್ಗಮನಗಳು, ಮತ್ತು ಆಸನ-ಬುಕಿಂಗ್",
+      "refresh": "ರಿಫ್ರೆಶ್",
+      "newPackage": "ಹೊಸ ಪ್ಯಾಕೇಜ್",
+      "packageName": "ಪ್ಯಾಕೇಜ್ ಹೆಸರು",
+      "nameRequired": "ಪ್ಯಾಕೇಜ್ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
+      "itinerary": "ಪ್ರಯಾಣ ವಿವರ",
+      "durationDays": "ಅವಧಿ (ದಿನಗಳು)",
+      "defaultSeats": "ಡೀಫಾಲ್ಟ್ ಆಸನಗಳು",
+      "farePerSeat": "ಪ್ರತಿ ಆಸನಕ್ಕೆ ದರ",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "add": "ಪ್ಯಾಕೇಜ್ ಸೇರಿಸಿ",
+      "save": "ಉಳಿಸಿ",
+      "packageAdded": "ಪ್ಯಾಕೇಜ್ ಸೇರಿಸಲಾಗಿದೆ",
+      "packageAddFailed": "ಪ್ಯಾಕೇಜ್ ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "noPackagesYet": "ಇನ್ನೂ ಯಾವುದೇ ಪ್ರವಾಸ ಪ್ಯಾಕೇಜ್ ಇಲ್ಲ. ಪ್ರಾರಂಭಿಸಲು ನಿಮ್ಮ ಮೊದಲ ಪ್ಯಾಕೇಜ್ ಸೇರಿಸಿ.",
+      "loadFailed": "ಪ್ಯಾಕೇಜ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "durationLabel": "{{days}} ದಿನ(ಗಳು)",
+      "seatsLabel": "{{count}} ಆಸನಗಳು",
+      "perSeat": " / ಆಸನ",
+      "departures": "ನಿರ್ಗಮನಗಳು",
+      "addDeparture": "ನಿರ್ಗಮನ ಸೇರಿಸಿ",
+      "departureDate": "ನಿರ್ಗಮನ ದಿನಾಂಕ",
+      "totalSeats": "ಒಟ್ಟು ಆಸನಗಳು",
+      "departureAdded": "ನಿರ್ಗಮನ ಸೇರಿಸಲಾಗಿದೆ",
+      "departureAddFailed": "ನಿರ್ಗಮನ ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "noDeparturesYet": "ಇನ್ನೂ ಯಾವುದೇ ನಿರ್ಗಮನ ನಿಗದಿಯಾಗಿಲ್ಲ.",
+      "seatsRemainingOf": "{{total}} ರಲ್ಲಿ {{remaining}} ಆಸನಗಳು ಬಾಕಿ",
+      "bookSeats": "ಆಸನಗಳನ್ನು ಬುಕ್ ಮಾಡಿ",
+      "bookSeatsTitle": "ಆಸನಗಳನ್ನು ಬುಕ್ ಮಾಡಿ",
+      "customer": "ಗ್ರಾಹಕ",
+      "seatsToBook": "ಬುಕ್ ಮಾಡಬೇಕಾದ ಆಸನಗಳು",
+      "advanceAmount": "ಮುಂಗಡ ಮೊತ್ತ",
+      "confirmBooking": "ಬುಕಿಂಗ್ ದೃಢೀಕರಿಸಿ",
+      "seatsBooked": "ಆಸನಗಳನ್ನು ಬುಕ್ ಮಾಡಲಾಗಿದೆ",
+      "bookingFailed": "ಆಸನಗಳನ್ನು ಬುಕ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "status": {
+        "ACTIVE": "ಸಕ್ರಿಯ",
+        "INACTIVE": "ನಿಷ್ಕ್ರಿಯ"
+      },
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "packageStatusUpdated": "ಪ್ಯಾಕೇಜ್ ಸ್ಥಿತಿ ನವೀಕರಿಸಲಾಗಿದೆ",
+      "packageStatusUpdateFailed": "ಪ್ಯಾಕೇಜ್ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "markComplete": "Mark Complete",
+      "cancelDeparture": "ರದ್ದುಮಾಡಿ",
+      "departureStatusUpdated": "ನಿರ್ಗಮನ ಸ್ಥಿತಿ ನವೀಕರಿಸಲಾಗಿದೆ",
+      "departureStatusUpdateFailed": "ನಿರ್ಗಮನ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "departureStatus": {
+        "COMPLETED": "ಪೂರ್ಣಗೊಂಡಿದೆ",
+        "CANCELLED": "ರದ್ದುಗೊಂಡಿದೆ"
+      }
+    },
+    "bookings": {
+      "title": "ಪ್ರಯಾಣ ಬುಕಿಂಗ್‌ಗಳು",
+      "subtitle": "ಚಾರ್ಟರ್ ಬುಕಿಂಗ್, ಚಾಲಕ ಕರ್ತವ್ಯ ದಾಖಲೆ, ಮತ್ತು ಹೆಚ್ಚುವರಿ ಕಿಮೀ/ಗಂಟೆ ಇತ್ಯರ್ಥ",
+      "refresh": "ರಿಫ್ರೆಶ್",
+      "newCharterBooking": "ಹೊಸ ಚಾರ್ಟರ್ ಬುಕಿಂಗ್",
+      "customer": "ಗ್ರಾಹಕ",
+      "customerRequired": "ಗ್ರಾಹಕ ಅಗತ್ಯವಿದೆ.",
+      "vehicle": "ವಾಹನ",
+      "vehicleRequired": "ವಾಹನ ಅಗತ್ಯವಿದೆ.",
+      "selectVehicle": "ಒಂದು ವಾಹನ ಆಯ್ಕೆಮಾಡಿ",
+      "tripStartDate": "ಪ್ರಯಾಣ ಆರಂಭ ದಿನಾಂಕ",
+      "tripStartDateRequired": "ಪ್ರಯಾಣ ಆರಂಭ ದಿನಾಂಕ ಅಗತ್ಯವಿದೆ.",
+      "tripEndDate": "ಪ್ರಯಾಣ ಅಂತ್ಯ ದಿನಾಂಕ",
+      "pickupLocation": "ಪಿಕಪ್ ಸ್ಥಳ",
+      "dropLocation": "ಡ್ರಾಪ್ ಸ್ಥಳ",
+      "route": "ಮಾರ್ಗ",
+      "packageRate": "ಪ್ಯಾಕೇಜ್ ದರ",
+      "includedKmPerDay": "ಸೇರಿಸಲಾದ ಕಿಮೀ/ದಿನ",
+      "includedHoursPerDay": "ಸೇರಿಸಲಾದ ಗಂಟೆ/ದಿನ",
+      "advanceAmount": "ಮುಂಗಡ ಮೊತ್ತ",
+      "referringAgent": "ಶಿಫಾರಸು ಏಜೆಂಟ್",
+      "commissionType": "ಕಮಿಷನ್ ಪ್ರಕಾರ",
+      "none": "ಯಾವುದೂ ಇಲ್ಲ",
+      "percentage": "ಶೇಕಡಾವಾರು",
+      "fixed": "ನಿಗದಿತ",
+      "commissionValue": "ಕಮಿಷನ್ ಮೌಲ್ಯ",
+      "cancel": "ರದ್ದುಮಾಡಿ",
+      "createBooking": "ಬುಕಿಂಗ್ ರಚಿಸಿ",
+      "bookingCreated": "ಬುಕಿಂಗ್ ರಚಿಸಲಾಗಿದೆ",
+      "bookingCreateFailed": "ಬುಕಿಂಗ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loading": "ಲೋಡ್ ಆಗುತ್ತಿದೆ…",
+      "noBookingsYet": "ಇನ್ನೂ ಯಾವುದೇ ಪ್ರಯಾಣ ಬುಕಿಂಗ್ ಇಲ್ಲ.",
+      "advanceOf": "({{amount}} ಮುಂಗಡ)",
+      "agentLabel": "ಏಜೆಂಟ್: {{name}}",
+      "startDuty": "ಕರ್ತವ್ಯ ಪ್ರಾರಂಭಿಸಿ",
+      "startDutyTitle": "ಚಾಲಕ ಕರ್ತವ್ಯ ಪ್ರಾರಂಭಿಸಿ",
+      "driver": "ಚಾಲಕ",
+      "selectDriver": "ಒಬ್ಬ ಚಾಲಕರನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+      "startOdometer": "ಆರಂಭ ಓಡೋಮೀಟರ್",
+      "dutyStartTime": "ಕರ್ತವ್ಯ ಆರಂಭ ಸಮಯ",
+      "driverBata": "ಚಾಲಕ ಭತ್ಯೆ",
+      "nightHaltCharge": "ರಾತ್ರಿ ತಂಗುವಿಕೆ ಶುಲ್ಕ",
+      "nightDrivingAllowance": "ರಾತ್ರಿ ಚಾಲನಾ ಭತ್ಯೆ",
+      "dutyStarted": "ಕರ್ತವ್ಯ ಪ್ರಾರಂಭವಾಗಿದೆ",
+      "dutyStartFailed": "ಕರ್ತವ್ಯ ಪ್ರಾರಂಭಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "closeDuty": "ಕರ್ತವ್ಯ ಮುಚ್ಚಿ",
+      "closeDutyTitle": "ಚಾಲಕ ಕರ್ತವ್ಯ ಮುಚ್ಚಿ",
+      "endOdometer": "ಅಂತಿಮ ಓಡೋಮೀಟರ್",
+      "dutyEndTime": "ಕರ್ತವ್ಯ ಅಂತ್ಯ ಸಮಯ",
+      "dutyClosed": "ಕರ್ತವ್ಯ ಮುಚ್ಚಲಾಗಿದೆ",
+      "dutyCloseFailed": "ಕರ್ತವ್ಯ ಮುಚ್ಚಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "dutyOpen": "ಕರ್ತವ್ಯ ಪ್ರಗತಿಯಲ್ಲಿದೆ",
+      "kmDrivenLabel": "{{km}} ಕಿಮೀ ಚಾಲನೆ ಮಾಡಲಾಗಿದೆ",
+      "excessChargeLabel": "ಹೆಚ್ಚುವರಿ ಶುಲ್ಕ {{amount}}",
+      "generateInvoice": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಿ",
+      "invoiceGenerated": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ",
+      "invoiceGenerateFailed": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "type": {
+        "CHARTER": "ಚಾರ್ಟರ್",
+        "SEAT": "ಆಸನ"
+      },
+      "status": {
+        "BOOKED": "ಬುಕ್ ಮಾಡಲಾಗಿದೆ",
+        "COMPLETED": "ಪೂರ್ಣಗೊಂಡಿದೆ",
+        "CANCELLED": "ರದ್ದುಗೊಂಡಿದೆ"
+      },
+      "cancelBooking": "ಬುಕಿಂಗ್ ರದ್ದುಮಾಡಿ",
+      "bookingCancelled": "ಬುಕಿಂಗ್ ರದ್ದುಗೊಂಡಿದೆ",
+      "bookingCancelFailed": "ಬುಕಿಂಗ್ ರದ್ದುಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     }
   }
 }

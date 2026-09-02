@@ -13,6 +13,7 @@
 // ai-vertical-templates.service.ts since which ones apply depends on the
 // one business type actually installed).
 import { getPrisma } from '../database/db'
+import { logger } from '../utils/logger'
 import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { getReadOnlyPrisma } from '../database/ai-readonly-db'
 import { logAction } from './audit.service'
@@ -2473,6 +2474,24 @@ export function setAIProvider(p: AIProvider): void {
 async function getProvider(): Promise<AIProvider> {
   if (!provider) provider = new NodeLlamaProvider()
   return provider
+}
+
+// Fire-and-forget startup warm-up — called once from main/index.ts right
+// after the window is created, so the local Qwen model is already loaded by
+// the time a user asks their first real question instead of paying the full
+// cold-start cost then. NodeLlamaProvider.initialize() is idempotent and
+// promise-locked (see ai-llama-provider.ts), so this is safe even if
+// askQuestion() also triggers a load concurrently. Never throws — a failed
+// warm-up just means the first real question falls back to the normal
+// lazy-load path in askQuestion().
+export async function warmUpAiProvider(): Promise<void> {
+  try {
+    if (!(await isModuleEnabled('ai_assistant'))) return
+    const p = await getProvider()
+    await p.initialize()
+  } catch (err) {
+    logger.warn('[AI] Startup model warm-up failed (will retry lazily on first question):', err)
+  }
 }
 
 export interface AiQueryResult {

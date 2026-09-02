@@ -9470,6 +9470,804 @@ async function generateDeliveryInstallationScheduleReport(params: { dateFrom: st
   }
 }
 
+// Electrical item 4 — spec-wise fast movers. ELECTRICAL has variant_tracking
+// on; a shop names each wire/bulb variant's ProductVariant.size field with
+// its own real spec (wattage/gauge/amperage) the same way Clothing/Footwear
+// name it with a garment size — reusing that field rather than adding a new
+// one, same convention Footwear's own `width` field already established.
+export interface SpecWiseFastMoverRow { spec: string; productName: string; unitsSold: number; revenue: number }
+export interface SpecWiseFastMoversReport {
+  dateFrom: string; dateTo: string
+  rows: SpecWiseFastMoverRow[]
+  summary: { totalUnitsSold: number; topSpec: string | null }
+}
+
+async function generateSpecWiseFastMoversReport(params: { dateFrom: string; dateTo: string }): Promise<SpecWiseFastMoversReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.invoiceItem.findMany({
+    where: { invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } }, variantId: { not: null } },
+    select: {
+      quantity: true, lineTotal: true, variantId: true,
+      invoice: { select: { invoiceType: true } },
+      product: { select: { productName: true } }
+    }
+  })
+  if (items.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalUnitsSold: 0, topSpec: null } }
+
+  const variantIds = [...new Set(items.map(i => i.variantId!))]
+  const variants = await db.productVariant.findMany({ where: { id: { in: variantIds } }, select: { id: true, size: true } })
+  const specByVariantId = new Map(variants.map(v => [v.id, v.size]))
+
+  const byKey = new Map<string, SpecWiseFastMoverRow>()
+  for (const item of items) {
+    const spec = specByVariantId.get(item.variantId!)
+    if (!spec) continue
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const key = `${spec}|${item.product.productName}`
+    const existing = byKey.get(key) ?? { spec, productName: item.product.productName, unitsSold: 0, revenue: 0 }
+    existing.unitsSold += sign * item.quantity
+    existing.revenue += sign * item.lineTotal
+    byKey.set(key, existing)
+  }
+
+  const rows = Array.from(byKey.values())
+    .filter(r => r.unitsSold > 0)
+    .map(r => ({ ...r, unitsSold: Math.round(r.unitsSold * 100) / 100, revenue: roundCurrency(r.revenue) }))
+    .sort((a, b) => b.unitsSold - a.unitsSold)
+
+  const totalUnitsSold = Math.round(rows.reduce((s, r) => s + r.unitsSold, 0) * 100) / 100
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows, summary: { totalUnitsSold, topSpec: rows[0]?.spec ?? null } }
+}
+
+// Plumbing item 3 — fitting compatibility cross-sell. Builds each product's
+// single strongest historical co-purchase partner (all-time, not window-
+// scoped — a thin date range has too few baskets to reveal a reliable
+// pairing), the same distinct-product-pair-counting mechanic
+// generateBasketCompositionReport already uses, then scans the requested
+// window's invoices for baskets where a product sold WITHOUT its usual
+// partner — the actual "forgot a part" miss, not just a static top-pairs
+// list. A pairing only counts as "usual" with >=3 historical shared baskets
+// and the partner present in >=30% of the anchor's own basket history —
+// below that a single co-occurrence is noise, not a real pattern.
+export interface CrossSellMissRow {
+  invoiceId: string; invoiceNumber: string; invoiceDate: string
+  anchorProductId: string; anchorProductName: string
+  expectedPartnerProductId: string; expectedPartnerProductName: string
+  pairStrengthPercent: number
+}
+export interface FittingCrossSellReport {
+  dateFrom: string; dateTo: string
+  rows: CrossSellMissRow[]
+  summary: { missedOpportunities: number; invoicesScanned: number }
+}
+
+const CROSS_SELL_MIN_SHARED_BASKETS = 3
+const CROSS_SELL_MIN_STRENGTH = 0.3
+
+async function generateFittingCrossSellReport(params: { dateFrom: string; dateTo: string }): Promise<FittingCrossSellReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const allInvoices = await db.invoice.findMany({
+    where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' } },
+    select: { items: { select: { productId: true, product: { select: { productName: true } } } } }
+  })
+
+  const productBasketCount = new Map<string, number>()
+  const productNames = new Map<string, string>()
+  const pairCount = new Map<string, number>()
+  for (const inv of allInvoices) {
+    const distinct = new Map<string, string>()
+    for (const item of inv.items) distinct.set(item.productId, item.product.productName)
+    for (const [id, name] of distinct) {
+      productBasketCount.set(id, (productBasketCount.get(id) ?? 0) + 1)
+      productNames.set(id, name)
+    }
+    const ids = Array.from(distinct.keys())
+    for (let i = 0; i < ids.length; i++) {
+      for (let j = i + 1; j < ids.length; j++) {
+        const [a, b] = [ids[i], ids[j]].sort()
+        const key = `${a}|${b}`
+        pairCount.set(key, (pairCount.get(key) ?? 0) + 1)
+      }
+    }
+  }
+
+  const candidates = new Map<string, Array<{ partnerId: string; count: number; strength: number }>>()
+  for (const [key, count] of pairCount) {
+    if (count < CROSS_SELL_MIN_SHARED_BASKETS) continue
+    const [a, b] = key.split('|')
+    for (const [anchor, partner] of [[a, b], [b, a]] as Array<[string, string]>) {
+      const anchorBaskets = productBasketCount.get(anchor) ?? 0
+      if (anchorBaskets === 0) continue
+      const strength = count / anchorBaskets
+      if (strength < CROSS_SELL_MIN_STRENGTH) continue
+      const list = candidates.get(anchor) ?? []
+      list.push({ partnerId: partner, count, strength })
+      candidates.set(anchor, list)
+    }
+  }
+  const bestPartner = new Map<string, { partnerId: string; partnerName: string; strengthPercent: number }>()
+  for (const [anchor, list] of candidates) {
+    const top = list.sort((x, y) => y.count - x.count)[0]
+    bestPartner.set(anchor, { partnerId: top.partnerId, partnerName: productNames.get(top.partnerId) ?? '', strengthPercent: Math.round(top.strength * 1000) / 10 })
+  }
+
+  const invoices = await db.invoice.findMany({
+    where: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, invoiceDate: { gte: from, lte: to } },
+    select: { id: true, invoiceNumber: true, invoiceDate: true, items: { select: { productId: true, product: { select: { productName: true } } } } }
+  })
+
+  const rows: CrossSellMissRow[] = []
+  for (const inv of invoices) {
+    const productIds = new Set(inv.items.map(i => i.productId))
+    const seenAnchors = new Set<string>()
+    for (const item of inv.items) {
+      if (seenAnchors.has(item.productId)) continue
+      const bp = bestPartner.get(item.productId)
+      if (!bp || productIds.has(bp.partnerId)) continue
+      seenAnchors.add(item.productId)
+      rows.push({
+        invoiceId: inv.id, invoiceNumber: inv.invoiceNumber, invoiceDate: toLocalISODate(inv.invoiceDate),
+        anchorProductId: item.productId, anchorProductName: item.product.productName,
+        expectedPartnerProductId: bp.partnerId, expectedPartnerProductName: bp.partnerName,
+        pairStrengthPercent: bp.strengthPercent
+      })
+    }
+  }
+  rows.sort((a, b) => b.pairStrengthPercent - a.pairStrengthPercent)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { missedOpportunities: rows.length, invoicesScanned: invoices.length }
+  }
+}
+
+// Plumbing item 4 — material sales mix (PVC/CPVC/GI/copper). Reuses
+// ProductCategory exactly the way generateCategoryMixReport already does —
+// a plumbing shop names its own categories by material, the same free-text-
+// taxonomy convention every other vertical's Category already follows — but
+// ships as its own named report/chart (pie, not the generic category-mix
+// bar) since "material mix" is the vertical-specific framing this item
+// names, not a relabeled duplicate.
+export interface MaterialSalesMixRow { categoryId: string; materialName: string; unitsSold: number; revenue: number; revenueSharePercent: number }
+export interface MaterialSalesMixReport {
+  dateFrom: string; dateTo: string
+  rows: MaterialSalesMixRow[]
+  summary: { totalRevenue: number; materialCount: number }
+}
+
+async function generateMaterialSalesMixReport(params: { dateFrom: string; dateTo: string }): Promise<MaterialSalesMixReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const categories = await db.productCategory.findMany({ select: { id: true, name: true } })
+  if (categories.length === 0) return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows: [], summary: { totalRevenue: 0, materialCount: 0 } }
+  const nameByCategoryId = new Map(categories.map(c => [c.id, c.name]))
+
+  const items = await db.invoiceItem.findMany({
+    where: { invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } }, product: { categoryId: { not: null } } },
+    select: { quantity: true, lineTotal: true, invoice: { select: { invoiceType: true } }, product: { select: { categoryId: true } } }
+  })
+
+  const byCategory = new Map<string, { unitsSold: number; revenue: number }>()
+  for (const item of items) {
+    const catId = item.product.categoryId
+    if (!catId) continue
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const existing = byCategory.get(catId) ?? { unitsSold: 0, revenue: 0 }
+    existing.unitsSold += sign * item.quantity
+    existing.revenue += sign * item.lineTotal
+    byCategory.set(catId, existing)
+  }
+
+  const totalRevenue = sumCurrency(Array.from(byCategory.values()).map(v => v.revenue))
+  const rows: MaterialSalesMixRow[] = Array.from(byCategory.entries())
+    .map(([categoryId, v]) => ({
+      categoryId, materialName: nameByCategoryId.get(categoryId) ?? '',
+      unitsSold: Math.round(v.unitsSold * 100) / 100, revenue: roundCurrency(v.revenue),
+      revenueSharePercent: totalRevenue > 0 ? Math.round((v.revenue / totalRevenue) * 1000) / 10 : 0
+    }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows, summary: { totalRevenue, materialCount: rows.length } }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-09 §12 — Grocery/Kirana Store new vertical
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Grocery item 1 — MRP compliance. Report-only, deliberately NOT a
+// createInvoice-time block: Product.mrp is a live/current field, not
+// snapshotted per sale, so checking a PAST invoice line against today's mrp
+// is already an approximation — hard-blocking every one of the other 49
+// verticals' invoice creation on a field most of them have never had
+// enforced (and may have stale/incorrect data in) would risk a real
+// regression for zero users who asked for it. This report gives the
+// visibility the compliance requirement is actually about, with none of
+// that blast radius.
+export interface MrpViolationRow {
+  invoiceId: string; invoiceNumber: string; invoiceDate: string
+  productId: string; productName: string; sku: string | null
+  unitPrice: number; mrp: number; excessPerUnit: number; quantity: number
+}
+export interface MrpViolationReport {
+  dateFrom: string; dateTo: string
+  rows: MrpViolationRow[]
+  summary: { violationCount: number; totalExcessCollected: number }
+}
+
+async function generateMrpViolationReport(params: { dateFrom: string; dateTo: string }): Promise<MrpViolationReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.invoiceItem.findMany({
+    where: {
+      invoice: { status: 'ACTIVE', invoiceType: { not: 'RETURN' }, invoiceDate: { gte: from, lte: to } },
+      product: { mrp: { not: null } }
+    },
+    select: {
+      unitPrice: true, quantity: true,
+      invoice: { select: { id: true, invoiceNumber: true, invoiceDate: true } },
+      product: { select: { id: true, productName: true, sku: true, mrp: true } }
+    }
+  })
+
+  const rows: MrpViolationRow[] = items
+    .filter(item => item.product.mrp != null && item.unitPrice > item.product.mrp + 0.01)
+    .map(item => ({
+      invoiceId: item.invoice.id, invoiceNumber: item.invoice.invoiceNumber, invoiceDate: toLocalISODate(item.invoice.invoiceDate),
+      productId: item.product.id, productName: item.product.productName, sku: item.product.sku,
+      unitPrice: item.unitPrice, mrp: item.product.mrp as number,
+      excessPerUnit: roundCurrency(item.unitPrice - (item.product.mrp as number)), quantity: item.quantity
+    }))
+    .sort((a, b) => b.excessPerUnit - a.excessPerUnit)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { violationCount: rows.length, totalExcessCollected: roundCurrency(rows.reduce((s, r) => s + r.excessPerUnit * r.quantity, 0)) }
+  }
+}
+
+// Grocery item 2 — perishable wastage. Reads the EXPIRY movementType this
+// vertical's build newly wired up in inventory.service.ts (previously
+// accepted by the Zod schema but silently indistinguishable from a plain
+// ADJUSTMENT) — genuinely new visibility, not a re-gate of an existing report.
+export interface PerishableWastageRow {
+  productId: string; productName: string; sku: string | null
+  expiredWastageQty: number; expiredWastageValue: number
+}
+export interface PerishableWastageReport {
+  dateFrom: string; dateTo: string
+  rows: PerishableWastageRow[]
+  summary: { totalWastageQty: number; totalWastageValue: number }
+}
+
+async function generatePerishableWastageReport(params: { dateFrom: string; dateTo: string }): Promise<PerishableWastageReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const movements = await db.inventoryMovement.findMany({
+    where: { movementType: 'EXPIRY', createdAt: { gte: from, lte: to } },
+    select: { productId: true, quantity: true, product: { select: { productName: true, sku: true, costPrice: true } } }
+  })
+
+  const byProduct = new Map<string, PerishableWastageRow>()
+  for (const m of movements) {
+    // adjustStock records the signed delta (a write-off is always negative)
+    const qty = Math.abs(m.quantity)
+    const existing = byProduct.get(m.productId) ?? { productId: m.productId, productName: m.product.productName, sku: m.product.sku, expiredWastageQty: 0, expiredWastageValue: 0 }
+    existing.expiredWastageQty += qty
+    existing.expiredWastageValue += qty * m.product.costPrice
+    byProduct.set(m.productId, existing)
+  }
+
+  const rows = Array.from(byProduct.values())
+    .map(r => ({ ...r, expiredWastageQty: Math.round(r.expiredWastageQty * 100) / 100, expiredWastageValue: roundCurrency(r.expiredWastageValue) }))
+    .sort((a, b) => b.expiredWastageValue - a.expiredWastageValue)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: {
+      totalWastageQty: Math.round(rows.reduce((s, r) => s + r.expiredWastageQty, 0) * 100) / 100,
+      totalWastageValue: roundCurrency(rows.reduce((s, r) => s + r.expiredWastageValue, 0))
+    }
+  }
+}
+
+// Grocery item 4 — daily restock alert. Same velocity mechanic
+// generateFastSlowMoverMatrixReport already uses (quantitySold / days), but
+// reframed around "days of stock remaining" urgency rather than a
+// velocity/margin quadrant — a distinct, Grocery-specific lens on the same
+// underlying data, not a duplicate.
+export interface RestockAlertRow {
+  productId: string; productName: string; sku: string | null
+  currentStock: number; dailyVelocity: number; daysOfStockRemaining: number
+}
+export interface RestockAlertReport {
+  rows: RestockAlertRow[]
+  summary: { urgentCount: number; watchlistCount: number }
+}
+
+const RESTOCK_LOOKBACK_DAYS = 14
+const RESTOCK_URGENT_DAYS_THRESHOLD = 2
+const RESTOCK_WATCHLIST_DAYS_THRESHOLD = 6
+
+async function generateDailyRestockAlertReport(): Promise<RestockAlertReport> {
+  const db = getPrisma()
+  const to = new Date()
+  const from = new Date(to.getTime() - RESTOCK_LOOKBACK_DAYS * 86400000)
+
+  const [items, inventories] = await Promise.all([
+    db.invoiceItem.findMany({
+      where: { invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } } },
+      select: { productId: true, quantity: true, invoice: { select: { invoiceType: true } }, product: { select: { productName: true, sku: true } } }
+    }),
+    db.inventory.findMany({ select: { productId: true, quantity: true } })
+  ])
+
+  const stockByProduct = new Map(inventories.map(i => [i.productId, i.quantity]))
+  const agg = new Map<string, { productName: string; sku: string | null; qty: number }>()
+  for (const item of items) {
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const existing = agg.get(item.productId) ?? { productName: item.product.productName, sku: item.product.sku, qty: 0 }
+    existing.qty += sign * item.quantity
+    agg.set(item.productId, existing)
+  }
+
+  const rows: RestockAlertRow[] = Array.from(agg.entries())
+    .filter(([, v]) => v.qty > 0)
+    .map(([productId, v]) => {
+      const dailyVelocity = Math.round((v.qty / RESTOCK_LOOKBACK_DAYS) * 100) / 100
+      const currentStock = stockByProduct.get(productId) ?? 0
+      const daysOfStockRemaining = dailyVelocity > 0 ? Math.round((currentStock / dailyVelocity) * 10) / 10 : 999
+      return { productId, productName: v.productName, sku: v.sku, currentStock, dailyVelocity, daysOfStockRemaining }
+    })
+    .filter(r => r.daysOfStockRemaining <= RESTOCK_WATCHLIST_DAYS_THRESHOLD)
+    .sort((a, b) => a.daysOfStockRemaining - b.daysOfStockRemaining)
+
+  return {
+    rows,
+    summary: {
+      urgentCount: rows.filter(r => r.daysOfStockRemaining <= RESTOCK_URGENT_DAYS_THRESHOLD).length,
+      watchlistCount: rows.length
+    }
+  }
+}
+
+// Grocery item 5 — loose vs. packaged sales mix. Purely additive read of the
+// pre-existing sellByWeight flag (loose_billing's own trigger field) — no
+// new module, no new schema.
+export interface LooseVsPackagedRow { label: string; unitsSold: number; revenue: number }
+export interface LooseVsPackagedMixReport {
+  dateFrom: string; dateTo: string
+  rows: LooseVsPackagedRow[]
+  summary: { totalRevenue: number; loosePercent: number }
+}
+
+async function generateLooseVsPackagedMixReport(params: { dateFrom: string; dateTo: string }): Promise<LooseVsPackagedMixReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const items = await db.invoiceItem.findMany({
+    where: { invoice: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } } },
+    select: { quantity: true, lineTotal: true, invoice: { select: { invoiceType: true } }, product: { select: { sellByWeight: true } } }
+  })
+
+  let looseQty = 0, looseRev = 0, packagedQty = 0, packagedRev = 0
+  for (const item of items) {
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    if (item.product.sellByWeight) { looseQty += sign * item.quantity; looseRev += sign * item.lineTotal }
+    else { packagedQty += sign * item.quantity; packagedRev += sign * item.lineTotal }
+  }
+  const totalRevenue = roundCurrency(looseRev + packagedRev)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo,
+    rows: [
+      { label: 'Loose', unitsSold: Math.round(looseQty * 100) / 100, revenue: roundCurrency(looseRev) },
+      { label: 'Packaged', unitsSold: Math.round(packagedQty * 100) / 100, revenue: roundCurrency(packagedRev) }
+    ],
+    summary: { totalRevenue, loosePercent: totalRevenue > 0 ? Math.round((looseRev / totalRevenue) * 1000) / 10 : 0 }
+  }
+}
+
+// Grocery wow feature — Khata Risk Tier. Reuses computeAgingRows (the exact
+// proven FIFO-oldest-debit-first algorithm generateOutstandingReport/
+// generateApAgingReport already share) for the aging split, then layers a
+// 30-day balance-trend signal on top (rising/falling, derived from the same
+// CustomerLedger history, no new schema) — flags a regular customer sliding
+// toward bad debt BEFORE they default, distinct from the plain Outstanding
+// report's static balance list.
+export interface KhataRiskRow {
+  customerId: string; customerName: string; phone: string | null
+  outstanding: number; daysOldOfOldestDebt: number
+  trend: 'RISING' | 'FALLING' | 'STABLE'
+  riskTier: 'LOW' | 'MEDIUM' | 'HIGH'
+}
+export interface KhataRiskReport {
+  generatedAt: string
+  rows: KhataRiskRow[]
+  summary: { highRiskCount: number; mediumRiskCount: number }
+}
+
+const KHATA_TREND_LOOKBACK_DAYS = 30
+
+async function generateKhataRiskReport(): Promise<KhataRiskReport> {
+  const db = getPrisma()
+  const now = new Date()
+  const trendCutoff = new Date(now.getTime() - KHATA_TREND_LOOKBACK_DAYS * 86400000)
+
+  const [customers, allLedger] = await Promise.all([
+    db.customer.findMany({ where: { isActive: true }, select: { id: true, customerName: true, phone: true } }),
+    db.customerLedger.findMany({ select: { customerId: true, debitAmount: true, creditAmount: true, createdAt: true } })
+  ])
+
+  const ledgerByCustomer = new Map<string, { debitAmount: number; creditAmount: number; createdAt: Date }[]>()
+  for (const e of allLedger) {
+    const arr = ledgerByCustomer.get(e.customerId) ?? []
+    arr.push(e)
+    ledgerByCustomer.set(e.customerId, arr)
+  }
+
+  const agingRows = computeAgingRows(now, customers.map(c => ({ id: c.id, name: c.customerName, phone: c.phone })), ledgerByCustomer)
+
+  const rows: KhataRiskRow[] = agingRows.map(r => {
+    const entries = ledgerByCustomer.get(r.id) ?? []
+    const outstandingAsOf30DaysAgo = entries
+      .filter(e => e.createdAt <= trendCutoff)
+      .reduce((s, e) => s + e.debitAmount - e.creditAmount, 0)
+    const trend: KhataRiskRow['trend'] =
+      r.outstanding > outstandingAsOf30DaysAgo + 0.01 ? 'RISING'
+      : r.outstanding < outstandingAsOf30DaysAgo - 0.01 ? 'FALLING'
+      : 'STABLE'
+    const oldestDebit = entries.filter(e => e.debitAmount > 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
+    const daysOldOfOldestDebt = oldestDebit ? Math.floor((now.getTime() - oldestDebit.createdAt.getTime()) / 86400000) : 0
+
+    let riskTier: KhataRiskRow['riskTier'] = 'LOW'
+    if (r.aging.days90plus > 0 && trend === 'RISING') riskTier = 'HIGH'
+    else if (r.aging.days61to90 > 0 || r.aging.days90plus > 0 || trend === 'RISING') riskTier = 'MEDIUM'
+
+    return { customerId: r.id, customerName: r.name, phone: r.phone, outstanding: roundCurrency(r.outstanding), daysOldOfOldestDebt, trend, riskTier }
+  }).sort((a, b) => {
+    const order = { HIGH: 0, MEDIUM: 1, LOW: 2 }
+    return order[a.riskTier] - order[b.riskTier] || b.outstanding - a.outstanding
+  })
+
+  return {
+    generatedAt: now.toISOString(), rows,
+    summary: { highRiskCount: rows.filter(r => r.riskTier === 'HIGH').length, mediumRiskCount: rows.filter(r => r.riskTier === 'MEDIUM').length }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-09 §12 — Bakery/Sweet Shop/Catering new vertical
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Bakery wow feature — Pre-Order Production Sheet. For a chosen date,
+// consolidates every CustomOrderBooking due that day with typical walk-in
+// demand for that same day-of-week (last 90 days of history, same
+// occurrence-averaged velocity mechanic Stationery's Seasonal Demand
+// Forecast established), then expands the combined per-product quantity
+// through each product's Recipe into a single "how much of each ingredient
+// you'll need" sheet — bookings + recipes + demand history synthesized into
+// one actionable artifact, not three separate screens to cross-reference.
+export interface ProductionSheetProductRow {
+  productId: string; productName: string
+  qtyFromOrders: number; qtyFromDemandForecast: number; totalQtyNeeded: number
+}
+export interface ProductionSheetIngredientRow {
+  ingredientProductId: string; ingredientName: string; unit: string; totalQtyNeeded: number
+}
+export interface PreOrderProductionSheetReport {
+  date: string
+  products: ProductionSheetProductRow[]
+  ingredients: ProductionSheetIngredientRow[]
+  summary: { orderCount: number; totalProductQty: number }
+}
+
+const PRODUCTION_SHEET_DEMAND_LOOKBACK_DAYS = 90
+
+async function generatePreOrderProductionSheetReport(params: { date: string }): Promise<PreOrderProductionSheetReport> {
+  const db = getPrisma()
+  const targetDateStart = toDate(params.date)
+  const targetDateEnd = toDateEnd(params.date)
+
+  const bookings = await db.customOrderBooking.findMany({
+    where: { dueDate: { gte: targetDateStart, lte: targetDateEnd }, status: 'BOOKED' },
+    include: { items: true }
+  })
+
+  const dayOfWeek = targetDateStart.getDay()
+  const lookbackStart = new Date(targetDateStart.getTime() - PRODUCTION_SHEET_DEMAND_LOOKBACK_DAYS * 86400000)
+  const historicalItems = await db.invoiceItem.findMany({
+    where: { invoice: { status: 'ACTIVE', invoiceDate: { gte: lookbackStart, lt: targetDateStart } } },
+    select: { productId: true, quantity: true, invoice: { select: { invoiceType: true, invoiceDate: true } }, product: { select: { productName: true } } }
+  })
+  const sameDayItems = historicalItems.filter(i => i.invoice.invoiceDate.getDay() === dayOfWeek)
+  const occurrences = Math.max(1, new Set(sameDayItems.map(i => toLocalISODate(i.invoice.invoiceDate))).size)
+
+  const demandByProduct = new Map<string, { productName: string; qty: number }>()
+  for (const item of sameDayItems) {
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    const existing = demandByProduct.get(item.productId) ?? { productName: item.product.productName, qty: 0 }
+    existing.qty += sign * item.quantity
+    demandByProduct.set(item.productId, existing)
+  }
+
+  const productMap = new Map<string, ProductionSheetProductRow>()
+  for (const b of bookings) {
+    for (const item of b.items) {
+      const existing = productMap.get(item.productId) ?? { productId: item.productId, productName: '', qtyFromOrders: 0, qtyFromDemandForecast: 0, totalQtyNeeded: 0 }
+      existing.qtyFromOrders += item.quantity
+      productMap.set(item.productId, existing)
+    }
+  }
+  for (const [productId, v] of demandByProduct) {
+    const existing = productMap.get(productId) ?? { productId, productName: v.productName, qtyFromOrders: 0, qtyFromDemandForecast: 0, totalQtyNeeded: 0 }
+    if (!existing.productName) existing.productName = v.productName
+    existing.qtyFromDemandForecast = Math.max(0, Math.round((v.qty / occurrences) * 100) / 100)
+    productMap.set(productId, existing)
+  }
+
+  const missingNameIds = Array.from(productMap.values()).filter(v => !v.productName).map(v => v.productId)
+  if (missingNameIds.length > 0) {
+    const prods = await db.product.findMany({ where: { id: { in: missingNameIds } }, select: { id: true, productName: true } })
+    const nameById = new Map(prods.map(p => [p.id, p.productName]))
+    for (const id of missingNameIds) {
+      const row = productMap.get(id)
+      if (row) row.productName = nameById.get(id) ?? ''
+    }
+  }
+
+  const products: ProductionSheetProductRow[] = Array.from(productMap.values())
+    .map(p => ({ ...p, totalQtyNeeded: Math.round((p.qtyFromOrders + p.qtyFromDemandForecast) * 100) / 100 }))
+    .sort((a, b) => b.totalQtyNeeded - a.totalQtyNeeded)
+
+  const productIds = products.map(p => p.productId)
+  const recipes = productIds.length > 0
+    ? await db.recipe.findMany({ where: { productId: { in: productIds } }, include: { items: { include: { ingredient: { select: { productName: true, unit: true } } } } } })
+    : []
+  const recipeByProductId = new Map(recipes.map(r => [r.productId, r]))
+
+  const ingredientMap = new Map<string, ProductionSheetIngredientRow>()
+  for (const p of products) {
+    const recipe = recipeByProductId.get(p.productId)
+    if (!recipe) continue
+    for (const ri of recipe.items) {
+      const needed = ri.quantity * p.totalQtyNeeded
+      const existing = ingredientMap.get(ri.ingredientProductId) ?? { ingredientProductId: ri.ingredientProductId, ingredientName: ri.ingredient.productName, unit: ri.ingredient.unit, totalQtyNeeded: 0 }
+      existing.totalQtyNeeded += needed
+      ingredientMap.set(ri.ingredientProductId, existing)
+    }
+  }
+  const ingredients: ProductionSheetIngredientRow[] = Array.from(ingredientMap.values())
+    .map(i => ({ ...i, totalQtyNeeded: Math.round(i.totalQtyNeeded * 100) / 100 }))
+    .sort((a, b) => b.totalQtyNeeded - a.totalQtyNeeded)
+
+  return {
+    date: params.date, products, ingredients,
+    summary: { orderCount: bookings.length, totalProductQty: Math.round(products.reduce((s, p) => s + p.totalQtyNeeded, 0) * 100) / 100 }
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-09 §12 — Tours & Travels new vertical
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Signature item 4 — Vehicle Service-Due & Total-KM-Run. Same "remind
+// before a threshold" shape as dental_recall/pest_contracts, but km-driven
+// instead of a calendar date — flags a vehicle as due-soon either against
+// its own explicit nextServiceDueKm (set at the last service visit) or,
+// absent that, a generic default interval.
+export interface VehicleServiceDueRow {
+  vehicleId: string; registrationNumber: string; vehicleType: string; currentOdometer: number
+  kmSinceLastService: number | null; lastServiceDate: string | null
+  nextServiceDueKm: number | null; nextServiceDueDate: string | null
+  isDueSoon: boolean
+}
+export interface VehicleServiceDueReport {
+  rows: VehicleServiceDueRow[]
+  summary: { dueSoonCount: number; totalFleetKm: number }
+}
+
+const SERVICE_DUE_KM_THRESHOLD = 500
+const DEFAULT_SERVICE_INTERVAL_KM = 10000
+
+async function generateVehicleServiceDueReport(): Promise<VehicleServiceDueReport> {
+  const db = getPrisma()
+  const vehicles = await db.tourVehicle.findMany({ where: { status: { not: 'INACTIVE' } }, orderBy: { registrationNumber: 'asc' } })
+  const logs = await db.vehicleServiceLog.findMany({ orderBy: { serviceDate: 'desc' } })
+  const lastServiceByVehicle = new Map<string, (typeof logs)[number]>()
+  for (const log of logs) {
+    if (!lastServiceByVehicle.has(log.vehicleId)) lastServiceByVehicle.set(log.vehicleId, log)
+  }
+
+  const rows: VehicleServiceDueRow[] = vehicles.map(v => {
+    const last = lastServiceByVehicle.get(v.id)
+    const kmSinceLastService = last ? Math.round((v.currentOdometer - last.odometerAtService) * 100) / 100 : null
+    const isDueSoon = last?.nextServiceDueKm != null
+      ? v.currentOdometer >= last.nextServiceDueKm - SERVICE_DUE_KM_THRESHOLD
+      : (kmSinceLastService != null && kmSinceLastService >= DEFAULT_SERVICE_INTERVAL_KM - SERVICE_DUE_KM_THRESHOLD)
+    return {
+      vehicleId: v.id, registrationNumber: v.registrationNumber, vehicleType: v.vehicleType, currentOdometer: v.currentOdometer,
+      kmSinceLastService, lastServiceDate: last ? toLocalISODate(last.serviceDate) : null,
+      nextServiceDueKm: last?.nextServiceDueKm ?? null, nextServiceDueDate: last?.nextServiceDueDate ? toLocalISODate(last.nextServiceDueDate) : null,
+      isDueSoon,
+    }
+  }).sort((a, b) => Number(b.isDueSoon) - Number(a.isDueSoon))
+
+  return {
+    rows,
+    summary: { dueSoonCount: rows.filter(r => r.isDueSoon).length, totalFleetKm: roundCurrency(vehicles.reduce((s, v) => s + v.currentOdometer, 0)) }
+  }
+}
+
+// Signature item 5 — Commission by Agent. Direct structural reuse of the
+// JobOrder commission-report precedent (Placement Agency vertical).
+export interface CommissionByAgentRow { agentName: string; bookingCount: number; totalPackageRevenue: number; totalCommission: number }
+export interface CommissionByAgentReport {
+  dateFrom: string; dateTo: string
+  rows: CommissionByAgentRow[]
+  summary: { totalCommission: number; agentCount: number }
+}
+
+function computeTripCommission(packageRate: number, commissionType: string | null, commissionValue: number | null): number {
+  if (commissionType === 'FIXED') return commissionValue ?? 0
+  if (commissionType === 'PERCENTAGE') return roundCurrency(packageRate * (commissionValue ?? 0) / 100)
+  return 0
+}
+
+async function generateCommissionByAgentReport(params: { dateFrom: string; dateTo: string }): Promise<CommissionByAgentReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const bookings = await db.tripBooking.findMany({
+    where: { referringAgentName: { not: null }, status: { not: 'CANCELLED' }, createdAt: { gte: from, lte: to } },
+    select: { referringAgentName: true, packageRate: true, commissionType: true, commissionValue: true }
+  })
+
+  const byAgent = new Map<string, { bookingCount: number; totalPackageRevenue: number; totalCommission: number }>()
+  for (const b of bookings) {
+    const agent = b.referringAgentName as string
+    const commission = computeTripCommission(b.packageRate, b.commissionType, b.commissionValue)
+    const existing = byAgent.get(agent) ?? { bookingCount: 0, totalPackageRevenue: 0, totalCommission: 0 }
+    existing.bookingCount += 1
+    existing.totalPackageRevenue += b.packageRate
+    existing.totalCommission += commission
+    byAgent.set(agent, existing)
+  }
+
+  const rows: CommissionByAgentRow[] = Array.from(byAgent.entries())
+    .map(([agentName, v]) => ({ agentName, bookingCount: v.bookingCount, totalPackageRevenue: roundCurrency(v.totalPackageRevenue), totalCommission: roundCurrency(v.totalCommission) }))
+    .sort((a, b) => b.totalCommission - a.totalCommission)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalCommission: roundCurrency(rows.reduce((s, r) => s + r.totalCommission, 0)), agentCount: rows.length }
+  }
+}
+
+// Wow feature — Trip Profitability Calculator. Synthesizes booking revenue
+// (package + settled excess-km/hour charges), driver settlement cost,
+// an estimated fuel cost (kmDriven × a flat per-km estimate — no fuel-price
+// tracking exists anywhere in this schema, so this is a rough estimate, not
+// a ledger figure), a prorated maintenance cost (this vehicle's total
+// VehicleServiceLog cost ÷ its current odometer × this trip's kmDriven),
+// and commission — into one real per-trip margin no other report computes.
+// Scoped to COMPLETED bookings (status flips to COMPLETED only once
+// generateTripInvoice has run) whose updatedAt falls in the window — the
+// closest available proxy for "completed in this period" since there's no
+// dedicated completedAt field.
+export interface TripProfitabilityRow {
+  bookingId: string; bookingNumber: string; customerName: string
+  revenue: number; driverCost: number; fuelCostEstimate: number; maintenanceCostEstimate: number; commission: number; netProfit: number
+}
+export interface TripProfitabilityReport {
+  dateFrom: string; dateTo: string
+  rows: TripProfitabilityRow[]
+  summary: { totalRevenue: number; totalNetProfit: number }
+}
+
+const ESTIMATED_FUEL_COST_PER_KM = 8
+
+async function generateTripProfitabilityReport(params: { dateFrom: string; dateTo: string }): Promise<TripProfitabilityReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const bookings = await db.tripBooking.findMany({
+    where: { status: 'COMPLETED', updatedAt: { gte: from, lte: to } },
+    include: { customer: { select: { customerName: true } }, dutyLogs: true, vehicle: true }
+  })
+
+  const vehicleIds = [...new Set(bookings.map(b => b.vehicleId).filter((id): id is string => !!id))]
+  const serviceLogs = vehicleIds.length > 0 ? await db.vehicleServiceLog.findMany({ where: { vehicleId: { in: vehicleIds } } }) : []
+  const totalMaintenanceCostByVehicle = new Map<string, number>()
+  for (const log of serviceLogs) {
+    totalMaintenanceCostByVehicle.set(log.vehicleId, (totalMaintenanceCostByVehicle.get(log.vehicleId) ?? 0) + log.cost)
+  }
+
+  const rows: TripProfitabilityRow[] = bookings.map(b => {
+    const excessRevenue = b.dutyLogs.reduce((s, d) => s + (d.excessKmCharge ?? 0) + (d.excessHourCharge ?? 0), 0)
+    const revenue = roundCurrency(b.packageRate + excessRevenue)
+    const driverCost = roundCurrency(b.dutyLogs.reduce((s, d) => s + d.driverBataAmount + d.nightHaltCharge + d.nightDrivingAllowance, 0))
+    const kmDriven = b.dutyLogs.reduce((s, d) => s + (d.kmDriven ?? 0), 0)
+    const fuelCostEstimate = roundCurrency(kmDriven * ESTIMATED_FUEL_COST_PER_KM)
+    const totalMaintenanceCost = b.vehicleId ? (totalMaintenanceCostByVehicle.get(b.vehicleId) ?? 0) : 0
+    const maintenanceCostPerKm = b.vehicle && b.vehicle.currentOdometer > 0 ? totalMaintenanceCost / b.vehicle.currentOdometer : 0
+    const maintenanceCostEstimate = roundCurrency(kmDriven * maintenanceCostPerKm)
+    const commission = computeTripCommission(b.packageRate, b.commissionType, b.commissionValue)
+    const netProfit = roundCurrency(revenue - driverCost - fuelCostEstimate - maintenanceCostEstimate - commission)
+    return { bookingId: b.id, bookingNumber: b.bookingNumber, customerName: b.customer.customerName, revenue, driverCost, fuelCostEstimate, maintenanceCostEstimate, commission, netProfit }
+  }).sort((a, b) => b.netProfit - a.netProfit)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalRevenue: roundCurrency(rows.reduce((s, r) => s + r.revenue, 0)), totalNetProfit: roundCurrency(rows.reduce((s, r) => s + r.netProfit, 0)) }
+  }
+}
+
+// 2026-09-02 — Catering Events wow feature: Event Profitability. Mirrors
+// generateTripProfitabilityReport's shape — real revenue (the final
+// bargained price if one was recorded, else pricePerPlate × attendeeCount,
+// the same fallback billingService.generateCateringEventInvoice itself
+// uses) minus real staffing cost (CateringEventStaff.amount, already
+// snapshotted at booking time) minus an estimated ingredient cost
+// (each menu line's quantity × its product's own Product.costPrice — an
+// estimate, since costPrice is a single current figure, not a
+// point-in-time purchase cost, the same caveat Trip Profitability's fuel
+// estimate carries for the same reason). Scoped to COMPLETED events (status
+// flips to COMPLETED only once generateCateringEventInvoice has run) whose
+// updatedAt falls in the window — same completed-in-this-period proxy
+// Trip Profitability uses, for the same reason (no dedicated completedAt).
+export interface EventProfitabilityRow {
+  eventId: string; eventNumber: string; customerName: string
+  revenue: number; staffCost: number; ingredientCostEstimate: number; netProfit: number
+}
+export interface EventProfitabilityReport {
+  dateFrom: string; dateTo: string
+  rows: EventProfitabilityRow[]
+  summary: { totalRevenue: number; totalNetProfit: number }
+}
+
+async function generateEventProfitabilityReport(params: { dateFrom: string; dateTo: string }): Promise<EventProfitabilityReport> {
+  const db = getPrisma()
+  const from = toDate(params.dateFrom)
+  const to = toDateEnd(params.dateTo)
+
+  const events = await db.cateringEvent.findMany({
+    where: { status: 'COMPLETED', updatedAt: { gte: from, lte: to } },
+    include: {
+      customer: { select: { customerName: true } },
+      staff: true,
+      menuItems: { include: { product: { select: { costPrice: true } } } }
+    }
+  })
+
+  const rows: EventProfitabilityRow[] = events.map(e => {
+    const revenue = roundCurrency(e.finalNegotiatedPrice ?? e.pricePerPlate * e.attendeeCount)
+    const staffCost = roundCurrency(e.staff.reduce((s, st) => s + st.amount, 0))
+    const ingredientCostEstimate = roundCurrency(e.menuItems.reduce((s, mi) => s + mi.product.costPrice * mi.quantity, 0))
+    const netProfit = roundCurrency(revenue - staffCost - ingredientCostEstimate)
+    return { eventId: e.id, eventNumber: e.eventNumber, customerName: e.customer.customerName, revenue, staffCost, ingredientCostEstimate, netProfit }
+  }).sort((a, b) => b.netProfit - a.netProfit)
+
+  return {
+    dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
+    summary: { totalRevenue: roundCurrency(rows.reduce((s, r) => s + r.revenue, 0)), totalNetProfit: roundCurrency(rows.reduce((s, r) => s + r.netProfit, 0)) }
+  }
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Exports
 // ─────────────────────────────────────────────────────────────────────────────
@@ -9631,4 +10429,17 @@ export const reportService = {
   generateInstitutionalOrderHistoryReport,
   generateLocationStockSplitReport,
   generateDeliveryInstallationScheduleReport,
+  generateSpecWiseFastMoversReport,
+  generateFittingCrossSellReport,
+  generateMaterialSalesMixReport,
+  generateMrpViolationReport,
+  generatePerishableWastageReport,
+  generateDailyRestockAlertReport,
+  generateLooseVsPackagedMixReport,
+  generateKhataRiskReport,
+  generatePreOrderProductionSheetReport,
+  generateVehicleServiceDueReport,
+  generateCommissionByAgentReport,
+  generateTripProfitabilityReport,
+  generateEventProfitabilityReport,
 }

@@ -390,6 +390,8 @@ const PERMISSIONS = [
   { permissionKey: 'memberships.manage', permissionName: 'Sell, Check-In & Freeze/Resume Memberships' },
   { permissionKey: 'sessionPacks.manage', permissionName: 'Sell & Deduct Session Packs' },
   { permissionKey: 'staffCommission.record', permissionName: 'Record Staff Commission At Time Of Billing' },
+  { permissionKey: 'workoutLog.manage', permissionName: 'Log & Delete Member Workout Progress' },
+  { permissionKey: 'customerCheckIn.manage', permissionName: 'Check Customers In & Out' },
 
   // Driving School — enrolling a learner and booking/updating a driving
   // session or test is the same bounded front-desk trust level as
@@ -571,7 +573,27 @@ const PERMISSIONS = [
   // Furniture old-item trade-in — same bounded counter trust level as
   // jewellery.manageExchanges.
   { permissionKey: 'furnitureTradeIn.view', permissionName: 'View Furniture Trade-Ins' },
-  { permissionKey: 'furnitureTradeIn.manage', permissionName: 'Record Furniture Trade-Ins' }
+  { permissionKey: 'furnitureTradeIn.manage', permissionName: 'Record Furniture Trade-Ins' },
+  // 2026-09 §12 — Bakery custom order booking — same bounded, per-transaction
+  // counter trust level as furnitureBooking.manage above.
+  { permissionKey: 'customOrderBooking.view', permissionName: 'View Custom Orders' },
+  { permissionKey: 'customOrderBooking.manage', permissionName: 'Create Custom Orders & Generate Delivery Invoices' },
+  // 2026-09-02 — Catering event booking, same bounded, per-transaction
+  // counter trust level as customOrderBooking.manage above.
+  { permissionKey: 'cateringEvent.view', permissionName: 'View Catering Events' },
+  { permissionKey: 'cateringEvent.manage', permissionName: 'Book Catering Events & Generate Invoices' },
+  // 2026-09 §12 — Tours & Travels. Fleet/package setup stays Manager+ (back-
+  // office curation, same tier as bulkListOrder.manage); booking + duty-log
+  // entry is a counter-level action, same bounded trust as furnitureBooking/
+  // customOrderBooking.manage above.
+  { permissionKey: 'vehicle.view', permissionName: 'View Vehicle Fleet' },
+  { permissionKey: 'vehicle.manage', permissionName: 'Manage Vehicle Fleet & Service Log' },
+  { permissionKey: 'tourPackage.view', permissionName: 'View Tour Packages & Departures' },
+  { permissionKey: 'tourPackage.manage', permissionName: 'Manage Tour Packages & Departures' },
+  { permissionKey: 'tripBooking.view', permissionName: 'View Trip Bookings' },
+  { permissionKey: 'tripBooking.manage', permissionName: 'Create Trip Bookings & Generate Invoices' },
+  { permissionKey: 'driverDutyLog.view', permissionName: 'View Driver Duty Logs' },
+  { permissionKey: 'driverDutyLog.manage', permissionName: 'Start & Close Driver Duty Logs' }
 ]
 
 // Role → permission assignments from PERMISSIONS_MATRIX.md
@@ -649,6 +671,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     // "operational control" breadth Manager already has everywhere else.
     'appointments.manage', 'notifications.manage',
     'batchClass.manage', 'batchClass.enroll', 'memberships.manage', 'sessionPacks.manage', 'staffCommission.record',
+    'workoutLog.manage', 'customerCheckIn.manage',
     'drivingSchool.manage',
     'pets.manage', 'vaccinations.manage',
     'tokenQueue.manage',
@@ -669,7 +692,13 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'jobSiteAccount.view', 'jobSiteAccount.manage',
     'bulkListOrder.view', 'bulkListOrder.manage',
     'furnitureBooking.view', 'furnitureBooking.manage',
-    'furnitureTradeIn.view', 'furnitureTradeIn.manage'
+    'furnitureTradeIn.view', 'furnitureTradeIn.manage',
+    'customOrderBooking.view', 'customOrderBooking.manage',
+    'cateringEvent.view', 'cateringEvent.manage',
+    'vehicle.view', 'vehicle.manage',
+    'tourPackage.view', 'tourPackage.manage',
+    'tripBooking.view', 'tripBooking.manage',
+    'driverDutyLog.view', 'driverDutyLog.manage'
   ],
   Cashier: [
     'auth.login', 'auth.changeOwnPassword',
@@ -729,6 +758,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'appointments.manage', 'notifications.manage', // front-desk booking/reminders
     'batchClass.enroll', // enrolling a walk-in member into a class, not scheduling the class itself
     'memberships.manage', // selling/checking in a membership at the counter
+    'customerCheckIn.manage', // checking a customer in/out — same front-desk tier as membership check-in, no clinical/trainer data involved
     'sessionPacks.manage', // selling/deducting a session pack at the counter
     'staffCommission.record', // fires automatically alongside Cashier's own appointment-invoice generation
     'drivingSchool.manage', // enrolling a learner / booking a driving session at the counter
@@ -747,7 +777,12 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     // stays Manager+ (back-office curation, not a counter action).
     'jobSiteAccount.view',
     'furnitureBooking.view', 'furnitureBooking.manage',
-    'furnitureTradeIn.view', 'furnitureTradeIn.manage'
+    'furnitureTradeIn.view', 'furnitureTradeIn.manage',
+    'customOrderBooking.view', 'customOrderBooking.manage',
+    'cateringEvent.view', 'cateringEvent.manage',
+    'vehicle.view', 'tourPackage.view',
+    'tripBooking.view', 'tripBooking.manage',
+    'driverDutyLog.view', 'driverDutyLog.manage'
   ],
   Staff: [
     'auth.login', 'auth.changeOwnPassword',
@@ -760,7 +795,8 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'hotel.view',
     'jewellery.view',
     'repairTickets.view',
-    'jobSiteAccount.view', 'bulkListOrder.view', 'furnitureBooking.view', 'furnitureTradeIn.view'
+    'jobSiteAccount.view', 'bulkListOrder.view', 'furnitureBooking.view', 'furnitureTradeIn.view', 'customOrderBooking.view', 'cateringEvent.view',
+    'vehicle.view', 'tourPackage.view', 'tripBooking.view', 'driverDutyLog.view'
   ],
   'Kitchen Staff': [
     'auth.login', 'auth.changeOwnPassword',

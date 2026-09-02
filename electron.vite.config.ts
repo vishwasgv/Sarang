@@ -14,6 +14,9 @@ export default defineConfig({
     define: {
       'process.env.SARANG_LICENSE_HMAC_SECRET': JSON.stringify(
         process.env.SARANG_LICENSE_HMAC_SECRET || 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP'
+      ),
+      'process.env.SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM': JSON.stringify(
+        process.env.SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM || ''
       )
     },
     build: {

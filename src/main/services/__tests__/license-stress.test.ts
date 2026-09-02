@@ -35,9 +35,9 @@ async function importFresh() {
 }
 
 describe('Phase 59 — stress: concurrent access at the exact expiry boundary', () => {
-  it('50 simultaneous getLicenseState() calls at exactly day 365 all agree on EXPIRED — no race between them', async () => {
+  it('50 simultaneous getLicenseState() calls at exactly day 100 (trial length) all agree on EXPIRED — no race between them', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
-    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 365 * 86_400_000))
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 100 * 86_400_000))
     await activateLicenseKey(key)
 
     const results = await Promise.all(Array.from({ length: 50 }, () => getLicenseState()))
@@ -45,9 +45,9 @@ describe('Phase 59 — stress: concurrent access at the exact expiry boundary', 
     expect(results.every(r => r.tier === 'TRIAL')).toBe(true)
   })
 
-  it('50 simultaneous getLicenseState() calls one day BEFORE expiry all agree on WARNING, not EXPIRED — no off-by-one under load', async () => {
+  it('50 simultaneous getLicenseState() calls one day BEFORE trial expiry all agree on WARNING, not EXPIRED — no off-by-one under load', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
-    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 364 * 86_400_000))
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 99 * 86_400_000))
     await activateLicenseKey(key)
 
     const results = await Promise.all(Array.from({ length: 50 }, () => getLicenseState()))

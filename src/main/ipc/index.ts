@@ -37,6 +37,7 @@ import { register as registerJournalEntries } from './handlers/journal-entry.han
 import { register as registerBankAccounts } from './handlers/bank-account.handler'
 import { register as registerCreditInterest } from './handlers/credit-interest.handler'
 import { register as registerPostDatedCheques } from './handlers/post-dated-cheque.handler'
+import { register as registerBankDeposits } from './handlers/bank-deposit.handler'
 import { register as registerChequeBooks } from './handlers/cheque-book.handler'
 import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
 import { register as registerYearEndClose } from './handlers/year-end-close.handler'
@@ -105,6 +106,8 @@ import { register as registerSessionPacks } from './handlers/session-pack.handle
 import { register as registerStaffCommission } from './handlers/staff-commission.handler'
 import { register as registerMemberships } from './handlers/membership.handler'
 import { register as registerBatchClasses } from './handlers/batch-class.handler'
+import { register as registerWorkoutLog } from './handlers/workout-log.handler'
+import { register as registerCustomerCheckIn } from './handlers/customer-checkin.handler'
 import { register as registerDriving } from './handlers/driving.handler'
 // Phase 28 — Legal
 import { register as registerLegalCase } from './handlers/legal-case.handler'
@@ -180,6 +183,13 @@ import { register as registerJobSiteAccount } from './handlers/job-site-account.
 import { register as registerBulkListOrder } from './handlers/bulk-list-order.handler'
 import { register as registerFurnitureBooking } from './handlers/furniture-booking.handler'
 import { register as registerFurnitureTradeIn } from './handlers/furniture-trade-in.handler'
+import { register as registerKhataReminder } from './handlers/khata-reminder.handler'
+import { register as registerCustomOrderBooking } from './handlers/custom-order-booking.handler'
+import { register as registerCateringEvent } from './handlers/catering-event.handler'
+import { register as registerVehicle } from './handlers/vehicle.handler'
+import { register as registerTourPackage } from './handlers/tour-package.handler'
+import { register as registerTripBooking } from './handlers/trip-booking.handler'
+import { register as registerDriverDutyLog } from './handlers/driver-duty-log.handler'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -235,6 +245,7 @@ export function registerAllIpcHandlers(): void {
   registerBankAccounts(h)
   registerCreditInterest(h)
   registerPostDatedCheques(h)
+  registerBankDeposits(h)
   registerChequeBooks(h)
   registerFixedAssets(h)
   registerYearEndClose(h)
@@ -299,6 +310,8 @@ export function registerAllIpcHandlers(): void {
   registerStaffCommission(h)
   registerMemberships(h)
   registerBatchClasses(h)
+  registerWorkoutLog(h)
+  registerCustomerCheckIn(h)
   registerDriving(h)
   registerLegalCase(h)
   registerHearing(h)
@@ -379,6 +392,13 @@ export function registerAllIpcHandlers(): void {
   registerBulkListOrder(h)
   registerFurnitureBooking(h)
   registerFurnitureTradeIn(h)
+  registerKhataReminder(h)
+  registerCustomOrderBooking(h)
+  registerCateringEvent(h)
+  registerVehicle(h)
+  registerTourPackage(h)
+  registerTripBooking(h)
+  registerDriverDutyLog(h)
 
   console.log('[IPC] All handlers registered')
 }

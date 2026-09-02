@@ -146,6 +146,12 @@ export async function login(username: string, password: string, rememberMe = fal
 
     await logAction({ userId: user.id, action: 'USER_LOGIN', entityType: 'User', entityId: user.id })
 
+    // Password Policy — expiry never blocks login outright (this app has no
+    // email/SMS/cloud reset channel; hard-locking someone out on expiry with
+    // only the offline recovery code as an escape hatch is a worse failure
+    // mode than a nag). The renderer prompts a change instead when this is true.
+    const passwordExpired = await isPasswordExpired(user.passwordChangedAt)
+
     return {
       success: true,
       data: {
@@ -153,7 +159,8 @@ export async function login(username: string, password: string, rememberMe = fal
         fullName: user.fullName,
         username: user.username,
         email: user.email,
-        role: { id: user.role.id, name: user.role.roleName }
+        role: { id: user.role.id, name: user.role.roleName },
+        passwordExpired
       }
     }
   } catch (err) {
@@ -279,10 +286,14 @@ export async function changePassword(userId: string, oldPassword: string, newPas
     const lengthError = await checkPasswordLength(newPassword)
     if (lengthError) return lengthError
 
+    const reuseError = await checkPasswordNotReused(userId, newPassword, user.passwordHash)
+    if (reuseError) return reuseError
+
     await changePasswordRateLimiter.reset(userId)
     const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
     // Invalidate all remember-me sessions so stolen tokens cannot be reused after a password change
-    await db.user.update({ where: { id: userId }, data: { passwordHash: newHash, sessionToken: null, tokenExpiresAt: null } })
+    await db.user.update({ where: { id: userId }, data: { passwordHash: newHash, passwordChangedAt: new Date(), sessionToken: null, tokenExpiresAt: null } })
+    await recordPasswordHistory(userId, newHash)
     await clearSavedSession()
     await logAction({ userId, action: 'PASSWORD_CHANGED', entityType: 'User', entityId: userId })
 
@@ -357,10 +368,14 @@ export async function resetPasswordWithRecoveryCode(username: string, recoveryCo
     const lengthError = await checkPasswordLength(newPassword)
     if (lengthError) return lengthError
 
+    const reuseError = await checkPasswordNotReused(user.id, newPassword, user.passwordHash)
+    if (reuseError) return reuseError
+
     await recoveryRateLimiter.reset(username)
     const newHash = await bcrypt.hash(newPassword, SALT_ROUNDS)
     // Same invalidation as changePassword — a stolen remember-me token must not survive a recovery reset either.
-    await db.user.update({ where: { id: user.id }, data: { passwordHash: newHash, sessionToken: null, tokenExpiresAt: null } })
+    await db.user.update({ where: { id: user.id }, data: { passwordHash: newHash, passwordChangedAt: new Date(), sessionToken: null, tokenExpiresAt: null } })
+    await recordPasswordHistory(user.id, newHash)
     await logAction({ userId: user.id, action: 'PASSWORD_RESET_VIA_RECOVERY_CODE', entityType: 'User', entityId: user.id, newValue: { username } })
 
     return { success: true }
@@ -440,6 +455,65 @@ export async function checkPasswordLength(password: string): Promise<ApiResponse
   return null
 }
 
+// 2026-09-02 — Password Policy: expiry and history. Both default to 0
+// (disabled) so an install that never touches Settings behaves exactly as
+// it always has — same "opt-in, live-configurable" convention
+// getPasswordMinLength already established for the strength side.
+const DEFAULT_PASSWORD_EXPIRY_DAYS = 0
+const DEFAULT_PASSWORD_HISTORY_COUNT = 0
+
+export async function getPasswordExpiryDays(): Promise<number> {
+  const db = getPrisma()
+  const setting = await db.setting.findUnique({ where: { settingKey: 'password_expiry_days' } })
+  const parsed = setting ? parseInt(setting.settingValue, 10) : NaN
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PASSWORD_EXPIRY_DAYS
+}
+
+export async function getPasswordHistoryCount(): Promise<number> {
+  const db = getPrisma()
+  const setting = await db.setting.findUnique({ where: { settingKey: 'password_history_count' } })
+  const parsed = setting ? parseInt(setting.settingValue, 10) : NaN
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : DEFAULT_PASSWORD_HISTORY_COUNT
+}
+
+export async function isPasswordExpired(passwordChangedAt: Date): Promise<boolean> {
+  const expiryDays = await getPasswordExpiryDays()
+  if (expiryDays <= 0) return false
+  const ageMs = Date.now() - passwordChangedAt.getTime()
+  return ageMs > expiryDays * 24 * 60 * 60 * 1000
+}
+
+// Checked against both the live passwordHash (covers "set it back to what
+// it already is", and every pre-existing user whose current password
+// predates this feature and was therefore never itself written into
+// PasswordHistory) and the most recent N history rows. bcrypt hashes can't
+// be compared as plain strings, so each candidate is individually
+// re-compared — there is no faster way to check reuse against a salted hash.
+export async function checkPasswordNotReused(userId: string, newPassword: string, currentPasswordHash: string): Promise<ApiResponse | null> {
+  const historyCount = await getPasswordHistoryCount()
+  if (historyCount <= 0) return null
+
+  if (await bcrypt.compare(newPassword, currentPasswordHash)) {
+    return { success: false, error: { code: 'AUTH-006', message: 'That is your current password. Please choose a different one.' } }
+  }
+
+  const db = getPrisma()
+  const history = await db.passwordHistory.findMany({
+    where: { userId }, orderBy: { createdAt: 'desc' }, take: historyCount, select: { passwordHash: true }
+  })
+  for (const row of history) {
+    if (await bcrypt.compare(newPassword, row.passwordHash)) {
+      return { success: false, error: { code: 'AUTH-006', message: `That password was used recently. Please choose one you haven't used in your last ${historyCount} password${historyCount === 1 ? '' : 's'}.` } }
+    }
+  }
+  return null
+}
+
+export async function recordPasswordHistory(userId: string, passwordHash: string): Promise<void> {
+  const db = getPrisma()
+  await db.passwordHistory.create({ data: { userId, passwordHash } })
+}
+
 // Convenience object for import * as authService consumers
 export const authService = {
   login,
@@ -452,5 +526,12 @@ export const authService = {
   hashPassword,
   generateRecoveryCode,
   resetPasswordWithRecoveryCode,
-  regenerateRecoveryCode
+  regenerateRecoveryCode,
+  getPasswordMinLength,
+  checkPasswordLength,
+  getPasswordExpiryDays,
+  getPasswordHistoryCount,
+  isPasswordExpired,
+  checkPasswordNotReused,
+  recordPasswordHistory
 }

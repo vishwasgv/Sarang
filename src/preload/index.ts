@@ -219,6 +219,7 @@ const api: IpcChannels = {
   },
   supplierPayments: {
     record: (p) => invoke('supplierPayments:record', p),
+    recordForeignCurrencySettlement: (p) => invoke('supplierPayments:recordForeignCurrencySettlement', p),
     recordBulk: (p) => invoke('supplierPayments:recordBulk', p),
     reverse: (p) => invoke('supplierPayments:reverse', p),
     list: (p) => invoke('supplierPayments:list', p),
@@ -270,6 +271,12 @@ const api: IpcChannels = {
     getNextNumber: (bankAccountId) => invoke('chequeBooks:getNextNumber', bankAccountId),
     setActive: (p) => invoke('chequeBooks:setActive', p)
   },
+  bankDeposits: {
+    create: (p) => invoke('bankDeposits:create', p),
+    list: (p) => invoke('bankDeposits:list', p),
+    get: (p) => invoke('bankDeposits:get', p),
+    listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
+  },
   fixedAssets: {
     create: (p) => invoke('fixedAssets:create', p),
     list: (p) => invoke('fixedAssets:list', p),
@@ -301,6 +308,7 @@ const api: IpcChannels = {
   },
   payments: {
     record: (p) => invoke('payments:record', p),
+    recordForeignCurrencySettlement: (p) => invoke('payments:recordForeignCurrencySettlement', p),
     recordSplit: (p) => invoke('payments:recordSplit', p),
     reverse: (p) => invoke('payments:reverse', p),
     list: (p) => invoke('payments:list', p)
@@ -482,6 +490,20 @@ const api: IpcChannels = {
     institutionalOrderHistory: (p) => invoke('reports:institutionalOrderHistory', p),
     locationStockSplit: () => invoke('reports:locationStockSplit'),
     deliveryInstallationSchedule: (p) => invoke('reports:deliveryInstallationSchedule', p),
+    specWiseFastMovers: (p) => invoke('reports:specWiseFastMovers', p),
+    fittingCrossSell: (p) => invoke('reports:fittingCrossSell', p),
+    materialSalesMix: (p) => invoke('reports:materialSalesMix', p),
+    mrpViolation: (p) => invoke('reports:mrpViolation', p),
+    perishableWastage: (p) => invoke('reports:perishableWastage', p),
+    dailyRestockAlert: () => invoke('reports:dailyRestockAlert'),
+    looseVsPackagedMix: (p) => invoke('reports:looseVsPackagedMix', p),
+    khataRisk: () => invoke('reports:khataRisk'),
+    preOrderProductionSheet: (p) => invoke('reports:preOrderProductionSheet', p),
+    vehicleServiceDue: () => invoke('reports:vehicleServiceDue'),
+    commissionByAgent: (p) => invoke('reports:commissionByAgent', p),
+    tripProfitability: (p) => invoke('reports:tripProfitability', p),
+    // 2026-09-02 — Catering Events (Bakery/Sweet Shop/Catering).
+    eventProfitability: (p) => invoke('reports:eventProfitability', p),
   },
   export: {
     toCsv: (p) => invoke('export:toCsv', p),
@@ -493,6 +515,10 @@ const api: IpcChannels = {
     buildWhatsAppLink: (p) => invoke('share:buildWhatsAppLink', p),
     buildEmailLink: (p) => invoke('share:buildEmailLink', p),
     showItemInFolder: (p) => invoke('share:showItemInFolder', p)
+  },
+  khataReminder: {
+    listCandidates: () => invoke('khataReminder:listCandidates'),
+    buildLink: (p) => invoke('khataReminder:buildLink', p),
   },
   analytics: {
     getDashboardKpis: (payload) => invoke('analytics:getDashboardKpis', payload),
@@ -517,6 +543,8 @@ const api: IpcChannels = {
     create: () => invoke('backup:create'),
     list: () => invoke('backup:list'),
     restore: (p) => invoke('backup:restore', p),
+    pickBackupFile: () => invoke('backup:pickBackupFile'),
+    restoreFromFile: (p) => invoke('backup:restoreFromFile', p),
     validate: (p) => invoke('backup:validate', p),
     delete: (p) => invoke('backup:delete', p),
     checkIntegrity: () => invoke('backup:checkIntegrity'),
@@ -607,6 +635,9 @@ const api: IpcChannels = {
     regenerateKitchenDisplayToken: () => invoke('restaurant:regenerateKitchenDisplayToken'),
     generateKitchenDisplayQr: () => invoke('restaurant:generateKitchenDisplayQr'),
     mergeTableIntoInvoice: (p) => invoke('restaurant:mergeTableIntoInvoice', p),
+    getTableOrderSummary: (p) => invoke('restaurant:getTableOrderSummary', p),
+    checkoutTable: (p) => invoke('restaurant:checkoutTable', p),
+    sendTableOrder: (p) => invoke('restaurant:sendTableOrder', p),
   },
   reservations: {
     create: (p) => invoke('reservations:create', p),
@@ -928,6 +959,51 @@ const api: IpcChannels = {
     linkToInvoice: (p: unknown) => invoke('furnitureTradeIn:linkToInvoice', p),
     delete: (p: unknown) => invoke('furnitureTradeIn:delete', p),
   },
+  customOrderBooking: {
+    list: (p?: unknown) => invoke('customOrderBooking:list', p),
+    create: (p: unknown) => invoke('customOrderBooking:create', p),
+    updateStatus: (p: unknown) => invoke('customOrderBooking:updateStatus', p),
+    delete: (p: unknown) => invoke('customOrderBooking:delete', p),
+    generateInvoice: (p: unknown) => invoke('customOrderBooking:generateInvoice', p),
+  },
+  cateringEvent: {
+    list: (p?: unknown) => invoke('cateringEvent:list', p),
+    get: (p: unknown) => invoke('cateringEvent:get', p),
+    create: (p: unknown) => invoke('cateringEvent:create', p),
+    recordFinalNegotiatedPrice: (p: unknown) => invoke('cateringEvent:recordFinalNegotiatedPrice', p),
+    updateStatus: (p: unknown) => invoke('cateringEvent:updateStatus', p),
+    delete: (p: unknown) => invoke('cateringEvent:delete', p),
+    generateInvoice: (p: unknown) => invoke('cateringEvent:generateInvoice', p),
+  },
+  vehicle: {
+    list: (p?: unknown) => invoke('vehicle:list', p),
+    create: (p: unknown) => invoke('vehicle:create', p),
+    updateStatus: (p: unknown) => invoke('vehicle:updateStatus', p),
+    delete: (p: unknown) => invoke('vehicle:delete', p),
+    createServiceLog: (p: unknown) => invoke('vehicle:createServiceLog', p),
+    listServiceLogs: (p?: unknown) => invoke('vehicle:listServiceLogs', p),
+    fleetAvailability: (p: unknown) => invoke('vehicle:fleetAvailability', p),
+  },
+  tourPackage: {
+    list: (p?: unknown) => invoke('tourPackage:list', p),
+    create: (p: unknown) => invoke('tourPackage:create', p),
+    updateStatus: (p: unknown) => invoke('tourPackage:updateStatus', p),
+    listDepartures: (p?: unknown) => invoke('tourPackage:listDepartures', p),
+    createDeparture: (p: unknown) => invoke('tourPackage:createDeparture', p),
+    updateDepartureStatus: (p: unknown) => invoke('tourPackage:updateDepartureStatus', p),
+  },
+  tripBooking: {
+    list: (p?: unknown) => invoke('tripBooking:list', p),
+    createCharter: (p: unknown) => invoke('tripBooking:createCharter', p),
+    createSeat: (p: unknown) => invoke('tripBooking:createSeat', p),
+    updateStatus: (p: unknown) => invoke('tripBooking:updateStatus', p),
+    generateInvoice: (p: unknown) => invoke('tripBooking:generateInvoice', p),
+  },
+  driverDutyLog: {
+    list: (p?: unknown) => invoke('driverDutyLog:list', p),
+    start: (p: unknown) => invoke('driverDutyLog:start', p),
+    close: (p: unknown) => invoke('driverDutyLog:close', p),
+  },
   goldSavings: {
     list: (p?: unknown) => invoke('goldSavings:list', p),
     create: (p: unknown) => invoke('goldSavings:create', p),
@@ -1243,6 +1319,19 @@ const api: IpcChannels = {
     markAttendance: (p: unknown) => invoke('batchClass:markAttendance', p),
     getAttendance: (p: unknown) => invoke('batchClass:getAttendance', p),
     occupancySummary: () => invoke('batchClass:occupancySummary'),
+  },
+  workoutLog: {
+    create: (p: unknown) => invoke('workoutLog:create', p),
+    delete: (p: unknown) => invoke('workoutLog:delete', p),
+    listForCustomer: (p: unknown) => invoke('workoutLog:listForCustomer', p),
+    listRecent: (p?: unknown) => invoke('workoutLog:listRecent', p),
+    knownExerciseNames: () => invoke('workoutLog:knownExerciseNames'),
+  },
+  customerCheckIn: {
+    checkIn: (p: unknown) => invoke('customerCheckIn:checkIn', p),
+    checkOut: (p: unknown) => invoke('customerCheckIn:checkOut', p),
+    active: () => invoke('customerCheckIn:active'),
+    list: (p?: unknown) => invoke('customerCheckIn:list', p),
   },
   learnerProfile: {
     get: (p: unknown) => invoke('learnerProfile:get', p),

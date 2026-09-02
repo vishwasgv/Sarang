@@ -5,6 +5,12 @@ export const DateRangeSchema = z.object({
   dateTo: z.string().min(1, 'End date is required')
 })
 
+// 2026-09 §12 — Bakery wow feature: Pre-Order Production Sheet is scoped to
+// a single date (a real production day), not a range.
+export const SingleDateSchema = z.object({
+  date: z.string().min(1, 'Date is required')
+})
+
 export const SalesReportSchema = DateRangeSchema.extend({
   groupBy: z.enum(['day', 'week', 'month', 'year']).optional(),
   dateGroupBy: z.enum(['invoiceDate', 'paymentDate']).optional()

@@ -28,3 +28,6 @@ release/
 resources/models/*.gguf
 
 .claude/settings.local.json
+
+# Scratch translation-audit output, not product content
+.i18n_todo/

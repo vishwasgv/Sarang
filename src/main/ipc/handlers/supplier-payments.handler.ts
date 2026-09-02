@@ -1,7 +1,7 @@
 import { supplierPaymentService } from '../../services/supplier-payment.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { RecordSupplierPaymentSchema, ReverseSupplierPaymentSchema, RecordBulkSupplierPaymentSchema } from '../../validation/supplier-payment.validation'
+import { RecordSupplierPaymentSchema, RecordForeignCurrencyBillSettlementSchema, ReverseSupplierPaymentSchema, RecordBulkSupplierPaymentSchema } from '../../validation/supplier-payment.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -11,6 +11,13 @@ export function register(handle: HandleFn): void {
     const parsed = RecordSupplierPaymentSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return supplierPaymentService.recordSupplierPayment(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('supplierPayments:recordForeignCurrencySettlement', async (payload) => {
+    const deny = await requirePermission('supplierPayments.record'); if (deny) return deny
+    const parsed = RecordForeignCurrencyBillSettlementSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return supplierPaymentService.recordForeignCurrencyBillSettlement(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('supplierPayments:recordBulk', async (payload) => {

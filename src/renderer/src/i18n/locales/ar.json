@@ -56,7 +56,13 @@
     "manual": "الدليل",
     "costCentres": "مراكز التكلفة",
     "budgets": "الميزانيات",
-    "serviceCombos": "Service Combos"
+    "serviceCombos": "Service Combos",
+    "checkIn": "تسجيل الدخول",
+    "customOrders": "الطلبات المخصصة",
+    "cateringEvents": "فعاليات التموين",
+    "vehicleFleet": "أسطول المركبات",
+    "tourPackages": "باقات الجولات السياحية",
+    "tripBookings": "حجوزات الرحلات"
   },
   "common": {
     "save": "حفظ",
@@ -182,7 +188,9 @@
     "resetPassword": "إعادة تعيين كلمة المرور",
     "passwordResetSuccessTitle": "تمت إعادة تعيين كلمة المرور",
     "passwordResetSuccessBody": "تم تغيير كلمة مرورك. يمكنك الآن تسجيل الدخول بكلمة المرور الجديدة.",
-    "backToSignIn": "العودة إلى تسجيل الدخول"
+    "backToSignIn": "العودة إلى تسجيل الدخول",
+    "passwordExpiredTitle": "انتهت صلاحية كلمة مرورك",
+    "passwordExpiredBody": "يرجى تغييرها قريبًا من Settings → Security."
   },
   "dashboard": {
     "title": "لوحة التحكم",
@@ -364,6 +372,8 @@
     "invoiceCreated": "تم إنشاء الفاتورة",
     "creditInvoice": "إنشاء فاتورة ائتمانية",
     "confirmSale": "تأكيد البيع",
+    "sendToKitchen": "إرسال إلى المطبخ",
+    "orderSentToKitchen": "تم إرسال الطلب إلى المطبخ",
     "clearCart": "مسح الكل",
     "customerRequired": "العميل مطلوب للمبيعات الآجلة",
     "paymentHistory": "سجل المدفوعات",
@@ -479,7 +489,19 @@
     "shareEmailSubject": "{{documentType}} {{number}} من {{businessName}}",
     "shareEmailBody": "عزيزي السيد/السيدة،\n\nتجدون مرفقًا {{documentType}} {{number}} من {{businessName}}، بمبلغ إجمالي قدره {{amount}}.\n\nشكرًا لكم.\n\n{{businessName}}",
     "bargainedPriceToggleHint": "التبديل بين {{currSym}} / % / السعر النهائي (بعد المساومة)",
-    "bargainedPriceInputHint": "أدخل السعر النهائي المتفق عليه لهذا السطر — سيتم حساب الخصم تلقائيًا."
+    "bargainedPriceInputHint": "أدخل السعر النهائي المتفق عليه لهذا السطر — سيتم حساب الخصم تلقائيًا.",
+    "foreignCurrency": {
+      "toggle": "الفوترة بعملة أجنبية",
+      "codePlaceholder": "رمز العملة، مثل USD",
+      "ratePlaceholder": "سعر الصرف، مثل 83.25",
+      "preview": "≈ {{code}} {{amount}}",
+      "settleTitle": "تسوية فاتورة بعملة أجنبية",
+      "settleToggle": "التسوية بـ {{code}} (يسجل المبلغ الفعلي المستلم وأي ربح/خسارة في سعر الصرف)",
+      "amountReceived": "المبلغ المستلم ({{code}})",
+      "settlementRate": "سعر الصرف عند التسوية",
+      "settleNote": "هذا يسوي الفاتورة بالكامل. يتم تسجيل أي فرق عن السعر الذي أُنشئت به كربح أو خسارة صرف محققة.",
+      "settleAction": "تسوية الفاتورة"
+    }
   },
   "products": {
     "title": "المنتجات",
@@ -503,7 +525,7 @@
     "manageVariants": "إدارة المتغيرات",
     "description": "الوصف",
     "productType": "نوع المنتج",
-    "physical": "مادي",
+    "physical": "سلع",
     "service": "خدمة",
     "hsnCode": "رمز HSN / الصنف",
     "reorderLevel": "مستوى إعادة الطلب",
@@ -697,7 +719,7 @@
     "noRepairHistory": "لا توجد تذاكر إصلاح لهذه الوحدة حتى الآن.",
     "deviceSerial": "الجهاز / الرقم التسلسلي",
     "warranty": "الضمان",
-    "changeStatus": "تغيير الحالة",
+    "changeStatus": "تغيير حالة المركبة",
     "updateStatus": "تحديث الحالة",
     "importBtn": "استيراد",
     "importing": "جارٍ الاستيراد…",
@@ -952,6 +974,26 @@
       "created": "تمت إضافة دفتر الشيكات",
       "useNextNumber": "استخدام رقم الشيك التالي (#{{number}})"
     },
+    "bankDeposits": {
+      "title": "الإيداعات البنكية",
+      "depositsCount_one": "إيداع واحد",
+      "depositsCount_other": "{{count}} إيداعات",
+      "newDeposit": "إيداع جديد",
+      "noDepositsYet": "لم يتم تسجيل أي إيداعات بنكية بعد",
+      "colDepositNumber": "رقم الإيداع",
+      "colDate": "التاريخ",
+      "colCash": "نقدًا",
+      "colCheques": "الشيكات",
+      "couldNotLoad": "تعذّر تحميل الإيداعات البنكية.",
+      "couldNotCreate": "تعذّر إنشاء الإيداع البنكي.",
+      "created": "تم إنشاء قسيمة الإيداع",
+      "selectAccount": "اختر حسابًا بنكيًا.",
+      "needsCashOrCheques": "يجب أن تتضمن قسيمة الإيداع بعض النقد على الأقل أو شيكًا واحدًا على الأقل.",
+      "denominationsLabel": "فئات النقد",
+      "cashSubtotal": "إجمالي النقد الفرعي",
+      "includeCheques": "تضمين الشيكات المعلّقة",
+      "chequeSubtotal": "إجمالي الشيكات الفرعي"
+    },
     "fixedAssets": {
       "title": "الأصول الثابتة",
       "assetsCount_one": "{{count}} أصل",
@@ -1106,6 +1148,17 @@
         "HANDLING": "المناولة",
         "OTHER": "أخرى"
       }
+    },
+    "foreignCurrency": {
+      "toggle": "الفوترة بعملة أجنبية",
+      "codePlaceholder": "رمز العملة، مثل USD",
+      "ratePlaceholder": "سعر الصرف، مثل 83.25",
+      "settleTitle": "تسوية فاتورة الشراء بعملة أجنبية",
+      "settleToggle": "التسوية بـ {{code}} (يسجل المبلغ الفعلي المدفوع وأي ربح/خسارة في سعر الصرف)",
+      "amountPaid": "المبلغ المدفوع ({{code}})",
+      "settlementRate": "سعر الصرف عند التسوية",
+      "settleNote": "هذا يسوي فاتورة الشراء بالكامل. يتم تسجيل أي فرق عن السعر الذي أُنشئت به كربح أو خسارة صرف محققة.",
+      "settleAction": "تسوية فاتورة الشراء"
     }
   },
   "salesOrders": {
@@ -2203,6 +2256,58 @@
       "deliveryInstallationSchedule": {
         "label": "Delivery & Installation Schedule",
         "description": "Furniture bookings with a delivery date in range, as a real schedule"
+      },
+      "specWiseFastMovers": {
+        "label": "الأصناف الأكثر مبيعًا حسب المواصفات",
+        "description": "أي مواصفات فولطية أو مقياس أو أمبير تُباع فعليًا أكثر، مرتبة حسب الوحدات المباعة"
+      },
+      "fittingCrossSell": {
+        "label": "البيع المتقاطع لتوافق التركيبات",
+        "description": "يشير إلى المبيعات التي لم يتم فيها شراء التركيبة أو الشريط المعتاد إرفاقه هذه المرة"
+      },
+      "materialSalesMix": {
+        "label": "مزيج مبيعات المواد",
+        "description": "توزيع الإيرادات حسب فئة المادة — PVC، CPVC، GI، نحاس"
+      },
+      "mrpViolation": {
+        "label": "الامتثال للسعر الأقصى (MRP)",
+        "description": "كل سطر بيع سابق تجاوز فيه سعر الوحدة السعر الأقصى المطبوع على المنتج"
+      },
+      "perishableWastage": {
+        "label": "هدر المواد القابلة للتلف",
+        "description": "المخزون المشطوب بسبب انتهاء الصلاحية، حسب المنتج والقيمة"
+      },
+      "dailyRestockAlert": {
+        "label": "تنبيه إعادة التخزين اليومي",
+        "description": "المنتجات سريعة البيع التي ينخفض مخزونها، مرتبة حسب أيام المخزون المتبقية"
+      },
+      "looseVsPackagedMix": {
+        "label": "مزيج المبيعات السائبة مقابل المعبأة",
+        "description": "توزيع الإيرادات بين المنتجات السائبة (المفوترة بالوزن) والمعبأة"
+      },
+      "khataRisk": {
+        "label": "مستوى مخاطر حساب الآجل (الخطا)",
+        "description": "عملاء الائتمان مرتبون حسب المخاطر — التقادم بالإضافة إلى اتجاه الرصيد لمدة 30 يومًا، مع تذكير واتساب بلمسة واحدة"
+      },
+      "preOrderProductionSheet": {
+        "label": "ورقة إنتاج الطلبات المسبقة",
+        "description": "ماذا تخبز اليوم — الطلبات المخصصة المستحقة بالإضافة إلى الطلب المعتاد، مفصلة إلى المكونات التي ستحتاجها"
+      },
+      "vehicleServiceDue": {
+        "label": "صيانة مركبة مستحقة",
+        "description": "إجمالي الكيلومترات المقطوعة لكل مركبة منذ آخر صيانة، مع تمييز المركبات المستحقة أو المتأخرة"
+      },
+      "commissionByAgent": {
+        "label": "العمولة حسب الوكيل",
+        "description": "عمولة الإحالة التي حصل عليها كل وكيل عبر جميع حجوزات الرحلات"
+      },
+      "tripProfitability": {
+        "label": "ربحية الرحلة",
+        "description": "لكل رحلة مكتملة: الإيرادات بالإضافة إلى الرسوم الإضافية، ناقص تكاليف السائق والوقود والصيانة والعمولة"
+      },
+      "eventProfitability": {
+        "label": "ربحية الفعالية",
+        "description": "لكل فعالية تموين مكتملة: السعر النهائي المتفق عليه ناقص تكلفة الموظفين والتكلفة التقديرية للمكونات"
       }
     },
     "summary": {
@@ -3399,7 +3504,11 @@
     "destinationSaved": "تم تحديث مجلد النسخ الاحتياطي",
     "destinationSaveFailed": "تعذر تحديث مجلد النسخ الاحتياطي",
     "destinationReset": "تمت إعادة تعيين مجلد النسخ الاحتياطي إلى الافتراضي",
-    "destinationUnreachable": "تعذر الوصول إلى \"{{path}}\" حاليًا (هل تم فصله؟) — سيتم استخدام الموقع الافتراضي بدلاً من ذلك."
+    "destinationUnreachable": "تعذر الوصول إلى \"{{path}}\" حاليًا (هل تم فصله؟) — سيتم استخدام الموقع الافتراضي بدلاً من ذلك.",
+    "restoreFromFile": "Restore from File",
+    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
+    "restoreFromFileConfirmTitle": "Restore from Backup File",
+    "pickBackupFileFailed": "Could not open file picker."
   },
   "audit": {
     "title": "سجل التدقيق",
@@ -3480,17 +3589,17 @@
   },
   "license": {
     "title": "الترخيص",
-    "subtitle": "سارانج مجاني خلال أول 12 شهرًا. بعد ذلك، يبقيه ترخيص سنوي بسيط قيد التشغيل.",
+    "subtitle": "سارانج مجاني خلال أول 100 يوم. بعد ذلك، يبقيه ترخيص سنوي بسيط قيد التشغيل.",
     "statusActive": "نشط",
     "statusActivePaid": "نشط — مدفوع",
-    "statusWarning": "السنة المجانية توشك على الانتهاء",
+    "statusWarning": "الفترة التجريبية المجانية توشك على الانتهاء",
     "statusWarningPaid": "التجديد مستحق قريبًا",
-    "statusExpired": "انتهت السنة المجانية",
+    "statusExpired": "انتهت الفترة التجريبية المجانية",
     "statusExpiredPaid": "انتهت صلاحية الترخيص",
     "statusNotActivated": "غير مُفعّل",
-    "daysRemaining": "تبقّى {{days}} يومًا من سنتك المجانية",
+    "daysRemaining": "تبقّى {{days}} يومًا من فترتك التجريبية المجانية",
     "daysRemainingPaid": "تبقّى {{days}} يومًا قبل التجديد",
-    "freeYearEndedNotice": "انتهت سنتك المجانية. لا يزال بإمكانك عرض جميع بياناتك الحالية وطباعتها وتصديرها ونسخها احتياطيًا — يتأثر فقط إنشاء فواتير جديدة حتى تجدد.",
+    "freeYearEndedNotice": "انتهت فترتك التجريبية المجانية. لا يزال بإمكانك عرض جميع بياناتك الحالية وطباعتها وتصديرها ونسخها احتياطيًا — يتأثر فقط إنشاء فواتير جديدة حتى تجدد.",
     "licenseExpiredNoticePaid": "انتهت صلاحية ترخيصك. لا يزال بإمكانك عرض جميع بياناتك الحالية وطباعتها وتصديرها ونسخها احتياطيًا — يتأثر فقط إنشاء فواتير جديدة حتى تجدد.",
     "deviceBoundNotice": "مفتاح ترخيصك مرتبط بهذا الجهاز فقط.",
     "machineMismatchNotice": "كان هذا المفتاح نشطًا سابقًا على جهاز آخر. تمت إعادة تفعيله هنا.",
@@ -3550,7 +3659,7 @@
       "backupTitle": "النسخ الاحتياطي والاستعادة",
       "backupBody": "بياناتك موجودة فقط على هذا الجهاز — هذه الشاشة هي طريقة حمايتها. أعدّ نسخًا احتياطية تلقائية هنا حتى لا تُفاجأ أبدًا.",
       "licenseTitle": "ترخيصك",
-      "licenseBody": "سارانج مجاني لأول 12 شهرًا. تُظهر هذه الشاشة دائمًا بالضبط أين أنت، وهي حيث ستجدد عندما يحين الوقت."
+      "licenseBody": "سارانج مجاني لأول 100 يوم. تُظهر هذه الشاشة دائمًا بالضبط أين أنت، وهي حيث ستجدد عندما يحين الوقت."
     },
     "items": {
       "restaurantTables": {
@@ -4017,9 +4126,45 @@
         "title": "Furniture Trade-Ins",
         "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
       },
+      "jobSiteAccounts": {
+        "title": "حسابات موقع العمل",
+        "body": "افتح حسابًا جاريًا لمقاول يعمل في موقع واحد — أضف فواتير CREDIT إليه أثناء إصدار الفواتير، واطّلع على الرصيد الجاري الخاص بهذا الحساب، منفصلًا عن دفتر أستاذه العام."
+      },
+      "bulkListOrders": {
+        "title": "طلبات القوائم الجماعية",
+        "body": "أدخل قائمة توريدات مدرسة أو مكتب كسطور خام، وطابق كل سطر بمنتج وسعر من الكتالوج، ثم أصدر فاتورة للطلب بأكمله دفعة واحدة بعد مطابقة كل شيء."
+      },
+      "furnitureBookings": {
+        "title": "حجوزات الأثاث",
+        "body": "احجز قطعة مصنوعة حسب الطلب بدفعة مقدمة، وسجّل التخصيص، ثم أصدر فاتورة التسليم عند الجاهزية — يُطبَّق المقدم تلقائيًا."
+      },
+      "furnitureTradeIns": {
+        "title": "استبدال الأثاث القديم",
+        "body": "سجّل قطعة قديمة مُستبدلة مقابل شراء جديد بالقيمة التي يقدّرها المتجر، ثم طبّقها كخصم عند إصدار فاتورة لذلك العميل."
+      },
       "scheduledDeliveries": {
-        "title": "Scheduled Deliveries",
-        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
+        "title": "التوصيلات المجدولة",
+        "body": "تتبّع توصيل سلعة قابلة للكسر تم حجزها وقت إصدار الفاتورة عبر مراحل: مجدولة، قيد التوصيل، وتم التوصيل."
+      },
+      "bakeryCustomOrders": {
+        "title": "الطلبات المخصصة",
+        "body": "استلم طلبًا مسبقًا بالجملة — كعكة زفاف، أو طلب وجبات خفيفة لمدرسة — بتاريخ استحقاق ودفعة مقدمة، يُتتبَّع بشكل منفصل عن مبيعات الكاونتر المعتادة."
+      },
+      "cateringEvents": {
+        "title": "فعاليات التموين",
+        "body": "احجز فعالية تموين كاملة: القائمة، عدد الوجبات والوجبات الخفيفة يوميًا للمناسبات متعددة الأيام، عدد الحضور، وبنود تكلفة منفصلة للطهاة والنُدُل وعمال التنظيف — أصدر الفاتورة بالسعر النهائي المتفق عليه بعد الاتفاق."
+      },
+      "toursFleet": {
+        "title": "أسطول المركبات",
+        "body": "مركباتك، بقراءات عداد المسافات وسجل الصيانة — من هنا تستمد كل من حجوزات الرحلات وتقرير صيانة المركبات المستحقة بياناتها."
+      },
+      "tourPackages": {
+        "title": "باقات الرحلات السياحية",
+        "body": "باقات رحلات محددة مسبقًا بسعر ثابت، جاهزة لإرفاقها بحجز بدلًا من تسعير كل رحلة من الصفر."
+      },
+      "tripBookings": {
+        "title": "حجوزات الرحلات",
+        "body": "احجز رحلة بمركبة وباقة، وسجّل بيانات الخدمة اليومية (الكيلومترات المقطوعة، بدل السائق، الرسوم الإضافية)، وأصدر الفاتورة عند انتهاء الرحلة."
       }
     }
   },
@@ -4132,7 +4277,7 @@
     "stockValue": "قيمة المخزون",
     "supplierCol": "المورد",
     "startProduction": "بدء الإنتاج",
-    "markComplete": "تعليم كمكتمل",
+    "markComplete": "وضع علامة مكتمل",
     "cancelOrder": "إلغاء الأمر",
     "completeOrder": "إكمال الأمر",
     "producedQtyLabel": "الكمية المنتجة *",
@@ -5623,6 +5768,7 @@
     "seat": "إجلاس",
     "noShow": "لم يحضر",
     "dayClosed": "تم إغلاق اليوم. أوامر المطبخ المنفذة: {{kotCount}} | الإيرادات: {{revenue}} من {{invoiceCount}} فاتورة.",
+    "unsettledTablesWarning": "تم تخطي {{count}} طاولة — لا تزال بها طلبات لم يتم الدفع لها.",
     "dailyCloseFailed": "فشل إغلاق اليوم: {{message}}",
     "dailyCloseFailedUnknown": "فشل إغلاق اليوم: خطأ غير معروف",
     "tableNumberPlaceholder": "رقم الطاولة (مثال: T1)",
@@ -5649,7 +5795,18 @@
     "noFreeTablesToMerge": "لا توجد طاولات شاغرة للدمج.",
     "print": "طباعة",
     "performDailyCloseConfirm": "تنفيذ إغلاق اليوم؟ سيؤدي هذا إلى تعليم جميع الطاولات المشغولة كمتاحة وتسجيل ملخص الإغلاق.",
-    "scanToOrder": "امسح لعرض القائمة وتقديم طلبك"
+    "scanToOrder": "امسح لعرض القائمة وتقديم طلبك",
+    "viewOrder": "عرض الطلب",
+    "orderSummaryTitle": "الطلب — {{name}}",
+    "noItemsOrderedYet": "لم يتم طلب أي شيء بعد.",
+    "estimatedTotal": "الإجمالي التقديري",
+    "checkout": "الدفع",
+    "checkingOut": "جارٍ الدفع…",
+    "couldNotLoadOrderSummary": "تعذر تحميل طلب هذه الطاولة.",
+    "couldNotCheckout": "تعذر إتمام الدفع لهذه الطاولة.",
+    "tableCheckedOut": "تم دفع حساب الطاولة",
+    "billGenerated": "تم إصدار الفاتورة لـ {{name}}.",
+    "billRequested": "تم طلب الفاتورة"
   },
   "costCentres": {
     "title": "مراكز التكلفة",
@@ -5713,6 +5870,317 @@
     "empty": {
       "title": "No service combos yet",
       "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+    }
+  },
+  "checkin": {
+    "title": "تسجيل دخول العملاء",
+    "subtitle": "سجّل الزيارات — من هنا الآن، وسجل تسجيل الدخول/الخروج الأخير",
+    "notEnabled": "تسجيل دخول العملاء غير مُفعّل لعملك.",
+    "checkInAction": "تسجيل الدخول",
+    "checkOutAction": "تسجيل الخروج",
+    "customer": "العميل",
+    "selectCustomer": "اختر عميلاً.",
+    "checkedIn": "تم تسجيل الدخول",
+    "checkedOut": "تم تسجيل الخروج",
+    "checkInFailed": "تعذر تسجيل الدخول. حاول مرة أخرى.",
+    "currentlyIn": "الحاضرون حاليًا ({{count}})",
+    "noOneIn": "لا يوجد أحد حاضر حاليًا.",
+    "recentVisits": "الزيارات الأخيرة",
+    "noVisits": "لم يتم تسجيل أي زيارات بعد.",
+    "inAt": "دخول {{time}}",
+    "outAt": "خروج {{time}}",
+    "stillIn": "لا يزال حاضرًا"
+  },
+  "bakery": {
+    "customOrders": {
+      "title": "الطلبات المخصصة",
+      "subtitle": "حجز بعربون + رصيد للكعك المخصص والأطباق المصنوعة حسب الطلب",
+      "refresh": "تحديث",
+      "newOrder": "طلب جديد",
+      "cancel": "إلغاء",
+      "book": "احجز",
+      "customer": "العميل",
+      "dueDate": "تاريخ الاستحقاق",
+      "deliveryAddress": "عنوان التوصيل",
+      "itemsSection": "العناصر",
+      "searchProduct": "ابحث عن منتج…",
+      "noProductsMatch": "لا يوجد منتج مطابق.",
+      "qty": "الكمية",
+      "price": "السعر",
+      "flavorPlaceholder": "النكهة / الحجم",
+      "add": "إضافة",
+      "total": "الإجمالي",
+      "advanceAmount": "مبلغ العربون ({{sym}})",
+      "advancePaymentMethod": "طريقة دفع العربون",
+      "cash": "نقدًا",
+      "upi": "UPI",
+      "card": "بطاقة",
+      "wallet": "محفظة",
+      "notes": "ملاحظات",
+      "selectCustomerError": "اختر عميلاً.",
+      "addItemError": "أضف عنصرًا واحدًا على الأقل.",
+      "advanceExceedsError": "لا يمكن أن يتجاوز العربون إجمالي الطلب.",
+      "orderCreated": "تم إنشاء الطلب",
+      "orderCreateFailed": "تعذر إنشاء الطلب.",
+      "generateInvoice": "إنشاء الفاتورة",
+      "generatingInvoice": "جارٍ الإنشاء…",
+      "invoiceGenerated": "تم إنشاء الفاتورة",
+      "invoiceGeneratedDetail": "تم إنشاء فاتورة التوصيل وتطبيق العربون.",
+      "invoiceGenerateFailed": "تعذر إنشاء الفاتورة.",
+      "loading": "جارٍ التحميل…",
+      "noOrdersYet": "لا توجد طلبات بعد.",
+      "dueOn": "الاستحقاق {{date}}",
+      "itemsCount": "{{count}} عنصر",
+      "advanceLabel": "{{amount}} عربون",
+      "loadFailed": "تعذر تحميل الطلبات."
+    },
+    "cateringEvents": {
+      "title": "فعاليات التموين",
+      "subtitle": "احجز فعاليات التموين — القائمة، السعر لكل طبق، الوجبات والوجبات الخفيفة يوميًا، وتكلفة الطاقم حسب الدور",
+      "refresh": "تحديث",
+      "newEvent": "فعالية جديدة",
+      "cancel": "إلغاء",
+      "book": "احجز الفعالية",
+      "save": "حفظ",
+      "customer": "العميل",
+      "venueAddress": "عنوان المكان",
+      "eventStartDate": "تاريخ بدء الفعالية",
+      "eventEndDate": "تاريخ انتهاء الفعالية",
+      "attendeeCount": "عدد الحضور",
+      "pricePerPlate": "السعر لكل طبق ({{sym}})",
+      "estimatedTotal": "الإجمالي التقديري",
+      "menuSection": "القائمة",
+      "searchProduct": "ابحث عن منتج…",
+      "qty": "الكمية",
+      "price": "السعر",
+      "add": "إضافة",
+      "daysSection": "الوجبات والوجبات الخفيفة يوميًا",
+      "serviceDate": "التاريخ",
+      "mealsCount": "الوجبات",
+      "snacksCount": "الوجبات الخفيفة",
+      "addDay": "إضافة يوم",
+      "staffSection": "الطاقم",
+      "role": "الدور",
+      "cook": "طاهٍ",
+      "server": "نادل",
+      "cleaner": "عامل نظافة",
+      "other": "أخرى",
+      "workerCount": "عدد العمال",
+      "ratePerWorker": "الأجر لكل عامل ({{sym}})",
+      "addStaff": "إضافة طاقم",
+      "staffCostTotal": "إجمالي تكلفة الطاقم",
+      "advanceAmount": "مبلغ العربون ({{sym}})",
+      "advancePaymentMethod": "طريقة دفع العربون",
+      "cash": "نقدًا",
+      "upi": "UPI",
+      "card": "بطاقة",
+      "wallet": "محفظة",
+      "notes": "ملاحظات",
+      "loading": "جارٍ التحميل…",
+      "noEventsYet": "لا توجد فعاليات تموين بعد.",
+      "attendeesLabel": "{{count}} ضيف",
+      "finalPriceLabel": "{{amount}} متفق عليه",
+      "quotedLabel": "{{amount}} مقترح",
+      "advanceLabel": "{{amount}} عربون",
+      "recordFinalPrice": "تسجيل السعر النهائي",
+      "finalPricePrompt": "السعر النهائي المتفاوض عليه ({{sym}})",
+      "finalPriceRecorded": "تم تسجيل السعر النهائي",
+      "finalPriceRecordFailed": "تعذر تسجيل السعر النهائي.",
+      "recordingPrice": "جارٍ الحفظ…",
+      "generateInvoice": "إنشاء الفاتورة",
+      "generatingInvoice": "جارٍ الإنشاء…",
+      "invoiceGenerated": "تم إنشاء الفاتورة",
+      "invoiceGeneratedDetail": "تم إنشاء الفاتورة وتطبيق العربون.",
+      "invoiceGenerateFailed": "تعذر إنشاء الفاتورة.",
+      "loadFailed": "تعذر تحميل فعاليات التموين.",
+      "selectCustomerError": "اختر عميلاً.",
+      "eventStartDateError": "تاريخ بدء الفعالية مطلوب.",
+      "attendeeCountError": "يجب أن يكون عدد الحضور أكبر من صفر.",
+      "pricePerPlateError": "السعر لكل طبق مطلوب.",
+      "advanceExceedsError": "لا يمكن أن يتجاوز العربون الإجمالي التقديري.",
+      "eventCreated": "تم حجز الفعالية",
+      "eventCreateFailed": "تعذر حجز الفعالية."
+    }
+  },
+  "tours": {
+    "fleet": {
+      "title": "أسطول المركبات",
+      "subtitle": "الأسطول، سجل الصيانة، وتقويم التوفر لمدة 30 يومًا",
+      "refresh": "تحديث",
+      "newVehicle": "مركبة جديدة",
+      "regNumber": "رقم التسجيل",
+      "regNumberRequired": "رقم التسجيل مطلوب.",
+      "vehicleType": "نوع المركبة",
+      "seatingCapacity": "سعة المقاعد",
+      "capacityRequired": "يجب أن تكون سعة المقاعد أكبر من صفر.",
+      "cancel": "إلغاء",
+      "add": "إضافة مركبة",
+      "vehicleAdded": "تمت إضافة المركبة",
+      "vehicleAddFailed": "تعذّرت إضافة المركبة.",
+      "loading": "جارٍ التحميل…",
+      "noVehiclesYet": "لا توجد مركبات بعد. أضف مركبتك الأولى للبدء.",
+      "loadFailed": "تعذّر تحميل المركبات.",
+      "seats": "{{count}} مقاعد",
+      "odometer": "{{km}} كم",
+      "serviceLog": "سجل الصيانة",
+      "serviceLogFor": "سجل الصيانة — {{reg}}",
+      "serviceDate": "تاريخ الصيانة",
+      "serviceType": "النوع",
+      "odometerReading": "قراءة عداد المسافات",
+      "cost": "التكلفة",
+      "close": "إغلاق",
+      "logService": "تسجيل الصيانة",
+      "serviceLogged": "تم تسجيل الصيانة",
+      "serviceLogFailed": "تعذّر تسجيل الصيانة.",
+      "availabilityNext30Days": "توفر الأسطول والمقاعد — الثلاثون يومًا القادمة",
+      "free": "متاح",
+      "bookedCount": "{{count}} حجز/حجوزات",
+      "seatsRemaining": "{{count}} مقاعد متبقية",
+      "vehicleTypes": {
+        "SEDAN": "سيدان",
+        "SUV": "دفع رباعي / إينوفا",
+        "TEMPO_TRAVELLER": "تيمبو ترافلر",
+        "MINI_BUS": "حافلة صغيرة",
+        "BUS": "حافلة"
+      },
+      "serviceTypes": {
+        "SERVICE": "صيانة",
+        "REPAIR": "إصلاح",
+        "MAINTENANCE": "صيانة دورية"
+      },
+      "status": {
+        "ACTIVE": "نشط",
+        "IN_SERVICE": "قيد الصيانة",
+        "INACTIVE": "غير نشط"
+      },
+      "changeStatus": "Change vehicle status",
+      "statusUpdated": "تم تحديث الحالة",
+      "statusUpdateFailed": "تعذّر تحديث حالة المركبة."
+    },
+    "packages": {
+      "title": "باقات الجولات السياحية",
+      "subtitle": "قوالب الباقات، والمغادرات، وحجز المقاعد",
+      "refresh": "تحديث",
+      "newPackage": "باقة جديدة",
+      "packageName": "اسم الباقة",
+      "nameRequired": "اسم الباقة مطلوب.",
+      "itinerary": "برنامج الرحلة",
+      "durationDays": "المدة (بالأيام)",
+      "defaultSeats": "المقاعد الافتراضية",
+      "farePerSeat": "الأجرة لكل مقعد",
+      "cancel": "إلغاء",
+      "add": "إضافة باقة",
+      "save": "حفظ",
+      "packageAdded": "تمت إضافة الباقة",
+      "packageAddFailed": "تعذّرت إضافة الباقة.",
+      "loading": "جارٍ التحميل…",
+      "noPackagesYet": "لا توجد باقات سياحية بعد. أضف باقتك الأولى للبدء.",
+      "loadFailed": "تعذّر تحميل الباقات.",
+      "durationLabel": "{{days}} يوم/أيام",
+      "seatsLabel": "{{count}} مقاعد",
+      "perSeat": " / مقعد",
+      "departures": "المغادرات",
+      "addDeparture": "إضافة مغادرة",
+      "departureDate": "تاريخ المغادرة",
+      "totalSeats": "إجمالي المقاعد",
+      "departureAdded": "تمت إضافة المغادرة",
+      "departureAddFailed": "تعذّرت إضافة المغادرة.",
+      "noDeparturesYet": "لا توجد مغادرات مجدولة بعد.",
+      "seatsRemainingOf": "{{remaining}} من أصل {{total}} مقعدًا متبقيًا",
+      "bookSeats": "حجز مقاعد",
+      "bookSeatsTitle": "حجز مقاعد",
+      "customer": "العميل",
+      "seatsToBook": "المقاعد المراد حجزها",
+      "advanceAmount": "مبلغ العربون",
+      "confirmBooking": "تأكيد الحجز",
+      "seatsBooked": "تم حجز المقاعد",
+      "bookingFailed": "تعذّر حجز المقاعد.",
+      "status": {
+        "ACTIVE": "نشط",
+        "INACTIVE": "غير نشط"
+      },
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "packageStatusUpdated": "تم تحديث حالة الباقة",
+      "packageStatusUpdateFailed": "تعذّر تحديث حالة الباقة.",
+      "markComplete": "Mark Complete",
+      "cancelDeparture": "إلغاء",
+      "departureStatusUpdated": "تم تحديث حالة المغادرة",
+      "departureStatusUpdateFailed": "تعذّر تحديث حالة المغادرة.",
+      "departureStatus": {
+        "COMPLETED": "مكتمل",
+        "CANCELLED": "ملغى"
+      }
+    },
+    "bookings": {
+      "title": "حجوزات الرحلات",
+      "subtitle": "حجوزات الاستئجار الخاص، وسجل مناوبة السائق، وتسوية الكيلومترات/الساعات الإضافية",
+      "refresh": "تحديث",
+      "newCharterBooking": "حجز استئجار خاص جديد",
+      "customer": "العميل",
+      "customerRequired": "العميل مطلوب.",
+      "vehicle": "المركبة",
+      "vehicleRequired": "المركبة مطلوبة.",
+      "selectVehicle": "اختر مركبة",
+      "tripStartDate": "تاريخ بدء الرحلة",
+      "tripStartDateRequired": "تاريخ بدء الرحلة مطلوب.",
+      "tripEndDate": "تاريخ انتهاء الرحلة",
+      "pickupLocation": "موقع الانطلاق",
+      "dropLocation": "موقع الوصول",
+      "route": "المسار",
+      "packageRate": "سعر الباقة",
+      "includedKmPerDay": "الكيلومترات المشمولة/يوم",
+      "includedHoursPerDay": "الساعات المشمولة/يوم",
+      "advanceAmount": "مبلغ العربون",
+      "referringAgent": "الوكيل المُحيل",
+      "commissionType": "نوع العمولة",
+      "none": "لا يوجد",
+      "percentage": "نسبة مئوية",
+      "fixed": "ثابتة",
+      "commissionValue": "قيمة العمولة",
+      "cancel": "إلغاء",
+      "createBooking": "إنشاء حجز",
+      "bookingCreated": "تم إنشاء الحجز",
+      "bookingCreateFailed": "تعذّر إنشاء الحجز.",
+      "loading": "جارٍ التحميل…",
+      "noBookingsYet": "لا توجد حجوزات رحلات بعد.",
+      "advanceOf": "(عربون {{amount}})",
+      "agentLabel": "الوكيل: {{name}}",
+      "startDuty": "بدء المناوبة",
+      "startDutyTitle": "بدء مناوبة السائق",
+      "driver": "السائق",
+      "selectDriver": "اختر سائقًا",
+      "startOdometer": "عداد المسافات عند البدء",
+      "dutyStartTime": "وقت بدء المناوبة",
+      "driverBata": "بدل السائق",
+      "nightHaltCharge": "رسوم المبيت الليلي",
+      "nightDrivingAllowance": "بدل القيادة الليلية",
+      "dutyStarted": "بدأت المناوبة",
+      "dutyStartFailed": "تعذّر بدء المناوبة.",
+      "closeDuty": "إنهاء المناوبة",
+      "closeDutyTitle": "إنهاء مناوبة السائق",
+      "endOdometer": "عداد المسافات عند الانتهاء",
+      "dutyEndTime": "وقت انتهاء المناوبة",
+      "dutyClosed": "أُنهيت المناوبة",
+      "dutyCloseFailed": "تعذّر إنهاء المناوبة.",
+      "dutyOpen": "المناوبة جارية",
+      "kmDrivenLabel": "{{km}} كم مقطوعة",
+      "excessChargeLabel": "رسوم إضافية {{amount}}",
+      "generateInvoice": "إنشاء فاتورة",
+      "invoiceGenerated": "تم إنشاء الفاتورة",
+      "invoiceGenerateFailed": "تعذّر إنشاء الفاتورة.",
+      "type": {
+        "CHARTER": "استئجار خاص",
+        "SEAT": "مقعد"
+      },
+      "status": {
+        "BOOKED": "محجوز",
+        "COMPLETED": "مكتمل",
+        "CANCELLED": "ملغى"
+      },
+      "cancelBooking": "إلغاء الحجز",
+      "bookingCancelled": "تم إلغاء الحجز",
+      "bookingCancelFailed": "تعذّر إلغاء الحجز."
     }
   }
 }

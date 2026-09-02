@@ -39,6 +39,7 @@ import { JournalEntriesScreen } from '@modules/accounting/ui/JournalEntriesScree
 import { BankAccountsScreen } from '@modules/accounting/ui/BankAccountsScreen'
 import { BankReconciliationScreen } from '@modules/accounting/ui/BankReconciliationScreen'
 import { PostDatedChequesScreen } from '@modules/accounting/ui/PostDatedChequesScreen'
+import { BankDepositScreen } from '@modules/accounting/ui/BankDepositScreen'
 import { FixedAssetsScreen } from '@modules/accounting/ui/FixedAssetsScreen'
 import { FixedAssetDetailScreen } from '@modules/accounting/ui/FixedAssetDetailScreen'
 import { LedgerSettingsScreen } from '@modules/accounting/ui/LedgerSettingsScreen'
@@ -133,6 +134,12 @@ import { BulkListOrderScreen } from '@modules/stationery/ui/BulkListOrderScreen'
 import { FurnitureBookingScreen } from '@modules/furniture/ui/FurnitureBookingScreen'
 import { FurnitureTradeInScreen } from '@modules/furniture/ui/FurnitureTradeInScreen'
 import { ScheduledDeliveriesScreen } from '@modules/plumbing/ui/ScheduledDeliveriesScreen'
+import { CustomOrderBookingScreen } from '@modules/bakery/ui/CustomOrderBookingScreen'
+import { CateringEventScreen } from '@modules/bakery/ui/CateringEventScreen'
+// 2026-09 §12 — Tours & Travels
+import { VehicleFleetScreen } from '@modules/tours/ui/VehicleFleetScreen'
+import { TourPackageScreen } from '@modules/tours/ui/TourPackageScreen'
+import { TripBookingScreen } from '@modules/tours/ui/TripBookingScreen'
 // Phase 25 — Dental
 import { DentalPatientScreen } from '@modules/service-business/ui/DentalPatientScreen'
 import { RecallListScreen } from '@modules/service-business/ui/RecallListScreen'
@@ -144,6 +151,8 @@ import { SessionPacksScreen } from '@modules/service-business/ui/SessionPacksScr
 import { StaffCommissionScreen } from '@modules/service-business/ui/StaffCommissionScreen'
 import { MembershipsScreen } from '@modules/service-business/ui/MembershipsScreen'
 import { BatchClassesScreen } from '@modules/service-business/ui/BatchClassesScreen'
+import { WorkoutLogScreen } from '@modules/service-business/ui/WorkoutLogScreen'
+import { CustomerCheckInScreen } from '@modules/service-business/ui/CustomerCheckInScreen'
 import { DrivingSchoolScreen } from '@modules/service-business/ui/DrivingSchoolScreen'
 // Phase 28 — Legal
 import { LegalCasesScreen } from '@modules/service-business/ui/LegalCasesScreen'
@@ -331,6 +340,7 @@ export function AppRouter() {
         <Route path="/accounting/bank-accounts" element={<ProtectedRoute permission="bankAccounts.view"><BankAccountsScreen /></ProtectedRoute>} />
         <Route path="/accounting/bank-accounts/:id" element={<ProtectedRoute permission="bankReconciliation.view"><BankReconciliationScreen /></ProtectedRoute>} />
         <Route path="/accounting/post-dated-cheques" element={<ProtectedRoute permission="postDatedCheques.view"><PostDatedChequesScreen /></ProtectedRoute>} />
+        <Route path="/accounting/bank-deposits" element={<ProtectedRoute permission="bankAccounts.view"><BankDepositScreen /></ProtectedRoute>} />
         <Route path="/accounting/fixed-assets" element={<ProtectedRoute permission="fixedAssets.view"><FixedAssetsScreen /></ProtectedRoute>} />
         <Route path="/accounting/fixed-assets/:id" element={<ProtectedRoute permission="fixedAssets.view"><FixedAssetDetailScreen /></ProtectedRoute>} />
         <Route path="/accounting/ledger-settings" element={<ProtectedRoute permission="bankAccounts.view"><LedgerSettingsScreen /></ProtectedRoute>} />
@@ -423,6 +433,12 @@ export function AppRouter() {
         <Route path="/furniture/bookings" element={<ProtectedRoute permission="furnitureBooking.view"><FurnitureBookingScreen /></ProtectedRoute>} />
         <Route path="/furniture/trade-ins" element={<ProtectedRoute permission="furnitureTradeIn.view"><FurnitureTradeInScreen /></ProtectedRoute>} />
         <Route path="/plumbing/scheduled-deliveries" element={<ProtectedRoute permission="billing.view"><ScheduledDeliveriesScreen /></ProtectedRoute>} />
+        <Route path="/bakery/custom-orders" element={<ProtectedRoute permission="customOrderBooking.view"><CustomOrderBookingScreen /></ProtectedRoute>} />
+        <Route path="/bakery/catering-events" element={<ProtectedRoute permission="cateringEvent.view"><CateringEventScreen /></ProtectedRoute>} />
+        {/* 2026-09 §12 — Tours & Travels */}
+        <Route path="/tours/fleet" element={<ProtectedRoute permission="vehicle.view"><VehicleFleetScreen /></ProtectedRoute>} />
+        <Route path="/tours/packages" element={<ProtectedRoute permission="tourPackage.view"><TourPackageScreen /></ProtectedRoute>} />
+        <Route path="/tours/bookings" element={<ProtectedRoute permission="tripBooking.view"><TripBookingScreen /></ProtectedRoute>} />
         {/* Phase 25 — Dental */}
         <Route path="/dental/patient/:patientId" element={<ProtectedRoute permission="clinicalNotes.view"><DentalPatientScreen /></ProtectedRoute>} />
         <Route path="/dental/recalls" element={<ProtectedRoute permission="billing.view"><RecallListScreen /></ProtectedRoute>} />
@@ -436,6 +452,10 @@ export function AppRouter() {
         <Route path="/commission" element={<ProtectedRoute permission="hr.view"><StaffCommissionScreen /></ProtectedRoute>} />
         <Route path="/gym/memberships" element={<ProtectedRoute permission="billing.view"><MembershipsScreen /></ProtectedRoute>} />
         <Route path="/gym/classes" element={<ProtectedRoute permission="billing.view"><BatchClassesScreen /></ProtectedRoute>} />
+        {/* 2026-09 — Gym/Studio machine-based workout progress tracking */}
+        <Route path="/gym/workouts" element={<ProtectedRoute permission="billing.view"><WorkoutLogScreen /></ProtectedRoute>} />
+        {/* 2026-09 — universal visit check-in/check-out, any business type */}
+        <Route path="/attendance/checkin" element={<ProtectedRoute permission="billing.view"><CustomerCheckInScreen /></ProtectedRoute>} />
         <Route path="/driving/learners" element={<ProtectedRoute permission="billing.view"><DrivingSchoolScreen /></ProtectedRoute>} />
         <Route path="/driving/sessions" element={<ProtectedRoute permission="billing.view"><DrivingSchoolScreen /></ProtectedRoute>} />
         {/* Phase 28 — Legal */}

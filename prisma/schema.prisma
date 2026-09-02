@@ -94,9 +94,16 @@ model User {
   lastLogin      DateTime?
   sessionToken   String?   @unique
   tokenExpiresAt DateTime?
+  // 2026-09-02 — Password Policy: when this user's current password was
+  // set, checked against the configurable 'password_expiry_days' Setting at
+  // login (see auth.service.ts's isPasswordExpired). Defaults to row
+  // creation time for every pre-existing user, so turning expiry on for the
+  // first time never retroactively treats everyone as already overdue.
+  passwordChangedAt DateTime @default(now())
   createdAt      DateTime  @default(now())
   updatedAt      DateTime  @updatedAt
 
+  passwordHistory          PasswordHistory[]
   role                     Role                @relation(fields: [roleId], references: [id])
   auditLogs                AuditLog[]
   aiQueryLogs              AiQueryLog[]
@@ -120,10 +127,31 @@ model User {
   approvalActions          ApprovalAction[]    @relation("ApprovalActionBy") // Phase 63
   priceMarkdownsCreated    PriceMarkdown[]     @relation("PriceMarkdownCreatedBy") // Phase 67 §9.1
   loyaltyRedemptions       LoyaltyRedemption[] @relation("LoyaltyRedeemedBy") // Phase 67 §9.1
-  jobSiteAccountsCreated    JobSiteAccount[]    @relation("JobSiteAccountCreatedBy") // Phase 69 §11
-  bulkListOrdersCreated     BulkListOrder[]     @relation("BulkListOrderCreatedBy") // Phase 69 §11
-  furnitureBookingsCreated  FurnitureBooking[]  @relation("FurnitureBookingCreatedBy") // Phase 69 §11
-  furnitureTradeInsCreated  FurnitureTradeIn[]  @relation("FurnitureTradeInCreatedBy") // Phase 69 §11
+  jobSiteAccountsCreated   JobSiteAccount[]    @relation("JobSiteAccountCreatedBy") // Phase 69 §11
+  bulkListOrdersCreated    BulkListOrder[]     @relation("BulkListOrderCreatedBy") // Phase 69 §11
+  furnitureBookingsCreated FurnitureBooking[]  @relation("FurnitureBookingCreatedBy") // Phase 69 §11
+  furnitureTradeInsCreated FurnitureTradeIn[]  @relation("FurnitureTradeInCreatedBy") // Phase 69 §11
+  customOrderBookingsCreated CustomOrderBooking[] @relation("CustomOrderBookingCreatedBy") // 2026-09 §12 — Bakery
+  cateringEventsCreated      CateringEvent[]      @relation("CateringEventCreatedBy") // 2026-09 §13 — Bakery/Sweet Shop/Catering
+  tripBookingsCreated       TripBooking[]        @relation("TripBookingCreatedBy") // 2026-09 §12 — Tours & Travels
+  vehicleServiceLogsCreated VehicleServiceLog[]   @relation("VehicleServiceLogCreatedBy") // 2026-09 §12 — Tours & Travels
+}
+
+// 2026-09-02 — Password Policy: history of a user's own past password
+// hashes, checked against a new password at change/reset time so the
+// configurable 'password_history_count' Setting can genuinely block reuse
+// (bcrypt hashes can't be compared as plain strings, so every past hash has
+// to be individually re-compared — this table exists to have something to
+// compare against). Never exposed outside auth.service.ts.
+model PasswordHistory {
+  id           String   @id @default(cuid())
+  userId       String
+  passwordHash String
+  createdAt    DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
 }
 
 model Role {
@@ -224,6 +252,14 @@ model Product {
   // a running counter" philosophy as getRetainerHoursUsage. Nullable/unused
   // by every other vertical.
   unavailableUntil       DateTime?
+  // 2026-09-02 — Restaurant/Bakery diet-type marker (VEG|EGG|NON_VEG),
+  // matching the real 3-way Indian restaurant-menu convention (green/
+  // yellow/brown-red dot), not the FSSAI-packaging-label's binary. Nullable
+  // string, same "small controlled set, not a real enum" convention as
+  // `gender` above — surfaced in the UI only when the food_diet_type
+  // module is enabled (RESTAURANT/BAKERY's default), unused by every other
+  // vertical.
+  foodType               String?
   // Phase 58 §2 — Pharmacy Schedule H/H1 prescription-only medicine flag.
   // Nullable-equivalent default false, unused by every other vertical —
   // when true, billing.service.ts requires a prescription snapshot
@@ -255,9 +291,9 @@ model Product {
   updatedAt              DateTime  @updatedAt
 
   // Phase 38: loose/weight-based billing (opt-in, off by default — see barcode_generation/loose_billing TemplateModule flags)
-  sellByWeight          Boolean   @default(false)
-  weightUnit            String?
-  pricePerWeightUnit    Float?
+  sellByWeight       Boolean @default(false)
+  weightUnit         String?
+  pricePerWeightUnit Float?
   // Phase 58 §2 — Hardware's carton/box-to-loose-piece conversion. A
   // different shape from sellByWeight above (discrete integer pack size,
   // not a continuous fraction of the same stocking unit) — this product is
@@ -267,19 +303,19 @@ model Product {
   // "received 10 boxes of 50" becomes a single addStock({quantity: 500})
   // call — every existing inventory-quantity read site (billing stock
   // check, low-stock alerts, valuation) needs zero changes.
-  sellByPack            Boolean   @default(false)
-  packUnit              String? // e.g. "BOX", "CARTON", "CASE"
-  unitsPerPack          Float?
-  barcodeSource         String?
+  sellByPack         Boolean @default(false)
+  packUnit           String? // e.g. "BOX", "CARTON", "CASE"
+  unitsPerPack       Float?
+  barcodeSource      String?
 
   // Phase 69 §11 — length-based billing (Electrical/Plumbing wire/pipe sold
   // off a coil). Mirrors sellByWeight/weightUnit/pricePerWeightUnit exactly,
   // as its own parallel field trio rather than reusing the weight fields —
   // storing a length unit ('M'/'FT') in a field named weightUnit would be a
   // naming lie future readers would trip over.
-  sellByLength       Boolean @default(false)
-  lengthUnit         String? // 'M' | 'FT'
-  pricePerLengthUnit Float?
+  sellByLength          Boolean   @default(false)
+  lengthUnit            String? // 'M' | 'FT'
+  pricePerLengthUnit    Float?
   // Compact sequential reference (0-99999) embedded in weight-embedded barcode labels for this
   // product — distinct from Product.barcode (which may be a real manufacturer code, or absent).
   // Assigned once, lazily, the first time this product is configured for loose billing.
@@ -387,6 +423,8 @@ model Product {
   trialSessions             TrialSession[] // Phase 67 §9.1 — Footwear: trial-pair counter workflow
   bulkListOrderItems        BulkListOrderItem[] // Phase 69 §11 — Stationery
   furnitureBookingItems     FurnitureBookingItem[] // Phase 69 §11 — Furniture
+  customOrderBookingItems   CustomOrderBookingItem[] // 2026-09 §12 — Bakery
+  cateringEventMenuItems    CateringEventMenuItem[] // 2026-09 §13 — Bakery/Sweet Shop/Catering
 
   @@index([productName])
   @@index([isActive])
@@ -862,6 +900,12 @@ model Customer {
   priceListId               String?
   // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
   customFields              String?
+  // 2026-09 §12 — Grocery item 3: Khata (credit) auto-reminder. Set each time
+  // an overdue-balance WhatsApp reminder is sent, so the reminder can be
+  // gated to at most once per N days instead of firing every time the
+  // report is opened — same "don't spam" reasoning as every other
+  // reminder-cadence field in this schema.
+  lastKhataReminderSentAt   DateTime?
 
   priceList                 PriceList?                    @relation(fields: [priceListId], references: [id])
   salesOrders               SalesOrder[] // Phase 63
@@ -893,6 +937,8 @@ model Customer {
   memberships               Membership[] // Phase 27 — Gym
   memberAttendances         MemberAttendance[] // Phase 27 — Gym
   batchClassAttendances     BatchClassAttendance[] // Phase 27 — Gym
+  workoutLogs               WorkoutLog[] // 2026-09 — Gym/Studio: machine-based progress tracking
+  checkIns                  CustomerCheckIn[] // 2026-09 — universal visit check-in, any vertical
   learnerProfile            LearnerProfile? // Phase 27 — Driving
   drivingSessions           DrivingSession[]              @relation("DrivingLearner") // Phase 27 — Driving
   drivingTests              DrivingTest[] // Phase 27 — Driving
@@ -934,7 +980,10 @@ model Customer {
   bulkListOrders            BulkListOrder[] // Phase 69 §11 — Stationery
   furnitureBookings         FurnitureBooking[] // Phase 69 §11 — Furniture
   furnitureTradeIns         FurnitureTradeIn[] // Phase 69 §11 — Furniture
-  installedProductSerials   ProductSerial[] @relation("ProductSerialInstalledCustomer") // Phase 69 §11 — Plumbing installation warranty transfer
+  customOrderBookings       CustomOrderBooking[] // 2026-09 §12 — Bakery
+  cateringEvents            CateringEvent[] // 2026-09 §13 — Bakery/Sweet Shop/Catering
+  tripBookings              TripBooking[] // 2026-09 §12 — Tours & Travels
+  installedProductSerials   ProductSerial[]               @relation("ProductSerialInstalledCustomer") // Phase 69 §11 — Plumbing installation warranty transfer
 
   @@index([customerName])
   @@index([phone])
@@ -1102,29 +1151,39 @@ model PurchaseOrderItem {
 // Invoice's shape deliberately — a Bill is the purchase-side mirror of an
 // Invoice, right down to paidAmount/balanceAmount tracking.
 model Bill {
-  id              String    @id @default(cuid())
-  billNumber      String    @unique
-  supplierId      String
-  purchaseOrderId String?
-  billDate        DateTime  @default(now())
-  dueDate         DateTime?
-  status          String    @default("OPEN") // OPEN | PARTIALLY_PAID | PAID | VOID
-  subtotal        Float     @default(0)
-  discountAmount  Float     @default(0)
-  taxAmount       Float     @default(0)
-  totalAmount     Float     @default(0)
-  paidAmount      Float     @default(0)
-  balanceAmount   Float     @default(0)
-  notes           String?
-  createdById     String?
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  id                  String    @id @default(cuid())
+  billNumber          String    @unique
+  supplierId          String
+  purchaseOrderId     String?
+  billDate            DateTime  @default(now())
+  dueDate             DateTime?
+  status              String    @default("OPEN") // OPEN | PARTIALLY_PAID | PAID | VOID
+  subtotal            Float     @default(0)
+  discountAmount      Float     @default(0)
+  taxAmount           Float     @default(0)
+  totalAmount         Float     @default(0)
+  paidAmount          Float     @default(0)
+  balanceAmount       Float     @default(0)
+  notes               String?
+  createdById         String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
   // Phase 62 — Reverse Charge Mechanism, same meaning as PurchaseOrder's own.
-  isReverseCharge Boolean   @default(false)
+  isReverseCharge     Boolean   @default(false)
   // Phase 65 — Reporting Tags / Cost & Profit Centres. Flows into the
   // JournalEntryLine rows this bill's own GL posting creates. Null (the
   // default) behaves exactly as before this phase.
-  costCentreId    String?
+  costCentreId        String?
+  // 2026-09 — foreign-currency overlay. totalAmount/paidAmount/balanceAmount
+  // above stay in the business's own base currency, completely unchanged —
+  // this is display/documentary only (the vendor's own bill shown/printed in
+  // their currency), never the source of truth for AP accounting. See
+  // supplier-payment.service.ts's postSupplierPaymentJournalEntry for how a
+  // settlement-time rate difference becomes a realized FX gain/loss posting
+  // WITHOUT touching balanceAmount/status logic at all.
+  foreignCurrencyCode String?
+  foreignExchangeRate Float?
+  foreignTotalAmount  Float?
 
   supplier      Supplier               @relation(fields: [supplierId], references: [id])
   purchaseOrder PurchaseOrder?         @relation(fields: [purchaseOrderId], references: [id])
@@ -1195,25 +1254,31 @@ model BillItem {
 // down. Closes "Payment is invoice-linked only — receiving money is
 // modeled, paying a supplier isn't, at all."
 model SupplierPayment {
-  id              String   @id @default(cuid())
-  billId          String
-  supplierId      String?
-  paymentMethod   String
-  amount          Float
-  referenceNumber String?
-  paymentDate     DateTime @default(now())
-  remarks         String?
-  isReversed      Boolean  @default(false)
-  reversalReason  String?
-  recordedById    String?
-  createdAt       DateTime @default(now())
+  id                  String   @id @default(cuid())
+  billId              String
+  supplierId          String?
+  paymentMethod       String
+  amount              Float
+  referenceNumber     String?
+  paymentDate         DateTime @default(now())
+  remarks             String?
+  isReversed          Boolean  @default(false)
+  reversalReason      String?
+  recordedById        String?
+  createdAt           DateTime @default(now())
   // Phase 62 — TDS withheld from this payment (still settles the Bill in
   // full — the withheld amount is a legal substitute for cash, remitted to
   // the tax authority instead of the vendor). tdsSection is free text (e.g.
   // "194C", "194J"), matching this codebase's category-as-free-text
   // convention elsewhere rather than a fixed enum of statutory sections.
-  tdsAmount       Float    @default(0)
-  tdsSection      String?
+  tdsAmount           Float    @default(0)
+  tdsSection          String?
+  // 2026-09 — same foreign-currency-settlement overlay as Payment's own
+  // fields (see that model's comment) — informational only, never the
+  // source of `amount`.
+  foreignCurrencyCode String?
+  foreignAmount       Float?
+  foreignExchangeRate Float?
 
   bill       Bill      @relation(fields: [billId], references: [id])
   supplier   Supplier? @relation(fields: [supplierId], references: [id])
@@ -1285,6 +1350,7 @@ model BankAccount {
   postDatedCheques PostDatedCheque[]
   journalLines     JournalEntryLine[]
   chequeBooks      ChequeBook[]
+  deposits         BankDeposit[]
 
   @@index([accountType])
   @@index([isActive])
@@ -1408,17 +1474,55 @@ model PostDatedCheque {
   amount        Float
   status        String   @default("PENDING") // PENDING | DEPOSITED | CLEARED | BOUNCED | CANCELLED
   remarks       String?
+  // Set when this cheque was included on a physical Bank Deposit Slip
+  // (status moves to DEPOSITED at that point) — purely a paper-trail link,
+  // no GL impact of its own; the cheque still only posts real money once it
+  // actually clears via the pre-existing updateStatus('CLEARED') flow.
+  bankDepositId String?
   createdById   String?
   createdAt     DateTime @default(now())
   updatedAt     DateTime @updatedAt
 
-  bankAccount BankAccount @relation(fields: [bankAccountId], references: [id])
-  chequeBook  ChequeBook? @relation(fields: [chequeBookId], references: [id])
+  bankAccount BankAccount  @relation(fields: [bankAccountId], references: [id])
+  chequeBook  ChequeBook?  @relation(fields: [chequeBookId], references: [id])
+  bankDeposit BankDeposit? @relation(fields: [bankDepositId], references: [id])
 
   @@index([bankAccountId])
   @@index([status])
   @@index([dueDate])
   @@index([chequeBookId])
+  @@index([bankDepositId])
+}
+
+// Cash/cheque deposit-slip generation from note denominations — the
+// physical document a staff member fills in and hands to the bank teller
+// when depositing a day's cash collection. Only the cash portion posts real
+// money immediately (physically counting and handing over cash IS the
+// realization event); any cheques attached are marked DEPOSITED for the
+// paper trail only and still post their own GL entry later, once each one
+// actually clears, via PostDatedCheque's pre-existing updateStatus flow —
+// counting a cheque here would double it once it clears too.
+model BankDeposit {
+  id            String   @id @default(cuid())
+  depositNumber String   @unique
+  bankAccountId String
+  depositDate   DateTime
+  // JSON.stringify'd Record<string denominationValue, number count> — same
+  // "String column holding JSON data" convention CustomFieldValue already
+  // established (see its own header comment above).
+  denominations String
+  cashTotal     Float    @default(0)
+  chequeTotal   Float    @default(0)
+  totalAmount   Float    @default(0)
+  notes         String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  bankAccount BankAccount       @relation(fields: [bankAccountId], references: [id])
+  cheques     PostDatedCheque[]
+
+  @@index([bankAccountId])
+  @@index([depositDate])
 }
 
 // Real gap closed 2026-08-12 — Phase 62's own spec (Section 4.1 item 7)
@@ -1493,12 +1597,12 @@ model FixedAssetDepreciation {
 // INVOICES & BILLING
 // ─────────────────────────────────────────────────────────────────────────────
 model Invoice {
-  id                 String    @id @default(cuid())
-  invoiceNumber      String    @unique
-  invoiceType        String    @default("RETAIL")
-  customerId         String?
-  invoiceDate        DateTime  @default(now())
-  dueDate            DateTime?
+  id                    String    @id @default(cuid())
+  invoiceNumber         String    @unique
+  invoiceType           String    @default("RETAIL")
+  customerId            String?
+  invoiceDate           DateTime  @default(now())
+  dueDate               DateTime?
   // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms. If
   // set (a CREDIT sale linked to a shop-defined harvest season instead of a
   // manually-typed date), dueDate above is computed server-side from this
@@ -1506,21 +1610,21 @@ model Invoice {
   // this is just which ONE way the cashier chose to set it. Nullable/unused
   // for every non-Agri-Inputs invoice, and for an Agri Inputs credit sale
   // whose cashier typed a raw date instead.
-  cropSeasonId       String?
-  status             String    @default("ACTIVE")
-  subtotal           Float     @default(0)
-  discountAmount     Float     @default(0)
-  taxAmount          Float     @default(0)
-  roundingAmount     Float     @default(0)
-  totalAmount        Float     @default(0)
-  paidAmount         Float     @default(0)
-  balanceAmount      Float     @default(0)
-  paymentStatus      String    @default("UNPAID")
-  gstType            String    @default("CGST_SGST")
-  buyerState         String?
-  notes              String?
-  quotationId        String?   @unique
-  originalInvoiceId  String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
+  cropSeasonId          String?
+  status                String    @default("ACTIVE")
+  subtotal              Float     @default(0)
+  discountAmount        Float     @default(0)
+  taxAmount             Float     @default(0)
+  roundingAmount        Float     @default(0)
+  totalAmount           Float     @default(0)
+  paidAmount            Float     @default(0)
+  balanceAmount         Float     @default(0)
+  paymentStatus         String    @default("UNPAID")
+  gstType               String    @default("CGST_SGST")
+  buyerState            String?
+  notes                 String?
+  quotationId           String?   @unique
+  originalInvoiceId     String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
   // Phase 58 §2 (2026-07-21) — restaurant table↔order binding. Snapshot of
   // the primary dine-in table this invoice was opened for (nullable — only
   // ever set for restaurant dine-in invoices). The reverse/live pointer
@@ -1528,11 +1632,11 @@ model Invoice {
   // RestaurantTable.currentInvoiceId instead, since a merge lets MULTIPLE
   // tables point at the same invoice — a single scalar here can only ever
   // record the one table the order was opened at.
-  tableId            String?
+  tableId               String?
   // Set only on a new invoice produced by splitInvoice() — real FK back to
   // the original (now status='SPLIT') invoice it was divided from, mirroring
   // originalInvoiceId's return-lineage pattern above.
-  splitFromInvoiceId String?
+  splitFromInvoiceId    String?
   // Phase 67 — Clothing item 4 (size/color exchange workflow). Set only on
   // the NEW replacement-item sale invoice an exchange produces — a real FK
   // back to the invoiceType='RETURN' invoice created for the surrendered
@@ -1548,67 +1652,72 @@ model Invoice {
   // + a real RETAIL sale) linked by this pointer gets the same cashier-
   // facing "one exchange" workflow (see exchange.service.ts) for zero
   // report-layer risk.
-  exchangeReturnId   String?
+  exchangeReturnId      String?
   // Phase 61 — moved onto the Invoice itself, independent of whether the
   // opt-in Logistics module is on (was previously LogisticsShipment-only,
   // so absent for every service vertical and any product vertical that
   // doesn't turn Logistics on). Nullable, printed only when set.
-  ewayBillNumber     String?
+  ewayBillNumber        String?
   // Phase 63 — set when this Invoice was generated (fully or partially) off
   // a SalesOrder. Not unique — one SalesOrder can spawn several Invoices as
   // it's fulfilled in stages, unlike Quotation's 1:1 quotationId above.
-  salesOrderId       String?
+  salesOrderId          String?
   // Phase 63 — per-invoice template override; falls back to
   // BusinessProfile's own default when null.
-  invoiceTemplateId  String?
+  invoiceTemplateId     String?
   // Phase 65 — Reporting Tags / Cost & Profit Centres. Flows into the
   // JournalEntryLine rows postInvoiceJournalEntry() creates, so the treemap
   // P&L report can attribute this invoice's revenue to a branch/division/
   // project. Null (the default) behaves exactly as before this phase.
-  costCentreId       String?
+  costCentreId          String?
   // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.
-  customFields       String?
+  customFields          String?
   // Phase 68 §9.1 — Pest Control item 4: recurring contract value trend.
   // Set only on the recurring-fee invoice generateContractInvoice() creates
   // for a PestServiceContract — lets the trend report query REAL billed
   // history instead of a fabricated projection from contractValue ×
   // frequency. Pre-existing invoices simply have no link until re-invoiced.
-  pestContractId     String?
+  pestContractId        String?
   // Phase 69 §11 — Electrical/Plumbing job-site/contractor running account.
   // Null for an ordinary walk-in sale even on these verticals.
-  jobSiteAccountId   String?
+  jobSiteAccountId      String?
   // Phase 69 §11 — Plumbing scheduled delivery (fragile sanitaryware). Null
   // unless the scheduled_delivery module is on and this sale used it.
   scheduledDeliveryDate DateTime?
   deliveryAddress       String?
   deliveryStatus        String? // SCHEDULED | OUT_FOR_DELIVERY | DELIVERED | CANCELLED
-  createdById        String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  // 2026-09 — foreign-currency overlay, same shape/reasoning as Bill's own
+  // (see that model's comment) — totalAmount etc. stay base-currency always.
+  foreignCurrencyCode   String?
+  foreignExchangeRate   Float?
+  foreignTotalAmount    Float?
+  createdById           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
-  costCentre       CostCentre?       @relation(fields: [costCentreId], references: [id])
-  jobSiteAccount   JobSiteAccount?   @relation(fields: [jobSiteAccountId], references: [id])
-  customer         Customer?         @relation(fields: [customerId], references: [id])
-  cropSeason       CropSeason?       @relation(fields: [cropSeasonId], references: [id])
-  createdBy        User?             @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
-  items            InvoiceItem[]
-  payments         Payment[]
-  kot              KOT?
-  creditNotes      CreditNote[]
-  quotation        Quotation?        @relation("QuotationToInvoice", fields: [quotationId], references: [id])
-  challans         DeliveryChallan[] @relation("ChallanInvoice")
-  originalInvoice  Invoice?          @relation("InvoiceReturns", fields: [originalInvoiceId], references: [id])
-  returns          Invoice[]         @relation("InvoiceReturns")
-  table            RestaurantTable?  @relation("InvoiceTable", fields: [tableId], references: [id], onDelete: SetNull)
-  occupiedTables   RestaurantTable[] @relation("TableCurrentInvoice")
-  splitFromInvoice Invoice?          @relation("InvoiceSplitLineage", fields: [splitFromInvoiceId], references: [id])
-  splitInvoices    Invoice[]         @relation("InvoiceSplitLineage")
-  exchangeReturn   Invoice?          @relation("InvoiceExchangeLineage", fields: [exchangeReturnId], references: [id])
-  exchangeReplacements Invoice[]     @relation("InvoiceExchangeLineage")
-  salesOrder       SalesOrder?       @relation("SalesOrderInvoices", fields: [salesOrderId], references: [id])
-  invoiceTemplate  InvoiceTemplate?  @relation(fields: [invoiceTemplateId], references: [id])
-  loyaltyPunchEvents LoyaltyPunchEvent[] // Phase 67 §9.1 — Retail: which invoice earned a given punch, if any
-  pestContract     PestServiceContract? @relation(fields: [pestContractId], references: [id], onDelete: SetNull)
+  costCentre           CostCentre?          @relation(fields: [costCentreId], references: [id])
+  jobSiteAccount       JobSiteAccount?      @relation(fields: [jobSiteAccountId], references: [id])
+  customer             Customer?            @relation(fields: [customerId], references: [id])
+  cropSeason           CropSeason?          @relation(fields: [cropSeasonId], references: [id])
+  createdBy            User?                @relation("InvoiceCreatedBy", fields: [createdById], references: [id])
+  items                InvoiceItem[]
+  payments             Payment[]
+  kot                  KOT?
+  creditNotes          CreditNote[]
+  quotation            Quotation?           @relation("QuotationToInvoice", fields: [quotationId], references: [id])
+  challans             DeliveryChallan[]    @relation("ChallanInvoice")
+  originalInvoice      Invoice?             @relation("InvoiceReturns", fields: [originalInvoiceId], references: [id])
+  returns              Invoice[]            @relation("InvoiceReturns")
+  table                RestaurantTable?     @relation("InvoiceTable", fields: [tableId], references: [id], onDelete: SetNull)
+  occupiedTables       RestaurantTable[]    @relation("TableCurrentInvoice")
+  splitFromInvoice     Invoice?             @relation("InvoiceSplitLineage", fields: [splitFromInvoiceId], references: [id])
+  splitInvoices        Invoice[]            @relation("InvoiceSplitLineage")
+  exchangeReturn       Invoice?             @relation("InvoiceExchangeLineage", fields: [exchangeReturnId], references: [id])
+  exchangeReplacements Invoice[]            @relation("InvoiceExchangeLineage")
+  salesOrder           SalesOrder?          @relation("SalesOrderInvoices", fields: [salesOrderId], references: [id])
+  invoiceTemplate      InvoiceTemplate?     @relation(fields: [invoiceTemplateId], references: [id])
+  loyaltyPunchEvents   LoyaltyPunchEvent[] // Phase 67 §9.1 — Retail: which invoice earned a given punch, if any
+  pestContract         PestServiceContract? @relation(fields: [pestContractId], references: [id], onDelete: SetNull)
 
   @@index([customerId])
   @@index([salesOrderId])
@@ -1714,18 +1823,28 @@ model InvoiceItem {
 // PAYMENTS
 // ─────────────────────────────────────────────────────────────────────────────
 model Payment {
-  id              String   @id @default(cuid())
-  invoiceId       String
-  customerId      String?
-  paymentMethod   String
-  amount          Float
-  referenceNumber String?
-  paymentDate     DateTime @default(now())
-  remarks         String?
-  isReversed      Boolean  @default(false)
-  reversalReason  String?
-  recordedById    String?
-  createdAt       DateTime @default(now())
+  id                  String   @id @default(cuid())
+  invoiceId           String
+  customerId          String?
+  paymentMethod       String
+  amount              Float
+  referenceNumber     String?
+  paymentDate         DateTime @default(now())
+  remarks             String?
+  isReversed          Boolean  @default(false)
+  reversalReason      String?
+  recordedById        String?
+  createdAt           DateTime @default(now())
+  // 2026-09 — informational only: what the customer actually paid in the
+  // invoice's own foreign currency, and the rate at settlement. `amount`
+  // above (base currency, applied against Invoice.balanceAmount) is always
+  // entered/computed independently and is never derived from these — see
+  // payment.service.ts's postPaymentJournalEntry for how a difference
+  // between foreignAmount × this rate and foreignAmount × the invoice's own
+  // foreignExchangeRate becomes a realized FX gain/loss posting.
+  foreignCurrencyCode String?
+  foreignAmount       Float?
+  foreignExchangeRate Float?
 
   invoice    Invoice   @relation(fields: [invoiceId], references: [id])
   customer   Customer? @relation(fields: [customerId], references: [id])
@@ -1937,6 +2056,10 @@ model RestaurantTable {
   // settlement and from billing.service.ts on cancel/split.
   currentInvoiceId String?
   createdAt        DateTime @default(now())
+  // 2026-09-02 — set when a customer taps "Checkout" on the QR menu
+  // (signals "bring the bill"); purely a staff-facing flag, never auto-
+  // bills on its own. Cleared by checkoutTable() once staff finalizes.
+  checkoutRequestedAt DateTime?
 
   kots           KOT[]
   orderRequests  TableOrderRequest[]
@@ -2057,16 +2180,49 @@ model FieldOrderRequestItem {
   @@index([requestId])
 }
 
+// 2026-09-02 — a table's orders now accumulate across multiple rounds
+// (QR scans, or a staff "send another round to kitchen" action) before any
+// Invoice exists — mirrors Hotel/Lodge's HotelExtraCharge-then-
+// generateInvoice pattern, the established "accumulate, bill once" shape
+// in this codebase. invoiceId is therefore nullable: a KOT is created the
+// moment an order is accepted/sent to kitchen (so the kitchen sees it
+// immediately, independent of billing), and only gets an invoiceId
+// back-filled once checkoutTable() finally bills the table. Items live on
+// KOTItem directly (own source of truth) rather than being read through
+// invoice.items, which used to require an Invoice to exist before a KOT
+// could show what was ordered at all.
 model KOT {
-  id        String   @id @default(cuid())
-  invoiceId String   @unique
+  id        String    @id @default(cuid())
+  invoiceId String?   @unique
   tableId   String?
-  status    String   @default("PENDING")
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  status    String    @default("PENDING")
+  createdAt DateTime  @default(now())
+  updatedAt DateTime  @updatedAt
 
-  invoice Invoice          @relation(fields: [invoiceId], references: [id])
+  invoice Invoice?         @relation(fields: [invoiceId], references: [id])
   table   RestaurantTable? @relation(fields: [tableId], references: [id])
+  items   KOTItem[]
+
+  @@index([tableId])
+  @@index([invoiceId])
+}
+
+// Same lightweight "plain productId scalar, no enforced Prisma relation"
+// convention as TableOrderRequestItem/FieldOrderRequestItem above —
+// unitPriceSnapshot is captured at KOT-creation time (server-resolved
+// Product.sellingPrice, never trusted from the client) so checkoutTable()
+// can bill correctly even if a price changes between order and checkout.
+model KOTItem {
+  id                 String @id @default(cuid())
+  kotId              String
+  productId          String
+  quantity           Int
+  unitPriceSnapshot  Float
+  taxRateSnapshot    Float  @default(0)
+
+  kot KOT @relation(fields: [kotId], references: [id], onDelete: Cascade)
+
+  @@index([kotId])
 }
 
 model Recipe {
@@ -2207,18 +2363,18 @@ model ProductBatch {
 
 // Electronics / Mobile — Serial number and IMEI tracking
 model ProductSerial {
-  id                 String    @id @default(cuid())
-  productId          String
-  serialNumber       String    @unique
-  imeiNumber         String?   @unique
-  imei2Number        String?   @unique
-  warrantyMonths     Int?
-  warrantyExpiryDate DateTime?
-  purchaseDate       DateTime?
-  unitCost           Float     @default(0)
-  status             String    @default("AVAILABLE")
-  invoiceId          String?
-  soldDate           DateTime?
+  id                  String    @id @default(cuid())
+  productId           String
+  serialNumber        String    @unique
+  imeiNumber          String?   @unique
+  imei2Number         String?   @unique
+  warrantyMonths      Int?
+  warrantyExpiryDate  DateTime?
+  purchaseDate        DateTime?
+  unitCost            Float     @default(0)
+  status              String    @default("AVAILABLE")
+  invoiceId           String?
+  soldDate            DateTime?
   // Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders.
   // Deliberately on the equipment unit itself (ProductSerial), not on a
   // JobCard — the due date is a property of the physical tractor/sprayer,
@@ -2227,19 +2383,19 @@ model ProductSerial {
   // warrantyExpiryDate — a unit can be well out of its original warranty
   // and still be due for routine servicing. Nullable/unused by every
   // vertical that never sets it.
-  nextServiceDueDate DateTime?
-  lastServicedDate   DateTime?
+  nextServiceDueDate  DateTime?
+  lastServicedDate    DateTime?
   // Phase 69 §11 — Plumbing wow feature: Installation Warranty Transfer. Who
   // the warranty is currently attributed to for claims purposes — distinct
   // from invoiceId/soldDate (who BOUGHT the unit, e.g. a contractor on a
   // job-site account) since the person who bought a fixture and the person
   // who lives with it long enough to ever claim its warranty are often
   // different. Null until the unit is actually installed at a site.
-  installedCustomerId  String?
-  installedAt          DateTime?
-  installationAddress  String?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  installedCustomerId String?
+  installedAt         DateTime?
+  installationAddress String?
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   product                   Product        @relation(fields: [productId], references: [id], onDelete: Cascade)
   installedCustomer         Customer?      @relation("ProductSerialInstalledCustomer", fields: [installedCustomerId], references: [id])
@@ -2263,33 +2419,33 @@ model ProductSerial {
 // (AVAILABLE/SOLD/RETURNED/DEFECTIVE) rather than inventing a parallel status
 // enum, so billing/serial-picker screens don't need to learn new vocabulary.
 model RepairTicket {
-  id                  String    @id @default(cuid())
-  claimNumber         String    @unique
-  serialId            String
-  productId           String
-  customerId          String?
-  issueDescription    String
+  id                    String    @id @default(cuid())
+  claimNumber           String    @unique
+  serialId              String
+  productId             String
+  customerId            String?
+  issueDescription      String
   // RECEIVED → DIAGNOSED → SENT_TO_VENDOR → AWAITING_PARTS → REPAIRED →
   // RETURNED_TO_CUSTOMER (or → REPLACED → RETURNED_TO_CUSTOMER). CANCELLED is
   // reachable only before REPAIRED/REPLACED — see repair-ticket.service.ts's
   // ALLOWED_TRANSITIONS.
-  status              String    @default("RECEIVED")
-  receivedDate        DateTime  @default(now())
-  deliveredDate       DateTime?
-  vendorId            String?
-  vendorRmaNumber     String?
-  sentToVendorDate    DateTime?
-  vendorResponseDate  DateTime?
+  status                String    @default("RECEIVED")
+  receivedDate          DateTime  @default(now())
+  deliveredDate         DateTime?
+  vendorId              String?
+  vendorRmaNumber       String?
+  sentToVendorDate      DateTime?
+  vendorResponseDate    DateTime?
   // Set only when status becomes REPLACED — the NEW physical unit (must be an
   // AVAILABLE serial of the SAME product) handed to the customer in place of
   // the original. @unique so one replacement unit can never be assigned to
   // two different tickets.
-  replacementSerialId String?   @unique
+  replacementSerialId   String?   @unique
   // Phase 67 §9.1 — Electronics: RMA SLA tracker. Set automatically when
   // status becomes SENT_TO_VENDOR (sentToVendorDate + VENDOR_SLA_DAYS);
   // never touched again after that, even if the ticket later moves on —
   // it marks the deadline that transition committed to, not a live target.
-  vendorSlaDueDate    DateTime?
+  vendorSlaDueDate      DateTime?
   // Phase 67 §9.1 — Electronics: vendor warranty-claim recovery ledger.
   // vendorClaimAmount is set once the shop actually files a claim (not
   // every ticket has one — most in-warranty repairs the vendor just does
@@ -2309,12 +2465,12 @@ model RepairTicket {
   // no in-house work at all) have no technician. A single FK, not a JSON
   // array like CarJobCard's technicianIds — one device, one person doing
   // the work, unlike a multi-technician vehicle service job.
-  technicianId        String?
-  repairCost          Float?
-  notes               String?
-  createdById         String?
-  createdAt           DateTime  @default(now())
-  updatedAt           DateTime  @updatedAt
+  technicianId          String?
+  repairCost            Float?
+  notes                 String?
+  createdById           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
 
   serial            ProductSerial  @relation("RepairTicketOriginalSerial", fields: [serialId], references: [id])
   product           Product        @relation(fields: [productId], references: [id])
@@ -2808,17 +2964,17 @@ model JobCard {
   // captured once at intake — real dispute protection ("the customer said
   // the case was included" is answerable by pointing at what was actually
   // recorded when the item came in, not relying on memory).
-  conditionOnArrival   String?
-  accessoriesReceived  String?
+  conditionOnArrival     String?
+  accessoriesReceived    String?
   // Phase 67 §9.1 — Repair item 4: Repair Category Volume Trend. Free-text
   // (e.g. "Screen Repair", "Battery Replacement") — no fixed enum, matching
   // Product.season's own free-text precedent for a shop-defined taxonomy.
-  category             String?
+  category               String?
   // Phase 67 §9.1 — Repair item 5: Parts-Used-vs-Quoted Variance. The
   // parts-only portion of the quote given at intake, captured once and
   // never auto-recomputed — compared against the real, itemized
   // JobCardPart total once repair work actually happens.
-  quotedPartsTotal     Float?
+  quotedPartsTotal       Float?
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
@@ -2948,8 +3104,10 @@ model Employee {
   toothRecordHistoryEntries ToothRecordHistory[]      @relation("ToothRecordHistoryRecordedBy") // Phase 58 §2 — Dental
   serviceSkills             ServiceProviderSkill[] // Phase 58 §2 — Beauty Salon: which services this staff member can perform
   assignedSessionPacks      ClientSessionPack[]       @relation("SessionPackAssignedTrainer") // Phase 58 §2 — Gym/Studio: PT packages this trainer is the standing assignee for
+  workoutLogsRecorded       WorkoutLog[]              @relation("WorkoutLogTrainer") // 2026-09 — Gym/Studio: workout sessions this trainer logged
   treatmentPlansCreated     TreatmentPlan[]           @relation("TreatmentPlanCreatedBy") // Phase 25 — Dental
   repairTicketsAsTechnician RepairTicket[] // Phase 67 §9.1 — Electronics: repair turnaround by technician
+  driverDutyLogs            DriverDutyLog[] // 2026-09 §12 — Tours & Travels: trips this employee drove
   treatmentPhasesCreated    TreatmentPhase[]          @relation("TreatmentPhaseCreatedBy") // Phase 26 — Physio
   exerciseProgramsCreated   ExerciseProgram[]         @relation("ExerciseProgramCreatedBy") // Phase 26 — Physio
   staffCommissions          StaffCommission[] // Phase 27 — Commission
@@ -3125,16 +3283,16 @@ model Quotation {
   createdAt       DateTime  @default(now())
   updatedAt       DateTime  @updatedAt
 
-  customer   Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
-  items      QuotationItem[]
-  invoice    Invoice?        @relation("QuotationToInvoice")
+  customer      Customer?       @relation(fields: [customerId], references: [id], onDelete: SetNull)
+  items         QuotationItem[]
+  invoice       Invoice?        @relation("QuotationToInvoice")
   // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
-  salesOrder SalesOrder?     @relation("QuotationToSalesOrder")
+  salesOrder    SalesOrder?     @relation("QuotationToSalesOrder")
   // Phase 67 §9.1 — Service item 5: Quote-to-job conversion tracking.
-  serviceTicket ServiceTicket? @relation("QuotationToServiceTicket")
+  serviceTicket ServiceTicket?  @relation("QuotationToServiceTicket")
   // Phase 67 §9.1 — Consultant item 1: engagement-letter -> project
   // auto-conversion tracking, same pattern as Service's own quote-to-job link.
-  project    Project?        @relation("QuotationToProject")
+  project       Project?        @relation("QuotationToProject")
 
   @@index([customerId])
   @@index([status])
@@ -3684,12 +3842,12 @@ model Pet {
 // case-insensitively against Pet.breed (also free text, no shared enum),
 // not a foreign key.
 model BreedHealthAlert {
-  id         String   @id @default(cuid())
-  species    String // Dog | Cat | Bird | Rabbit | Reptile | Other — same set as Pet.species
-  breed      String
-  alertText  String
-  createdAt  DateTime @default(now())
-  updatedAt  DateTime @updatedAt
+  id        String   @id @default(cuid())
+  species   String // Dog | Cat | Bird | Rabbit | Reptile | Other — same set as Pet.species
+  breed     String
+  alertText String
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([species])
 }
@@ -3733,21 +3891,21 @@ model VaccinationRecord {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model VisitNote {
-  id              String    @id @default(cuid())
-  appointmentId   String    @unique
-  patientName     String
-  patientAge      String? // "35 years" or "6 months"
-  chiefComplaint  String?
-  subjective      String? // patient-reported history
-  objective       String? // vitals and examination findings
-  assessment      String? // diagnosis / differential
+  id                String    @id @default(cuid())
+  appointmentId     String    @unique
+  patientName       String
+  patientAge        String? // "35 years" or "6 months"
+  chiefComplaint    String?
+  subjective        String? // patient-reported history
+  objective         String? // vitals and examination findings
+  assessment        String? // diagnosis / differential
   diagnosisCategory String? // Phase 67 §9.1 item 19.4 — GP Clinic: free-text category tag (e.g. "Infection", "Chronic Disease Follow-up") distinct from the free-text `assessment` field above, so trend reporting can group without needing NLP over unstructured prose. Shared model across all 4 `visit_notes` verticals but only surfaced in the UI/report for GP_CLINIC (gated by the new `diagnosis_categories` module), per this codebase's "config flags only, no template-specific if/else" convention.
-  plan            String? // treatment plan, medications, procedures
-  followUpDate    DateTime?
-  followUpNotes   String?
-  referredBy      String? // specialist: who referred this patient
-  referralDate    DateTime?
-  referralReason  String?
+  plan              String? // treatment plan, medications, procedures
+  followUpDate      DateTime?
+  followUpNotes     String?
+  referredBy        String? // specialist: who referred this patient
+  referralDate      DateTime?
+  referralReason    String?
   // Phase 67 §9.1 item 20.4 — Specialist Clinic: referral-loop closure. A
   // contact for the referring doctor, distinct from `referredBy` (that's
   // just a free-text name) — without one, there's nowhere to actually send
@@ -3756,8 +3914,8 @@ model VisitNote {
   // on file for those, and that's fine — the share buttons simply stay
   // disabled until filled in, same "no round-trip to attempt a share that
   // can't work" convention ShareMenu.tsx already uses for customer contacts.
-  referredByPhone String?
-  referredByEmail String?
+  referredByPhone   String?
+  referredByEmail   String?
   // Phase 67 §9.1 item 20.2 — Specialist Clinic: flags a visit as a
   // second-opinion consultation (patient already diagnosed/treated
   // elsewhere, seeking another view), distinct from `referredBy` (who sent
@@ -3766,29 +3924,29 @@ model VisitNote {
   // Second-Opinion Conversion report: of these visits, how many patients
   // went on to book a later completed appointment (became an ongoing
   // patient) vs. only ever had the one visit.
-  isSecondOpinion Boolean   @default(false)
+  isSecondOpinion   Boolean   @default(false)
   // Phase 67 §9.1 item 20.3 — Specialist Clinic: case-complexity mix report.
   // Free-form-but-controlled ('ROUTINE' | 'COMPLEX'), left optional since
   // forcing a value on every note (including old ones) isn't realistic —
   // untagged notes are simply excluded from the report's percentages
   // rather than counted as a fake third bucket.
-  caseComplexity  String?
-  treatmentDone   String? // Phase 25 — Dental: what was done this session
-  painScore       Int? // Phase 26 — Physio: pain score 0–10
-  functionalScore Int? // Phase 58 §2 — Physio: structured functional outcome measure, 0-100 (higher = better function), trended across sessions alongside pain score
-  treatmentGiven  String? // Phase 26 — Physio: modalities applied this session
-  bpSystolic      Int? // Phase 54B — structured vitals, mmHg
-  bpDiastolic     Int? // Phase 54B — structured vitals, mmHg
-  pulseRate       Int? // Phase 54B — bpm
-  temperatureF    Float? // Phase 54B — °F
-  heightCm        Float? // Phase 54B
-  weightKg        Float? // Phase 54B
-  vitalsFlags     String? // Phase 54B — JSON: computed LOW|NORMAL|HIGH per vital, from NormalRangeReference
-  isFinalized     Boolean   @default(false)
-  finalizedAt     DateTime?
-  createdBy       String // userId who created the note
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  caseComplexity    String?
+  treatmentDone     String? // Phase 25 — Dental: what was done this session
+  painScore         Int? // Phase 26 — Physio: pain score 0–10
+  functionalScore   Int? // Phase 58 §2 — Physio: structured functional outcome measure, 0-100 (higher = better function), trended across sessions alongside pain score
+  treatmentGiven    String? // Phase 26 — Physio: modalities applied this session
+  bpSystolic        Int? // Phase 54B — structured vitals, mmHg
+  bpDiastolic       Int? // Phase 54B — structured vitals, mmHg
+  pulseRate         Int? // Phase 54B — bpm
+  temperatureF      Float? // Phase 54B — °F
+  heightCm          Float? // Phase 54B
+  weightKg          Float? // Phase 54B
+  vitalsFlags       String? // Phase 54B — JSON: computed LOW|NORMAL|HIGH per vital, from NormalRangeReference
+  isFinalized       Boolean   @default(false)
+  finalizedAt       DateTime?
+  createdBy         String // userId who created the note
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
 
   appointment          Appointment        @relation("AppointmentOwnVisitNote", fields: [appointmentId], references: [id], onDelete: Cascade)
   referralAppointments Appointment[]      @relation("ReferralSource") // Phase 54F — real in-app referrals booked FROM this note (see Appointment.referredFromVisitNoteId)
@@ -3977,7 +4135,7 @@ model RecallRecord {
   createdAt        DateTime  @default(now())
   updatedAt        DateTime  @updatedAt
 
-  patient Customer @relation(fields: [patientId], references: [id], onDelete: Cascade)
+  patient        Customer              @relation(fields: [patientId], references: [id], onDelete: Cascade)
   // Phase 67 §9.1 item 21.4 — Dental Clinic: Recall Compliance report.
   complianceLogs RecallComplianceLog[]
 
@@ -4227,6 +4385,53 @@ model MemberAttendance {
   @@index([checkInTime])
 }
 
+// 2026-09 — Gym/Studio: machine/exercise progress tracking (reps, weight,
+// sets over time), one row per set logged so the same exercise's numbers can
+// be trended visit-over-visit. Deliberately not folded into ExerciseProgram
+// (that model is a static prescribed-exercise sheet updated rarely, not a
+// per-visit log growing over time) or SessionLog (that only records a
+// session-pack deduction, no set-level numbers at all).
+model WorkoutLog {
+  id           String   @id @default(cuid())
+  customerId   String
+  trainerId    String?
+  exerciseName String
+  machineName  String?
+  weight       Decimal?
+  reps         Int?
+  sets         Int?
+  notes        String?
+  loggedAt     DateTime @default(now())
+  createdAt    DateTime @default(now())
+
+  customer Customer  @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  trainer  Employee? @relation("WorkoutLogTrainer", fields: [trainerId], references: [id], onDelete: SetNull)
+
+  @@index([customerId])
+  @@index([loggedAt])
+}
+
+// 2026-09 — universal visit check-in/check-out log, available to ANY
+// business type via the customer_checkin opt-in module (Settings → Business
+// Features), not tied to a paid Membership the way MemberAttendance is —
+// deliberately separate from MemberAttendance (Gym-only, requires an active
+// Membership row) so a coaching institute, clinic, co-working space, or any
+// other business that just wants a simple visit log for a Customer doesn't
+// need a membership/plan concept at all.
+model CustomerCheckIn {
+  id           String    @id @default(cuid())
+  customerId   String
+  checkInTime  DateTime  @default(now())
+  checkOutTime DateTime?
+  notes        String?
+  createdAt    DateTime  @default(now())
+
+  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+
+  @@index([customerId])
+  @@index([checkInTime])
+}
+
 model BatchClass {
   id                String    @id @default(cuid())
   className         String
@@ -4277,7 +4482,7 @@ model LearnerProfile {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  customer Customer @relation(fields: [customerId], references: [id], onDelete: Cascade)
+  customer         Customer                 @relation(fields: [customerId], references: [id], onDelete: Cascade)
   skillAssessments LearnerSkillAssessment[]
 
   @@index([customerId])
@@ -4292,14 +4497,14 @@ model LearnerProfile {
 // yet is treated as NOT_STARTED for every skill by the read side, not
 // backfilled with empty rows.
 model LearnerSkillAssessment {
-  id             String    @id @default(cuid())
-  customerId     String
-  skillKey       String
-  masteryLevel   String    @default("NOT_STARTED") // NOT_STARTED|LEARNING|MASTERED
-  assessedById   String?
-  notes          String?
-  updatedAt      DateTime  @updatedAt
-  createdAt      DateTime  @default(now())
+  id           String   @id @default(cuid())
+  customerId   String
+  skillKey     String
+  masteryLevel String   @default("NOT_STARTED") // NOT_STARTED|LEARNING|MASTERED
+  assessedById String?
+  notes        String?
+  updatedAt    DateTime @updatedAt
+  createdAt    DateTime @default(now())
 
   learner    LearnerProfile @relation(fields: [customerId], references: [customerId], onDelete: Cascade)
   assessedBy Employee?      @relation("LearnerSkillAssessedBy", fields: [assessedById], references: [id], onDelete: SetNull)
@@ -4457,37 +4662,37 @@ model DrivingTest {
 // ─────────────────────────────────────────────────────────────────────────────
 
 model LegalCase {
-  id                String    @id @default(cuid())
-  caseNumber        String // Court-assigned number
-  caseTitle         String // "Ramesh Sharma vs State"
-  caseType          String    @default("CIVIL") // CIVIL|CRIMINAL|FAMILY|CORPORATE|PROPERTY|ARBITRATION|OTHER
-  courtName         String // "District Court, Lucknow"
-  courtDistrict     String?
-  courtState        String?
-  eCourtId          String? // eCourts case reference for link-out
-  clientId          String
-  advocateId        String?
-  status            String    @default("ACTIVE") // ACTIVE|CLOSED|STAYED|DISPOSED|TRANSFERRED
-  filingDate        DateTime?
-  nextHearingDate   DateTime?
-  opposingPartyName String? // structured, distinct from the free-text caseTitle — feeds the conflict-of-interest check
-  limitationDate    DateTime? // statute-of-limitations / filing deadline, reminders scheduled the same way as hearings
-  feeAgreed         Decimal?
-  feeCollected      Decimal   @default(0)
+  id                 String    @id @default(cuid())
+  caseNumber         String // Court-assigned number
+  caseTitle          String // "Ramesh Sharma vs State"
+  caseType           String    @default("CIVIL") // CIVIL|CRIMINAL|FAMILY|CORPORATE|PROPERTY|ARBITRATION|OTHER
+  courtName          String // "District Court, Lucknow"
+  courtDistrict      String?
+  courtState         String?
+  eCourtId           String? // eCourts case reference for link-out
+  clientId           String
+  advocateId         String?
+  status             String    @default("ACTIVE") // ACTIVE|CLOSED|STAYED|DISPOSED|TRANSFERRED
+  filingDate         DateTime?
+  nextHearingDate    DateTime?
+  opposingPartyName  String? // structured, distinct from the free-text caseTitle — feeds the conflict-of-interest check
+  limitationDate     DateTime? // statute-of-limitations / filing deadline, reminders scheduled the same way as hearings
+  feeAgreed          Decimal?
+  feeCollected       Decimal   @default(0)
   // Phase 68 §9.1 — Lawyer item 3: case-stage tracker. A fixed litigation-
   // lifecycle stage (not the same as `status` above, which is
   // active/closed/stayed — a case can be ACTIVE while moving through
   // several stages). caseStageUpdatedAt is set only when caseStage itself
   // changes, so "days in current stage" (the aging report's own metric) is
   // a plain now-minus-timestamp, no separate history table needed.
-  caseStage         String    @default("FILING") // FILING|WRITTEN_STATEMENT|EVIDENCE|ARGUMENTS|JUDGMENT|APPEAL|EXECUTION
-  caseStageUpdatedAt DateTime @default(now())
-  notes             String?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  caseStage          String    @default("FILING") // FILING|WRITTEN_STATEMENT|EVIDENCE|ARGUMENTS|JUDGMENT|APPEAL|EXECUTION
+  caseStageUpdatedAt DateTime  @default(now())
+  notes              String?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  client        Customer          @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  advocate      Employee?         @relation("CaseAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
+  client        Customer           @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  advocate      Employee?          @relation("CaseAdvocate", fields: [advocateId], references: [id], onDelete: SetNull)
   hearings      Hearing[]
   timeEntries   TimeEntry[]
   disbursements CaseDisbursement[]
@@ -4507,14 +4712,14 @@ model LegalCase {
 // invoice) -- a simple boolean, not a full reimbursement-invoice link,
 // matching this phase's "informational worklist" scope for disbursements.
 model CaseDisbursement {
-  id              String   @id @default(cuid())
-  caseId          String
-  description     String
-  amount          Decimal
-  paidDate        DateTime
-  isBilledToClient Boolean @default(false)
-  notes           String?
-  createdAt       DateTime @default(now())
+  id               String   @id @default(cuid())
+  caseId           String
+  description      String
+  amount           Decimal
+  paidDate         DateTime
+  isBilledToClient Boolean  @default(false)
+  notes            String?
+  createdAt        DateTime @default(now())
 
   case LegalCase @relation(fields: [caseId], references: [id], onDelete: Cascade)
 
@@ -5114,7 +5319,7 @@ model Sprint {
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
-  project   ServiceProject          @relation(fields: [projectId], references: [id], onDelete: Cascade)
+  project   ServiceProject           @relation(fields: [projectId], references: [id], onDelete: Cascade)
   issues    Issue[]
   milestone ServiceProjectMilestone?
 
@@ -5337,11 +5542,11 @@ model ShootBooking {
   createdAt              DateTime  @default(now())
   updatedAt              DateTime  @updatedAt
 
-  client     Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
-  editor     Employee?            @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
-  delivery   DeliveryTracker?
-  checklist  ShootChecklistItem[] // Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist
-  addOnItems ShootAddOnItem[] // Phase 58 §2 — Photo Studio: itemized add-ons
+  client             Customer             @relation(fields: [clientId], references: [id], onDelete: Cascade)
+  editor             Employee?            @relation("ShootEditor", fields: [editorAssignedId], references: [id], onDelete: SetNull)
+  delivery           DeliveryTracker?
+  checklist          ShootChecklistItem[] // Phase 58 §2 — Photo Studio: shoot-day equipment/crew checklist
+  addOnItems         ShootAddOnItem[] // Phase 58 §2 — Photo Studio: itemized add-ons
   equipmentCheckouts EquipmentCheckout[]
 
   @@index([clientId])
@@ -6687,16 +6892,16 @@ model PriceListItem {
 // by both Zoho ("zero-value line items") and Tally ("Actual and Billed
 // quantities... free samples").
 model PricingScheme {
-  id              String    @id @default(cuid())
-  name            String
-  ruleType        String // BUY_X_GET_Y_FREE | SLAB_DISCOUNT
+  id                  String    @id @default(cuid())
+  name                String
+  ruleType            String // BUY_X_GET_Y_FREE | SLAB_DISCOUNT
   // Scoped to a specific product OR a whole category — mutually exclusive by
   // convention, not enforced at the DB level (same looseness this schema
   // already accepts for e.g. PurchaseOrderItem's product-or-service split).
-  productId       String?
-  categoryId      String?
-  buyQuantity     Float? // BUY_X_GET_Y_FREE
-  freeQuantity    Float? // BUY_X_GET_Y_FREE
+  productId           String?
+  categoryId          String?
+  buyQuantity         Float? // BUY_X_GET_Y_FREE
+  freeQuantity        Float? // BUY_X_GET_Y_FREE
   // SLAB_DISCOUNT — JSON array of {minQty:number, discountPercent:number},
   // same "JSON for a variable-shape config" convention as
   // Product.rentalRates.
@@ -6712,9 +6917,9 @@ model PricingScheme {
   // scope limit rather than silently mishandling it.
   startTimeMinutes    Int?
   endTimeMinutes      Int?
-  isActive        Boolean   @default(true)
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime  @updatedAt
+  isActive            Boolean   @default(true)
+  createdAt           DateTime  @default(now())
+  updatedAt           DateTime  @updatedAt
 
   product      Product?         @relation(fields: [productId], references: [id])
   category     ProductCategory? @relation(fields: [categoryId], references: [id])
@@ -7063,7 +7268,7 @@ model BulkListOrder {
 }
 
 model BulkListOrderItem {
-  id              String @id @default(cuid())
+  id              String  @id @default(cuid())
   bulkListOrderId String
   productId       String? // null until matched to a catalog product
   itemLabel       String // the raw supply-list line text, e.g. "Notebook 200pg — 5 units"
@@ -7110,7 +7315,7 @@ model FurnitureBooking {
 }
 
 model FurnitureBookingItem {
-  id                 String @id @default(cuid())
+  id                 String  @id @default(cuid())
   furnitureBookingId String
   productId          String
   quantity           Float
@@ -7119,10 +7324,10 @@ model FurnitureBookingItem {
   // colour/dimension/finish naming conventions vary too much per showroom
   // for a fixed enum, same reasoning as Product.season/recommendedCrop
   // elsewhere in this schema).
-  customFabric     String?
-  customColor      String?
-  customDimensions String?
-  customFinish     String?
+  customFabric       String?
+  customColor        String?
+  customDimensions   String?
+  customFinish       String?
 
   furnitureBooking FurnitureBooking @relation(fields: [furnitureBookingId], references: [id], onDelete: Cascade)
   product          Product          @relation(fields: [productId], references: [id])
@@ -7156,4 +7361,331 @@ model FurnitureTradeIn {
   createdBy User?     @relation("FurnitureTradeInCreatedBy", fields: [createdById], references: [id])
 
   @@index([customerId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-09 §12 — Bakery/Sweet Shop/Catering new vertical
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Custom order booking — a direct structural mirror of FurnitureBooking
+// (advance + balance, a due date instead of deliveryDate, free-text
+// made-to-order customization fields renamed for cakes). Same claim-sentinel
+// invoiceId pattern, same generateXInvoice() shape as
+// furniture-booking.service.ts.
+model CustomOrderBooking {
+  id                   String    @id @default(cuid())
+  bookingNumber        String    @unique
+  customerId           String
+  dueDate              DateTime?
+  deliveryAddress      String?
+  advanceAmount        Float     @default(0)
+  advancePaymentMethod String    @default("CASH") // CASH | UPI | CARD | WALLET
+  status               String    @default("BOOKED") // BOOKED | DELIVERED | CANCELLED
+  invoiceId            String? // unenforced FK, same atomic claim-sentinel convention as FurnitureBooking.invoiceId
+  notes                String?
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  customer  Customer               @relation(fields: [customerId], references: [id])
+  createdBy User?                  @relation("CustomOrderBookingCreatedBy", fields: [createdById], references: [id])
+  items     CustomOrderBookingItem[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([dueDate])
+}
+
+model CustomOrderBookingItem {
+  id                   String  @id @default(cuid())
+  customOrderBookingId String
+  productId            String
+  quantity             Float
+  unitPrice            Float
+  // Made-to-order customization capture, same free-text convention as
+  // FurnitureBookingItem's fabric/colour/dimension/finish — naming varies
+  // too much per bakery for a fixed enum.
+  customFlavor         String?
+  customSize           String?
+  customMessage        String?
+  customDesign         String?
+
+  customOrderBooking CustomOrderBooking @relation(fields: [customOrderBookingId], references: [id], onDelete: Cascade)
+  product            Product            @relation(fields: [productId], references: [id])
+
+  @@index([customOrderBookingId])
+  @@index([productId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-09 §13 — Catering (Bakery/Sweet Shop/Catering vertical, catering_events
+// module). A catering event's menu is agreed up front (CateringEventMenuItem,
+// same "references a real catalog Product" shape as CustomOrderBookingItem
+// above — no separate menu-catalog concept needed), the price quoted per
+// plate (pricePerPlate) is distinct from the final bargained total
+// (finalNegotiatedPrice) so a negotiated discount is always visible rather
+// than silently overwriting the quote — same distinction EventBooking's
+// clientBudget/finalAmount already makes for a different vertical, mirrored
+// here as plain Float per this session's money-field rule (never Decimal —
+// Prisma Decimal can't cross the Electron IPC structured-clone boundary).
+// Multi-day events get one CateringEventDay row per day (meals/snacks served
+// that day); staffing cost is per-role (CateringEventStaff.role), each row
+// snapshotting workerCount × ratePerWorker into amount at write time — same
+// snapshot convention as ProductionLaborEntry.amount. workerName is
+// deliberately NOT captured as an Employee FK: catering staff (cooks,
+// servers, cleaners) are typically hired per-event, not existing payroll
+// employees — this is a costing line, not a payroll integration.
+// ─────────────────────────────────────────────────────────────────────────────
+
+model CateringEvent {
+  id                   String    @id @default(cuid())
+  eventNumber          String    @unique
+  customerId           String
+  eventStartDate       DateTime
+  eventEndDate         DateTime?
+  venueAddress         String?
+  attendeeCount        Int
+  pricePerPlate        Float
+  finalNegotiatedPrice Float? // the bargained total, once agreed — distinct from pricePerPlate × attendeeCount
+  advanceAmount        Float     @default(0)
+  advancePaymentMethod String    @default("CASH") // CASH | UPI | CARD | WALLET
+  status               String    @default("BOOKED") // BOOKED | COMPLETED | CANCELLED
+  invoiceId            String? // unenforced FK, same atomic claim-sentinel convention as every other booking model this session
+  notes                String?
+  createdById          String?
+  createdAt            DateTime  @default(now())
+  updatedAt            DateTime  @updatedAt
+
+  customer  Customer                @relation(fields: [customerId], references: [id])
+  createdBy User?                   @relation("CateringEventCreatedBy", fields: [createdById], references: [id])
+  menuItems CateringEventMenuItem[]
+  days      CateringEventDay[]
+  staff     CateringEventStaff[]
+
+  @@index([customerId])
+  @@index([status])
+  @@index([eventStartDate])
+}
+
+model CateringEventMenuItem {
+  id              String @id @default(cuid())
+  cateringEventId String
+  productId       String
+  quantity        Float
+  unitPrice       Float
+
+  cateringEvent CateringEvent @relation(fields: [cateringEventId], references: [id], onDelete: Cascade)
+  product       Product       @relation(fields: [productId], references: [id])
+
+  @@index([cateringEventId])
+  @@index([productId])
+}
+
+model CateringEventDay {
+  id              String   @id @default(cuid())
+  cateringEventId String
+  serviceDate     DateTime
+  mealsCount      Int      @default(0)
+  snacksCount     Int      @default(0)
+
+  cateringEvent CateringEvent @relation(fields: [cateringEventId], references: [id], onDelete: Cascade)
+
+  @@index([cateringEventId])
+}
+
+model CateringEventStaff {
+  id              String    @id @default(cuid())
+  cateringEventId String
+  role            String // COOK | SERVER | CLEANER | OTHER
+  workerCount     Int
+  ratePerWorker   Float
+  serviceDate     DateTime? // null = a flat rate for the whole event, not tied to one day
+  amount          Float // workerCount × ratePerWorker, snapshotted at write time
+
+  cateringEvent CateringEvent @relation(fields: [cateringEventId], references: [id], onDelete: Cascade)
+
+  @@index([cateringEventId])
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// 2026-09 §12 — Tours & Travels new vertical
+// ─────────────────────────────────────────────────────────────────────────────
+
+// The fleet — cars, tempo travellers, mini-buses, buses. currentOdometer is
+// the running total, advanced by DriverDutyLog.kmDriven on each closed duty.
+// Named TourVehicle, not Vehicle — a plain "Vehicle" model already exists
+// (Phase 37 Logistics & Supply Chain's own delivery fleet for goods
+// shipments, tied to Shipment/DeliveryChallan) — a genuinely different
+// concept (passenger tour fleet vs. own-goods-delivery fleet) that happened
+// to want the same obvious name; caught by a real migration collision
+// (`table "Vehicle" already exists`) during this vertical's own build.
+model TourVehicle {
+  id                 String   @id @default(cuid())
+  registrationNumber String   @unique
+  vehicleType        String // SEDAN | SUV | TEMPO_TRAVELLER | MINI_BUS | BUS
+  seatingCapacity    Int
+  currentOdometer    Float    @default(0)
+  status             String   @default("ACTIVE") // ACTIVE | IN_SERVICE | INACTIVE
+  notes              String?
+  createdAt          DateTime @default(now())
+  updatedAt          DateTime @updatedAt
+
+  tripBookings  TripBooking[]
+  tourDepartures TourDeparture[]
+  serviceLogs   VehicleServiceLog[]
+
+  @@index([status])
+}
+
+// A reusable tour package template (e.g. "4D/3N Kerala Tour").
+model TourPackage {
+  id                  String   @id @default(cuid())
+  packageName         String
+  itineraryDescription String?
+  durationDays        Int
+  defaultTotalSeats   Int
+  farePerSeat         Float
+  isActive            Boolean  @default(true)
+  createdAt           DateTime @default(now())
+
+  departures TourDeparture[]
+
+  @@index([isActive])
+}
+
+// One scheduled occurrence of a TourPackage on a specific date — the actual
+// sellable inventory (seats), same "template vs. instance" split
+// RecurringProfile/Invoice already establishes elsewhere in this schema.
+model TourDeparture {
+  id            String   @id @default(cuid())
+  tourPackageId String
+  departureDate DateTime
+  vehicleId     String?
+  totalSeats    Int
+  seatsBooked   Int      @default(0)
+  status        String   @default("SCHEDULED") // SCHEDULED | COMPLETED | CANCELLED
+  createdAt     DateTime @default(now())
+
+  tourPackage TourPackage   @relation(fields: [tourPackageId], references: [id])
+  vehicle     TourVehicle?  @relation(fields: [vehicleId], references: [id])
+  seatBookings TripBooking[]
+
+  @@index([tourPackageId])
+  @@index([departureDate])
+  @@index([status])
+}
+
+// The core booking record — one bookingType discriminator (CHARTER|SEAT)
+// with nullable fields for whichever branch doesn't apply, same established
+// convention as InvoiceItem's unused jewellery/prescription fields on a
+// non-jewellery line. CHARTER = exclusive vehicle hire (cab/tempo/bus,
+// package rate, advance+balance, mirrors FurnitureBooking's UX). SEAT = a
+// per-seat booking against one TourDeparture, ticketing-style — multiple
+// unrelated customers on the same departure.
+model TripBooking {
+  id                    String    @id @default(cuid())
+  bookingNumber         String    @unique
+  bookingType           String // CHARTER | SEAT
+  customerId            String
+  vehicleId             String? // CHARTER only
+  tourDepartureId       String? // SEAT only
+  seatsBooked           Int? // SEAT only
+  tripStartDate         DateTime
+  tripEndDate           DateTime?
+  pickupLocation        String? // CHARTER only
+  dropLocation          String? // CHARTER only
+  route                 String? // CHARTER only, free text
+  packageRate           Float // snapshotted total at booking time
+  includedKmPerDay      Float? // CHARTER only — the package's included daily km allowance
+  includedHoursPerDay   Float? // CHARTER only — for local full-day hire
+  advanceAmount         Float     @default(0)
+  advancePaymentMethod  String    @default("CASH") // CASH | UPI | CARD | WALLET
+  // Referral/agent commission — mirrors JobOrder's commissionType/
+  // commissionValue shape, but Float (never Decimal — the Phase-70 IPC-
+  // clone bug is a hard rule this session, not a style choice).
+  referringAgentName    String?
+  commissionType        String? // PERCENTAGE | FIXED
+  commissionValue       Float?
+  status                String    @default("BOOKED") // BOOKED | COMPLETED | CANCELLED
+  invoiceId             String? // unenforced FK, same atomic claim-sentinel convention as every other booking model this session
+  notes                 String?
+  createdById           String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+
+  customer      Customer       @relation(fields: [customerId], references: [id])
+  vehicle       TourVehicle?   @relation(fields: [vehicleId], references: [id])
+  tourDeparture TourDeparture? @relation(fields: [tourDepartureId], references: [id])
+  createdBy     User?          @relation("TripBookingCreatedBy", fields: [createdById], references: [id])
+  dutyLogs      DriverDutyLog[]
+
+  @@index([customerId])
+  @@index([vehicleId])
+  @@index([tourDepartureId])
+  @@index([status])
+  @@index([tripStartDate])
+}
+
+// Per-trip driver duty settlement. Start/end odometer + duty times capture
+// what actually happened; the excess-km/hour figures and the driver-cost
+// fields are settled (computed once, stored as the closed record) at
+// duty-close time — a duty log is a closed financial record once ended,
+// same reasoning InvoiceItem snapshots jewellery pricing at sale time
+// rather than re-deriving it later. excessKmCharge/excessHourCharge are
+// customer-facing revenue (folded into the trip's invoice); driverBata/
+// nightHalt/nightDriving are the separate driver-cost side, paid out, not
+// billed as a markup — this is the real market split the Tours & Travels
+// research established (driver Bata ₹300-600/day by vehicle class,
+// night-halt ₹200-500/night, night-driving ₹250-300 for 10pm-6am driving).
+model DriverDutyLog {
+  id                    String    @id @default(cuid())
+  tripBookingId         String
+  driverId              String
+  dutyDate              DateTime
+  startOdometer         Float
+  endOdometer           Float?
+  dutyStartTime         DateTime
+  dutyEndTime           DateTime?
+  driverBataAmount      Float     @default(0)
+  nightHaltCharge       Float     @default(0)
+  nightDrivingAllowance Float     @default(0)
+  // Settled at duty-close (endOdometer/dutyEndTime both set) — null until then.
+  kmDriven              Float?
+  drivingHours          Float?
+  excessKm              Float?
+  excessKmCharge        Float?
+  excessHours           Float?
+  excessHourCharge      Float?
+  notes                 String?
+  createdAt             DateTime  @default(now())
+
+  tripBooking TripBooking @relation(fields: [tripBookingId], references: [id], onDelete: Cascade)
+  driver      Employee    @relation(fields: [driverId], references: [id])
+
+  @@index([tripBookingId])
+  @@index([driverId])
+  @@index([dutyDate])
+}
+
+// Vehicle maintenance log — same shape as every other service-log pattern
+// in this schema (odometer-based due tracking, not just calendar-based).
+model VehicleServiceLog {
+  id               String    @id @default(cuid())
+  vehicleId        String
+  serviceDate      DateTime
+  serviceType      String // SERVICE | REPAIR | MAINTENANCE
+  odometerAtService Float
+  cost             Float     @default(0)
+  nextServiceDueKm  Float?
+  nextServiceDueDate DateTime?
+  vendorName       String?
+  notes            String?
+  createdById      String?
+  createdAt        DateTime  @default(now())
+
+  vehicle   TourVehicle @relation(fields: [vehicleId], references: [id])
+  createdBy User?       @relation("VehicleServiceLogCreatedBy", fields: [createdById], references: [id])
+
+  @@index([vehicleId])
+  @@index([serviceDate])
 }

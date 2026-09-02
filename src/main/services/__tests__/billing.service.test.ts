@@ -7,6 +7,17 @@ vi.mock('../customer-ledger.service', () => ({ customerLedgerService: { addEntry
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
 vi.mock('../notification.service', () => ({ createNotification: vi.fn() }))
 vi.mock('../distributor-credit-risk.service', () => ({ getCustomerCreditRisk: vi.fn() }))
+// 2026-09 §12 — Bakery item 1: only deductIngredients is mocked here —
+// releaseTablesForInvoiceTx keeps its REAL implementation via importActual,
+// since the "Phase 58 §2 restaurant table binding" tests below already
+// assert its real restaurantTable.updateMany call count; a blanket no-op
+// mock would silently break those. deductIngredients is mocked so the new
+// ingredient_tracking-and-no-kot hook can be asserted without needing a
+// real Recipe/RecipeItem DB shape in every unrelated test's mocked db.
+vi.mock('../restaurant.service', async () => {
+  const actual = await vi.importActual<typeof import('../restaurant.service')>('../restaurant.service')
+  return { ...actual, deductIngredients: vi.fn().mockResolvedValue(undefined) }
+})
 
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled } from '../industry-template.service'
@@ -14,6 +25,7 @@ import { inventoryService } from '../inventory.service'
 import { billingService } from '../billing.service'
 import { generateLicenseKey } from '../license.service'
 import { getCustomerCreditRisk } from '../distributor-credit-risk.service'
+import { deductIngredients } from '../restaurant.service'
 
 function makeProduct(overrides: Record<string, unknown> = {}) {
   return {
@@ -1009,6 +1021,52 @@ describe('billingService.createInvoice — Phase 58 §2 restaurant table binding
     expect(res.success).toBe(true)
     // Only the claim call — no release, since paymentStatus stays UNPAID.
     expect(db.restaurantTable.updateMany).toHaveBeenCalledTimes(1)
+  })
+})
+
+describe('billingService.createInvoice — 2026-09 §12 Bakery recipe-based ingredient deduction at sale time', () => {
+  it('calls deductIngredients when ingredient_tracking is on and kot is off (Bakery)', async () => {
+    vi.mocked(isModuleEnabled).mockImplementation(async (key: string) => key === 'ingredient_tracking')
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({ ...basePayload, items: [{ productId: 'prod-1', quantity: 2, unitPrice: 10, discountAmount: 0, taxRate: 0 }] })
+
+    expect(res.success).toBe(true)
+    expect(deductIngredients).toHaveBeenCalledWith([{ productId: 'prod-1', quantity: 2 }], undefined)
+  })
+
+  it('does NOT call deductIngredients when kot is also on (Restaurant) — avoids double-deduction with its own KOT-completion trigger', async () => {
+    vi.mocked(isModuleEnabled).mockImplementation(async (key: string) => key === 'ingredient_tracking' || key === 'kot')
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
+    expect(deductIngredients).not.toHaveBeenCalled()
+  })
+
+  it('does NOT call deductIngredients when ingredient_tracking is off entirely', async () => {
+    vi.mocked(isModuleEnabled).mockResolvedValue(false)
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
+    expect(deductIngredients).not.toHaveBeenCalled()
+  })
+
+  it('never fails the sale even if deductIngredients rejects', async () => {
+    vi.mocked(isModuleEnabled).mockImplementation(async (key: string) => key === 'ingredient_tracking')
+    vi.mocked(deductIngredients).mockRejectedValueOnce(new Error('boom'))
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice(basePayload)
+
+    expect(res.success).toBe(true)
   })
 })
 

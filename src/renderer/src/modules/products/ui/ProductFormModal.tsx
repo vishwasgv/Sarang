@@ -82,6 +82,9 @@ const schema = z.object({
   standardCost: z.coerce.number().min(0).optional(),
   // Phase 48: apparel gender, surfaced only when variant_tracking is on.
   gender: z.enum(['MENS', 'WOMENS', 'UNISEX']).optional(),
+  // 2026-09-02 — Restaurant/Bakery diet-type marker, surfaced only when
+  // food_diet_type is on, same gate shape as gender above.
+  foodType: z.enum(['VEG', 'EGG', 'NON_VEG']).optional(),
   // Phase 67 §9.1 — Clothing: season/collection sell-through report. Free
   // text (a shop's own collection naming), same gate as gender above.
   season: z.string().max(100).optional(),
@@ -145,6 +148,7 @@ interface Product {
   valuationMethod?: string; standardCost?: number | null
   isKit?: boolean
   gender?: string | null
+  foodType?: string | null
   season?: string | null
   recommendedCrop?: string | null
   isPrescriptionRequired?: boolean; isScheduleH1X?: boolean; defaultSupplierId?: string | null
@@ -250,6 +254,8 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   // Fresh-audit build (2026-07-12) — Jewellery business type only.
   const jewelleryEnabled = isModuleEnabled('jewellery_pricing')
   const expiryTrackingEnabled = isModuleEnabled('expiry_tracking')
+  // 2026-09-02 — Restaurant/Bakery diet-type marker (VEG|EGG|NON_VEG).
+  const foodDietTypeEnabled = isModuleEnabled('food_diet_type')
   const isEdit = !!product
   const [imagePickerLoading, setImagePickerLoading] = useState(false)
   const [generatingBarcode, setGeneratingBarcode] = useState(false)
@@ -453,6 +459,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           valuationMethod: (product.valuationMethod as FormValues['valuationMethod']) ?? 'WEIGHTED_AVERAGE',
           standardCost: product.standardCost ?? undefined,
           gender: (product.gender as FormValues['gender']) ?? undefined,
+          foodType: (product.foodType as FormValues['foodType']) ?? undefined,
           season: product.season ?? undefined,
           recommendedCrop: product.recommendedCrop ?? undefined,
           isRentable: product.isRentable ?? false,
@@ -576,7 +583,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                   <button type="button" key={t} onClick={() => field.onChange(t)}
                     className={`flex-1 py-2 text-xs font-medium transition-colors ${field.value === t ? 'bg-brand text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                   >
-                    {t === 'STANDARD' ? 'Physical' : 'Service'}
+                    {t === 'STANDARD' ? 'Goods' : 'Service'}
                   </button>
                 ))}
               </div>
@@ -620,6 +627,16 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           )}
           {isAgriInputs && (
             <Input label="Recommended Crop" placeholder="e.g. Wheat" {...register('recommendedCrop')} error={errors.recommendedCrop?.message} />
+          )}
+          {foodDietTypeEnabled && (
+            <div>
+              <Select label="Diet Type" {...register('foodType')}>
+                <option value="">Not specified</option>
+                <option value="VEG">Veg</option>
+                <option value="EGG">Egg</option>
+                <option value="NON_VEG">Non-Veg</option>
+              </Select>
+            </div>
           )}
         </div>
 

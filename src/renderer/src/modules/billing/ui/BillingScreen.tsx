@@ -244,6 +244,15 @@ export function BillingScreen() {
   // cost centres exist yet, same convention as Price List's own picker.
   const [costCentres, setCostCentres] = useState<{ id: string; name: string }[]>([])
   const [costCentreId, setCostCentreId] = useState('')
+  // 2026-09 — foreign-currency overlay. totalAmount stays base-currency
+  // throughout this whole screen, completely unchanged — this is purely a
+  // documentary conversion shown/printed alongside it, computed here only
+  // for the on-screen preview (the server independently recomputes and
+  // stores foreignTotalAmount itself, this is never trusted as the source
+  // of truth — see billing.service.ts's createInvoice).
+  const [foreignCurrencyEnabled, setForeignCurrencyEnabled] = useState(false)
+  const [foreignCurrencyCode, setForeignCurrencyCode] = useState('')
+  const [foreignExchangeRate, setForeignExchangeRate] = useState('')
   // Phase 66 — Custom Fields. Invoices have no generic edit path (they're
   // effectively immutable post-creation), so this is create-only, always
   // starting empty — unlike Customer/Supplier/Product forms there is no
@@ -1163,7 +1172,10 @@ export function BillingScreen() {
 
   const handleSubmit = useCallback(async () => {
     if (cart.length === 0) { toastError(t('billing.emptyCart'), t('billing.addItem')); return }
-    if (paymentMethod === 'CREDIT' && !customer) { toastError(t('billing.customerRequired'), t('billing.customerRequired')); return }
+    // A dine-in round is only ever sent to the kitchen from here — payment
+    // method is chosen later, at actual table checkout — so the
+    // CREDIT/SPLIT-specific checks below don't apply while tableId is set.
+    if (!tableId && paymentMethod === 'CREDIT' && !customer) { toastError(t('billing.customerRequired'), t('billing.customerRequired')); return }
     // Fresh-audit fix (2026-07-12): a jewellery line's price is resolved
     // async right after being added (an IPC round-trip to read today's
     // MetalRate) — if that lookup failed (no rate configured) or is still
@@ -1179,7 +1191,7 @@ export function BillingScreen() {
     }
 
     // Inline split payment validation
-    if (paymentMethod === 'SPLIT') {
+    if (!tableId && paymentMethod === 'SPLIT') {
       const cash = parseFloat(splitCash) || 0
       const upi = parseFloat(splitUpi) || 0
       if (cash <= 0 && upi <= 0) { toastError(t('billing.splitPayment'), t('billing.splitPayment')); return }
@@ -1192,6 +1204,31 @@ export function BillingScreen() {
 
     setSubmitting(true)
     try {
+      // 2026-09-02 — a dine-in table never bills directly from here anymore
+      // (see restaurant.service.ts's checkoutTable): every round, including
+      // the table's first, is sent to the kitchen as an unbilled KOT and
+      // added to the table's running tab. Billing happens once, later, from
+      // RestaurantTablesScreen's Checkout action. Non-table sales (counter,
+      // takeaway, every other vertical) are completely unaffected below.
+      if (tableId) {
+        const res = await window.api.restaurant.sendTableOrder({
+          tableId,
+          items: cart.map(i => ({
+            productId: i.productId,
+            quantity: i.quantity,
+            unitPrice: i.unitPrice,
+            taxRate: i.taxRate,
+          })),
+        })
+        if (res.success) {
+          toastSuccess(t('billing.orderSentToKitchen'), tableLabel ?? '')
+          navigate('/restaurant/tables')
+        } else {
+          toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        }
+        return
+      }
+
       const res = await window.api.billing.createInvoice({
         customerId: customer?.id,
         paymentMethod,
@@ -1236,7 +1273,9 @@ export function BillingScreen() {
         tableIds: tableId ? [tableId] : undefined,
         jobSiteAccountId: paymentMethod === 'CREDIT' && jobSiteAccountId ? jobSiteAccountId : undefined,
         scheduledDeliveryDate: scheduledDeliveryEnabled && scheduledDeliveryDate ? scheduledDeliveryDate : undefined,
-        deliveryAddress: scheduledDeliveryEnabled && scheduledDeliveryDate && deliveryAddress.trim() ? deliveryAddress.trim() : undefined
+        deliveryAddress: scheduledDeliveryEnabled && scheduledDeliveryDate && deliveryAddress.trim() ? deliveryAddress.trim() : undefined,
+        foreignCurrencyCode: foreignCurrencyEnabled && foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 ? foreignCurrencyCode.trim() : undefined,
+        foreignExchangeRate: foreignCurrencyEnabled && foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 ? Number(foreignExchangeRate) : undefined
       })
 
       if (res.success) {
@@ -1289,7 +1328,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -2211,6 +2250,47 @@ export function BillingScreen() {
             </div>
           )}
 
+          {/* 2026-09 — foreign-currency overlay: bill an overseas customer in
+              their own currency while the underlying totalAmount/reports/GL
+              stay entirely in the business's base currency. */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer mb-2">
+              <input
+                type="checkbox"
+                checked={foreignCurrencyEnabled}
+                onChange={e => { setForeignCurrencyEnabled(e.target.checked); if (!e.target.checked) { setForeignCurrencyCode(''); setForeignExchangeRate('') } }}
+                className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand"
+              />
+              <span className="text-xs font-semibold text-slate-500 uppercase">{t('billing.foreignCurrency.toggle')}</span>
+            </label>
+            {foreignCurrencyEnabled && (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={foreignCurrencyCode}
+                  onChange={e => setForeignCurrencyCode(e.target.value.toUpperCase())}
+                  placeholder={t('billing.foreignCurrency.codePlaceholder')}
+                  maxLength={10}
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={foreignExchangeRate}
+                  onChange={e => setForeignExchangeRate(e.target.value)}
+                  placeholder={t('billing.foreignCurrency.ratePlaceholder')}
+                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+                />
+                {foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 && (
+                  <p className="col-span-2 text-xs text-slate-500">
+                    {t('billing.foreignCurrency.preview', { code: foreignCurrencyCode.trim(), amount: (totals.totalAmount / Number(foreignExchangeRate)).toFixed(2) })}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+
           <CustomFieldsEditor entityType="INVOICE" values={customFieldValues} onChange={setCustomFieldValues} />
 
           {/* Notes */}
@@ -2288,7 +2368,7 @@ export function BillingScreen() {
             disabled={cart.length === 0}
             title="Press F10 or Ctrl+Enter to confirm"
           >
-            {paymentMethod === 'SPLIT' ? `${t('billing.splitPayment')} — ${formatCurrency(totals.totalAmount)}` : paymentMethod === 'CREDIT' ? t('billing.creditInvoice') : `${t('billing.confirmSale')} — ${formatCurrency(totals.totalAmount)}`}
+            {tableId ? `${t('billing.sendToKitchen')} — ${formatCurrency(totals.totalAmount)}` : paymentMethod === 'SPLIT' ? `${t('billing.splitPayment')} — ${formatCurrency(totals.totalAmount)}` : paymentMethod === 'CREDIT' ? t('billing.creditInvoice') : `${t('billing.confirmSale')} — ${formatCurrency(totals.totalAmount)}`}
             {!submitting && cart.length > 0 && <span className="ms-2 text-xs opacity-70">[F10]</span>}
           </Button>
 

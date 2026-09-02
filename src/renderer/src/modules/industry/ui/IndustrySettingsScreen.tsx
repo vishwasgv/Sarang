@@ -3,7 +3,7 @@ import { motion } from 'framer-motion'
 import {
   UtensilsCrossed, ShoppingBag, Hammer, Truck, CheckCircle2, RefreshCw, AlertTriangle, Pill, Smartphone, Shirt, Footprints, Factory, Briefcase, Wrench, UserCheck, Tractor, Droplet, CalendarClock, Gem,
   PawPrint, Stethoscope, HeartPulse, Smile, Activity, Microscope, Sparkles, Dumbbell, Car, Scale, Calculator, FileText, Compass, HardHat, Home, UserCog, Megaphone, Code2, Camera, PartyPopper, GraduationCap, CarFront, Scissors, Bug, Users, Hotel,
-  Zap, Droplets, PenTool, Armchair,
+  Zap, Droplets, PenTool, Armchair, ShoppingCart, Cake, Bus,
 } from 'lucide-react'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
@@ -163,6 +163,30 @@ const TEMPLATES: Template[] = [
     icon: <Armchair size={22} />,
     modules: ['variant_tracking', 'serial_tracking', 'warranty_tracking', 'credit_limit_enforcement', 'returns', 'deposit_booking', 'trade_in_exchange'],
     moduleLabels: ['Variant Tracking', 'Serial Tracking', 'Warranty Management', 'Credit Limit Enforcement', 'Returns Workflow', 'Deposit Booking', 'Old-Furniture Trade-In'],
+  },
+  {
+    type: 'GROCERY',
+    label: 'Grocery / Kirana Store',
+    description: 'Batch/expiry tracking for short-shelf-life goods, running "khata" credit for regulars with an auto-reminder, MRP compliance, and loose/weight-billing for grains and pulses.',
+    icon: <ShoppingCart size={22} />,
+    modules: ['batch_tracking', 'expiry_tracking', 'credit_limit_enforcement', 'outstanding_analytics'],
+    moduleLabels: ['Batch Tracking', 'Expiry Tracking', 'Credit Limit Enforcement', 'Outstanding Analytics'],
+  },
+  {
+    type: 'BAKERY',
+    label: 'Bakery / Sweet Shop',
+    description: 'Recipe-based ingredient deduction at sale time, custom cake/order booking with an advance, catering bulk orders, and short-shelf-life batch/expiry tracking.',
+    icon: <Cake size={22} />,
+    modules: ['recipes', 'ingredient_tracking', 'batch_tracking', 'expiry_tracking', 'bulk_list_order', 'custom_order_booking'],
+    moduleLabels: ['Recipes', 'Ingredient Tracking', 'Batch Tracking', 'Expiry Tracking', 'Bulk-List Orders', 'Custom Order Booking'],
+  },
+  {
+    type: 'TOURS_TRAVELS',
+    label: 'Tours & Travels',
+    description: 'Cab/tempo/bus fleet with a booking calendar, vehicle charter or seat-in-coach tour package booking, driver duty log with excess-km/hour settlement, and vehicle service tracking.',
+    icon: <Bus size={22} />,
+    modules: ['vehicle_fleet', 'tour_packages', 'trip_charter_booking', 'driver_duty_settlement', 'credit_limit_enforcement', 'outstanding_analytics'],
+    moduleLabels: ['Vehicle Fleet', 'Tour Packages', 'Trip Charter Booking', 'Driver Duty Settlement', 'Credit Limit Enforcement', 'Outstanding Analytics'],
   },
   {
     type: 'MANUFACTURING',

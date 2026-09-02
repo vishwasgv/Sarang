@@ -72,6 +72,14 @@ Si un cliente o proveedor no tiene número de teléfono registrado, el botón de
 
 Abrir WhatsApp de esta manera inicia WhatsApp Desktop si está instalado, o WhatsApp Web en su navegador en caso contrario. Abrir Correo inicia la aplicación configurada como predeterminada en su computadora — si no hay ninguna configurada, Windows le pedirá elegir una; esto es normal.
 
+## Facturación y liquidación en moneda extranjera
+
+Si vende a clientes que pagan en moneda extranjera — una venta de exportación, un cliente en el extranjero — marque **Bill in foreign currency** al crear la factura. Introduzca el código de moneda de tres letras (p. ej. `USD`) y el tipo de cambio en el momento de la facturación (p. ej. `83.25`); una vista previa en vivo muestra el total de la factura convertido a ese tipo de cambio. La factura en sí sigue totalizándose e imprimiéndose normalmente en su moneda local — la cifra en moneda extranjera es una línea de referencia adicional, tanto en pantalla como en el documento impreso (`≈ USD 1,200.00 @ 83.25`), no un segundo juego de cuentas.
+
+Los tipos de cambio varían entre el día en que emite la factura y el día en que realmente le pagan, por lo que **liquidar** una factura en moneda extranjera es un paso propio. Abra la factura y haga clic en **Record Payment**: como tiene moneda extranjera, aparece un interruptor **Settle in {code} (records the actual amount received and any exchange-rate gain/loss)**. Actívelo, introduzca el importe que realmente recibió en moneda extranjera y el tipo de cambio del día de la liquidación (que puede diferir del tipo al que se emitió la factura), y confirme. Sarang lo convierte a su moneda local, liquida la factura por completo y registra automáticamente la diferencia entre el valor de la factura al tipo original y su valor al tipo de liquidación como un asiento de **Ganancia** o **Pérdida Cambiaria Realizada** (vea el capítulo Libro Mayor y Asientos de Diario) — nunca tiene que calcular ni registrar ese ajuste manualmente.
+
+El mismo flujo de facturación y liquidación en moneda extranjera está disponible en el lado de compras para las Facturas de proveedor que registre — vea el capítulo Facturas y Pagos Realizados.
+
 ## Notas sobre impuestos y redondeo
 
 Cada total de factura se redondea a la unidad de moneda entera más cercana, con la diferencia de redondeo mostrada como su propia línea para que las cuentas siempre cuadren de forma visible. Bajo el modelo de impuesto GST, el impuesto se imprime como CGST+SGST para una venta dentro del mismo estado, o como una única línea de IGST para una venta entre estados, según la casilla marcada al crear la factura.

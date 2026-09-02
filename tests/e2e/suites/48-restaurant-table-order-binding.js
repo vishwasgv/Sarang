@@ -71,35 +71,73 @@ async function run() {
       r.log('table-badge-shown-on-billing-header', await badge.count() > 0)
     })
 
-    await r.step('add-items-and-confirm-sale-via-real-ui', async () => {
+    await r.step('add-items-and-send-to-kitchen-via-real-ui', async () => {
+      // 2026-09-02 — a dine-in table never bills directly from BillingScreen
+      // anymore (see restaurant.service.ts's checkoutTable): every round,
+      // including the table's first, is sent to the kitchen as an unbilled
+      // KOT and stays on the table's running tab until an explicit later
+      // checkout. So the table stays occupied-but-unbilled here regardless
+      // of payment method — no need to pick CREDIT/a customer at this step
+      // any more (that now happens at checkout, tested below).
       const searchInput = page.locator('input[placeholder="Search products…"]')
       await searchInput.fill('E2E RestBind Butter Chicken')
       await page.waitForTimeout(700)
       await page.locator('button:has-text("E2E RestBind Butter Chicken")').first().click()
       await page.waitForTimeout(400)
 
-      // CREDIT (pay later), not the default CASH — a CASH sale pays in full
-      // in this same call and releases its table(s) immediately (see the
-      // "releases the table immediately for a CASH order" behavior), which
-      // would make the later Merge/Record-Payment steps below meaningless.
-      // A real "running tab" that keeps the table occupied needs an order
-      // that starts genuinely unpaid.
-      const custSearch = page.locator('input[placeholder="Search customers…"]')
-      await custSearch.fill('E2E RestBind Customer')
-      await page.waitForTimeout(700)
-      await page.locator('button:has-text("E2E RestBind Customer")').first().click()
-      await page.waitForTimeout(300)
-      await page.getByRole('button', { name: 'Credit (Pay Later)', exact: true }).click()
-      await page.waitForTimeout(300)
-
       await page.keyboard.press('F10')
       await page.waitForTimeout(1500)
 
-      const match = page.url().match(/#\/billing\/([a-zA-Z0-9]+)/)
-      r.log('invoice-created-navigated-to-detail', !!match, page.url())
-      if (match) invoiceId = match[1]
+      r.log('sent-to-kitchen-navigated-to-tables', page.url().includes('/restaurant/tables'), page.url())
       r.log('billing-no-crash-after-submit', !(await h.hasErrorBoundary(page)))
       await h.shot(page, 'restbind-order-started')
+    })
+
+    await r.step('verify-table-has-open-unbilled-kot-via-api', async () => {
+      const tablesRes = await page.evaluate(async () => window.api.restaurant.listTables())
+      const tableX = (tablesRes?.data || []).find((t) => t.id === tableXId)
+      r.log('table-x-occupied-not-yet-billed', tableX?.status === 'OCCUPIED' && tableX?.currentInvoiceId === null, JSON.stringify({ currentInvoiceId: tableX?.currentInvoiceId, status: tableX?.status }))
+      r.log('table-x-has-open-kot', (tableX?.kots || []).length > 0, JSON.stringify(tableX?.kots))
+
+      const summaryRes = await page.evaluate(async (id) => window.api.restaurant.getTableOrderSummary({ tableId: id }), tableXId)
+      const found = (summaryRes?.data?.aggregated || []).find((i) => i.productId === productAId)
+      r.log('table-order-summary-shows-item', found?.quantity === 1, JSON.stringify(summaryRes?.data))
+    })
+
+    await r.step('table-card-shows-view-order-not-view-bill-yet', async () => {
+      await h.gotoHash(page, '#/restaurant/tables')
+      await page.waitForTimeout(700)
+      const cardX = page.locator('div.rounded-xl', { hasText: 'E2E RestBind X' }).first()
+      r.log('view-order-button-present', await cardX.getByRole('button', { name: 'View Order' }).count() > 0)
+      r.log('view-bill-button-not-yet-present', await cardX.getByRole('button', { name: 'View Bill' }).count() === 0)
+      r.log('start-order-still-present-for-another-round', await cardX.getByRole('button', { name: 'Start Order' }).count() > 0)
+    })
+
+    await r.step('checkout-table-x-via-real-ui', async () => {
+      // The one place table X actually gets billed — CREDIT (pay later),
+      // matching a customer picked in the checkout modal, so the table
+      // stays genuinely unpaid afterward for the Merge/Record-Payment steps
+      // below to mean anything (a CASH checkout would settle and release it
+      // immediately).
+      const cardX = page.locator('div.rounded-xl', { hasText: 'E2E RestBind X' }).first()
+      await cardX.getByRole('button', { name: 'View Order' }).click()
+      await page.waitForTimeout(600)
+      const modal = h.topModal(page)
+      await modal.locator('select').selectOption('CREDIT')
+      await page.waitForTimeout(300)
+      const custSearch = modal.locator('input[placeholder*="Search" i], input[placeholder*="customer" i]').first()
+      await custSearch.fill('E2E RestBind Customer')
+      await page.waitForTimeout(700)
+      await modal.locator('button:has-text("E2E RestBind Customer")').first().click()
+      await page.waitForTimeout(300)
+      await modal.getByRole('button', { name: 'Checkout' }).click()
+      await page.waitForTimeout(1500)
+
+      const match = page.url().match(/#\/billing\/([a-zA-Z0-9]+)/)
+      r.log('checkout-created-invoice-navigated-to-detail', !!match, page.url())
+      if (match) invoiceId = match[1]
+      r.log('checkout-no-crash', !(await h.hasErrorBoundary(page)))
+      await h.shot(page, 'restbind-table-checked-out')
     })
 
     await r.step('verify-invoice-tableid-and-table-claimed-via-api', async () => {
@@ -307,8 +345,23 @@ async function run() {
       for (const id of invIds) {
         try { db.prepare('DELETE FROM "Invoice" WHERE id = ?').run(id) } catch { /* noop */ }
       }
-      for (const id of prodIds) { try { db.prepare('DELETE FROM Product WHERE id = ?').run(id) } catch { /* noop */ } }
       const tableIds = db.prepare("SELECT id FROM RestaurantTable WHERE tableNumber LIKE 'E2E-B%'").all().map((row) => row.id)
+      // 2026-09-02 — a table's first round now goes through the deferred
+      // (send-to-kitchen, no invoice yet) path too — if this suite throws
+      // before its own checkout step completes (e.g. a bad locator), that
+      // KOT never gets an invoiceId at all, so the invoice-driven sweep
+      // above can never find or delete it (no Invoice to join through).
+      // Sweep any leftover KOT directly by tableId as a second, independent
+      // path — same convention as 51-real-concurrency-stress.js's own
+      // rawCleanup — before the RestaurantTable rows themselves go away.
+      for (const tid of tableIds) {
+        const kotIds = db.prepare('SELECT id FROM KOT WHERE tableId = ?').all(tid).map((row) => row.id)
+        for (const kid of kotIds) {
+          try { db.prepare('DELETE FROM KOTItem WHERE kotId = ?').run(kid) } catch { /* noop */ }
+        }
+        try { db.prepare('DELETE FROM KOT WHERE tableId = ?').run(tid) } catch { /* noop */ }
+      }
+      for (const id of prodIds) { try { db.prepare('DELETE FROM Product WHERE id = ?').run(id) } catch { /* noop */ } }
       for (const id of tableIds) { try { db.prepare('DELETE FROM RestaurantTable WHERE id = ?').run(id) } catch { /* noop */ } }
       const rsvIds = db.prepare("SELECT id FROM Reservation WHERE customerName LIKE 'E2E RestBind%'").all().map((row) => row.id)
       for (const id of rsvIds) { try { db.prepare('DELETE FROM Reservation WHERE id = ?').run(id) } catch { /* noop */ } }

@@ -3,15 +3,24 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../inventory.service', () => ({ inventoryService: { adjustStock: vi.fn() } }))
+vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
 
 import { getPrisma } from '../../database/db'
 import { inventoryService } from '../inventory.service'
-import { updateKOTStatus, assignWaiter, mergeTableIntoInvoice, releaseTablesForInvoiceTx, getDishIngredientCostsBatch, getRecipeImpliedIngredientUsageBatch } from '../restaurant.service'
+import { billingService } from '../billing.service'
+import {
+  updateKOTStatus, assignWaiter, mergeTableIntoInvoice, releaseTablesForInvoiceTx,
+  getDishIngredientCostsBatch, getRecipeImpliedIngredientUsageBatch,
+  createKOT, checkoutTable, getTableOrderSummary, performDailyClose,
+} from '../restaurant.service'
 
+// 2026-09-02 — a KOT's items now come from its own KOTItem rows (created
+// the moment an order is accepted, independent of any Invoice) rather
+// than invoice.items.
 function makeKot(status: string) {
   return {
     id: 'kot-1', status, tableId: null,
-    invoice: { items: [{ productId: 'prod-1', quantity: 2, product: {} }] }
+    items: [{ productId: 'prod-1', quantity: 2, unitPriceSnapshot: 100, taxRateSnapshot: 0 }]
   }
 }
 
@@ -84,7 +93,7 @@ describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient de
     const db = makeMockDb('PENDING')
     db.kOT.findUnique = vi.fn().mockResolvedValue({
       id: 'kot-1', status: 'PENDING', tableId: null,
-      invoice: { items: [{ productId: 'thali-kit', quantity: 1, product: { isKit: true } }] }
+      items: [{ productId: 'thali-kit', quantity: 1, unitPriceSnapshot: 200, taxRateSnapshot: 0 }]
     })
     // thali-kit explodes into 2 dishes: 1x Dal, 1x Rice
     db.kitComponent.findMany = vi.fn().mockResolvedValue([
@@ -121,7 +130,7 @@ describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient de
     db.kOT.findUnique = vi.fn().mockResolvedValue({
       id: 'kot-1', status: 'PENDING', tableId: null,
       // 3 thali kits sold, each needs 2x Dal per the kit's own component ratio
-      invoice: { items: [{ productId: 'thali-kit', quantity: 3, product: { isKit: true } }] }
+      items: [{ productId: 'thali-kit', quantity: 3, unitPriceSnapshot: 200, taxRateSnapshot: 0 }]
     })
     db.kitComponent.findMany = vi.fn().mockResolvedValue([{ componentProductId: 'dal', quantity: 2 }])
     db.recipe.findUnique = vi.fn().mockResolvedValue({ recipeName: 'Dal', items: [{ ingredientProductId: 'lentils', quantity: 0.2 }] })
@@ -149,6 +158,154 @@ describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient de
     expect(inventoryService.adjustStock).toHaveBeenCalledWith(
       expect.objectContaining({ productId: 'chicken', quantity: 49.5 }), undefined
     )
+  })
+})
+
+// 2026-09-02 — real bug found+fixed: a customer scanning the table QR
+// again mid-meal used to land on a SEPARATE invoice from their first
+// order. Fixed by deferring invoicing entirely: createKOT never touches
+// Invoice, and checkoutTable is the ONE place a table's running,
+// un-invoiced tab finally gets billed — this suite is the money-math
+// coverage for that consolidation.
+describe('restaurant.service.createKOT', () => {
+  it('creates a KOT with its own KOTItem rows and no invoiceId when none is passed (table-tab path)', async () => {
+    const createSpy = vi.fn().mockResolvedValue({ id: 'kot-1' })
+    const db: Record<string, any> = {
+      kOT: { create: createSpy },
+      restaurantTable: { update: vi.fn().mockResolvedValue({}) },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(db)),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createKOT([{ productId: 'prod-1', quantity: 2, unitPrice: 100, taxRate: 5 }], 'table-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(createSpy).toHaveBeenCalledWith({
+      data: {
+        invoiceId: null, tableId: 'table-1', status: 'PENDING',
+        items: { create: [{ productId: 'prod-1', quantity: 2, unitPriceSnapshot: 100, taxRateSnapshot: 5 }] }
+      }
+    })
+  })
+
+  it('rejects a KOT with zero items', async () => {
+    const res = await createKOT([], 'table-1')
+    expect(res.success).toBe(false)
+  })
+
+  it('links immediately to an existing invoice when one is explicitly passed (counter/takeaway "Send to Kitchen" path)', async () => {
+    const createSpy = vi.fn().mockResolvedValue({ id: 'kot-1' })
+    const db: Record<string, any> = {
+      invoice: { findUnique: vi.fn().mockResolvedValue({ id: 'inv-1' }) },
+      kOT: { findUnique: vi.fn().mockResolvedValue(null), create: createSpy },
+      restaurantTable: { update: vi.fn().mockResolvedValue({}) },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(db)),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createKOT([{ productId: 'prod-1', quantity: 1, unitPrice: 50 }], undefined, 'user-1', 'inv-1')
+
+    expect(res.success).toBe(true)
+    expect(createSpy.mock.calls[0][0].data.invoiceId).toBe('inv-1')
+  })
+})
+
+describe('restaurant.service.checkoutTable', () => {
+  function makeCheckoutDb(openKots: Array<{ id: string; status?: string; items: Array<{ productId: string; quantity: number; unitPriceSnapshot: number; taxRateSnapshot: number }> }>) {
+    const db: Record<string, any> = {
+      restaurantTable: { findUnique: vi.fn().mockResolvedValue({ id: 'table-1' }), update: vi.fn().mockResolvedValue({}) },
+      kOT: { findMany: vi.fn().mockResolvedValue(openKots), updateMany: vi.fn().mockResolvedValue({ count: openKots.length }) },
+    }
+    return db
+  }
+
+  it('rejects checkout when the table has nothing un-invoiced to bill', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeCheckoutDb([]) as never)
+    const res = await checkoutTable('table-1', { paymentMethod: 'CASH' })
+    expect(res.success).toBe(false)
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('sums the same product ordered across two separate rounds into one invoice line, not two', async () => {
+    const db = makeCheckoutDb([
+      { id: 'kot-1', items: [{ productId: 'prod-1', quantity: 2, unitPriceSnapshot: 100, taxRateSnapshot: 5 }] },
+      { id: 'kot-2', items: [{ productId: 'prod-1', quantity: 1, unitPriceSnapshot: 100, taxRateSnapshot: 5 }] },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    const res = await checkoutTable('table-1', { paymentMethod: 'CASH' }, 'user-1')
+
+    expect(res.success).toBe(true)
+    const invoiceArg = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(invoiceArg.items).toEqual([{ productId: 'prod-1', quantity: 3, unitPrice: 100, discountAmount: 0, taxRate: 5 }])
+    expect(invoiceArg.tableIds).toEqual(['table-1'])
+  })
+
+  it('bills two different rounds as two separate line items when the products differ', async () => {
+    const db = makeCheckoutDb([
+      { id: 'kot-1', items: [{ productId: 'prod-1', quantity: 1, unitPriceSnapshot: 100, taxRateSnapshot: 5 }] },
+      { id: 'kot-2', items: [{ productId: 'prod-2', quantity: 2, unitPriceSnapshot: 50, taxRateSnapshot: 0 }] },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    await checkoutTable('table-1', { paymentMethod: 'CASH' })
+
+    const invoiceArg = vi.mocked(billingService.createInvoice).mock.calls[0][0]
+    expect(invoiceArg.items).toEqual([
+      { productId: 'prod-1', quantity: 1, unitPrice: 100, discountAmount: 0, taxRate: 5 },
+      { productId: 'prod-2', quantity: 2, unitPrice: 50, discountAmount: 0, taxRate: 0 },
+    ])
+  })
+
+  it('back-fills invoiceId on every included KOT and clears checkoutRequestedAt', async () => {
+    const db = makeCheckoutDb([
+      { id: 'kot-1', items: [{ productId: 'prod-1', quantity: 1, unitPriceSnapshot: 100, taxRateSnapshot: 0 }] },
+      { id: 'kot-2', items: [{ productId: 'prod-2', quantity: 1, unitPriceSnapshot: 50, taxRateSnapshot: 0 }] },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    await checkoutTable('table-1', { paymentMethod: 'CASH' })
+
+    expect(db.kOT.updateMany).toHaveBeenCalledWith({ where: { id: { in: ['kot-1', 'kot-2'] } }, data: { invoiceId: 'inv-1' } })
+    expect(db.restaurantTable.update).toHaveBeenCalledWith({ where: { id: 'table-1' }, data: { checkoutRequestedAt: null } })
+  })
+
+  it('does not fail the whole checkout when createInvoice fails, and reports its error', async () => {
+    const db = makeCheckoutDb([{ id: 'kot-1', items: [{ productId: 'prod-1', quantity: 1, unitPriceSnapshot: 100, taxRateSnapshot: 0 }] }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'INV-002', message: 'Insufficient stock' } } as never)
+
+    const res = await checkoutTable('table-1', { paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('INV-002')
+    expect(db.kOT.updateMany).not.toHaveBeenCalled()
+  })
+})
+
+describe('restaurant.service.getTableOrderSummary', () => {
+  it('aggregates un-invoiced rounds and computes an estimated total', async () => {
+    const db: Record<string, any> = {
+      kOT: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'kot-1', status: 'IN_PROGRESS', createdAt: new Date('2026-09-02T10:00:00'), items: [{ productId: 'prod-1', quantity: 2, unitPriceSnapshot: 100, taxRateSnapshot: 0 }] },
+          { id: 'kot-2', status: 'PENDING', createdAt: new Date('2026-09-02T10:15:00'), items: [{ productId: 'prod-1', quantity: 1, unitPriceSnapshot: 100, taxRateSnapshot: 0 }] },
+        ]),
+      },
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-1', productName: 'Paneer Tikka' }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getTableOrderSummary('table-1')
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { aggregated: Array<{ productId: string; quantity: number }>; estimatedTotal: number; rounds: unknown[] } }).data
+    expect(data.aggregated).toEqual([{ productId: 'prod-1', productName: 'Paneer Tikka', quantity: 3, unitPrice: 100 }])
+    expect(data.estimatedTotal).toBe(300)
+    expect(data.rounds).toHaveLength(2)
   })
 })
 
@@ -245,7 +402,7 @@ describe('restaurant.service.releaseTablesForInvoiceTx', () => {
 })
 
 describe('restaurant.service.mergeTableIntoInvoice', () => {
-  function makeMergeDb(overrides: { invoice?: Record<string, unknown> | null; claimCount?: number } = {}) {
+  function makeMergeDb(overrides: { invoice?: Record<string, unknown> | null; claimCount?: number; hasOpenKot?: boolean } = {}) {
     const invoice = overrides.invoice === undefined ? { id: 'inv-1', status: 'ACTIVE', paymentStatus: 'UNPAID' } : overrides.invoice
     return {
       invoice: { findUnique: vi.fn().mockResolvedValue(invoice) },
@@ -253,6 +410,11 @@ describe('restaurant.service.mergeTableIntoInvoice', () => {
         updateMany: vi.fn().mockResolvedValue({ count: overrides.claimCount ?? 1 }),
         findUnique: vi.fn().mockResolvedValue({ id: 'table-6', currentInvoiceId: 'inv-1', status: 'OCCUPIED' }),
       },
+      // 2026-09-02 — a table with no currentInvoiceId can now still have
+      // its own open, un-invoiced KOTs (deferred-billing model); default to
+      // "none" here so the pre-existing tests below still exercise the
+      // claim/invoice-state logic they were written for.
+      kOT: { findFirst: vi.fn().mockResolvedValue(overrides.hasOpenKot ? { id: 'kot-open' } : null) },
     }
   }
 
@@ -307,6 +469,17 @@ describe('restaurant.service.mergeTableIntoInvoice', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('RST-042')
+  })
+
+  it('rejects merging a table that has its own open, un-invoiced KOT — would silently orphan it', async () => {
+    const db = makeMergeDb({ hasOpenKot: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await mergeTableIntoInvoice('table-6', 'inv-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('RST-044')
+    expect(db.restaurantTable.updateMany).not.toHaveBeenCalled()
   })
 })
 
@@ -461,5 +634,90 @@ describe('restaurant.service.getRecipeImpliedIngredientUsageBatch', () => {
     ])
 
     expect(result.get('ing-shared')).toBe(11) // (2*3) + (5*1)
+  })
+})
+
+// 2026-09-02 — real bug found during the post-deferred-billing audit pass:
+// under the old model, every OCCUPIED table always had a currentInvoiceId
+// by construction, so force-freeing every occupied table at end of day was
+// safe. Under the new model a table is routinely OCCUPIED with real,
+// un-invoiced KOTs sitting on it — force-freeing it would let the NEXT
+// party seated there get checkoutTable()'d into the PREVIOUS party's
+// unpaid food (its query only cares about tableId + invoiceId:null, not
+// "which seating"). performDailyClose must skip any table with an open KOT.
+describe('restaurant.service.performDailyClose', () => {
+  function makeSummaryDb(overrides: Record<string, any> = {}) {
+    return {
+      kOT: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
+      invoice: { findMany: vi.fn().mockResolvedValue([]) },
+      restaurantTable: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}), count: vi.fn().mockResolvedValue(0) },
+      ...overrides,
+    }
+  }
+
+  it('frees a table with no open KOTs, clearing status and currentInvoiceId', async () => {
+    const db = makeSummaryDb({
+      restaurantTable: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'table-1' }]),
+        update: vi.fn().mockResolvedValue({}),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      kOT: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await performDailyClose('user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.restaurantTable.update).toHaveBeenCalledWith({ where: { id: 'table-1' }, data: { status: 'AVAILABLE', currentInvoiceId: null } })
+    expect((res as { data: { skippedUnsettledTables: number } }).data.skippedUnsettledTables).toBe(0)
+  })
+
+  it('skips freeing a table that still has an open, un-invoiced KOT — and reports it', async () => {
+    const db = makeSummaryDb({
+      restaurantTable: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'table-1' }, { id: 'table-2' }]),
+        update: vi.fn().mockResolvedValue({}),
+        count: vi.fn().mockResolvedValue(1),
+      },
+      kOT: {
+        findFirst: vi.fn().mockImplementation(({ where }: { where: { tableId: string } }) =>
+          Promise.resolve(where.tableId === 'table-1' ? { id: 'kot-open' } : null)
+        ),
+        findMany: vi.fn().mockResolvedValue([]),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await performDailyClose('user-1')
+
+    expect(res.success).toBe(true)
+    // table-1 has an open KOT — never freed.
+    expect(db.restaurantTable.update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'table-1' } }))
+    // table-2 has no open KOT — freed normally.
+    expect(db.restaurantTable.update).toHaveBeenCalledWith({ where: { id: 'table-2' }, data: { status: 'AVAILABLE', currentInvoiceId: null } })
+    expect((res as { data: { skippedUnsettledTables: number } }).data.skippedUnsettledTables).toBe(1)
+  })
+
+  it('an open but CANCELLED-only KOT does not block freeing the table', async () => {
+    // The hasOpenKot check itself filters status != CANCELLED — this just
+    // confirms the query the mock stands in for is exercised correctly
+    // when the real DB would return no rows for a cancelled-only table.
+    const db = makeSummaryDb({
+      restaurantTable: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'table-1' }]),
+        update: vi.fn().mockResolvedValue({}),
+        count: vi.fn().mockResolvedValue(0),
+      },
+      kOT: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await performDailyClose()
+
+    expect(db.kOT.findFirst).toHaveBeenCalledWith(expect.objectContaining({
+      where: { tableId: 'table-1', invoiceId: null, status: { not: 'CANCELLED' } },
+    }))
+    expect(db.restaurantTable.update).toHaveBeenCalledWith({ where: { id: 'table-1' }, data: { status: 'AVAILABLE', currentInvoiceId: null } })
   })
 })

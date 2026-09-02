@@ -222,6 +222,9 @@ async function seedBusinessDefaults(tx: Parameters<Parameters<ReturnType<typeof 
     { settingKey: 'decimal_places', settingValue: '2', settingType: 'NUMBER' },
     { settingKey: 'thermal_print_size', settingValue: '80mm', settingType: 'STRING' },
     { settingKey: 'password_min_length', settingValue: '10', settingType: 'NUMBER' },
+    // 2026-09-02 — Password Policy: expiry/history, both 0 = disabled by default.
+    { settingKey: 'password_expiry_days', settingValue: '0', settingType: 'NUMBER' },
+    { settingKey: 'password_history_count', settingValue: '0', settingType: 'NUMBER' },
     { settingKey: 'session_timeout_minutes', settingValue: '30', settingType: 'NUMBER' },
     { settingKey: 'auto_backup_interval_days', settingValue: '7', settingType: 'NUMBER' },
     { settingKey: 'backup_retention_count', settingValue: '10', settingType: 'NUMBER' },

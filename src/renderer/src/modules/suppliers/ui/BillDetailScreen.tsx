@@ -30,6 +30,8 @@ interface Bill {
   billDate: string; dueDate?: string | null; notes?: string | null
   subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number
   paidAmount: number; balanceAmount: number
+  // 2026-09 — foreign-currency overlay, see Bill's own schema comment.
+  foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null; foreignTotalAmount?: number | null
   supplier: Supplier
   purchaseOrder?: { id: string; poNumber: string } | null
   items: BillItem[]
@@ -72,6 +74,11 @@ export function BillDetailScreen() {
   const [tdsSection, setTdsSection] = useState('')
   const [tdsAmount, setTdsAmount] = useState('')
   const [tdsSuggestion, setTdsSuggestion] = useState<{ applicable: boolean; suggestedAmount: number; thresholdAmount: number; ratePercent: number } | null>(null)
+  // 2026-09 — foreign-currency settlement, same alternate-mode pattern as InvoiceDetailScreen's own.
+  const [fxSettlementMode, setFxSettlementMode] = useState(false)
+  const [fxForeignAmount, setFxForeignAmount] = useState('')
+  const [fxSettlementRate, setFxSettlementRate] = useState('')
+  const [fxSettling, setFxSettling] = useState(false)
 
   const [voidOpen, setVoidOpen] = useState(false)
   const [voidReason, setVoidReason] = useState('')
@@ -152,6 +159,35 @@ export function BillDetailScreen() {
     } catch {
       toastError('Failed', 'Could not record payment.')
     } finally { setRecordingPayment(false) }
+  }
+
+  async function handleFxSettlement() {
+    if (!bill) return
+    const foreignAmount = parseFloat(fxForeignAmount)
+    const settlementRate = parseFloat(fxSettlementRate)
+    if (!foreignAmount || foreignAmount <= 0) { toastError('Invalid Amount', 'Enter the foreign-currency amount paid.'); return }
+    if (!settlementRate || settlementRate <= 0) { toastError('Invalid Rate', 'Enter the exchange rate at settlement.'); return }
+    setFxSettling(true)
+    try {
+      const res = await window.api.supplierPayments.recordForeignCurrencySettlement({
+        billId: bill.id,
+        foreignAmount,
+        settlementRate,
+        paymentMethod,
+        referenceNumber: paymentRef.trim() || undefined,
+        remarks: paymentRemarks.trim() || undefined
+      })
+      if (res.success) {
+        toastSuccess('Bill Settled', `${bill.foreignCurrencyCode} ${foreignAmount.toFixed(2)} recorded for ${bill.billNumber}.`)
+        setShowPaymentModal(false)
+        setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
+        loadBill()
+      } else {
+        toastError('Failed', res.error?.message ?? 'Could not settle bill.')
+      }
+    } catch {
+      toastError('Failed', 'Could not settle bill.')
+    } finally { setFxSettling(false) }
   }
 
   async function handleReverse() {
@@ -415,10 +451,23 @@ export function BillDetailScreen() {
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
-            <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('bills.recordPayment')}</h2>
+            <h2 className="text-lg font-bold text-dark dark:text-slate-100">{fxSettlementMode ? t('bills.foreignCurrency.settleTitle') : t('bills.recordPayment')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('bills.billNumber')}: <strong className="dark:text-slate-200">{bill.billNumber}</strong> · {t('bills.outstanding')}: <strong className="text-danger">{formatCurrency(bill.balanceAmount)}</strong>
+              {bill.foreignCurrencyCode && bill.foreignTotalAmount != null && (
+                <> · {bill.foreignCurrencyCode} {bill.foreignTotalAmount.toFixed(2)}</>
+              )}
             </p>
+
+            {/* 2026-09 — only offered when this bill was actually raised in a
+                foreign currency. */}
+            {bill.foreignCurrencyCode && (
+              <label className="flex items-center gap-2 cursor-pointer -mt-2">
+                <input type="checkbox" checked={fxSettlementMode} onChange={e => setFxSettlementMode(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
+                <span className="text-xs font-medium text-slate-600 dark:text-slate-300">{t('bills.foreignCurrency.settleToggle', { code: bill.foreignCurrencyCode })}</span>
+              </label>
+            )}
+
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.paymentMethod')}</label>
               <div className="grid grid-cols-3 gap-2">
@@ -430,15 +479,37 @@ export function BillDetailScreen() {
                 ))}
               </div>
             </div>
-            <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.amountLabel', { symbol: currSym })}</label>
-              <input type="number" min="0.01" step="0.01" value={paymentAmount}
-                onChange={e => setPaymentAmount(e.target.value)}
-                placeholder={bill.balanceAmount.toFixed(2)}
-                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
-              />
-            </div>
-            <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2.5">
+            {fxSettlementMode ? (
+              <div className="grid grid-cols-2 gap-2">
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.foreignCurrency.amountPaid', { code: bill.foreignCurrencyCode })}</label>
+                  <input type="number" min="0.01" step="0.01" value={fxForeignAmount}
+                    onChange={e => setFxForeignAmount(e.target.value)}
+                    placeholder={bill.foreignTotalAmount?.toFixed(2)}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <div>
+                  <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.foreignCurrency.settlementRate')}</label>
+                  <input type="number" min="0.0001" step="0.0001" value={fxSettlementRate}
+                    onChange={e => setFxSettlementRate(e.target.value)}
+                    placeholder={bill.foreignExchangeRate != null ? String(bill.foreignExchangeRate) : undefined}
+                    className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                  />
+                </div>
+                <p className="col-span-2 text-xs text-slate-400">{t('bills.foreignCurrency.settleNote')}</p>
+              </div>
+            ) : (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.amountLabel', { symbol: currSym })}</label>
+                <input type="number" min="0.01" step="0.01" value={paymentAmount}
+                  onChange={e => setPaymentAmount(e.target.value)}
+                  placeholder={bill.balanceAmount.toFixed(2)}
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+              </div>
+            )}
+            {!fxSettlementMode && <div className="rounded-xl border border-slate-200 dark:border-slate-700 p-3 space-y-2.5">
               <label className="flex items-center gap-2 cursor-pointer">
                 <input type="checkbox" checked={deductTds} onChange={e => handleToggleDeductTds(e.target.checked)} className="w-4 h-4 rounded accent-brand" />
                 <span className="text-sm font-medium text-dark dark:text-slate-100">{t('bills.deductTds')}</span>
@@ -462,7 +533,7 @@ export function BillDetailScreen() {
                   </div>
                 </div>
               )}
-            </div>
+            </div>}
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.referenceNumber')}</label>
               <input value={paymentRef} onChange={e => setPaymentRef(e.target.value)} placeholder={t('bills.referencePlaceholder')}
@@ -474,8 +545,12 @@ export function BillDetailScreen() {
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
             <div className="flex gap-3 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => { setShowPaymentModal(false); setDeductTds(false); setTdsSection(''); setTdsAmount('') }}>{t('common.cancel')}</Button>
-              <Button className="flex-1" onClick={handleRecordPayment} loading={recordingPayment}>{t('bills.recordPayment')}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setShowPaymentModal(false); setDeductTds(false); setTdsSection(''); setTdsAmount(''); setFxSettlementMode(false) }}>{t('common.cancel')}</Button>
+              {fxSettlementMode ? (
+                <Button className="flex-1" onClick={handleFxSettlement} loading={fxSettling}>{t('bills.foreignCurrency.settleAction')}</Button>
+              ) : (
+                <Button className="flex-1" onClick={handleRecordPayment} loading={recordingPayment}>{t('bills.recordPayment')}</Button>
+              )}
             </div>
           </div>
         </div>

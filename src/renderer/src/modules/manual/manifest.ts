@@ -105,6 +105,9 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'business/plumbing', group: 'business', title: 'Plumbing', businessTypes: ['PLUMBING'] },
   { slug: 'business/stationery', group: 'business', title: 'Stationery', businessTypes: ['STATIONERY'] },
   { slug: 'business/furniture', group: 'business', title: 'Furniture', businessTypes: ['FURNITURE'] },
+  { slug: 'business/grocery', group: 'business', title: 'Grocery', businessTypes: ['GROCERY'] },
+  { slug: 'business/bakery', group: 'business', title: 'Bakery', businessTypes: ['BAKERY'] },
+  { slug: 'business/tours-travels', group: 'business', title: 'Tours & Travels', businessTypes: ['TOURS_TRAVELS'] },
 ]
 
 export const MANUAL_LOCALES = ['en', 'hi', 'mr', 'gu', 'kn', 'ta', 'te', 'ml', 'es', 'fr', 'ar', 'pt', 'id'] as const

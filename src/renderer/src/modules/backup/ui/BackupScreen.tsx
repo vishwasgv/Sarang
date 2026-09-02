@@ -3,7 +3,7 @@ import { useTranslation } from 'react-i18next'
 import {
   HardDrive, ShieldCheck, ShieldAlert, ShieldX, RefreshCw,
   Plus, RotateCcw, Trash2, CheckCircle2, XCircle, Clock,
-  AlertTriangle, Database, Info
+  AlertTriangle, Database, Info, FileUp
 } from 'lucide-react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { api } from '@renderer/services/ipc-client'
@@ -71,6 +71,8 @@ export function BackupScreen() {
   const [restoreTarget, setRestoreTarget] = useState<BackupRecord | null>(null)
   const [restoreMeta, setRestoreMeta] = useState<BackupMetadata | null>(null)
   const [restoring, setRestoring] = useState(false)
+  const [fileRestoreTarget, setFileRestoreTarget] = useState<string | null>(null)
+  const [pickingFile, setPickingFile] = useState(false)
   const [deleteTarget, setDeleteTarget] = useState<BackupRecord | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [toast, setToast] = useState<{ msg: string; ok: boolean } | null>(null)
@@ -268,6 +270,40 @@ export function BackupScreen() {
     }
   }
 
+  async function handlePickBackupFile() {
+    setPickingFile(true)
+    try {
+      const res = await api.backup.pickBackupFile()
+      if (res.success) {
+        if (res.data) setFileRestoreTarget(res.data.filePath)
+        // res.data === null just means the user cancelled the picker
+      } else {
+        showToast((res.error as { message?: string })?.message ?? t('backup.pickBackupFileFailed'), false)
+      }
+    } catch {
+      showToast(t('backup.pickBackupFileFailed'), false)
+    } finally {
+      setPickingFile(false)
+    }
+  }
+
+  async function handleRestoreFromFile() {
+    if (!fileRestoreTarget) return
+    setRestoring(true)
+    const filePath = fileRestoreTarget
+    setFileRestoreTarget(null)
+    try {
+      const res = await api.backup.restoreFromFile({ filePath })
+      if (!res.success) {
+        showToast((res.error as { message?: string })?.message ?? t('backup.restoreFailed'), false)
+      }
+    } catch {
+      showToast(t('backup.restoreFailed'), false)
+    } finally {
+      setRestoring(false)
+    }
+  }
+
   async function handleDelete(backup: BackupRecord) {
     setDeletingId(backup.id)
     try {
@@ -303,6 +339,13 @@ export function BackupScreen() {
             <RefreshCw size={13} className={cn(loading && 'animate-spin')} />
             {t('common.refresh')}
           </button>
+          {canRestore && (
+            <button onClick={handlePickBackupFile} disabled={pickingFile || restoring}
+              className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors disabled:opacity-50">
+              <FileUp size={14} />
+              {t('backup.restoreFromFile')}
+            </button>
+          )}
           {canCreate && (
             <button onClick={handleCreate} disabled={creating || loading}
               className="flex items-center gap-2 px-4 py-1.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
@@ -646,6 +689,60 @@ export function BackupScreen() {
                   {t('common.cancel')}
                 </button>
                 <button onClick={handleRestore}
+                  className="flex-1 py-2 rounded-xl bg-warning text-white text-sm font-semibold hover:bg-warning/90 transition-colors">
+                  {t('backup.restoreAndRestart')}
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ─── Restore-From-File Confirmation Modal ───────────────────── */}
+      <AnimatePresence>
+        {fileRestoreTarget && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/40 z-50 flex items-center justify-center p-4"
+            onClick={e => { if (e.target === e.currentTarget) setFileRestoreTarget(null) }}
+          >
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <div className="w-10 h-10 rounded-xl bg-warning/10 flex items-center justify-center shrink-0">
+                  <AlertTriangle size={18} className="text-warning" />
+                </div>
+                <div>
+                  <h3 className="text-base font-semibold text-dark dark:text-slate-100">{t('backup.restoreFromFileConfirmTitle')}</h3>
+                  <p className="text-xs text-slate-400">{t('backup.restoreWarningShort')}</p>
+                </div>
+              </div>
+
+              <div className="bg-slate-50 dark:bg-slate-800 rounded-xl p-4 mb-4 text-xs">
+                <p className="text-slate-400 mb-1">{t('backup.metaBackupDate')}</p>
+                <p className="font-mono font-medium text-dark dark:text-slate-100 break-all">{fileRestoreTarget.split(/[\\/]/).pop()}</p>
+              </div>
+
+              <div className="bg-warning/10 border border-warning/20 rounded-xl p-3 mb-5 text-xs text-warning flex gap-2">
+                <AlertTriangle size={13} className="shrink-0 mt-0.5" />
+                <div>
+                  <p className="font-semibold mb-0.5">{t('backup.warningHeading')}</p>
+                  <p>{t('backup.restoreWarningFull')}</p>
+                </div>
+              </div>
+
+              <div className="flex gap-3">
+                <button onClick={() => setFileRestoreTarget(null)}
+                  className="flex-1 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm font-medium text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors">
+                  {t('common.cancel')}
+                </button>
+                <button onClick={handleRestoreFromFile}
                   className="flex-1 py-2 rounded-xl bg-warning text-white text-sm font-semibold hover:bg-warning/90 transition-colors">
                   {t('backup.restoreAndRestart')}
                 </button>

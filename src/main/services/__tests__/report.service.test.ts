@@ -10052,3 +10052,519 @@ describe('reportService.generateDeliveryInstallationScheduleReport', () => {
     expect(result.summary).toEqual({ totalBookings: 1, deliveredCount: 0, pendingCount: 1 })
   })
 })
+
+// ─── Deferred-item closure 2026-09-01 — Electrical item 4 + Plumbing items 3/4 ───
+
+describe('reportService.generateSpecWiseFastMoversReport', () => {
+  it('groups sales by ProductVariant.size (used as the spec value) and ranks by units sold', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { quantity: 10, lineTotal: 1000, variantId: 'var-40w', invoice: { invoiceType: 'SALE' }, product: { productName: 'LED Bulb' } },
+          { quantity: 3, lineTotal: 300, variantId: 'var-60w', invoice: { invoiceType: 'SALE' }, product: { productName: 'LED Bulb' } },
+        ]),
+      },
+      productVariant: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'var-40w', size: '40W' },
+          { id: 'var-60w', size: '60W' },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSpecWiseFastMoversReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary.topSpec).toBe('40W')
+    expect(result.rows[0]).toMatchObject({ spec: '40W', unitsSold: 10, revenue: 1000 })
+    expect(result.summary.totalUnitsSold).toBe(13)
+  })
+
+  it('excludes lines with no variant (no spec to attribute the sale to)', async () => {
+    const db = {
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSpecWiseFastMoversReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalUnitsSold: 0, topSpec: null })
+  })
+})
+
+describe('reportService.generateFittingCrossSellReport', () => {
+  it('flags an invoice where the anchor product sold without its historically-usual partner', async () => {
+    const historicalInvoices = [
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+    ]
+    const rangeInvoices = [
+      { id: 'inv-miss', invoiceNumber: 'INV-002', invoiceDate: new Date('2024-05-05'), items: [{ productId: 'tap-1', product: { productName: 'Tap' } }] },
+    ]
+    const db = {
+      invoice: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce(historicalInvoices)
+          .mockResolvedValueOnce(rangeInvoices),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFittingCrossSellReport({ dateFrom: '2024-05-01', dateTo: '2024-05-31' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({
+      invoiceNumber: 'INV-002', anchorProductName: 'Tap', expectedPartnerProductName: 'Teflon Tape', pairStrengthPercent: 100
+    })
+    expect(result.summary.missedOpportunities).toBe(1)
+  })
+
+  it('does not flag a basket that already contains the usual partner', async () => {
+    const historicalInvoices = [
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+    ]
+    const rangeInvoices = [
+      { id: 'inv-full', invoiceNumber: 'INV-003', invoiceDate: new Date('2024-05-06'), items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'tape-1', product: { productName: 'Teflon Tape' } }] },
+    ]
+    const db = {
+      invoice: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce(historicalInvoices)
+          .mockResolvedValueOnce(rangeInvoices),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFittingCrossSellReport({ dateFrom: '2024-05-01', dateTo: '2024-05-31' })
+
+    expect(result.rows).toEqual([])
+  })
+
+  it('ignores a weak/thin pairing (below the minimum shared-basket and strength thresholds)', async () => {
+    const historicalInvoices = [
+      { items: [{ productId: 'tap-1', product: { productName: 'Tap' } }, { productId: 'random-1', product: { productName: 'Random Item' } }] },
+    ]
+    const rangeInvoices = [
+      { id: 'inv-thin', invoiceNumber: 'INV-004', invoiceDate: new Date('2024-05-07'), items: [{ productId: 'tap-1', product: { productName: 'Tap' } }] },
+    ]
+    const db = {
+      invoice: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce(historicalInvoices)
+          .mockResolvedValueOnce(rangeInvoices),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateFittingCrossSellReport({ dateFrom: '2024-05-01', dateTo: '2024-05-31' })
+
+    expect(result.rows).toEqual([]) // only 1 shared basket — below CROSS_SELL_MIN_SHARED_BASKETS
+  })
+})
+
+describe('reportService.generateMaterialSalesMixReport', () => {
+  it('groups sales by Category (used as the material name) and computes revenue share', async () => {
+    const db = {
+      productCategory: { findMany: vi.fn().mockResolvedValue([{ id: 'cat-pvc', name: 'PVC' }, { id: 'cat-copper', name: 'Copper' }]) },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { quantity: 20, lineTotal: 800, invoice: { invoiceType: 'SALE' }, product: { categoryId: 'cat-pvc' } },
+          { quantity: 5, lineTotal: 200, invoice: { invoiceType: 'SALE' }, product: { categoryId: 'cat-copper' } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMaterialSalesMixReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.summary).toMatchObject({ totalRevenue: 1000, materialCount: 2 })
+    expect(result.rows[0]).toMatchObject({ materialName: 'PVC', revenue: 800, revenueSharePercent: 80 })
+  })
+
+  it('returns an honest empty result when no categories exist', async () => {
+    const db = { productCategory: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMaterialSalesMixReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalRevenue: 0, materialCount: 0 })
+  })
+})
+
+// ─── 2026-09 §12 — Grocery/Kirana Store new vertical ───────────────────────
+
+describe('reportService.generateMrpViolationReport', () => {
+  it('flags a sale line where unitPrice exceeded the product mrp', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { unitPrice: 120, quantity: 2, invoice: { id: 'inv-1', invoiceNumber: 'INV-001', invoiceDate: new Date('2024-01-05') }, product: { id: 'prod-1', productName: 'Cooking Oil 1L', sku: 'OIL1', mrp: 110 } },
+          { unitPrice: 100, quantity: 1, invoice: { id: 'inv-2', invoiceNumber: 'INV-002', invoiceDate: new Date('2024-01-06') }, product: { id: 'prod-2', productName: 'Rice 5kg', sku: 'RICE5', mrp: 250 } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMrpViolationReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toHaveLength(1)
+    expect(result.rows[0]).toMatchObject({ productName: 'Cooking Oil 1L', unitPrice: 120, mrp: 110, excessPerUnit: 10 })
+    expect(result.summary).toEqual({ violationCount: 1, totalExcessCollected: 20 })
+  })
+
+  it('returns no violations when every sale is at or below mrp', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { unitPrice: 100, quantity: 1, invoice: { id: 'inv-1', invoiceNumber: 'INV-001', invoiceDate: new Date('2024-01-05') }, product: { id: 'prod-1', productName: 'Rice 5kg', sku: 'RICE5', mrp: 100 } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateMrpViolationReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ violationCount: 0, totalExcessCollected: 0 })
+  })
+})
+
+describe('reportService.generatePerishableWastageReport', () => {
+  it('sums EXPIRY movements into wastage qty and value using the product costPrice', async () => {
+    const db = {
+      inventoryMovement: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', quantity: -5, product: { productName: 'Milk 1L', sku: 'MILK1', costPrice: 40 } },
+          { productId: 'prod-1', quantity: -3, product: { productName: 'Milk 1L', sku: 'MILK1', costPrice: 40 } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePerishableWastageReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ productName: 'Milk 1L', expiredWastageQty: 8, expiredWastageValue: 320 })
+    expect(result.summary).toEqual({ totalWastageQty: 8, totalWastageValue: 320 })
+  })
+
+  it('returns an honest empty result when no EXPIRY movements exist', async () => {
+    const db = { inventoryMovement: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePerishableWastageReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalWastageQty: 0, totalWastageValue: 0 })
+  })
+})
+
+describe('reportService.generateDailyRestockAlertReport', () => {
+  it('flags a product with fewer than the watchlist threshold days of stock remaining', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          // 14 units sold over the 14-day lookback = 1/day velocity
+          { productId: 'prod-1', quantity: 14, invoice: { invoiceType: 'SALE' }, product: { productName: 'Bread', sku: 'BRD1' } },
+        ]),
+      },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'prod-1', quantity: 2 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDailyRestockAlertReport()
+
+    expect(result.rows[0]).toMatchObject({ productName: 'Bread', currentStock: 2, dailyVelocity: 1, daysOfStockRemaining: 2 })
+    expect(result.summary).toEqual({ urgentCount: 1, watchlistCount: 1 })
+  })
+
+  it('excludes a product with plenty of stock relative to its velocity', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', quantity: 1, invoice: { invoiceType: 'SALE' }, product: { productName: 'Salt', sku: 'SALT1' } },
+        ]),
+      },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'prod-1', quantity: 500 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDailyRestockAlertReport()
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ urgentCount: 0, watchlistCount: 0 })
+  })
+})
+
+describe('reportService.generateLooseVsPackagedMixReport', () => {
+  it('splits revenue between loose (sellByWeight) and packaged lines', async () => {
+    const db = {
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { quantity: 2, lineTotal: 200, invoice: { invoiceType: 'SALE' }, product: { sellByWeight: true } },
+          { quantity: 1, lineTotal: 50, invoice: { invoiceType: 'SALE' }, product: { sellByWeight: false } },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateLooseVsPackagedMixReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([
+      { label: 'Loose', unitsSold: 2, revenue: 200 },
+      { label: 'Packaged', unitsSold: 1, revenue: 50 },
+    ])
+    expect(result.summary).toEqual({ totalRevenue: 250, loosePercent: 80 })
+  })
+})
+
+describe('reportService.generateKhataRiskReport', () => {
+  it('tiers a customer HIGH when the 90+ day bucket is non-zero and the balance is rising', async () => {
+    const now = new Date()
+    const oldDebit = new Date(now.getTime() - 120 * 86400000) // 120 days old — falls in days90plus
+    const recentDebit = new Date(now.getTime() - 5 * 86400000) // within the last 30 days — pushes outstanding up since the 30-day-ago snapshot
+    const db = {
+      customer: { findMany: vi.fn().mockResolvedValue([{ id: 'cust-1', customerName: 'Ramesh Kirana Regular', phone: '9876543210' }]) },
+      customerLedger: {
+        findMany: vi.fn().mockResolvedValue([
+          { customerId: 'cust-1', debitAmount: 1000, creditAmount: 0, createdAt: oldDebit },
+          { customerId: 'cust-1', debitAmount: 500, creditAmount: 0, createdAt: recentDebit },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateKhataRiskReport()
+
+    expect(result.rows[0]).toMatchObject({ customerName: 'Ramesh Kirana Regular', outstanding: 1500, trend: 'RISING', riskTier: 'HIGH' })
+    expect(result.summary).toEqual({ highRiskCount: 1, mediumRiskCount: 0 })
+  })
+
+  it('tiers a customer LOW when the balance is old, small, and unchanged over the last 30 days', async () => {
+    const now = new Date()
+    // 45 days old — predates the 30-day trend cutoff on both sides, so the
+    // "as of 30 days ago" snapshot already includes it: outstanding is
+    // identical then and now (STABLE), and it lands in days31to60, not the
+    // days61to90/90plus buckets that would otherwise force MEDIUM/HIGH.
+    const oldDebit = new Date(now.getTime() - 45 * 86400000)
+    const db = {
+      customer: { findMany: vi.fn().mockResolvedValue([{ id: 'cust-2', customerName: 'Occasional Buyer', phone: '9876500000' }]) },
+      customerLedger: {
+        findMany: vi.fn().mockResolvedValue([
+          { customerId: 'cust-2', debitAmount: 200, creditAmount: 0, createdAt: oldDebit },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateKhataRiskReport()
+
+    expect(result.rows[0]).toMatchObject({ customerName: 'Occasional Buyer', trend: 'STABLE', riskTier: 'LOW' })
+  })
+
+  it('excludes a customer with zero outstanding balance entirely', async () => {
+    const db = {
+      customer: { findMany: vi.fn().mockResolvedValue([{ id: 'cust-3', customerName: 'Fully Paid', phone: '9876511111' }]) },
+      customerLedger: { findMany: vi.fn().mockResolvedValue([{ customerId: 'cust-3', debitAmount: 100, creditAmount: 100, createdAt: new Date() }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateKhataRiskReport()
+
+    expect(result.rows).toEqual([])
+  })
+})
+
+describe('reportService.generatePreOrderProductionSheetReport', () => {
+  it('combines booked-order qty with same-day-of-week demand forecast, then expands through the recipe into ingredients', async () => {
+    // 2024-06-08 is a Saturday; 2024-06-01 and 2024-05-25 are the two
+    // preceding Saturdays within the 90-day lookback.
+    const db = {
+      customOrderBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'cob-1', items: [{ productId: 'prod-1', quantity: 5 }] },
+        ]),
+      },
+      invoiceItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', quantity: 4, invoice: { invoiceType: 'SALE', invoiceDate: new Date('2024-06-01') }, product: { productName: 'Chocolate Cake' } },
+          { productId: 'prod-1', quantity: 6, invoice: { invoiceType: 'SALE', invoiceDate: new Date('2024-05-25') }, product: { productName: 'Chocolate Cake' } },
+        ]),
+      },
+      product: { findMany: vi.fn().mockResolvedValue([]) },
+      recipe: {
+        findMany: vi.fn().mockResolvedValue([
+          { productId: 'prod-1', items: [{ ingredientProductId: 'ing-1', quantity: 0.2, ingredient: { productName: 'Flour', unit: 'kg' } }] },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePreOrderProductionSheetReport({ date: '2024-06-08' })
+
+    expect(result.products[0]).toMatchObject({ productName: 'Chocolate Cake', qtyFromOrders: 5, qtyFromDemandForecast: 5, totalQtyNeeded: 10 })
+    expect(result.ingredients[0]).toMatchObject({ ingredientName: 'Flour', unit: 'kg', totalQtyNeeded: 2 })
+    expect(result.summary).toEqual({ orderCount: 1, totalProductQty: 10 })
+  })
+
+  it('falls back to Product.productName when a product only appears via a booking, never in demand history', async () => {
+    const db = {
+      customOrderBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'cob-1', items: [{ productId: 'prod-2', quantity: 3 }] },
+        ]),
+      },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([]) },
+      product: { findMany: vi.fn().mockResolvedValue([{ id: 'prod-2', productName: 'Vanilla Cupcake' }]) },
+      recipe: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePreOrderProductionSheetReport({ date: '2024-06-08' })
+
+    expect(result.products[0]).toMatchObject({ productName: 'Vanilla Cupcake', qtyFromOrders: 3, qtyFromDemandForecast: 0, totalQtyNeeded: 3 })
+    expect(result.ingredients).toEqual([])
+  })
+
+  it('returns an honest empty result when there are no bookings and no history', async () => {
+    const db = {
+      customOrderBooking: { findMany: vi.fn().mockResolvedValue([]) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([]) },
+      recipe: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePreOrderProductionSheetReport({ date: '2024-06-08' })
+
+    expect(result.products).toEqual([])
+    expect(result.ingredients).toEqual([])
+    expect(result.summary).toEqual({ orderCount: 0, totalProductQty: 0 })
+  })
+})
+
+// ─── 2026-09 §12 — Tours & Travels new vertical ────────────────────────────
+
+describe('reportService.generateVehicleServiceDueReport', () => {
+  it('flags a vehicle due-soon once currentOdometer is within the threshold of its own nextServiceDueKm', async () => {
+    const db = {
+      tourVehicle: { findMany: vi.fn().mockResolvedValue([{ id: 'v-1', registrationNumber: 'KA01AB1234', vehicleType: 'SEDAN', currentOdometer: 9600 }]) },
+      vehicleServiceLog: {
+        findMany: vi.fn().mockResolvedValue([
+          { vehicleId: 'v-1', serviceDate: new Date('2024-01-01'), odometerAtService: 5000, nextServiceDueKm: 10000, nextServiceDueDate: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVehicleServiceDueReport()
+
+    expect(result.rows[0]).toMatchObject({ registrationNumber: 'KA01AB1234', kmSinceLastService: 4600, isDueSoon: true })
+    expect(result.summary).toEqual({ dueSoonCount: 1, totalFleetKm: 9600 })
+  })
+
+  it('falls back to the default 10,000km interval when no explicit nextServiceDueKm was ever recorded', async () => {
+    const db = {
+      tourVehicle: { findMany: vi.fn().mockResolvedValue([{ id: 'v-1', registrationNumber: 'KA01AB1234', vehicleType: 'SEDAN', currentOdometer: 9600 }]) },
+      vehicleServiceLog: {
+        findMany: vi.fn().mockResolvedValue([
+          { vehicleId: 'v-1', serviceDate: new Date('2024-01-01'), odometerAtService: 0, nextServiceDueKm: null, nextServiceDueDate: null },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVehicleServiceDueReport()
+
+    expect(result.rows[0].isDueSoon).toBe(true) // 9600km since last service, within 500km of the 10,000km default
+  })
+
+  it('does not flag a vehicle with no service history and low mileage', async () => {
+    const db = {
+      tourVehicle: { findMany: vi.fn().mockResolvedValue([{ id: 'v-1', registrationNumber: 'KA01AB1234', vehicleType: 'SEDAN', currentOdometer: 500 }]) },
+      vehicleServiceLog: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateVehicleServiceDueReport()
+
+    expect(result.rows[0]).toMatchObject({ kmSinceLastService: null, lastServiceDate: null, isDueSoon: false })
+  })
+})
+
+describe('reportService.generateCommissionByAgentReport', () => {
+  it('computes PERCENTAGE commission from packageRate and FIXED commission verbatim, grouped by agent', async () => {
+    const db = {
+      tripBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          { referringAgentName: 'Ramesh Travels', packageRate: 10000, commissionType: 'PERCENTAGE', commissionValue: 10 },
+          { referringAgentName: 'Ramesh Travels', packageRate: 5000, commissionType: 'FIXED', commissionValue: 300 },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCommissionByAgentReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ agentName: 'Ramesh Travels', bookingCount: 2, totalPackageRevenue: 15000, totalCommission: 1300 }) // (10000*0.10) + 300
+    expect(result.summary).toEqual({ totalCommission: 1300, agentCount: 1 })
+  })
+
+  it('returns an honest empty result when no booking has a referring agent', async () => {
+    const db = { tripBooking: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCommissionByAgentReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows).toEqual([])
+    expect(result.summary).toEqual({ totalCommission: 0, agentCount: 0 })
+  })
+})
+
+describe('reportService.generateTripProfitabilityReport', () => {
+  it('computes net profit as revenue minus driver cost, fuel estimate, maintenance estimate, and commission', async () => {
+    const db = {
+      tripBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'trp-1', bookingNumber: 'TRP-00001', vehicleId: 'v-1', packageRate: 5000, commissionType: null, commissionValue: null,
+            customer: { customerName: 'Ramesh' },
+            dutyLogs: [{ excessKmCharge: 600, excessHourCharge: 0, driverBataAmount: 400, nightHaltCharge: 0, nightDrivingAllowance: 0, kmDriven: 350 }],
+            vehicle: { id: 'v-1', currentOdometer: 10000 },
+          },
+        ]),
+      },
+      vehicleServiceLog: { findMany: vi.fn().mockResolvedValue([{ vehicleId: 'v-1', cost: 2000 }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTripProfitabilityReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    // revenue = 5000 + 600 = 5600; driverCost = 400; fuel = 350*8 = 2800;
+    // maintenance = 350 * (2000/10000) = 70; commission = 0
+    // netProfit = 5600 - 400 - 2800 - 70 - 0 = 2330
+    expect(result.rows[0]).toMatchObject({ bookingNumber: 'TRP-00001', revenue: 5600, driverCost: 400, fuelCostEstimate: 2800, maintenanceCostEstimate: 70, commission: 0, netProfit: 2330 })
+  })
+
+  it('folds a PERCENTAGE commission into the net-profit deduction', async () => {
+    const db = {
+      tripBooking: {
+        findMany: vi.fn().mockResolvedValue([
+          {
+            id: 'trp-2', bookingNumber: 'TRP-00002', vehicleId: null, packageRate: 10000, commissionType: 'PERCENTAGE', commissionValue: 10,
+            customer: { customerName: 'Priya' }, dutyLogs: [], vehicle: null,
+          },
+        ]),
+      },
+      vehicleServiceLog: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTripProfitabilityReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows[0]).toMatchObject({ revenue: 10000, commission: 1000, netProfit: 9000 })
+  })
+})

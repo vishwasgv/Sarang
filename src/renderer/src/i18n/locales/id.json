@@ -56,7 +56,13 @@
     "manual": "Manual",
     "costCentres": "Pusat Biaya",
     "budgets": "Anggaran",
-    "serviceCombos": "Service Combos"
+    "serviceCombos": "Service Combos",
+    "checkIn": "Check-in",
+    "customOrders": "Pesanan Khusus",
+    "cateringEvents": "Acara Katering",
+    "vehicleFleet": "Armada Kendaraan",
+    "tourPackages": "Paket Wisata",
+    "tripBookings": "Pemesanan Perjalanan"
   },
   "common": {
     "save": "Simpan",
@@ -182,7 +188,9 @@
     "resetPassword": "Atur Ulang Kata Sandi",
     "passwordResetSuccessTitle": "Kata Sandi Diatur Ulang",
     "passwordResetSuccessBody": "Kata sandi Anda telah diubah. Sekarang Anda dapat masuk dengan kata sandi baru.",
-    "backToSignIn": "Kembali ke Halaman Masuk"
+    "backToSignIn": "Kembali ke Halaman Masuk",
+    "passwordExpiredTitle": "Kata sandi Anda telah kedaluwarsa",
+    "passwordExpiredBody": "Silakan ubah segera dari Settings → Security."
   },
   "dashboard": {
     "title": "Dasbor",
@@ -364,6 +372,8 @@
     "invoiceCreated": "Faktur Dibuat",
     "creditInvoice": "Buat Faktur Kredit",
     "confirmSale": "Konfirmasi Penjualan",
+    "sendToKitchen": "Kirim ke Dapur",
+    "orderSentToKitchen": "Pesanan Dikirim ke Dapur",
     "clearCart": "Hapus Semua",
     "customerRequired": "Pelanggan diperlukan untuk penjualan kredit",
     "paymentHistory": "Riwayat Pembayaran",
@@ -479,7 +489,19 @@
     "shareEmailSubject": "{{documentType}} {{number}} dari {{businessName}}",
     "shareEmailBody": "Yth. Bapak/Ibu,\n\nBerikut kami lampirkan {{documentType}} {{number}} dari {{businessName}}, dengan jumlah total {{amount}}.\n\nTerima kasih.\n\n{{businessName}}",
     "bargainedPriceToggleHint": "Alihkan {{currSym}} / % / Harga Tawar (Final)",
-    "bargainedPriceInputHint": "Ketik harga akhir yang disepakati untuk baris ini — diskon akan dihitung otomatis."
+    "bargainedPriceInputHint": "Ketik harga akhir yang disepakati untuk baris ini — diskon akan dihitung otomatis.",
+    "foreignCurrency": {
+      "toggle": "Tagih dalam mata uang asing",
+      "codePlaceholder": "Kode mata uang, mis. USD",
+      "ratePlaceholder": "Nilai tukar, mis. 83.25",
+      "preview": "≈ {{code}} {{amount}}",
+      "settleTitle": "Selesaikan Faktur Mata Uang Asing",
+      "settleToggle": "Selesaikan dalam {{code}} (mencatat jumlah aktual yang diterima dan setiap laba/rugi nilai tukar)",
+      "amountReceived": "Jumlah Diterima ({{code}})",
+      "settlementRate": "Nilai Tukar Saat Penyelesaian",
+      "settleNote": "Ini menyelesaikan faktur sepenuhnya. Setiap selisih dari nilai tukar saat faktur dibuat akan dicatat sebagai laba atau rugi nilai tukar yang direalisasikan.",
+      "settleAction": "Selesaikan Faktur"
+    }
   },
   "products": {
     "title": "Produk",
@@ -503,7 +525,7 @@
     "manageVariants": "Kelola Varian",
     "description": "Deskripsi",
     "productType": "Jenis Produk",
-    "physical": "Fisik",
+    "physical": "Barang",
     "service": "Layanan",
     "hsnCode": "Kode HS / Item",
     "reorderLevel": "Tingkat Reorder",
@@ -697,7 +719,7 @@
     "noRepairHistory": "Belum ada tiket perbaikan untuk unit ini.",
     "deviceSerial": "Perangkat / Serial",
     "warranty": "Garansi",
-    "changeStatus": "Ubah Status",
+    "changeStatus": "Ubah status kendaraan",
     "updateStatus": "Perbarui Status",
     "importBtn": "Impor",
     "importing": "Mengimpor…",
@@ -952,6 +974,26 @@
       "created": "Buku cek ditambahkan",
       "useNextNumber": "Gunakan nomor cek berikutnya (#{{number}})"
     },
+    "bankDeposits": {
+      "title": "Setoran Bank",
+      "depositsCount_one": "{{count}} setoran",
+      "depositsCount_other": "{{count}} setoran",
+      "newDeposit": "Setoran Baru",
+      "noDepositsYet": "Belum ada setoran bank yang dicatat",
+      "colDepositNumber": "No. Setoran",
+      "colDate": "Tanggal",
+      "colCash": "Tunai",
+      "colCheques": "Cek",
+      "couldNotLoad": "Tidak dapat memuat setoran bank.",
+      "couldNotCreate": "Tidak dapat membuat setoran bank.",
+      "created": "Slip setoran dibuat",
+      "selectAccount": "Pilih rekening bank.",
+      "needsCashOrCheques": "Slip setoran harus mencakup setidaknya sejumlah uang tunai atau setidaknya satu cek.",
+      "denominationsLabel": "Pecahan Uang Tunai",
+      "cashSubtotal": "Subtotal Tunai",
+      "includeCheques": "Sertakan Cek yang Tertunda",
+      "chequeSubtotal": "Subtotal Cek"
+    },
     "fixedAssets": {
       "title": "Aset Tetap",
       "assetsCount_one": "{{count}} aset",
@@ -1106,6 +1148,17 @@
         "HANDLING": "Penanganan",
         "OTHER": "Lainnya"
       }
+    },
+    "foreignCurrency": {
+      "toggle": "Tagih dalam mata uang asing",
+      "codePlaceholder": "Kode mata uang, mis. USD",
+      "ratePlaceholder": "Nilai tukar, mis. 83.25",
+      "settleTitle": "Selesaikan Tagihan Mata Uang Asing",
+      "settleToggle": "Selesaikan dalam {{code}} (mencatat jumlah aktual yang dibayarkan dan setiap laba/rugi nilai tukar)",
+      "amountPaid": "Jumlah Dibayarkan ({{code}})",
+      "settlementRate": "Nilai Tukar Saat Penyelesaian",
+      "settleNote": "Ini menyelesaikan tagihan sepenuhnya. Setiap selisih dari nilai tukar saat tagihan dibuat akan dicatat sebagai laba atau rugi nilai tukar yang direalisasikan.",
+      "settleAction": "Selesaikan Tagihan"
     }
   },
   "salesOrders": {
@@ -2203,6 +2256,58 @@
       "deliveryInstallationSchedule": {
         "label": "Delivery & Installation Schedule",
         "description": "Furniture bookings with a delivery date in range, as a real schedule"
+      },
+      "specWiseFastMovers": {
+        "label": "Produk Terlaris Berdasarkan Spesifikasi",
+        "description": "Spesifikasi watt, gauge, atau ampere mana yang sebenarnya paling laku, diurutkan berdasarkan unit terjual"
+      },
+      "fittingCrossSell": {
+        "label": "Cross-Sell Kecocokan Fitting",
+        "description": "Menandai penjualan di mana fitting atau selotip yang biasa dipasangkan tidak dibeli kali ini"
+      },
+      "materialSalesMix": {
+        "label": "Campuran Penjualan Material",
+        "description": "Pembagian pendapatan berdasarkan kategori material — PVC, CPVC, GI, tembaga"
+      },
+      "mrpViolation": {
+        "label": "Kepatuhan MRP",
+        "description": "Setiap baris penjualan sebelumnya di mana harga satuan melebihi MRP tercetak produk"
+      },
+      "perishableWastage": {
+        "label": "Kerugian Barang Mudah Rusak",
+        "description": "Stok yang dihapusbukukan karena kedaluwarsa, berdasarkan produk dan nilai"
+      },
+      "dailyRestockAlert": {
+        "label": "Peringatan Restock Harian",
+        "description": "Produk laris yang stoknya menipis, diurutkan berdasarkan sisa hari stok"
+      },
+      "looseVsPackagedMix": {
+        "label": "Campuran Penjualan Curah vs. Kemasan",
+        "description": "Pembagian pendapatan antara produk curah (ditagih per berat) dan kemasan"
+      },
+      "khataRisk": {
+        "label": "Tingkat Risiko Kredit (Khata)",
+        "description": "Pelanggan kredit diurutkan berdasarkan risiko — usia piutang ditambah tren saldo 30 hari, dengan pengingat WhatsApp satu ketuk"
+      },
+      "preOrderProductionSheet": {
+        "label": "Lembar Produksi Pra-Pesanan",
+        "description": "Apa yang harus dipanggang hari ini — pesanan khusus yang jatuh tempo ditambah permintaan biasa, dijabarkan menjadi bahan-bahan yang Anda perlukan"
+      },
+      "vehicleServiceDue": {
+        "label": "Servis Kendaraan Jatuh Tempo",
+        "description": "Total km yang ditempuh per kendaraan sejak servis terakhir, dengan kendaraan yang jatuh tempo atau terlambat ditandai"
+      },
+      "commissionByAgent": {
+        "label": "Komisi per Agen",
+        "description": "Komisi rujukan yang diperoleh per agen di semua pemesanan perjalanan"
+      },
+      "tripProfitability": {
+        "label": "Profitabilitas Perjalanan",
+        "description": "Per perjalanan yang selesai: pendapatan ditambah biaya kelebihan, dikurangi biaya pengemudi, bahan bakar, perawatan, dan komisi"
+      },
+      "eventProfitability": {
+        "label": "Profitabilitas Acara",
+        "description": "Per acara katering yang selesai: harga akhir yang disepakati dikurangi biaya staf dan estimasi biaya bahan"
       }
     },
     "summary": {
@@ -3399,7 +3504,11 @@
     "destinationSaved": "Folder cadangan diperbarui",
     "destinationSaveFailed": "Tidak dapat memperbarui folder cadangan",
     "destinationReset": "Folder cadangan direset ke default",
-    "destinationUnreachable": "\"{{path}}\" tidak dapat diakses saat ini (tidak tersambung?) — menggunakan lokasi default."
+    "destinationUnreachable": "\"{{path}}\" tidak dapat diakses saat ini (tidak tersambung?) — menggunakan lokasi default.",
+    "restoreFromFile": "Restore from File",
+    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
+    "restoreFromFileConfirmTitle": "Restore from Backup File",
+    "pickBackupFileFailed": "Could not open file picker."
   },
   "audit": {
     "title": "Log Audit",
@@ -3480,17 +3589,17 @@
   },
   "license": {
     "title": "Lisensi",
-    "subtitle": "Sarang gratis untuk 12 bulan pertama Anda. Setelah itu, lisensi tahunan kecil menjaganya tetap berjalan.",
+    "subtitle": "Sarang gratis untuk 100 hari pertama Anda. Setelah itu, lisensi tahunan kecil menjaganya tetap berjalan.",
     "statusActive": "Aktif",
     "statusActivePaid": "Aktif — Berbayar",
-    "statusWarning": "Tahun gratis akan segera berakhir",
+    "statusWarning": "Uji coba gratis akan segera berakhir",
     "statusWarningPaid": "Perpanjangan akan segera jatuh tempo",
-    "statusExpired": "Tahun gratis telah berakhir",
+    "statusExpired": "Uji coba gratis telah berakhir",
     "statusExpiredPaid": "Lisensi telah kedaluwarsa",
     "statusNotActivated": "Belum diaktifkan",
-    "daysRemaining": "{{days}} hari tersisa dalam tahun gratis Anda",
+    "daysRemaining": "{{days}} hari tersisa dalam uji coba gratis Anda",
     "daysRemainingPaid": "{{days}} hari tersisa sebelum perpanjangan",
-    "freeYearEndedNotice": "Tahun gratis Anda telah berakhir. Anda masih dapat melihat, mencetak, mengekspor, dan mencadangkan semua data Anda yang sudah ada — hanya pembuatan faktur baru yang terpengaruh sampai Anda memperbarui.",
+    "freeYearEndedNotice": "Uji coba gratis Anda telah berakhir. Anda masih dapat melihat, mencetak, mengekspor, dan mencadangkan semua data Anda yang sudah ada — hanya pembuatan faktur baru yang terpengaruh sampai Anda memperbarui.",
     "licenseExpiredNoticePaid": "Lisensi Anda telah kedaluwarsa. Anda masih dapat melihat, mencetak, mengekspor, dan mencadangkan semua data Anda yang sudah ada — hanya pembuatan faktur baru yang terpengaruh sampai Anda memperbarui.",
     "deviceBoundNotice": "Kunci lisensi Anda terikat ke satu perangkat ini.",
     "machineMismatchNotice": "Kunci ini sebelumnya aktif di perangkat lain. Kunci ini telah diaktifkan kembali di sini.",
@@ -3550,7 +3659,7 @@
       "backupTitle": "Cadangan & Pemulihan",
       "backupBody": "Data Anda hanya ada di perangkat ini — layar ini adalah cara Anda melindunginya. Siapkan cadangan otomatis di sini agar Anda tidak pernah kecolongan.",
       "licenseTitle": "Lisensi Anda",
-      "licenseBody": "Sarang gratis untuk 12 bulan pertama Anda. Layar ini selalu menunjukkan persis di mana posisi Anda, dan di sinilah Anda akan memperbarui saat waktunya tiba."
+      "licenseBody": "Sarang gratis untuk 100 hari pertama Anda. Layar ini selalu menunjukkan persis di mana posisi Anda, dan di sinilah Anda akan memperbarui saat waktunya tiba."
     },
     "items": {
       "restaurantTables": {
@@ -4017,9 +4126,45 @@
         "title": "Furniture Trade-Ins",
         "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
       },
+      "jobSiteAccounts": {
+        "title": "Akun Lokasi Proyek",
+        "body": "Buka akun berjalan untuk kontraktor yang bekerja di satu lokasi — tandai faktur CREDIT ke akun ini saat penagihan dan lihat saldo berjalan akun ini sendiri, terpisah dari buku besar umum mereka."
+      },
+      "bulkListOrders": {
+        "title": "Pesanan Daftar Massal",
+        "body": "Masukkan daftar pasokan sekolah atau kantor sebagai baris mentah, cocokkan setiap baris dengan produk katalog dan harga, lalu tagih seluruh pesanan sekaligus setelah semuanya cocok."
+      },
+      "furnitureBookings": {
+        "title": "Pemesanan Furnitur",
+        "body": "Pesan barang custom-made dengan uang muka, catat kustomisasinya, lalu buat faktur pengiriman setelah siap — uang muka diterapkan secara otomatis."
+      },
+      "furnitureTradeIns": {
+        "title": "Tukar Tambah Furnitur",
+        "body": "Catat barang lama yang ditukar tambah untuk pembelian baru dengan nilai taksiran toko, lalu terapkan sebagai diskon saat menagih pelanggan tersebut."
+      },
       "scheduledDeliveries": {
-        "title": "Scheduled Deliveries",
-        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
+        "title": "Pengiriman Terjadwal",
+        "body": "Lacak pengiriman barang mudah pecah yang dipesan saat penagihan melalui tahap Terjadwal, Sedang Dikirim, dan Terkirim."
+      },
+      "bakeryCustomOrders": {
+        "title": "Pesanan Khusus",
+        "body": "Terima pesanan awal dalam jumlah besar — kue pernikahan, pesanan camilan sekolah — dengan tanggal jatuh tempo dan pembayaran uang muka, dilacak terpisah dari penjualan konter walk-in biasa Anda."
+      },
+      "cateringEvents": {
+        "title": "Acara Katering",
+        "body": "Pesan acara katering lengkap: menu, jumlah makanan dan camilan per hari untuk acara multi-hari, jumlah tamu, dan baris biaya terpisah untuk juru masak, pelayan, dan petugas kebersihan — tagih dengan harga akhir yang disepakati setelah dinegosiasikan."
+      },
+      "toursFleet": {
+        "title": "Armada Kendaraan",
+        "body": "Kendaraan Anda, dengan pembacaan odometer dan riwayat servis — dari sinilah Pemesanan Perjalanan dan laporan Servis Kendaraan Jatuh Tempo sama-sama mengambil datanya."
+      },
+      "tourPackages": {
+        "title": "Paket Wisata",
+        "body": "Paket perjalanan yang telah ditentukan dengan tarif paket, siap dilampirkan ke pemesanan alih-alih menetapkan harga setiap perjalanan dari awal."
+      },
+      "tripBookings": {
+        "title": "Pemesanan Perjalanan",
+        "body": "Pesan perjalanan untuk kendaraan dan paket tertentu, catat tugas harian (km yang ditempuh, uang saku sopir, biaya kelebihan), dan tagih setelah perjalanan selesai."
       }
     }
   },
@@ -5623,6 +5768,7 @@
     "seat": "Dudukkan",
     "noShow": "Tidak Hadir",
     "dayClosed": "Hari ditutup. KOT dilayani: {{kotCount}} | Pendapatan: {{revenue}} dari {{invoiceCount}} faktur.",
+    "unsettledTablesWarning": "{{count}} meja dilewati — masih memiliki pesanan yang belum checkout.",
     "dailyCloseFailed": "Tutup harian gagal: {{message}}",
     "dailyCloseFailedUnknown": "Tutup harian gagal: Kesalahan tidak diketahui",
     "tableNumberPlaceholder": "Nomor meja (mis. T1)",
@@ -5649,7 +5795,18 @@
     "noFreeTablesToMerge": "Tidak ada meja kosong untuk digabungkan.",
     "print": "Cetak",
     "performDailyCloseConfirm": "Lakukan tutup harian? Ini akan menandai semua meja terisi sebagai tersedia dan mencatat ringkasan penutupan.",
-    "scanToOrder": "Pindai untuk melihat menu dan memesan"
+    "scanToOrder": "Pindai untuk melihat menu dan memesan",
+    "viewOrder": "Lihat Pesanan",
+    "orderSummaryTitle": "Pesanan — {{name}}",
+    "noItemsOrderedYet": "Belum ada pesanan.",
+    "estimatedTotal": "Perkiraan Total",
+    "checkout": "Checkout",
+    "checkingOut": "Memproses checkout…",
+    "couldNotLoadOrderSummary": "Tidak dapat memuat pesanan meja ini.",
+    "couldNotCheckout": "Tidak dapat checkout meja ini.",
+    "tableCheckedOut": "Meja Sudah Checkout",
+    "billGenerated": "Tagihan dibuat untuk {{name}}.",
+    "billRequested": "Tagihan diminta"
   },
   "costCentres": {
     "title": "Pusat Biaya",
@@ -5713,6 +5870,317 @@
     "empty": {
       "title": "No service combos yet",
       "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+    }
+  },
+  "checkin": {
+    "title": "Check-in Pelanggan",
+    "subtitle": "Catat kunjungan — siapa yang ada di sini sekarang, dan riwayat check-in/check-out terbaru",
+    "notEnabled": "Check-in Pelanggan tidak diaktifkan untuk bisnis Anda.",
+    "checkInAction": "Check In",
+    "checkOutAction": "Check Out",
+    "customer": "Pelanggan",
+    "selectCustomer": "Pilih pelanggan.",
+    "checkedIn": "Berhasil check in",
+    "checkedOut": "Berhasil check out",
+    "checkInFailed": "Tidak dapat check in. Silakan coba lagi.",
+    "currentlyIn": "Sedang check in ({{count}})",
+    "noOneIn": "Tidak ada yang sedang check in.",
+    "recentVisits": "Kunjungan Terbaru",
+    "noVisits": "Belum ada kunjungan tercatat.",
+    "inAt": "Masuk {{time}}",
+    "outAt": "Keluar {{time}}",
+    "stillIn": "masih check in"
+  },
+  "bakery": {
+    "customOrders": {
+      "title": "Pesanan Khusus",
+      "subtitle": "Pemesanan dengan uang muka + sisa pembayaran untuk kue khusus dan pesanan sesuai permintaan",
+      "refresh": "Segarkan",
+      "newOrder": "Pesanan Baru",
+      "cancel": "Batal",
+      "book": "Pesan",
+      "customer": "Pelanggan",
+      "dueDate": "Tanggal Jatuh Tempo",
+      "deliveryAddress": "Alamat Pengiriman",
+      "itemsSection": "Item",
+      "searchProduct": "Cari produk…",
+      "noProductsMatch": "Tidak ada produk yang cocok.",
+      "qty": "Jml",
+      "price": "Harga",
+      "flavorPlaceholder": "Rasa / Ukuran",
+      "add": "Tambah",
+      "total": "Total",
+      "advanceAmount": "Jumlah Uang Muka ({{sym}})",
+      "advancePaymentMethod": "Metode Pembayaran Uang Muka",
+      "cash": "Tunai",
+      "upi": "UPI",
+      "card": "Kartu",
+      "wallet": "Dompet",
+      "notes": "Catatan",
+      "selectCustomerError": "Pilih pelanggan.",
+      "addItemError": "Tambahkan setidaknya satu item.",
+      "advanceExceedsError": "Uang muka tidak boleh melebihi total pesanan.",
+      "orderCreated": "Pesanan dibuat",
+      "orderCreateFailed": "Tidak dapat membuat pesanan.",
+      "generateInvoice": "Buat Faktur",
+      "generatingInvoice": "Membuat…",
+      "invoiceGenerated": "Faktur dibuat",
+      "invoiceGeneratedDetail": "Faktur pengiriman dibuat dan uang muka diterapkan.",
+      "invoiceGenerateFailed": "Tidak dapat membuat faktur.",
+      "loading": "Memuat…",
+      "noOrdersYet": "Belum ada pesanan.",
+      "dueOn": "jatuh tempo {{date}}",
+      "itemsCount": "{{count}} item",
+      "advanceLabel": "{{amount}} uang muka",
+      "loadFailed": "Tidak dapat memuat pesanan."
+    },
+    "cateringEvents": {
+      "title": "Acara Katering",
+      "subtitle": "Pesan acara katering — menu, harga per porsi, makan & camilan per hari, dan biaya staf per peran",
+      "refresh": "Segarkan",
+      "newEvent": "Acara Baru",
+      "cancel": "Batal",
+      "book": "Pesan Acara",
+      "save": "Simpan",
+      "customer": "Pelanggan",
+      "venueAddress": "Alamat Lokasi",
+      "eventStartDate": "Tanggal Mulai Acara",
+      "eventEndDate": "Tanggal Selesai Acara",
+      "attendeeCount": "Jumlah Tamu",
+      "pricePerPlate": "Harga per Porsi ({{sym}})",
+      "estimatedTotal": "Perkiraan Total",
+      "menuSection": "Menu",
+      "searchProduct": "Cari produk…",
+      "qty": "Jml",
+      "price": "Harga",
+      "add": "Tambah",
+      "daysSection": "Makan & Camilan per Hari",
+      "serviceDate": "Tanggal",
+      "mealsCount": "Makan",
+      "snacksCount": "Camilan",
+      "addDay": "Tambah Hari",
+      "staffSection": "Staf",
+      "role": "Peran",
+      "cook": "Juru Masak",
+      "server": "Pelayan",
+      "cleaner": "Petugas Kebersihan",
+      "other": "Lainnya",
+      "workerCount": "Jumlah Pekerja",
+      "ratePerWorker": "Tarif per Pekerja ({{sym}})",
+      "addStaff": "Tambah Staf",
+      "staffCostTotal": "Total Biaya Staf",
+      "advanceAmount": "Jumlah Uang Muka ({{sym}})",
+      "advancePaymentMethod": "Metode Pembayaran Uang Muka",
+      "cash": "Tunai",
+      "upi": "UPI",
+      "card": "Kartu",
+      "wallet": "Dompet",
+      "notes": "Catatan",
+      "loading": "Memuat…",
+      "noEventsYet": "Belum ada acara katering.",
+      "attendeesLabel": "{{count}} tamu",
+      "finalPriceLabel": "{{amount}} disepakati",
+      "quotedLabel": "{{amount}} penawaran",
+      "advanceLabel": "{{amount}} uang muka",
+      "recordFinalPrice": "Catat Harga Akhir",
+      "finalPricePrompt": "Harga Akhir yang Disepakati ({{sym}})",
+      "finalPriceRecorded": "Harga akhir dicatat",
+      "finalPriceRecordFailed": "Tidak dapat mencatat harga akhir.",
+      "recordingPrice": "Menyimpan…",
+      "generateInvoice": "Buat Faktur",
+      "generatingInvoice": "Membuat…",
+      "invoiceGenerated": "Faktur dibuat",
+      "invoiceGeneratedDetail": "Faktur dibuat dan uang muka diterapkan.",
+      "invoiceGenerateFailed": "Tidak dapat membuat faktur.",
+      "loadFailed": "Tidak dapat memuat acara katering.",
+      "selectCustomerError": "Pilih pelanggan.",
+      "eventStartDateError": "Tanggal mulai acara wajib diisi.",
+      "attendeeCountError": "Jumlah tamu harus lebih besar dari nol.",
+      "pricePerPlateError": "Harga per porsi wajib diisi.",
+      "advanceExceedsError": "Uang muka tidak boleh melebihi perkiraan total.",
+      "eventCreated": "Acara dipesan",
+      "eventCreateFailed": "Tidak dapat memesan acara."
+    }
+  },
+  "tours": {
+    "fleet": {
+      "title": "Armada Kendaraan",
+      "subtitle": "Armada, log servis, dan kalender ketersediaan 30 hari",
+      "refresh": "Segarkan",
+      "newVehicle": "Kendaraan Baru",
+      "regNumber": "Nomor Registrasi",
+      "regNumberRequired": "Nomor registrasi wajib diisi.",
+      "vehicleType": "Jenis Kendaraan",
+      "seatingCapacity": "Kapasitas Tempat Duduk",
+      "capacityRequired": "Kapasitas tempat duduk harus lebih dari nol.",
+      "cancel": "Batal",
+      "add": "Tambah Kendaraan",
+      "vehicleAdded": "Kendaraan ditambahkan",
+      "vehicleAddFailed": "Kendaraan tidak dapat ditambahkan.",
+      "loading": "Memuat…",
+      "noVehiclesYet": "Belum ada kendaraan. Tambahkan kendaraan pertama Anda untuk memulai.",
+      "loadFailed": "Kendaraan tidak dapat dimuat.",
+      "seats": "{{count}} kursi",
+      "odometer": "{{km}} km",
+      "serviceLog": "Log Servis",
+      "serviceLogFor": "Log Servis — {{reg}}",
+      "serviceDate": "Tanggal Servis",
+      "serviceType": "Jenis",
+      "odometerReading": "Pembacaan Odometer",
+      "cost": "Biaya",
+      "close": "Tutup",
+      "logService": "Catat Servis",
+      "serviceLogged": "Servis dicatat",
+      "serviceLogFailed": "Servis tidak dapat dicatat.",
+      "availabilityNext30Days": "Ketersediaan Armada & Kursi — 30 Hari ke Depan",
+      "free": "Kosong",
+      "bookedCount": "{{count}} pemesanan",
+      "seatsRemaining": "{{count}} kursi tersisa",
+      "vehicleTypes": {
+        "SEDAN": "Sedan",
+        "SUV": "SUV / Innova",
+        "TEMPO_TRAVELLER": "Tempo Traveller",
+        "MINI_BUS": "Bus Mini",
+        "BUS": "Bus"
+      },
+      "serviceTypes": {
+        "SERVICE": "Servis",
+        "REPAIR": "Perbaikan",
+        "MAINTENANCE": "Perawatan"
+      },
+      "status": {
+        "ACTIVE": "Aktif",
+        "IN_SERVICE": "Sedang Diservis",
+        "INACTIVE": "Tidak Aktif"
+      },
+      "changeStatus": "Change vehicle status",
+      "statusUpdated": "Status diperbarui",
+      "statusUpdateFailed": "Status kendaraan tidak dapat diperbarui."
+    },
+    "packages": {
+      "title": "Paket Wisata",
+      "subtitle": "Template paket, keberangkatan, dan pemesanan kursi",
+      "refresh": "Segarkan",
+      "newPackage": "Paket Baru",
+      "packageName": "Nama Paket",
+      "nameRequired": "Nama paket wajib diisi.",
+      "itinerary": "Rencana Perjalanan",
+      "durationDays": "Durasi (Hari)",
+      "defaultSeats": "Kursi Default",
+      "farePerSeat": "Tarif per Kursi",
+      "cancel": "Batal",
+      "add": "Tambah Paket",
+      "save": "Simpan",
+      "packageAdded": "Paket ditambahkan",
+      "packageAddFailed": "Paket tidak dapat ditambahkan.",
+      "loading": "Memuat…",
+      "noPackagesYet": "Belum ada paket wisata. Tambahkan paket pertama Anda untuk memulai.",
+      "loadFailed": "Paket tidak dapat dimuat.",
+      "durationLabel": "{{days}} hari",
+      "seatsLabel": "{{count}} kursi",
+      "perSeat": " / kursi",
+      "departures": "Keberangkatan",
+      "addDeparture": "Tambah Keberangkatan",
+      "departureDate": "Tanggal Keberangkatan",
+      "totalSeats": "Total Kursi",
+      "departureAdded": "Keberangkatan ditambahkan",
+      "departureAddFailed": "Keberangkatan tidak dapat ditambahkan.",
+      "noDeparturesYet": "Belum ada keberangkatan yang dijadwalkan.",
+      "seatsRemainingOf": "{{remaining}} dari {{total}} kursi tersisa",
+      "bookSeats": "Pesan Kursi",
+      "bookSeatsTitle": "Pesan Kursi",
+      "customer": "Pelanggan",
+      "seatsToBook": "Kursi yang Dipesan",
+      "advanceAmount": "Jumlah Uang Muka",
+      "confirmBooking": "Konfirmasi Pemesanan",
+      "seatsBooked": "Kursi dipesan",
+      "bookingFailed": "Kursi tidak dapat dipesan.",
+      "status": {
+        "ACTIVE": "Aktif",
+        "INACTIVE": "Tidak Aktif"
+      },
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "packageStatusUpdated": "Status paket diperbarui",
+      "packageStatusUpdateFailed": "Status paket tidak dapat diperbarui.",
+      "markComplete": "Mark Complete",
+      "cancelDeparture": "Batalkan",
+      "departureStatusUpdated": "Status keberangkatan diperbarui",
+      "departureStatusUpdateFailed": "Status keberangkatan tidak dapat diperbarui.",
+      "departureStatus": {
+        "COMPLETED": "Selesai",
+        "CANCELLED": "Dibatalkan"
+      }
+    },
+    "bookings": {
+      "title": "Pemesanan Perjalanan",
+      "subtitle": "Pemesanan sewa charter, log tugas pengemudi, dan penyelesaian kelebihan km/jam",
+      "refresh": "Segarkan",
+      "newCharterBooking": "Pemesanan Charter Baru",
+      "customer": "Pelanggan",
+      "customerRequired": "Pelanggan wajib diisi.",
+      "vehicle": "Kendaraan",
+      "vehicleRequired": "Kendaraan wajib diisi.",
+      "selectVehicle": "Pilih kendaraan",
+      "tripStartDate": "Tanggal Mulai Perjalanan",
+      "tripStartDateRequired": "Tanggal mulai perjalanan wajib diisi.",
+      "tripEndDate": "Tanggal Selesai Perjalanan",
+      "pickupLocation": "Lokasi Penjemputan",
+      "dropLocation": "Lokasi Pengantaran",
+      "route": "Rute",
+      "packageRate": "Tarif Paket",
+      "includedKmPerDay": "Km Termasuk/Hari",
+      "includedHoursPerDay": "Jam Termasuk/Hari",
+      "advanceAmount": "Jumlah Uang Muka",
+      "referringAgent": "Agen Perujuk",
+      "commissionType": "Jenis Komisi",
+      "none": "Tidak Ada",
+      "percentage": "Persentase",
+      "fixed": "Tetap",
+      "commissionValue": "Nilai Komisi",
+      "cancel": "Batal",
+      "createBooking": "Buat Pemesanan",
+      "bookingCreated": "Pemesanan dibuat",
+      "bookingCreateFailed": "Pemesanan tidak dapat dibuat.",
+      "loading": "Memuat…",
+      "noBookingsYet": "Belum ada pemesanan perjalanan.",
+      "advanceOf": "(uang muka {{amount}})",
+      "agentLabel": "agen: {{name}}",
+      "startDuty": "Mulai Tugas",
+      "startDutyTitle": "Mulai Tugas Pengemudi",
+      "driver": "Pengemudi",
+      "selectDriver": "Pilih pengemudi",
+      "startOdometer": "Odometer Awal",
+      "dutyStartTime": "Waktu Mulai Tugas",
+      "driverBata": "Uang Saku Pengemudi",
+      "nightHaltCharge": "Biaya Menginap Malam",
+      "nightDrivingAllowance": "Tunjangan Mengemudi Malam",
+      "dutyStarted": "Tugas dimulai",
+      "dutyStartFailed": "Tugas tidak dapat dimulai.",
+      "closeDuty": "Selesaikan Tugas",
+      "closeDutyTitle": "Selesaikan Tugas Pengemudi",
+      "endOdometer": "Odometer Akhir",
+      "dutyEndTime": "Waktu Selesai Tugas",
+      "dutyClosed": "Tugas selesai",
+      "dutyCloseFailed": "Tugas tidak dapat diselesaikan.",
+      "dutyOpen": "tugas sedang berlangsung",
+      "kmDrivenLabel": "{{km}} km dikendarai",
+      "excessChargeLabel": "biaya kelebihan {{amount}}",
+      "generateInvoice": "Buat Faktur",
+      "invoiceGenerated": "Faktur dibuat",
+      "invoiceGenerateFailed": "Faktur tidak dapat dibuat.",
+      "type": {
+        "CHARTER": "Charter",
+        "SEAT": "Kursi"
+      },
+      "status": {
+        "BOOKED": "Dipesan",
+        "COMPLETED": "Selesai",
+        "CANCELLED": "Dibatalkan"
+      },
+      "cancelBooking": "Batalkan Pemesanan",
+      "bookingCancelled": "Pemesanan dibatalkan",
+      "bookingCancelFailed": "Pemesanan tidak dapat dibatalkan."
     }
   }
 }

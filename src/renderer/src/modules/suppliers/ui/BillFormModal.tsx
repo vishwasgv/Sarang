@@ -132,6 +132,11 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
   // — same "variable-length array doesn't fit the flat-field model"
   // reasoning this codebase already applies to rentalRates/payroll deductions.
   const [landedCostRows, setLandedCostRows] = useState<{ costType: string; amount: string; allocationMethod: 'BY_VALUE' | 'BY_QUANTITY' }[]>([])
+  // 2026-09 — foreign-currency overlay, same local-state (not RHF-registered)
+  // pattern as landedCostRows above and BillingScreen's own equivalent block.
+  const [foreignCurrencyEnabled, setForeignCurrencyEnabled] = useState(false)
+  const [foreignCurrencyCode, setForeignCurrencyCode] = useState('')
+  const [foreignExchangeRate, setForeignExchangeRate] = useState('')
 
   const emptyItem = { lineType: 'PRODUCT' as const, productId: '', serviceDescription: '', serviceCategoryId: '', quantity: 1, unitCost: 0, discountAmount: 0, taxRate: 0 }
 
@@ -157,6 +162,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
     if (!open) return
     reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, costCentreId: '', items: [emptyItem] })
     setLandedCostRows([])
+    setForeignCurrencyEnabled(false); setForeignCurrencyCode(''); setForeignExchangeRate('')
     async function loadOptions() {
       setLoadingData(true)
       try {
@@ -237,7 +243,9 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
           discountAmount: item.discountAmount ?? 0,
           taxRate: item.taxRate ?? 0
         })),
-        landedCosts: validLandedCosts.length > 0 ? validLandedCosts : undefined
+        landedCosts: validLandedCosts.length > 0 ? validLandedCosts : undefined,
+        foreignCurrencyCode: foreignCurrencyEnabled && foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 ? foreignCurrencyCode.trim() : undefined,
+        foreignExchangeRate: foreignCurrencyEnabled && foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 ? Number(foreignExchangeRate) : undefined
       }
       const res = await window.api.bills.create(payload)
       if (res.success) {
@@ -390,6 +398,42 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
               </select>
             </div>
           )}
+
+          {/* 2026-09 — foreign-currency overlay: the vendor's own bill shown/
+              printed in their currency while totalAmount/AP/GL stay entirely
+              in the business's base currency. */}
+          <div>
+            <label className="flex items-center gap-2 cursor-pointer mb-1.5">
+              <input
+                type="checkbox"
+                checked={foreignCurrencyEnabled}
+                onChange={e => { setForeignCurrencyEnabled(e.target.checked); if (!e.target.checked) { setForeignCurrencyCode(''); setForeignExchangeRate('') } }}
+                className="w-4 h-4 rounded accent-brand"
+              />
+              <span className="text-sm font-medium text-dark dark:text-slate-100">{t('bills.foreignCurrency.toggle')}</span>
+            </label>
+            {foreignCurrencyEnabled && (
+              <div className="grid grid-cols-2 gap-2">
+                <input
+                  type="text"
+                  value={foreignCurrencyCode}
+                  onChange={e => setForeignCurrencyCode(e.target.value.toUpperCase())}
+                  placeholder={t('bills.foreignCurrency.codePlaceholder')}
+                  maxLength={10}
+                  className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                />
+                <input
+                  type="number"
+                  min="0"
+                  step="0.0001"
+                  value={foreignExchangeRate}
+                  onChange={e => setForeignExchangeRate(e.target.value)}
+                  placeholder={t('bills.foreignCurrency.ratePlaceholder')}
+                  className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300"
+                />
+              </div>
+            )}
+          </div>
 
           {/* Phase 64 — landed cost, entered inline (see the state comment
               above for why a Bill can't add this after the fact the way a

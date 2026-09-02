@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useIndustryStore } from '@renderer/app/store/industry.store'
 import { aszurexFooterHtml } from '@shared/utils/print-branding'
 import { useNotificationStore } from '@app/store/notification.store'
+import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 
 interface RestaurantTable {
   id: string
@@ -24,6 +25,16 @@ interface RestaurantTable {
   // running dine-in order (set by billing.createInvoice's tableIds, or by
   // an ad-hoc merge). Null for a free table.
   currentInvoiceId?: string | null
+  // 2026-09-02 — customer tapped "Checkout" on the QR menu, asking for the
+  // bill. Purely a staff-facing flag; never bills anything by itself.
+  checkoutRequestedAt?: string | null
+}
+
+interface TableOrderSummaryItem { productId: string; productName: string; quantity: number; unitPrice: number }
+interface TableOrderSummary {
+  rounds: Array<{ kotId: string; status: string; createdAt: string; items: TableOrderSummaryItem[] }>
+  aggregated: TableOrderSummaryItem[]
+  estimatedTotal: number
 }
 
 interface Employee { id: string; fullName: string }
@@ -107,6 +118,17 @@ export function RestaurantTablesScreen() {
   const [rsvTableId, setRsvTableId] = useState('')
   const [rsvNotes, setRsvNotes] = useState('')
   const [savingReservation, setSavingReservation] = useState(false)
+
+  // 2026-09-02 — "click table, see everything ordered" view + checkout,
+  // for a table with open (un-invoiced) KOTs. See getTableOrderSummary/
+  // checkoutTable in restaurant.service.ts.
+  const [summaryTarget, setSummaryTarget] = useState<RestaurantTable | null>(null)
+  const [summaryData, setSummaryData] = useState<TableOrderSummary | null>(null)
+  const [summaryLoading, setSummaryLoading] = useState(false)
+  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [checkoutPaymentMethod, setCheckoutPaymentMethod] = useState<'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'>('CASH')
+  const [checkoutCustomer, setCheckoutCustomer] = useState<CustomerLite | null>(null)
+  const [checkingOut, setCheckingOut] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -321,6 +343,49 @@ export function RestaurantTablesScreen() {
     navigate(`/billing/new?tableId=${encodeURIComponent(table.id)}&tableLabel=${encodeURIComponent(label)}`)
   }
 
+  async function openTableSummary(table: RestaurantTable) {
+    setSummaryTarget(table)
+    setSummaryData(null)
+    setSummaryError(null)
+    setCheckoutPaymentMethod('CASH')
+    setCheckoutCustomer(null)
+    setSummaryLoading(true)
+    try {
+      const res = await api.restaurant.getTableOrderSummary({ tableId: table.id })
+      if (res.success && res.data) setSummaryData(res.data as TableOrderSummary)
+      else setSummaryError((res.error as { message?: string })?.message ?? t('restaurantTables.couldNotLoadOrderSummary'))
+    } catch {
+      setSummaryError(t('restaurantTables.couldNotLoadOrderSummary'))
+    } finally {
+      setSummaryLoading(false)
+    }
+  }
+
+  async function handleCheckoutTable() {
+    if (!summaryTarget) return
+    if (checkoutPaymentMethod === 'CREDIT' && !checkoutCustomer) {
+      toastError(t('billing.customerRequired'), t('billing.customerRequired'))
+      return
+    }
+    setCheckingOut(true)
+    try {
+      const res = await api.restaurant.checkoutTable({ tableId: summaryTarget.id, paymentMethod: checkoutPaymentMethod, customerId: checkoutCustomer?.id })
+      if (res.success && res.data) {
+        const { invoiceId } = res.data as { invoiceId: string }
+        toastSuccess(t('restaurantTables.tableCheckedOut'), t('restaurantTables.billGenerated', { name: summaryTarget.tableName || summaryTarget.tableNumber }))
+        setSummaryTarget(null)
+        load()
+        navigate(`/billing/${invoiceId}`)
+      } else {
+        toastError('Error', (res.error as { message?: string })?.message ?? t('restaurantTables.couldNotCheckout'))
+      }
+    } catch {
+      toastError('Error', t('restaurantTables.couldNotCheckout'))
+    } finally {
+      setCheckingOut(false)
+    }
+  }
+
   async function handleMerge(freeTableId: string) {
     if (!mergeTarget?.currentInvoiceId) return
     setMerging(true)
@@ -386,10 +451,12 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.restaurant.performDailyClose()
       if (res.success && res.data) {
-        const d = res.data as { kots: { DONE: number; CANCELLED: number }; revenue: { total: number; invoiceCount: number } }
+        const d = res.data as { kots: { DONE: number; CANCELLED: number }; revenue: { total: number; invoiceCount: number }; skippedUnsettledTables?: number }
+        const skipped = d.skippedUnsettledTables ?? 0
         setCloseResult({
           success: true,
-          message: t('restaurantTables.dayClosed', { kotCount: d.kots?.DONE ?? 0, revenue: formatCurrency(d.revenue?.total ?? 0), invoiceCount: d.revenue?.invoiceCount ?? 0 }),
+          message: t('restaurantTables.dayClosed', { kotCount: d.kots?.DONE ?? 0, revenue: formatCurrency(d.revenue?.total ?? 0), invoiceCount: d.revenue?.invoiceCount ?? 0 })
+            + (skipped > 0 ? ' ' + t('restaurantTables.unsettledTablesWarning', { count: skipped }) : ''),
         })
         load()
       } else {
@@ -676,8 +743,18 @@ export function RestaurantTablesScreen() {
                   </p>
                 )}
 
+                {table.checkoutRequestedAt && (
+                  <p className="text-xs text-warning flex items-center gap-1">
+                    <Receipt size={11} /> {t('restaurantTables.billRequested')}
+                  </p>
+                )}
+
                 {/* Phase 58 §2 — start/continue a real dine-in order, and
-                    merge another table into one already running */}
+                    merge another table into one already running.
+                    2026-09-02 — a table with open (un-invoiced) KOTs but no
+                    currentInvoiceId yet (the deferred-billing model's common
+                    case, both QR- and manually-sourced) gets a View Order
+                    action instead, which is where checkout now happens. */}
                 {table.currentInvoiceId ? (
                   <div className="flex gap-1.5">
                     <button onClick={() => navigate(`/billing/invoices/${table.currentInvoiceId}`)}
@@ -687,6 +764,17 @@ export function RestaurantTablesScreen() {
                     <button onClick={() => setMergeTarget(table)}
                       className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-brand/10 hover:text-brand transition-colors">
                       <Merge size={12} /> {t('restaurantTables.mergeIn')}
+                    </button>
+                  </div>
+                ) : table.kots.length > 0 ? (
+                  <div className="flex gap-1.5">
+                    <button onClick={() => openTableSummary(table)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-brand/10 text-brand hover:bg-brand/20 transition-colors">
+                      <Receipt size={12} /> {t('restaurantTables.viewOrder')}
+                    </button>
+                    <button onClick={() => startOrder(table)}
+                      className="flex-1 flex items-center justify-center gap-1 text-xs py-1.5 rounded-lg font-medium bg-slate-50 dark:bg-slate-800 text-slate-500 dark:text-slate-400 hover:bg-brand/10 hover:text-brand transition-colors">
+                      <UtensilsCrossed size={12} /> {t('restaurantTables.startOrder')}
                     </button>
                   </div>
                 ) : (
@@ -761,11 +849,18 @@ export function RestaurantTablesScreen() {
               <button onClick={() => setMergeTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
             </div>
             <p className="text-sm text-slate-500 dark:text-slate-400">{t('restaurantTables.mergeHint')}</p>
-            {tables.filter(t2 => t2.id !== mergeTarget.id && !t2.currentInvoiceId).length === 0 ? (
+            {/* 2026-09-02 — a table with no currentInvoiceId is no longer
+                automatically "genuinely free": it can have its own open
+                (un-invoiced) KOTs under the deferred-billing model. Merging
+                one of those in would silently orphan its pending order
+                (mergeTableIntoInvoice now rejects this server-side too,
+                RST-044) — exclude them here so staff aren't offered a merge
+                that will just fail. */}
+            {(() => { const candidates = tables.filter(t2 => t2.id !== mergeTarget.id && !t2.currentInvoiceId && t2.kots.length === 0); return candidates.length === 0 ? (
               <p className="text-sm text-slate-400 italic py-4 text-center">{t('restaurantTables.noFreeTablesToMerge')}</p>
             ) : (
               <div className="space-y-1.5 max-h-64 overflow-y-auto">
-                {tables.filter(t2 => t2.id !== mergeTarget.id && !t2.currentInvoiceId).map(t2 => (
+                {candidates.map(t2 => (
                   <button key={t2.id} onClick={() => handleMerge(t2.id)} disabled={merging}
                     className="w-full flex items-center justify-between px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors disabled:opacity-50">
                     <span>{t2.tableName || t2.tableNumber}</span>
@@ -773,7 +868,7 @@ export function RestaurantTablesScreen() {
                   </button>
                 ))}
               </div>
-            )}
+            ) })()}
           </div>
         </div>
       )}
@@ -807,6 +902,56 @@ export function RestaurantTablesScreen() {
             ) : (
               <div className="flex justify-center py-8"><RefreshCw size={20} className="animate-spin text-brand" /></div>
             )}
+          </div>
+        </div>
+      )}
+
+      {/* 2026-09-02 — everything ordered for this table so far (every open,
+          un-invoiced KOT round, aggregated), plus the one place a table's
+          running tab is actually billed. */}
+      {summaryTarget && (
+        <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-md p-6 space-y-4">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-dark dark:text-slate-100">
+                {t('restaurantTables.orderSummaryTitle', { name: summaryTarget.tableName || summaryTarget.tableNumber })}
+              </h2>
+              <button onClick={() => setSummaryTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+
+            {summaryLoading ? (
+              <div className="flex justify-center py-8"><RefreshCw size={20} className="animate-spin text-brand" /></div>
+            ) : summaryError ? (
+              <p className="text-sm text-danger">{summaryError}</p>
+            ) : summaryData && summaryData.aggregated.length === 0 ? (
+              <p className="text-sm text-slate-400 text-center py-6">{t('restaurantTables.noItemsOrderedYet')}</p>
+            ) : summaryData ? (
+              <>
+                <div className="space-y-1.5 max-h-64 overflow-y-auto">
+                  {summaryData.aggregated.map(item => (
+                    <div key={item.productId} className="flex justify-between text-sm text-dark dark:text-slate-100">
+                      <span>{item.productName} <span className="text-slate-400">× {item.quantity}</span></span>
+                      <span className="font-semibold">{formatCurrency(item.quantity * item.unitPrice)}</span>
+                    </div>
+                  ))}
+                </div>
+                <div className="flex justify-between text-base font-bold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-3">
+                  <span>{t('restaurantTables.estimatedTotal')}</span>
+                  <span>{formatCurrency(summaryData.estimatedTotal)}</span>
+                </div>
+                <select value={checkoutPaymentMethod} onChange={e => setCheckoutPaymentMethod(e.target.value as typeof checkoutPaymentMethod)}
+                  className="w-full px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand bg-white dark:bg-slate-900 dark:text-slate-100">
+                  {(['CASH', 'UPI', 'CARD', 'WALLET', 'CREDIT', 'SPLIT'] as const).map(m => <option key={m} value={m}>{m}</option>)}
+                </select>
+                {checkoutPaymentMethod === 'CREDIT' && (
+                  <CustomerPicker value={checkoutCustomer} onChange={setCheckoutCustomer} label={t('billing.customerRequired')} />
+                )}
+                <button onClick={handleCheckoutTable} disabled={checkingOut}
+                  className="w-full flex items-center justify-center gap-1.5 px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
+                  {checkingOut ? t('restaurantTables.checkingOut') : t('restaurantTables.checkout')}
+                </button>
+              </>
+            ) : null}
           </div>
         </div>
       )}

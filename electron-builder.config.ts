@@ -184,6 +184,21 @@ const config: Configuration = {
     deleteAppDataOnUninstall: false
   },
 
+  // Electron Fuses (2026-09-02 hardening) — bakes a hash of app.asar into the
+  // binary; a patched-and-repacked asar (e.g. hex-editing parseAndVerifyLicenseKey
+  // to always return valid) then fails to launch instead of silently working.
+  // runAsNode/nodeCliInspect/nodeOptions disabled too — closes a more direct
+  // route to the same goal (a raw Node context via ELECTRON_RUN_AS_NODE could
+  // require()-and-monkeypatch license.service.ts without ever touching the
+  // asar file). No legitimate use of any of these four found in this codebase.
+  electronFuses: {
+    runAsNode: false,
+    enableNodeCliInspectArguments: false,
+    enableNodeOptionsEnvironmentVariable: false,
+    onlyLoadAppFromAsar: true,
+    enableEmbeddedAsarIntegrityValidation: true
+  },
+
   // LZMA compression — reduces installer size by ~20-30% vs the ZLIB default
   compression: 'maximum',
 

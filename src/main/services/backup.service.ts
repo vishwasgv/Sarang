@@ -513,6 +513,125 @@ export async function validateBackup(backupId: string): Promise<{
   }
 }
 
+// Shared by restoreBackup (a DB-tracked backupId) and restoreBackupFromFile
+// (an arbitrary .sarang-backup path — e.g. copied in from a USB drive onto a
+// fresh install with no Backup rows of its own yet, see restoreBackupFromFile's
+// header comment). `logLabel`/`logEntityId` let callers each log against the
+// entity that actually identifies their restore (a Backup row's id vs. the
+// raw file path) without this shared core needing to know which case it's in.
+async function restoreFromZipPath(
+  zipPath: string,
+  expectedChecksum: string | undefined,
+  userId: string | undefined,
+  logEntityId: string,
+  logLabel: string
+): Promise<{ success: boolean; error?: { code: string; message: string } }> {
+  const validation = await validateZip(zipPath, expectedChecksum)
+  if (!validation.valid) {
+    return { success: false, error: { code: 'BK-006', message: `Cannot restore — backup is invalid: ${validation.error}` } }
+  }
+
+  const dbPath = getDatabasePath()
+  const tempPath = dbPath + '.restore_tmp'
+
+  // Extract the target backup's database FIRST, before the safety-backup step below
+  // can trigger retention cleanup (createBackup -> applyBackupRetentionPolicy can
+  // unlinkSync() the oldest backups once retention count is exceeded — if the source
+  // zip itself sits at that boundary, it would otherwise be deleted out from under this
+  // restore before extractDb() ever reads it).
+  try {
+    await extractDb(zipPath, tempPath)
+  } catch (err) {
+    return { success: false, error: { code: 'BK-010', message: `Could not read the selected backup: ${err instanceof Error ? err.message : 'unknown error'}` } }
+  }
+
+  // Create safety backup first — RULE BK002. If the current database is corrupted,
+  // createBackup() will itself refuse (BK-001, since VACUUM INTO a corrupt DB is
+  // unsafe) — that is precisely the disaster-recovery scenario restore exists for,
+  // so fall back to a raw file copy instead of permanently blocking the restore.
+  let safetyBackupId: string | undefined
+  const safety = await createBackup(userId)
+  if (safety.success) {
+    safetyBackupId = safety.data?.id
+  } else {
+    try {
+      const rawSafetyPath = join((await getBackupDir()).dir, `PRE_RESTORE_SAFETY_${timestamp()}.db`)
+      await copyFile(dbPath, rawSafetyPath)
+      for (const suffix of ['-wal', '-shm']) {
+        try { if (existsSync(dbPath + suffix)) await copyFile(dbPath + suffix, rawSafetyPath + suffix) } catch { /* WAL/SHM sidecars are transient SQLite state, not required for the safety copy to be useful */ }
+      }
+    } catch (err) {
+      try { unlinkSync(tempPath) } catch { /* cleanup only; BK-007 below is returned regardless */ }
+      return {
+        success: false,
+        error: { code: 'BK-007', message: 'Could not create a safety copy of your current database before restoring. Aborting to protect your data.' }
+      }
+    }
+  }
+
+  await logAction({
+    userId,
+    action: 'BACKUP_RESTORE_STARTED',
+    entityType: 'Backup',
+    entityId: logEntityId,
+    newValue: { backupName: logLabel, safetyBackupId }
+  })
+
+  // Restore the logo/attached-document files bundled alongside the DB (see
+  // createBackup's matching comment on why these are now included) — done
+  // here, before closeDatabase()/the DB file swap below, purely so a
+  // failure can still be logged against the live DB connection. Best-
+  // effort: the DB itself (the primary, most important data) restores
+  // unconditionally below regardless of what happens here, and an old
+  // backup made before this fix legitimately has none of these entries —
+  // restoreDirectoryFromZip leaves the current folder untouched in that
+  // case, never wiping it over a false negative.
+  try {
+    const userDataDir = app.getPath('userData')
+    await restoreDirectoryFromZip(zipPath, 'logos', join(userDataDir, 'logos'))
+    await restoreDirectoryFromZip(zipPath, 'documents', join(userDataDir, 'documents'))
+  } catch (err) {
+    await logAction({
+      userId,
+      action: 'BACKUP_RESTORE_FILES_FAILED',
+      entityType: 'Backup',
+      entityId: logEntityId,
+      newValue: { message: err instanceof Error ? err.message : 'Unknown error restoring logo/document files.' }
+    }).catch(() => {})
+  }
+
+  try {
+    // Close Prisma before replacing the database file
+    await closeDatabase()
+
+    // Replace database file — renameSync is atomic on same filesystem (no partial-write risk)
+    renameSync(tempPath, dbPath)
+
+    // The extracted backup has no WAL of its own (it was VACUUM INTO'd from a
+    // checkpointed source) — but renameSync only replaces the main db file, not
+    // any -wal/-shm sidecars left behind by the old (just-closed) connection.
+    // Remove them so the next connection can't attempt to replay stale WAL pages
+    // against this unrelated, freshly-restored database file.
+    for (const suffix of ['-wal', '-shm']) {
+      try { if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix) } catch { /* stale sidecar cleanup only; app.relaunch() below still gives a clean reconnect */ }
+    }
+
+    // Restart application — renderer will reconnect after relaunch
+    app.relaunch()
+    app.exit(0)
+
+    return { success: true }
+  } catch (err) {
+    // Attempt reconnect so the app stays functional
+    try { await initializeDatabase() } catch { /* BK-008 below already reports failure; nothing more to do if reconnect also fails */ }
+    try { if (existsSync(tempPath)) unlinkSync(tempPath) } catch { /* cleanup only */ }
+    return {
+      success: false,
+      error: { code: 'BK-008', message: `Restore failed: ${err instanceof Error ? err.message : 'Unknown error'}. A safety backup was created before this attempt — restore from that backup if needed.` }
+    }
+  }
+}
+
 export async function restoreBackup(backupId: string, userId?: string): Promise<{
   success: boolean; error?: { code: string; message: string }
 }> {
@@ -522,111 +641,33 @@ export async function restoreBackup(backupId: string, userId?: string): Promise<
     const record = await db.backup.findUnique({ where: { id: backupId } })
     if (!record) return { success: false, error: { code: 'BK-004', message: 'Backup record not found.' } }
 
-    // Validate before restore
-    const validation = await validateZip(record.backupPath, record.checksum ?? undefined)
-    if (!validation.valid) {
-      return { success: false, error: { code: 'BK-006', message: `Cannot restore — backup is invalid: ${validation.error}` } }
+    return await restoreFromZipPath(record.backupPath, record.checksum ?? undefined, userId, backupId, record.backupName)
+  } catch (err) {
+    return {
+      success: false,
+      error: { code: 'BK-011', message: err instanceof Error ? err.message : 'Restore failed unexpectedly.' }
     }
+  }
+}
 
-    const dbPath = getDatabasePath()
-    const tempPath = dbPath + '.restore_tmp'
-
-    // Extract the target backup's database FIRST, before the safety-backup step below
-    // can trigger retention cleanup (createBackup -> applyBackupRetentionPolicy can
-    // unlinkSync() the oldest backups once retention count is exceeded — if `record`
-    // itself sits at that boundary, it would otherwise be deleted out from under this
-    // restore before extractDb() ever reads it).
-    try {
-      await extractDb(record.backupPath, tempPath)
-    } catch (err) {
-      return { success: false, error: { code: 'BK-010', message: `Could not read the selected backup: ${err instanceof Error ? err.message : 'unknown error'}` } }
+// Restores directly from an arbitrary .sarang-backup file on disk — e.g. one
+// copied in from a USB drive on a freshly reinstalled/new-device Sarang,
+// where the local Backup table has no rows for a prior install's history yet
+// (listBackups()/restoreBackup() only ever look up backups already tracked
+// in THIS database). No expected checksum is passed to validateZip: unlike
+// restoreBackup, there is no prior DB record to compare against — the ZIP's
+// own internal structure/metadata.json check (validateZip's REQUIRED_FILES +
+// appName check) is the only integrity gate available for a file we've never
+// seen before, same as opening any other unfamiliar file.
+export async function restoreBackupFromFile(filePath: string, userId?: string): Promise<{
+  success: boolean; error?: { code: string; message: string }
+}> {
+  try {
+    if (!existsSync(filePath)) {
+      return { success: false, error: { code: 'BK-004', message: 'Backup file not found at the selected location.' } }
     }
-
-    // Create safety backup first — RULE BK002. If the current database is corrupted,
-    // createBackup() will itself refuse (BK-001, since VACUUM INTO a corrupt DB is
-    // unsafe) — that is precisely the disaster-recovery scenario restore exists for,
-    // so fall back to a raw file copy instead of permanently blocking the restore.
-    let safetyBackupId: string | undefined
-    const safety = await createBackup(userId)
-    if (safety.success) {
-      safetyBackupId = safety.data?.id
-    } else {
-      try {
-        const rawSafetyPath = join((await getBackupDir()).dir, `PRE_RESTORE_SAFETY_${timestamp()}.db`)
-        await copyFile(dbPath, rawSafetyPath)
-        for (const suffix of ['-wal', '-shm']) {
-          try { if (existsSync(dbPath + suffix)) await copyFile(dbPath + suffix, rawSafetyPath + suffix) } catch { /* WAL/SHM sidecars are transient SQLite state, not required for the safety copy to be useful */ }
-        }
-      } catch (err) {
-        try { unlinkSync(tempPath) } catch { /* cleanup only; BK-007 below is returned regardless */ }
-        return {
-          success: false,
-          error: { code: 'BK-007', message: 'Could not create a safety copy of your current database before restoring. Aborting to protect your data.' }
-        }
-      }
-    }
-
-    await logAction({
-      userId,
-      action: 'BACKUP_RESTORE_STARTED',
-      entityType: 'Backup',
-      entityId: backupId,
-      newValue: { backupName: record.backupName, safetyBackupId }
-    })
-
-    // Restore the logo/attached-document files bundled alongside the DB (see
-    // createBackup's matching comment on why these are now included) — done
-    // here, before closeDatabase()/the DB file swap below, purely so a
-    // failure can still be logged against the live DB connection. Best-
-    // effort: the DB itself (the primary, most important data) restores
-    // unconditionally below regardless of what happens here, and an old
-    // backup made before this fix legitimately has none of these entries —
-    // restoreDirectoryFromZip leaves the current folder untouched in that
-    // case, never wiping it over a false negative.
-    try {
-      const userDataDir = app.getPath('userData')
-      await restoreDirectoryFromZip(record.backupPath, 'logos', join(userDataDir, 'logos'))
-      await restoreDirectoryFromZip(record.backupPath, 'documents', join(userDataDir, 'documents'))
-    } catch (err) {
-      await logAction({
-        userId,
-        action: 'BACKUP_RESTORE_FILES_FAILED',
-        entityType: 'Backup',
-        entityId: backupId,
-        newValue: { message: err instanceof Error ? err.message : 'Unknown error restoring logo/document files.' }
-      }).catch(() => {})
-    }
-
-    try {
-      // Close Prisma before replacing the database file
-      await closeDatabase()
-
-      // Replace database file — renameSync is atomic on same filesystem (no partial-write risk)
-      renameSync(tempPath, dbPath)
-
-      // The extracted backup has no WAL of its own (it was VACUUM INTO'd from a
-      // checkpointed source) — but renameSync only replaces the main db file, not
-      // any -wal/-shm sidecars left behind by the old (just-closed) connection.
-      // Remove them so the next connection can't attempt to replay stale WAL pages
-      // against this unrelated, freshly-restored database file.
-      for (const suffix of ['-wal', '-shm']) {
-        try { if (existsSync(dbPath + suffix)) unlinkSync(dbPath + suffix) } catch { /* stale sidecar cleanup only; app.relaunch() below still gives a clean reconnect */ }
-      }
-
-      // Restart application — renderer will reconnect after relaunch
-      app.relaunch()
-      app.exit(0)
-
-      return { success: true }
-    } catch (err) {
-      // Attempt reconnect so the app stays functional
-      try { await initializeDatabase() } catch { /* BK-008 below already reports failure; nothing more to do if reconnect also fails */ }
-      try { if (existsSync(tempPath)) unlinkSync(tempPath) } catch { /* cleanup only */ }
-      return {
-        success: false,
-        error: { code: 'BK-008', message: `Restore failed: ${err instanceof Error ? err.message : 'Unknown error'}. A safety backup was created before this attempt — restore from that backup if needed.` }
-      }
-    }
+    const fileName = filePath.split(/[\\/]/).pop() ?? filePath
+    return await restoreFromZipPath(filePath, undefined, userId, filePath, fileName)
   } catch (err) {
     return {
       success: false,

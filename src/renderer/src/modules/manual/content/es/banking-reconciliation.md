@@ -27,3 +27,13 @@ El archivo original del extracto — el PDF o CSV que envió su banco — se pue
 Abra **Post-Dated Cheques** desde la barra lateral para llevar un registro de cheques — número de cheque, cuenta bancaria vinculada, fecha de vencimiento, monto y dirección (Received de un cliente, o Issued a un proveedor). Un cheque que registre comienza como **Pending** y todavía no afecta sus libros — tal como funciona un cheque posdatado real: todavía es una promesa, no una transacción.
 
 Cuando llegue la fecha del cheque y realmente se compense en el banco, márquelo como **Cleared** — solo entonces Sarang registra el pago real (Débito o Crédito a Cash, contra el saldo del cliente o proveedor que liquida). Si vuelve rechazado, márquelo como **Bounced**; si se cancela antes de cualquiera de esos resultados, márquelo como **Cancelled**. Ambos son simples cambios de estado sin ningún asiento financiero, ya que ninguno llegó a convertirse en dinero real.
+
+## Boletas de Depósito Bancario
+
+Abra **Bank Deposits** para registrar un viaje real al banco — efectivo y cheques que va a entregar en ventanilla. Elija la cuenta de destino y la fecha, luego indique cuántos billetes de cada denominación (de ₹500 a ₹1) lleva realmente; Sarang totaliza el efectivo por usted mientras escribe. Si la cuenta tiene cheques **Received** pendientes de depositar, marque los que va a llevar en este mismo viaje — su total se suma a la boleta, y cada uno pasa de Pending a Deposited.
+
+Solo la parte en efectivo se trata como dinero real en el momento en que guarda la boleta — se suma directamente al saldo de la cuenta de destino, igual que una venta en efectivo. Los cheques que incluyó todavía no se cuentan como dinero — cada uno solo afecta sus libros cuando lo marca por separado como **Cleared** en la pantalla de Post-Dated Cheques (un cheque depositado aún puede rebotar), así que nunca se cuenta dos veces. Haga clic en cualquier depósito anterior de la lista para ver de nuevo su desglose completo de denominaciones y cheques.
+
+## Chequeras
+
+Si emite cheques a proveedores, haga clic en **Cheque Books** en la pantalla de Post-Dated Cheques para registrar una chequera física de una cuenta bancaria — solo su número de cheque inicial y final. Cuando luego registre un cheque **Issued** contra esa cuenta, aparece una casilla **Use next cheque book number (#...)**; marcarla completa automáticamente el siguiente número secuencial de esa chequera en lugar de escribirlo a mano, y el propio contador "siguiente" de la chequera avanza para que el mismo número nunca se sugiera dos veces. Una chequera totalmente usada se muestra como **Exhausted**; desactive una chequera que ya no use para que deje de ofrecerse.

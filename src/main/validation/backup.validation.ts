@@ -16,4 +16,8 @@ export const RestoreBackupSchema = z.object({
   backupId: z.string().min(1, 'Backup ID is required'),
 })
 
+export const RestoreBackupFromFileSchema = z.object({
+  filePath: z.string().min(1, 'A backup file path is required'),
+})
+
 export type SetBackupDestinationPayload = z.infer<typeof SetBackupDestinationSchema>

@@ -17,6 +17,10 @@ Each line is either:
 
 Each line also carries its own discount amount and tax rate, so the Bill's totals are computed correctly per line before summing — the same discount-then-tax ordering every other document in Sarang already follows.
 
+## Foreign-currency Bills
+
+A Bill from an overseas supplier can be recorded the same way an invoice can — tick **Bill in foreign currency** when recording it, enter the currency code and the exchange rate, and the Bill carries a converted reference amount alongside its home-currency total, shown on screen and on print. When you settle it (see below), a **Settle in {code}** option appears the same way it does for invoices, and any gain or loss between the rate the Bill was recorded at and the rate on the day you actually pay is posted automatically as a Realized FX Gain/Loss journal entry — see the Billing & Documents chapter for the full walkthrough of how the toggle, preview, and settlement math work; it behaves identically here.
+
 ## Recording a payment against a Bill
 
 Open a Bill and click **Record Payment**. Supplier payments accept Cash, UPI, Card, Bank Transfer, or Cheque — a wider set than customer-facing payments, since B2B payments routinely go by bank transfer or cheque. A payment can be partial; the Bill's balance and status update immediately, and the amount is deducted from what you owe that supplier.

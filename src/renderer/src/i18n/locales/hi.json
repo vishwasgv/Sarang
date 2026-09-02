@@ -56,7 +56,13 @@
     "manual": "मैनुअल",
     "costCentres": "लागत केंद्र",
     "budgets": "बजट",
-    "serviceCombos": "Service Combos"
+    "serviceCombos": "Service Combos",
+    "checkIn": "चेक-इन",
+    "customOrders": "कस्टम ऑर्डर",
+    "cateringEvents": "केटरिंग इवेंट",
+    "vehicleFleet": "वाहन बेड़ा",
+    "tourPackages": "टूर पैकेज",
+    "tripBookings": "यात्रा बुकिंग"
   },
   "common": {
     "save": "सहेजें",
@@ -182,7 +188,9 @@
     "resetPassword": "पासवर्ड रीसेट करें",
     "passwordResetSuccessTitle": "पासवर्ड रीसेट हो गया",
     "passwordResetSuccessBody": "आपका पासवर्ड बदल दिया गया है। अब आप अपने नए पासवर्ड से साइन इन कर सकते हैं।",
-    "backToSignIn": "साइन इन पर वापस जाएं"
+    "backToSignIn": "साइन इन पर वापस जाएं",
+    "passwordExpiredTitle": "आपका पासवर्ड समाप्त हो गया है",
+    "passwordExpiredBody": "कृपया Settings → Security से इसे जल्द बदलें।"
   },
   "dashboard": {
     "title": "डैशबोर्ड",
@@ -364,6 +372,8 @@
     "invoiceCreated": "बिल बनाया गया",
     "creditInvoice": "उधार बिल बनाएँ",
     "confirmSale": "बिक्री पक्की करें",
+    "sendToKitchen": "रसोई में भेजें",
+    "orderSentToKitchen": "ऑर्डर रसोई में भेजा गया",
     "clearCart": "सभी हटाएँ",
     "customerRequired": "उधार बिक्री के लिए ग्राहक आवश्यक है",
     "paymentHistory": "भुगतान इतिहास",
@@ -479,7 +489,19 @@
     "shareEmailSubject": "{{businessName}} की ओर से {{documentType}} {{number}}",
     "shareEmailBody": "आदरणीय महोदय/महोदया,\n\nकृपया {{businessName}} की ओर से {{documentType}} {{number}} संलग्न पाएं, जिसकी कुल राशि {{amount}} है।\n\nधन्यवाद।\n\n{{businessName}}",
     "bargainedPriceToggleHint": "{{currSym}} / % / मोलभाव (अंतिम) मूल्य के बीच स्विच करें",
-    "bargainedPriceInputHint": "इस लाइन के लिए अंतिम तय की गई कीमत टाइप करें — छूट अपने-आप गणना हो जाएगी।"
+    "bargainedPriceInputHint": "इस लाइन के लिए अंतिम तय की गई कीमत टाइप करें — छूट अपने-आप गणना हो जाएगी।",
+    "foreignCurrency": {
+      "toggle": "विदेशी मुद्रा में बिल करें",
+      "codePlaceholder": "मुद्रा कोड, जैसे USD",
+      "ratePlaceholder": "विनिमय दर, जैसे 83.25",
+      "preview": "≈ {{code}} {{amount}}",
+      "settleTitle": "विदेशी मुद्रा बिल का निपटान करें",
+      "settleToggle": "{{code}} में निपटान करें (प्राप्त वास्तविक राशि और किसी भी विनिमय दर लाभ/हानि को दर्ज करता है)",
+      "amountReceived": "प्राप्त राशि ({{code}})",
+      "settlementRate": "निपटान के समय विनिमय दर",
+      "settleNote": "यह बिल का पूरी तरह से निपटान करता है। जिस दर पर यह बनाया गया था, उससे कोई अंतर वास्तविक विनिमय लाभ या हानि के रूप में दर्ज किया जाता है।",
+      "settleAction": "बिल का निपटान करें"
+    }
   },
   "products": {
     "title": "उत्पाद",
@@ -503,7 +525,7 @@
     "manageVariants": "वेरिएंट प्रबंधित करें",
     "description": "विवरण",
     "productType": "उत्पाद प्रकार",
-    "physical": "भौतिक",
+    "physical": "वस्तु",
     "service": "सेवा",
     "hsnCode": "HSN / आइटम कोड",
     "reorderLevel": "पुनर्ऑर्डर स्तर",
@@ -697,7 +719,7 @@
     "noRepairHistory": "अभी तक इस यूनिट के लिए कोई मरम्मत टिकट नहीं है।",
     "deviceSerial": "डिवाइस / सीरियल",
     "warranty": "वारंटी",
-    "changeStatus": "स्थिति बदलें",
+    "changeStatus": "वाहन स्थिति बदलें",
     "updateStatus": "स्थिति अपडेट करें",
     "importBtn": "इम्पोर्ट करें",
     "importing": "इम्पोर्ट हो रहा है…",
@@ -952,6 +974,26 @@
       "created": "चेक बुक जोड़ी गई",
       "useNextNumber": "अगली चेक बुक संख्या का उपयोग करें (#{{number}})"
     },
+    "bankDeposits": {
+      "title": "बैंक जमा",
+      "depositsCount_one": "{{count}} जमा",
+      "depositsCount_other": "{{count}} जमा",
+      "newDeposit": "नई जमा राशि",
+      "noDepositsYet": "अभी तक कोई बैंक जमा दर्ज नहीं हुई",
+      "colDepositNumber": "जमा #",
+      "colDate": "तारीख",
+      "colCash": "नकद",
+      "colCheques": "चेक",
+      "couldNotLoad": "बैंक जमा लोड नहीं हो सकीं।",
+      "couldNotCreate": "बैंक जमा नहीं बन सकी।",
+      "created": "जमा पर्ची बनाई गई",
+      "selectAccount": "एक बैंक खाता चुनें।",
+      "needsCashOrCheques": "जमा पर्ची में कम से कम कुछ नकद या कम से कम एक चेक होना चाहिए।",
+      "denominationsLabel": "नकद मूल्यवर्ग",
+      "cashSubtotal": "नकद उप-योग",
+      "includeCheques": "लंबित चेक शामिल करें",
+      "chequeSubtotal": "चेक उप-योग"
+    },
     "fixedAssets": {
       "title": "फिक्स्ड एसेट",
       "assetsCount_one": "{{count}} एसेट",
@@ -1106,6 +1148,17 @@
         "HANDLING": "हैंडलिंग",
         "OTHER": "अन्य"
       }
+    },
+    "foreignCurrency": {
+      "toggle": "विदेशी मुद्रा में बिल करें",
+      "codePlaceholder": "मुद्रा कोड, जैसे USD",
+      "ratePlaceholder": "विनिमय दर, जैसे 83.25",
+      "settleTitle": "विदेशी मुद्रा बिल का निपटान करें",
+      "settleToggle": "{{code}} में निपटान करें (भुगतान की गई वास्तविक राशि और किसी भी विनिमय दर लाभ/हानि को दर्ज करता है)",
+      "amountPaid": "भुगतान की गई राशि ({{code}})",
+      "settlementRate": "निपटान के समय विनिमय दर",
+      "settleNote": "यह बिल का पूरी तरह से निपटान करता है। जिस दर पर यह बनाया गया था, उससे कोई अंतर वास्तविक विनिमय लाभ या हानि के रूप में दर्ज किया जाता है।",
+      "settleAction": "बिल का निपटान करें"
     }
   },
   "salesOrders": {
@@ -2203,6 +2256,58 @@
       "deliveryInstallationSchedule": {
         "label": "Delivery & Installation Schedule",
         "description": "Furniture bookings with a delivery date in range, as a real schedule"
+      },
+      "specWiseFastMovers": {
+        "label": "स्पेक-वार फास्ट मूवर्स",
+        "description": "कौन सी वाटेज, गेज या एम्पीयरेज स्पेक सबसे ज़्यादा बिकती है, यूनिट बिक्री के आधार पर क्रमबद्ध"
+      },
+      "fittingCrossSell": {
+        "label": "फिटिंग अनुकूलता क्रॉस-सेल",
+        "description": "उन बिक्री को चिन्हित करता है जहाँ सामान्य रूप से साथ खरीदी जाने वाली फिटिंग या टेप इस बार नहीं खरीदी गई"
+      },
+      "materialSalesMix": {
+        "label": "मटीरियल सेल्स मिक्स",
+        "description": "मटीरियल श्रेणी के अनुसार राजस्व विभाजन — PVC, CPVC, GI, कॉपर"
+      },
+      "mrpViolation": {
+        "label": "MRP अनुपालन",
+        "description": "हर पिछली बिक्री लाइन जहाँ यूनिट मूल्य उत्पाद के मुद्रित MRP से अधिक था"
+      },
+      "perishableWastage": {
+        "label": "नाशवान वस्तु हानि",
+        "description": "एक्सपायर होने के कारण बट्टे खाते में डाला गया स्टॉक, उत्पाद और मूल्य के अनुसार"
+      },
+      "dailyRestockAlert": {
+        "label": "दैनिक पुनःस्टॉक अलर्ट",
+        "description": "तेज़ी से बिकने वाले उत्पाद जिनका स्टॉक कम हो रहा है, बचे हुए स्टॉक के दिनों के अनुसार क्रमबद्ध"
+      },
+      "looseVsPackagedMix": {
+        "label": "खुला बनाम पैक्ड बिक्री मिश्रण",
+        "description": "खुले (वज़न-बिल्ड) और पैक्ड उत्पादों के बीच राजस्व विभाजन"
+      },
+      "khataRisk": {
+        "label": "खाता जोखिम स्तर",
+        "description": "जोखिम के अनुसार क्रमबद्ध क्रेडिट ग्राहक — एजिंग के साथ 30-दिन का बैलेंस ट्रेंड, और एक-टैप व्हाट्सएप रिमाइंडर"
+      },
+      "preOrderProductionSheet": {
+        "label": "प्री-ऑर्डर प्रोडक्शन शीट",
+        "description": "आज क्या बनाना है — बकाया कस्टम ऑर्डर और सामान्य मांग, ज़रूरी सामग्री में विस्तारित"
+      },
+      "vehicleServiceDue": {
+        "label": "वाहन सर्विस देय",
+        "description": "अंतिम सर्विस के बाद से प्रति वाहन कुल चला किमी, देय या ओवरड्यू वाहनों को चिह्नित किया गया"
+      },
+      "commissionByAgent": {
+        "label": "एजेंट के अनुसार कमीशन",
+        "description": "सभी यात्रा बुकिंग में प्रति एजेंट अर्जित रेफरल कमीशन"
+      },
+      "tripProfitability": {
+        "label": "यात्रा लाभप्रदता",
+        "description": "प्रति पूर्ण यात्रा: राजस्व और अतिरिक्त शुल्क, माइनस ड्राइवर लागत, ईंधन, रखरखाव, और कमीशन"
+      },
+      "eventProfitability": {
+        "label": "इवेंट लाभप्रदता",
+        "description": "प्रति पूर्ण केटरिंग इवेंट: अंतिम सहमत मूल्य में से स्टाफिंग लागत और अनुमानित सामग्री लागत घटाकर"
       }
     },
     "summary": {
@@ -3399,7 +3504,11 @@
     "destinationSaved": "बैकअप फ़ोल्डर अपडेट हुआ",
     "destinationSaveFailed": "बैकअप फ़ोल्डर अपडेट नहीं हो सका",
     "destinationReset": "बैकअप फ़ोल्डर डिफ़ॉल्ट पर रीसेट हुआ",
-    "destinationUnreachable": "\"{{path}}\" अभी पहुंच योग्य नहीं है (क्या यह अनप्लग है?) — इसके बजाय डिफ़ॉल्ट स्थान का उपयोग किया जा रहा है।"
+    "destinationUnreachable": "\"{{path}}\" अभी पहुंच योग्य नहीं है (क्या यह अनप्लग है?) — इसके बजाय डिफ़ॉल्ट स्थान का उपयोग किया जा रहा है।",
+    "restoreFromFile": "Restore from File",
+    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
+    "restoreFromFileConfirmTitle": "Restore from Backup File",
+    "pickBackupFileFailed": "Could not open file picker."
   },
   "audit": {
     "title": "ऑडिट लॉग",
@@ -3480,17 +3589,17 @@
   },
   "license": {
     "title": "लाइसेंस",
-    "subtitle": "सारंग आपके पहले 12 महीनों के लिए मुफ़्त है। उसके बाद, एक छोटा वार्षिक लाइसेंस इसे चालू रखता है।",
+    "subtitle": "सारंग आपके पहले 100 दिनों के लिए मुफ़्त है। उसके बाद, एक छोटा वार्षिक लाइसेंस इसे चालू रखता है।",
     "statusActive": "सक्रिय",
     "statusActivePaid": "सक्रिय — भुगतान किया गया",
-    "statusWarning": "मुफ़्त वर्ष जल्द समाप्त हो रहा है",
+    "statusWarning": "मुफ़्त ट्रायल जल्द समाप्त हो रहा है",
     "statusWarningPaid": "नवीनीकरण जल्द देय है",
-    "statusExpired": "मुफ़्त वर्ष समाप्त",
+    "statusExpired": "मुफ़्त ट्रायल समाप्त",
     "statusExpiredPaid": "लाइसेंस समाप्त",
     "statusNotActivated": "सक्रिय नहीं",
-    "daysRemaining": "आपके मुफ़्त वर्ष में {{days}} दिन शेष",
+    "daysRemaining": "आपके मुफ़्त ट्रायल में {{days}} दिन शेष",
     "daysRemainingPaid": "नवीनीकरण से पहले {{days}} दिन शेष",
-    "freeYearEndedNotice": "आपका मुफ़्त वर्ष समाप्त हो गया है। आप अभी भी अपना सारा मौजूदा डेटा देख, प्रिंट, निर्यात और बैकअप कर सकते हैं — जब तक आप नवीनीकरण नहीं करते, केवल नए इनवॉइस बनाना प्रभावित होता है।",
+    "freeYearEndedNotice": "आपका मुफ़्त ट्रायल समाप्त हो गया है। आप अभी भी अपना सारा मौजूदा डेटा देख, प्रिंट, निर्यात और बैकअप कर सकते हैं — जब तक आप नवीनीकरण नहीं करते, केवल नए इनवॉइस बनाना प्रभावित होता है।",
     "licenseExpiredNoticePaid": "आपका लाइसेंस समाप्त हो गया है। आप अभी भी अपना सारा मौजूदा डेटा देख, प्रिंट, निर्यात और बैकअप कर सकते हैं — जब तक आप नवीनीकरण नहीं करते, केवल नए इनवॉइस बनाना प्रभावित होता है।",
     "deviceBoundNotice": "आपकी लाइसेंस कुंजी इसी एक डिवाइस से जुड़ी है।",
     "machineMismatchNotice": "यह कुंजी पहले किसी अन्य डिवाइस पर सक्रिय थी। इसे यहां फिर से सक्रिय कर दिया गया है।",
@@ -3550,7 +3659,7 @@
       "backupTitle": "बैकअप और रिस्टोर",
       "backupBody": "आपका डेटा केवल इसी डिवाइस पर रहता है — यह स्क्रीन इसे सुरक्षित रखने का तरीका है। यहां ऑटोमैटिक बैकअप सेट करें ताकि आप कभी मुश्किल में न पड़ें।",
       "licenseTitle": "आपका लाइसेंस",
-      "licenseBody": "सारंग आपके पहले 12 महीनों के लिए मुफ़्त है। यह स्क्रीन हमेशा दिखाती है कि आप कहां खड़े हैं, और यहीं से आप समय आने पर नवीनीकरण करेंगे।"
+      "licenseBody": "सारंग आपके पहले 100 दिनों के लिए मुफ़्त है। यह स्क्रीन हमेशा दिखाती है कि आप कहां खड़े हैं, और यहीं से आप समय आने पर नवीनीकरण करेंगे।"
     },
     "items": {
       "restaurantTables": {
@@ -4017,9 +4126,45 @@
         "title": "Furniture Trade-Ins",
         "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
       },
+      "jobSiteAccounts": {
+        "title": "जॉब-साइट खाते",
+        "body": "एक ही साइट पर काम करने वाले कॉन्ट्रैक्टर के लिए एक चालू खाता खोलें — बिलिंग करते समय CREDIT इनवॉइस को इससे टैग करें और उनके सामान्य लेजर से अलग, इस खाते का अपना चालू बैलेंस देखें।"
+      },
+      "bulkListOrders": {
+        "title": "बल्क-लिस्ट ऑर्डर",
+        "body": "स्कूल या ऑफिस की सप्लाई लिस्ट को कच्ची लाइनों के रूप में दर्ज करें, हर लाइन को कैटलॉग के किसी उत्पाद और कीमत से मिलाएं, फिर सब कुछ मैच होने के बाद पूरे ऑर्डर को एक ही बार में बिल करें।"
+      },
+      "furnitureBookings": {
+        "title": "फर्नीचर बुकिंग",
+        "body": "एडवांस के साथ बनाई जाने वाली एक कस्टम वस्तु बुक करें, कस्टमाइज़ेशन दर्ज करें, फिर तैयार होने पर डिलीवरी इनवॉइस बनाएं — एडवांस अपने आप लागू हो जाता है।"
+      },
+      "furnitureTradeIns": {
+        "title": "फर्नीचर ट्रेड-इन",
+        "body": "नई खरीद के बदले दुकान द्वारा तय की गई कीमत पर पुरानी वस्तु का ट्रेड-इन दर्ज करें, फिर उस ग्राहक को बिल करते समय इसे छूट के रूप में लागू करें।"
+      },
       "scheduledDeliveries": {
-        "title": "Scheduled Deliveries",
-        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
+        "title": "शेड्यूल्ड डिलीवरी",
+        "body": "बिलिंग के समय बुक की गई किसी नाजुक वस्तु की डिलीवरी को शेड्यूल्ड, डिलीवरी के लिए निकली, और डिलीवर हो गई — इन चरणों में ट्रैक करें।"
+      },
+      "bakeryCustomOrders": {
+        "title": "कस्टम ऑर्डर",
+        "body": "एक बल्क प्री-ऑर्डर लें — शादी का केक, स्कूल का स्नैक ऑर्डर — एक नियत तारीख और एडवांस पेमेंट के साथ, जिसे आपकी सामान्य वॉक-इन काउंटर बिक्री से अलग ट्रैक किया जाता है।"
+      },
+      "cateringEvents": {
+        "title": "केटरिंग इवेंट",
+        "body": "पूरा केटरिंग इवेंट बुक करें: मेन्यू, कई दिनों के फंक्शन के लिए हर दिन का भोजन और नाश्ते की गिनती, मेहमानों की संख्या, और कुक, सर्वर व क्लीनर के लिए अलग-अलग लागत लाइनें — सहमति होने पर अंतिम मोलभाव की गई कीमत पर बिल करें।"
+      },
+      "toursFleet": {
+        "title": "वाहन बेड़ा",
+        "body": "आपके वाहन, ओडोमीटर रीडिंग और सर्विस हिस्ट्री के साथ — ट्रिप बुकिंग और व्हीकल सर्विस ड्यू रिपोर्ट दोनों इसी से जानकारी लेते हैं।"
+      },
+      "tourPackages": {
+        "title": "टूर पैकेज",
+        "body": "पहले से तय किए गए ट्रिप पैकेज, एक पैकेज रेट के साथ, हर ट्रिप की कीमत नए सिरे से तय करने के बजाय सीधे बुकिंग से जोड़ने के लिए तैयार।"
+      },
+      "tripBookings": {
+        "title": "ट्रिप बुकिंग",
+        "body": "किसी वाहन और पैकेज के आधार पर ट्रिप बुक करें, हर दिन की ड्यूटी (चलाए गए किलोमीटर, ड्राइवर बत्ता, अतिरिक्त शुल्क) दर्ज करें, और ट्रिप पूरी होने पर बिल करें।"
       }
     }
   },
@@ -5623,6 +5768,7 @@
     "seat": "बैठाएं",
     "noShow": "नहीं आए",
     "dayClosed": "दिन बंद हो गया। परोसे गए KOT: {{kotCount}} | राजस्व: {{invoiceCount}} बिलों से {{revenue}}।",
+    "unsettledTablesWarning": "{{count}} टेबल छोड़ी गईं — उनमें अभी भी बिना चेकआउट किए ऑर्डर हैं।",
     "dailyCloseFailed": "दैनिक समापन विफल: {{message}}",
     "dailyCloseFailedUnknown": "दैनिक समापन विफल: अज्ञात त्रुटि",
     "tableNumberPlaceholder": "टेबल नंबर (जैसे T1)",
@@ -5649,7 +5795,18 @@
     "noFreeTablesToMerge": "मर्ज करने के लिए कोई खाली टेबल नहीं है।",
     "print": "प्रिंट करें",
     "performDailyCloseConfirm": "दैनिक समापन करें? इससे सभी व्यस्त टेबल उपलब्ध के रूप में चिह्नित हो जाएंगी और एक समापन सारांश दर्ज होगा।",
-    "scanToOrder": "मेन्यू देखने और ऑर्डर करने के लिए स्कैन करें"
+    "scanToOrder": "मेन्यू देखने और ऑर्डर करने के लिए स्कैन करें",
+    "viewOrder": "ऑर्डर देखें",
+    "orderSummaryTitle": "ऑर्डर — {{name}}",
+    "noItemsOrderedYet": "अभी तक कुछ भी ऑर्डर नहीं किया गया।",
+    "estimatedTotal": "अनुमानित कुल",
+    "checkout": "चेकआउट",
+    "checkingOut": "चेकआउट हो रहा है…",
+    "couldNotLoadOrderSummary": "इस टेबल का ऑर्डर लोड नहीं हो सका।",
+    "couldNotCheckout": "इस टेबल का चेकआउट नहीं हो सका।",
+    "tableCheckedOut": "टेबल चेकआउट हो गई",
+    "billGenerated": "{{name}} के लिए बिल बनाया गया।",
+    "billRequested": "बिल का अनुरोध किया गया"
   },
   "costCentres": {
     "title": "लागत केंद्र",
@@ -5713,6 +5870,317 @@
     "empty": {
       "title": "No service combos yet",
       "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+    }
+  },
+  "checkin": {
+    "title": "ग्राहक चेक-इन",
+    "subtitle": "विज़िट लॉग करें — अभी कौन यहाँ है, और हाल की चेक-इन/चेक-आउट हिस्ट्री",
+    "notEnabled": "ग्राहक चेक-इन आपके व्यवसाय के लिए सक्षम नहीं है।",
+    "checkInAction": "चेक इन करें",
+    "checkOutAction": "चेक आउट करें",
+    "customer": "ग्राहक",
+    "selectCustomer": "एक ग्राहक चुनें।",
+    "checkedIn": "चेक इन किया गया",
+    "checkedOut": "चेक आउट किया गया",
+    "checkInFailed": "चेक इन नहीं हो सका। कृपया पुनः प्रयास करें।",
+    "currentlyIn": "वर्तमान में चेक इन ({{count}})",
+    "noOneIn": "फिलहाल कोई चेक इन नहीं है।",
+    "recentVisits": "हाल की विज़िट",
+    "noVisits": "अभी तक कोई विज़िट दर्ज नहीं हुई।",
+    "inAt": "इन {{time}}",
+    "outAt": "आउट {{time}}",
+    "stillIn": "अभी भी चेक इन है"
+  },
+  "bakery": {
+    "customOrders": {
+      "title": "कस्टम ऑर्डर",
+      "subtitle": "कस्टम केक और मनचाहे व्यंजनों के लिए एडवांस + बैलेंस बुकिंग",
+      "refresh": "रीफ्रेश करें",
+      "newOrder": "नया ऑर्डर",
+      "cancel": "रद्द करें",
+      "book": "बुक करें",
+      "customer": "ग्राहक",
+      "dueDate": "नियत तारीख",
+      "deliveryAddress": "डिलीवरी पता",
+      "itemsSection": "आइटम",
+      "searchProduct": "उत्पाद खोजें…",
+      "noProductsMatch": "कोई उत्पाद मेल नहीं खाता।",
+      "qty": "मात्रा",
+      "price": "कीमत",
+      "flavorPlaceholder": "फ्लेवर / साइज़",
+      "add": "जोड़ें",
+      "total": "कुल",
+      "advanceAmount": "एडवांस राशि ({{sym}})",
+      "advancePaymentMethod": "एडवांस भुगतान विधि",
+      "cash": "नकद",
+      "upi": "UPI",
+      "card": "कार्ड",
+      "wallet": "वॉलेट",
+      "notes": "नोट्स",
+      "selectCustomerError": "एक ग्राहक चुनें।",
+      "addItemError": "कम से कम एक आइटम जोड़ें।",
+      "advanceExceedsError": "एडवांस, ऑर्डर की कुल राशि से अधिक नहीं हो सकता।",
+      "orderCreated": "ऑर्डर बनाया गया",
+      "orderCreateFailed": "ऑर्डर नहीं बनाया जा सका।",
+      "generateInvoice": "इनवॉइस जनरेट करें",
+      "generatingInvoice": "जनरेट हो रहा है…",
+      "invoiceGenerated": "इनवॉइस जनरेट हुआ",
+      "invoiceGeneratedDetail": "डिलीवरी इनवॉइस बनाया गया और एडवांस लागू किया गया।",
+      "invoiceGenerateFailed": "इनवॉइस जनरेट नहीं किया जा सका।",
+      "loading": "लोड हो रहा है…",
+      "noOrdersYet": "अभी तक कोई ऑर्डर नहीं।",
+      "dueOn": "नियत तारीख {{date}}",
+      "itemsCount": "{{count}} आइटम",
+      "advanceLabel": "{{amount}} एडवांस",
+      "loadFailed": "ऑर्डर लोड नहीं किए जा सके।"
+    },
+    "cateringEvents": {
+      "title": "केटरिंग इवेंट",
+      "subtitle": "केटरिंग इवेंट बुक करें — मेन्यू, प्रति प्लेट कीमत, प्रतिदिन भोजन और नाश्ता, और भूमिका अनुसार स्टाफ लागत",
+      "refresh": "रीफ्रेश करें",
+      "newEvent": "नया इवेंट",
+      "cancel": "रद्द करें",
+      "book": "इवेंट बुक करें",
+      "save": "सेव करें",
+      "customer": "ग्राहक",
+      "venueAddress": "स्थान का पता",
+      "eventStartDate": "इवेंट शुरू होने की तारीख",
+      "eventEndDate": "इवेंट समाप्ति तारीख",
+      "attendeeCount": "मेहमानों की संख्या",
+      "pricePerPlate": "प्रति प्लेट कीमत ({{sym}})",
+      "estimatedTotal": "अनुमानित कुल",
+      "menuSection": "मेन्यू",
+      "searchProduct": "उत्पाद खोजें…",
+      "qty": "मात्रा",
+      "price": "कीमत",
+      "add": "जोड़ें",
+      "daysSection": "प्रतिदिन भोजन और नाश्ता",
+      "serviceDate": "तारीख",
+      "mealsCount": "भोजन",
+      "snacksCount": "नाश्ता",
+      "addDay": "दिन जोड़ें",
+      "staffSection": "स्टाफ",
+      "role": "भूमिका",
+      "cook": "रसोइया",
+      "server": "सर्वर",
+      "cleaner": "सफाईकर्मी",
+      "other": "अन्य",
+      "workerCount": "कर्मचारी संख्या",
+      "ratePerWorker": "प्रति कर्मचारी दर ({{sym}})",
+      "addStaff": "स्टाफ जोड़ें",
+      "staffCostTotal": "कुल स्टाफ लागत",
+      "advanceAmount": "एडवांस राशि ({{sym}})",
+      "advancePaymentMethod": "एडवांस भुगतान विधि",
+      "cash": "नकद",
+      "upi": "UPI",
+      "card": "कार्ड",
+      "wallet": "वॉलेट",
+      "notes": "नोट्स",
+      "loading": "लोड हो रहा है…",
+      "noEventsYet": "अभी तक कोई केटरिंग इवेंट नहीं।",
+      "attendeesLabel": "{{count}} मेहमान",
+      "finalPriceLabel": "{{amount}} तय",
+      "quotedLabel": "{{amount}} अनुमानित",
+      "advanceLabel": "{{amount}} एडवांस",
+      "recordFinalPrice": "अंतिम कीमत दर्ज करें",
+      "finalPricePrompt": "अंतिम तय की गई कीमत ({{sym}})",
+      "finalPriceRecorded": "अंतिम कीमत दर्ज हुई",
+      "finalPriceRecordFailed": "अंतिम कीमत दर्ज नहीं हो सकी।",
+      "recordingPrice": "सेव हो रहा है…",
+      "generateInvoice": "इनवॉइस जनरेट करें",
+      "generatingInvoice": "जनरेट हो रहा है…",
+      "invoiceGenerated": "इनवॉइस जनरेट हुआ",
+      "invoiceGeneratedDetail": "इनवॉइस बनाया गया और एडवांस लागू किया गया।",
+      "invoiceGenerateFailed": "इनवॉइस जनरेट नहीं किया जा सका।",
+      "loadFailed": "केटरिंग इवेंट लोड नहीं हो सके।",
+      "selectCustomerError": "एक ग्राहक चुनें।",
+      "eventStartDateError": "इवेंट शुरू होने की तारीख आवश्यक है।",
+      "attendeeCountError": "मेहमानों की संख्या शून्य से अधिक होनी चाहिए।",
+      "pricePerPlateError": "प्रति प्लेट कीमत आवश्यक है।",
+      "advanceExceedsError": "एडवांस अनुमानित कुल राशि से अधिक नहीं हो सकता।",
+      "eventCreated": "इवेंट बुक हुआ",
+      "eventCreateFailed": "इवेंट बुक नहीं हो सका।"
+    }
+  },
+  "tours": {
+    "fleet": {
+      "title": "वाहन बेड़ा",
+      "subtitle": "बेड़ा, सर्विस लॉग, और 30-दिन उपलब्धता कैलेंडर",
+      "refresh": "रिफ्रेश करें",
+      "newVehicle": "नया वाहन",
+      "regNumber": "पंजीकरण संख्या",
+      "regNumberRequired": "पंजीकरण संख्या आवश्यक है।",
+      "vehicleType": "वाहन प्रकार",
+      "seatingCapacity": "सीट क्षमता",
+      "capacityRequired": "सीट क्षमता शून्य से अधिक होनी चाहिए।",
+      "cancel": "रद्द करें",
+      "add": "वाहन जोड़ें",
+      "vehicleAdded": "वाहन जोड़ा गया",
+      "vehicleAddFailed": "वाहन जोड़ा नहीं जा सका।",
+      "loading": "लोड हो रहा है…",
+      "noVehiclesYet": "अभी तक कोई वाहन नहीं है। शुरू करने के लिए अपना पहला वाहन जोड़ें।",
+      "loadFailed": "वाहन लोड नहीं हो सके।",
+      "seats": "{{count}} सीटें",
+      "odometer": "{{km}} किमी",
+      "serviceLog": "सर्विस लॉग",
+      "serviceLogFor": "सर्विस लॉग — {{reg}}",
+      "serviceDate": "सर्विस तारीख",
+      "serviceType": "प्रकार",
+      "odometerReading": "ओडोमीटर रीडिंग",
+      "cost": "लागत",
+      "close": "बंद करें",
+      "logService": "सर्विस दर्ज करें",
+      "serviceLogged": "सर्विस दर्ज की गई",
+      "serviceLogFailed": "सर्विस दर्ज नहीं की जा सकी।",
+      "availabilityNext30Days": "बेड़ा और सीट उपलब्धता — अगले 30 दिन",
+      "free": "खाली",
+      "bookedCount": "{{count}} बुकिंग",
+      "seatsRemaining": "{{count}} सीटें शेष",
+      "vehicleTypes": {
+        "SEDAN": "सेडान",
+        "SUV": "SUV / इनोवा",
+        "TEMPO_TRAVELLER": "टेम्पो ट्रैवलर",
+        "MINI_BUS": "मिनी बस",
+        "BUS": "बस"
+      },
+      "serviceTypes": {
+        "SERVICE": "सर्विस",
+        "REPAIR": "मरम्मत",
+        "MAINTENANCE": "रखरखाव"
+      },
+      "status": {
+        "ACTIVE": "सक्रिय",
+        "IN_SERVICE": "सर्विस में",
+        "INACTIVE": "निष्क्रिय"
+      },
+      "changeStatus": "Change vehicle status",
+      "statusUpdated": "स्थिति अपडेट की गई",
+      "statusUpdateFailed": "वाहन की स्थिति अपडेट नहीं की जा सकी।"
+    },
+    "packages": {
+      "title": "टूर पैकेज",
+      "subtitle": "पैकेज टेम्पलेट, प्रस्थान, और सीट-बुकिंग",
+      "refresh": "रिफ्रेश करें",
+      "newPackage": "नया पैकेज",
+      "packageName": "पैकेज नाम",
+      "nameRequired": "पैकेज नाम आवश्यक है।",
+      "itinerary": "यात्रा विवरण",
+      "durationDays": "अवधि (दिन)",
+      "defaultSeats": "डिफ़ॉल्ट सीटें",
+      "farePerSeat": "प्रति सीट किराया",
+      "cancel": "रद्द करें",
+      "add": "पैकेज जोड़ें",
+      "save": "सहेजें",
+      "packageAdded": "पैकेज जोड़ा गया",
+      "packageAddFailed": "पैकेज जोड़ा नहीं जा सका।",
+      "loading": "लोड हो रहा है…",
+      "noPackagesYet": "अभी तक कोई टूर पैकेज नहीं है। शुरू करने के लिए अपना पहला पैकेज जोड़ें।",
+      "loadFailed": "पैकेज लोड नहीं हो सके।",
+      "durationLabel": "{{days}} दिन",
+      "seatsLabel": "{{count}} सीटें",
+      "perSeat": " / सीट",
+      "departures": "प्रस्थान",
+      "addDeparture": "प्रस्थान जोड़ें",
+      "departureDate": "प्रस्थान तारीख",
+      "totalSeats": "कुल सीटें",
+      "departureAdded": "प्रस्थान जोड़ा गया",
+      "departureAddFailed": "प्रस्थान जोड़ा नहीं जा सका।",
+      "noDeparturesYet": "अभी तक कोई प्रस्थान निर्धारित नहीं है।",
+      "seatsRemainingOf": "{{total}} में से {{remaining}} सीटें शेष",
+      "bookSeats": "सीटें बुक करें",
+      "bookSeatsTitle": "सीटें बुक करें",
+      "customer": "ग्राहक",
+      "seatsToBook": "बुक करने के लिए सीटें",
+      "advanceAmount": "अग्रिम राशि",
+      "confirmBooking": "बुकिंग की पुष्टि करें",
+      "seatsBooked": "सीटें बुक हुईं",
+      "bookingFailed": "सीटें बुक नहीं की जा सकीं।",
+      "status": {
+        "ACTIVE": "सक्रिय",
+        "INACTIVE": "निष्क्रिय"
+      },
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "packageStatusUpdated": "पैकेज स्थिति अपडेट की गई",
+      "packageStatusUpdateFailed": "पैकेज स्थिति अपडेट नहीं की जा सकी।",
+      "markComplete": "Mark Complete",
+      "cancelDeparture": "रद्द करें",
+      "departureStatusUpdated": "प्रस्थान स्थिति अपडेट की गई",
+      "departureStatusUpdateFailed": "प्रस्थान स्थिति अपडेट नहीं की जा सकी।",
+      "departureStatus": {
+        "COMPLETED": "पूर्ण",
+        "CANCELLED": "रद्द"
+      }
+    },
+    "bookings": {
+      "title": "यात्रा बुकिंग",
+      "subtitle": "चार्टर बुकिंग, ड्राइवर ड्यूटी लॉग, और अतिरिक्त किमी/घंटा निपटान",
+      "refresh": "रिफ्रेश करें",
+      "newCharterBooking": "नई चार्टर बुकिंग",
+      "customer": "ग्राहक",
+      "customerRequired": "ग्राहक आवश्यक है।",
+      "vehicle": "वाहन",
+      "vehicleRequired": "वाहन आवश्यक है।",
+      "selectVehicle": "एक वाहन चुनें",
+      "tripStartDate": "यात्रा प्रारंभ तारीख",
+      "tripStartDateRequired": "यात्रा प्रारंभ तारीख आवश्यक है।",
+      "tripEndDate": "यात्रा समाप्ति तारीख",
+      "pickupLocation": "पिकअप स्थान",
+      "dropLocation": "ड्रॉप स्थान",
+      "route": "मार्ग",
+      "packageRate": "पैकेज दर",
+      "includedKmPerDay": "शामिल किमी/दिन",
+      "includedHoursPerDay": "शामिल घंटे/दिन",
+      "advanceAmount": "अग्रिम राशि",
+      "referringAgent": "रेफरिंग एजेंट",
+      "commissionType": "कमीशन प्रकार",
+      "none": "कोई नहीं",
+      "percentage": "प्रतिशत",
+      "fixed": "निश्चित",
+      "commissionValue": "कमीशन मूल्य",
+      "cancel": "रद्द करें",
+      "createBooking": "बुकिंग बनाएं",
+      "bookingCreated": "बुकिंग बनाई गई",
+      "bookingCreateFailed": "बुकिंग नहीं बनाई जा सकी।",
+      "loading": "लोड हो रहा है…",
+      "noBookingsYet": "अभी तक कोई यात्रा बुकिंग नहीं है।",
+      "advanceOf": "({{amount}} अग्रिम)",
+      "agentLabel": "एजेंट: {{name}}",
+      "startDuty": "ड्यूटी शुरू करें",
+      "startDutyTitle": "ड्राइवर ड्यूटी शुरू करें",
+      "driver": "ड्राइवर",
+      "selectDriver": "एक ड्राइवर चुनें",
+      "startOdometer": "प्रारंभ ओडोमीटर",
+      "dutyStartTime": "ड्यूटी प्रारंभ समय",
+      "driverBata": "ड्राइवर भत्ता",
+      "nightHaltCharge": "रात्रि विश्राम शुल्क",
+      "nightDrivingAllowance": "रात्रि ड्राइविंग भत्ता",
+      "dutyStarted": "ड्यूटी शुरू हुई",
+      "dutyStartFailed": "ड्यूटी शुरू नहीं की जा सकी।",
+      "closeDuty": "ड्यूटी बंद करें",
+      "closeDutyTitle": "ड्राइवर ड्यूटी बंद करें",
+      "endOdometer": "अंतिम ओडोमीटर",
+      "dutyEndTime": "ड्यूटी समाप्ति समय",
+      "dutyClosed": "ड्यूटी बंद हुई",
+      "dutyCloseFailed": "ड्यूटी बंद नहीं की जा सकी।",
+      "dutyOpen": "ड्यूटी जारी है",
+      "kmDrivenLabel": "{{km}} किमी चलाया",
+      "excessChargeLabel": "अतिरिक्त शुल्क {{amount}}",
+      "generateInvoice": "इनवॉइस बनाएं",
+      "invoiceGenerated": "इनवॉइस बनाया गया",
+      "invoiceGenerateFailed": "इनवॉइस नहीं बनाया जा सका।",
+      "type": {
+        "CHARTER": "चार्टर",
+        "SEAT": "सीट"
+      },
+      "status": {
+        "BOOKED": "बुक किया गया",
+        "COMPLETED": "पूर्ण",
+        "CANCELLED": "रद्द"
+      },
+      "cancelBooking": "बुकिंग रद्द करें",
+      "bookingCancelled": "बुकिंग रद्द की गई",
+      "bookingCancelFailed": "बुकिंग रद्द नहीं की जा सकी।"
     }
   }
 }

@@ -131,6 +131,18 @@ export type TemplateModule =
   | 'print_service_billing'
   | 'deposit_booking'
   | 'trade_in_exchange'
+  // 2026-09 — Gym/Studio machine-based workout progress tracking, and a
+  // universal visit check-in/check-out log (any business type).
+  | 'workout_tracking'
+  | 'customer_checkin'
+  // 2026-09 §12 — Bakery custom order booking, mirrors deposit_booking.
+  | 'custom_order_booking'
+  // 2026-09 §12 — Tours & Travels.
+  | 'vehicle_fleet' | 'tour_packages' | 'trip_charter_booking' | 'driver_duty_settlement'
+  // 2026-09-02 — Restaurant/Bakery diet-type marker.
+  | 'food_diet_type'
+  // 2026-09-02 — Catering event booking (Bakery/Sweet Shop/Catering).
+  | 'catering_events'
 
 interface IndustryState {
   businessType: string

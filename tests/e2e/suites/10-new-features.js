@@ -82,8 +82,18 @@ async function run() {
       await page.waitForTimeout(1000)
       r.log('jewellery-product-created-no-crash', !(await h.hasErrorBoundary(page)))
 
-      const listRes = await page.evaluate(async () => window.api.products.list({ search: 'E2E New Gold Ring', limit: 10 }))
-      const items = listRes?.data?.products || listRes?.data?.items || []
+      // products.list has no search/text-filter parameter at all — the real
+      // search entry point is the separate products.search(query) channel
+      // (returns a raw array in `.data`, not a paginated `{products,...}`
+      // shape). Real pre-existing bug found 2026-09-02, unrelated to any of
+      // this session's own vertical work: this used products.list({search})
+      // instead, which silently ignored the filter and returned page 1 of
+      // ALL products sorted alphabetically — happened to still find the
+      // target product by luck while the dev DB was small, until months of
+      // accumulated E2E test data pushed it past page 1 and this started
+      // failing for real.
+      const searchRes = await page.evaluate(async () => window.api.products.search('E2E New Gold Ring'))
+      const items = Array.isArray(searchRes?.data) ? searchRes.data : []
       const created = items.find((p) => p.productName === `${TEST_PREFIX} Gold Ring`)
       jewelProductId = created?.id
       r.log('jewellery-product-findable-via-api', !!jewelProductId, JSON.stringify({ metalType: created?.metalType, netWeight: created?.netWeight }))

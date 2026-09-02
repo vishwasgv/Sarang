@@ -101,7 +101,7 @@ describe('chartOfAccountsService.listAccounts', () => {
 
     expect(db.chartOfAccounts.createMany).toHaveBeenCalledTimes(1)
     const seeded = vi.mocked(db.chartOfAccounts.createMany).mock.calls[0][0].data as Array<{ accountCode: string; isSystem: boolean }>
-    expect(seeded).toHaveLength(13)
+    expect(seeded).toHaveLength(14)
     expect(seeded.every((a) => a.isSystem)).toBe(true)
   })
 

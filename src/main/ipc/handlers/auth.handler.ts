@@ -127,6 +127,9 @@ export function register(handle: HandleFn): void {
   handle('settings:set', async (payload) => {
     const deny = await requirePermission('settings.modify'); if (deny) return deny
     const { key, value } = payload as { key: string; value: string }
+    // settingsService.setSetting() rejects license-internal keys (LIC-003) —
+    // this channel is intentionally never the write path for license state;
+    // use license:activate instead. See LICENSE_INTERNAL_SETTING_KEYS.
     return settingsService.setSetting(key, value)
   })
 

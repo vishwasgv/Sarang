@@ -174,7 +174,16 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/stationery/bulk-orders', key: 'bulkListOrders' },
   { path: '/furniture/bookings', key: 'furnitureBookings' },
   { path: '/furniture/trade-ins', key: 'furnitureTradeIns' },
-  { path: '/plumbing/scheduled-deliveries', key: 'scheduledDeliveries' }
+  { path: '/plumbing/scheduled-deliveries', key: 'scheduledDeliveries' },
+  // 2026-09 §12/§13 — Grocery/Bakery/Tours & Travels new verticals (the
+  // 50th-50th expansion). Grocery has no distinctive nav path of its own
+  // (its 5 signature reports live inside the already-toured universal
+  // Reports screen instead), so nothing to add for it here.
+  { path: '/bakery/custom-orders', key: 'bakeryCustomOrders' },
+  { path: '/bakery/catering-events', key: 'cateringEvents' },
+  { path: '/tours/fleet', key: 'toursFleet' },
+  { path: '/tours/packages', key: 'tourPackages' },
+  { path: '/tours/bookings', key: 'tripBookings' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(

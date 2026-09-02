@@ -189,6 +189,9 @@ interface Invoice {
   paymentStatus: string
   notes?: string | null
   gstType?: string | null
+  foreignCurrencyCode?: string | null
+  foreignExchangeRate?: number | null
+  foreignTotalAmount?: number | null
 }
 
 // Exported — Phase 47's QR table ordering reuses this to let a customer pay
@@ -407,6 +410,7 @@ export const printService = {
       ${taxHtml}
       ${Math.abs(invoice.roundingAmount) > 0.001 ? `<div class="totals-row"><span>Rounding</span><span>${invoice.roundingAmount >= 0 ? '+' : ''}${formatAmount(invoice.roundingAmount, sym)}</span></div>` : ''}
       <div class="totals-total"><span>Total</span><span>${formatAmount(invoice.totalAmount, sym)}</span></div>
+      ${invoice.foreignCurrencyCode && invoice.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(invoice.foreignCurrencyCode)}</span><span>${invoice.foreignTotalAmount.toFixed(2)}${invoice.foreignExchangeRate ? ` (@ ${invoice.foreignExchangeRate})` : ''}</span></div>` : ''}
       ${invoice.paidAmount > 0 ? `<div class="totals-row"><span>Paid</span><span>${formatAmount(invoice.paidAmount, sym)}</span></div>` : ''}
       ${invoice.balanceAmount > 0.01 ? `<div class="totals-balance"><span>Balance Due</span><span>${formatAmount(invoice.balanceAmount, sym)}</span></div>` : ''}
     </div>
@@ -1337,6 +1341,7 @@ export const printService = {
     supplier: { supplierName: string; supplierCode?: string | null; phone?: string | null } | null
     items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
     subtotal: number; taxAmount: number; totalAmount: number; balanceAmount: number
+    foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null; foreignTotalAmount?: number | null
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
@@ -1436,6 +1441,7 @@ export const printService = {
       <div class="totals-row"><span>Subtotal</span><span>${formatAmount(bill.subtotal, sym)}</span></div>
       ${bill.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(bill.taxAmount, sym)}</span></div>` : ''}
       <div class="totals-total"><span>Total Amount</span><span>${formatAmount(bill.totalAmount, sym)}</span></div>
+      ${bill.foreignCurrencyCode && bill.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(bill.foreignCurrencyCode)}</span><span>${bill.foreignTotalAmount.toFixed(2)}${bill.foreignExchangeRate ? ` (@ ${bill.foreignExchangeRate})` : ''}</span></div>` : ''}
       ${bill.balanceAmount > 0 && bill.balanceAmount !== bill.totalAmount ? `<div class="totals-row"><span>Balance Due</span><span>${formatAmount(bill.balanceAmount, sym)}</span></div>` : ''}
     </div>
   </div>

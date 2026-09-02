@@ -1,7 +1,7 @@
 import { paymentService } from '../../services/payment.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { RecordPaymentSchema, RecordSplitPaymentSchema, ReversePaymentSchema } from '../../validation/payment.validation'
+import { RecordPaymentSchema, RecordForeignCurrencySettlementSchema, RecordSplitPaymentSchema, ReversePaymentSchema } from '../../validation/payment.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -11,6 +11,13 @@ export function register(handle: HandleFn): void {
     const parsed = RecordPaymentSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return paymentService.recordPayment(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('payments:recordForeignCurrencySettlement', async (payload) => {
+    const deny = await requirePermission('payments.record'); if (deny) return deny
+    const parsed = RecordForeignCurrencySettlementSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return paymentService.recordForeignCurrencySettlement(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('payments:recordSplit', async (payload) => {

@@ -105,14 +105,22 @@ async function run() {
       }).then((x) => x.json())
       r.log('lan-advance-to-done-succeeds', advance2?.success === true && advance2?.data?.status === 'DONE', JSON.stringify(advance2))
 
-      // updateKOTStatus's real side effect (not something a fake/echo
-      // endpoint would reproduce): DONE frees the table once no other
-      // active ticket uses it — proves this LAN write reached the actual
+      // updateKOTStatus's real side effect, read back through a completely
+      // separate IPC path (listTables, not the LAN endpoint that wrote it)
+      // — proves this LAN write reached the actual
       // restaurantService.updateKOTStatus, same as every other KOT-advancing
       // surface (KOTScreen, second-monitor board), not a parallel code path.
+      // 2026-09-02 — a table only frees at actual payment settlement now
+      // (checkoutTable), never just because its food is done cooking; food
+      // fully cooked doesn't mean the guest has paid or left. This KOT was
+      // created against an already-existing invoice (the counter/takeaway
+      // "send to kitchen from an invoice" path this suite's fixture uses),
+      // so it won't show up in listTables' open-KOT list either way — the
+      // real assertion here is the opposite of what it used to be: the
+      // table must STAY occupied now, not free just because DONE.
       const tablesRes = await page.evaluate(async () => window.api.restaurant.listTables())
       const table = (tablesRes?.data || []).find((t) => t.id === tableId)
-      r.log('table-freed-by-lan-driven-done', table?.status === 'AVAILABLE', JSON.stringify(table?.status))
+      r.log('table-stays-occupied-after-lan-driven-done', table?.status === 'OCCUPIED', JSON.stringify(table?.status))
     })
 
     await r.step('generate-qr-and-regenerate-token-invalidates-old-one', async () => {

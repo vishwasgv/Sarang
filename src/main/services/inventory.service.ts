@@ -283,13 +283,18 @@ export const inventoryService = {
           where: { productId: payload.productId },
           data: { quantity: payload.quantity, averageCost: newAvgCost }
         })
-        // A damage/breakage write-off is always a decrease — 'DAMAGE' only
-        // ever replaces the generic 'ADJUSTMENT' bucket for a downward
-        // correction, never an increase (you can't "damage" stock into
-        // existence). Omitting reasonCategory entirely preserves the exact
-        // pre-existing movementType:'ADJUSTMENT' behavior for every caller
-        // that predates this field.
-        const movementType = payload.reasonCategory === 'DAMAGE' && difference < 0 ? 'DAMAGE' : 'ADJUSTMENT'
+        // A damage/breakage write-off or an expiry write-off is always a
+        // decrease — 'DAMAGE'/'EXPIRY' only ever replace the generic
+        // 'ADJUSTMENT' bucket for a downward correction, never an increase
+        // (you can't "damage" or "expire" stock into existence). Omitting
+        // reasonCategory entirely preserves the exact pre-existing
+        // movementType:'ADJUSTMENT' behavior for every caller that predates
+        // this field. 2026-09 §12 — Grocery item 2: EXPIRY added alongside
+        // the pre-existing DAMAGE branch so a perishable write-off is
+        // queryable as its own distinct movementType (previously EXPIRY was
+        // accepted by the Zod schema but silently fell through to the plain
+        // ADJUSTMENT bucket, indistinguishable from any other adjustment).
+        const movementType = (payload.reasonCategory === 'DAMAGE' || payload.reasonCategory === 'EXPIRY') && difference < 0 ? payload.reasonCategory : 'ADJUSTMENT'
         await tx.inventoryMovement.create({
           data: {
             productId: payload.productId,

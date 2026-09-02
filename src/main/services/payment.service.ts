@@ -8,7 +8,7 @@ import { roundCurrency } from './currency.service'
 import { assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
-import type { RecordPaymentPayload, RecordSplitPaymentPayload, ReversePaymentPayload } from '../validation/payment.validation'
+import type { RecordPaymentPayload, RecordForeignCurrencySettlementPayload, RecordSplitPaymentPayload, ReversePaymentPayload } from '../validation/payment.validation'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -29,6 +29,136 @@ async function postPaymentJournalEntry(tx: TxClient, params: { paymentId: string
   })
 }
 
+// 2026-09 — realized FX gain/loss on fully settling a foreign-currency
+// invoice at a different rate than it was raised at. Deliberately a
+// SEPARATE function from recordPayment above, not an extra branch inside
+// it: recordPayment's existing amount/balance math (RULE PM002, partial
+// payments, split payments) is unchanged and untouched by this feature —
+// every non-foreign-currency invoice, and even a foreign-currency invoice
+// paid the plain way, behaves exactly as before. This path is opt-in, only
+// for a foreign-currency invoice (foreignCurrencyCode set) being settled IN
+// FULL via its own foreign currency.
+//
+// The two-branch split below isn't arbitrary — it's the actual double-entry
+// difference between the two directions:
+//   - Rate moved favorably (settlementRate > invoice's own rate): the bank
+//     genuinely received MORE base-currency value than the invoice's book
+//     value — the excess is real cash the normal payment posting doesn't
+//     account for (Dr Cash excess / Cr Realized FX Gain excess), on top of
+//     the invoice's own book value being cleared as a normal payment.
+//   - Rate moved unfavorably: the bank received LESS than book value, but
+//     the foreign-currency obligation is still fully discharged — the
+//     shortfall is uncollectible book value being written off, which comes
+//     out of Accounts Receivable, not Cash (Dr Realized FX Loss shortfall /
+//     Cr Accounts Receivable shortfall) — no cash was ever going to arrive
+//     for that portion.
+async function recordForeignCurrencySettlement(
+  payload: RecordForeignCurrencySettlementPayload,
+  userId?: string
+) {
+  const db = getPrisma()
+  try {
+    const payment = await db.$transaction(async (tx) => {
+      const invoice = await tx.invoice.findUnique({ where: { id: payload.invoiceId } })
+      if (!invoice) throw new ServiceError('INVOC-005', 'Invoice not found.')
+      if (invoice.status === 'CANCELLED') throw new ServiceError('PM-001', 'Cannot record payment for a cancelled invoice.')
+      if (!invoice.foreignCurrencyCode || invoice.foreignExchangeRate == null) {
+        throw new ServiceError('PM-008', 'This invoice was not raised in a foreign currency.')
+      }
+      const balanceBefore = invoice.balanceAmount
+      if (balanceBefore <= 0) throw new ServiceError('PM-002', 'This invoice is already fully paid.')
+
+      const resolvedPaymentDate = payload.paymentDate ? parsePaymentDate(payload.paymentDate) : new Date()
+      await assertNotLockedOrThrow(tx, resolvedPaymentDate)
+
+      const computedBaseAmount = roundCurrency(payload.foreignAmount * payload.settlementRate)
+      const appliedAmount = Math.min(computedBaseAmount, balanceBefore)
+
+      const pmt = await tx.payment.create({
+        data: {
+          invoiceId: payload.invoiceId,
+          customerId: invoice.customerId ?? null,
+          paymentMethod: payload.paymentMethod,
+          amount: appliedAmount,
+          referenceNumber: payload.referenceNumber ?? null,
+          remarks: payload.remarks ?? null,
+          paymentDate: resolvedPaymentDate,
+          recordedById: userId ?? null,
+          foreignCurrencyCode: invoice.foreignCurrencyCode,
+          foreignAmount: payload.foreignAmount,
+          foreignExchangeRate: payload.settlementRate
+        }
+      })
+
+      // This invoice is being settled IN FULL via its foreign-currency
+      // amount — balanceAmount always reaches exactly zero here, regardless
+      // of which direction the rate moved (the gain/loss postings below
+      // account for the difference, whichever side it lands on). paidAmount
+      // absorbs the full old balance (not just appliedAmount) to preserve
+      // the paidAmount + balanceAmount = totalAmount invariant every other
+      // report relies on — see this function's own header comment for why
+      // a write-off is still considered "paid" for that purpose.
+      await tx.invoice.update({
+        where: { id: payload.invoiceId },
+        data: { paidAmount: roundCurrency(invoice.paidAmount + balanceBefore), balanceAmount: 0, paymentStatus: 'PAID' }
+      })
+
+      if (invoice.customerId) {
+        await customerLedgerService.addEntry({
+          customerId: invoice.customerId,
+          referenceType: 'PAYMENT',
+          referenceId: pmt.id,
+          debitAmount: 0,
+          creditAmount: balanceBefore,
+          remarks: `Foreign-currency settlement for Invoice ${invoice.invoiceNumber}`
+        }, tx)
+      }
+
+      await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: appliedAmount })
+
+      const gainLoss = roundCurrency(computedBaseAmount - balanceBefore)
+      if (Math.abs(gainLoss) >= 0.01) {
+        const fxAccount = await chartOfAccountsService.getOrCreateSystemAccountByCode('4200', tx)
+        const isGain = gainLoss > 0
+        const magnitude = Math.abs(gainLoss)
+        if (isGain) {
+          const cashAccount = await chartOfAccountsService.getSystemAccountByCode('1000', tx)
+          await journalEntryService.postSystemEntry(tx, {
+            sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: pmt.id,
+            narration: `Realized gain on Invoice ${invoice.invoiceNumber} settlement (rate ${invoice.foreignExchangeRate} → ${payload.settlementRate})`,
+            lines: [
+              { accountId: cashAccount.id, bankAccountId: null, debitAmount: magnitude, creditAmount: 0 },
+              { accountId: fxAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: magnitude }
+            ]
+          })
+        } else {
+          const arAccount = await chartOfAccountsService.getSystemAccountByCode('1100', tx)
+          await journalEntryService.postSystemEntry(tx, {
+            sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: pmt.id,
+            narration: `Realized loss on Invoice ${invoice.invoiceNumber} settlement (rate ${invoice.foreignExchangeRate} → ${payload.settlementRate})`,
+            lines: [
+              { accountId: fxAccount.id, bankAccountId: null, debitAmount: magnitude, creditAmount: 0 },
+              { accountId: arAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: magnitude }
+            ]
+          })
+        }
+      }
+
+      return pmt
+    })
+
+    await logAction({
+      userId, action: 'PAYMENT_RECORDED', entityType: 'Payment', entityId: payment.id,
+      newValue: { invoiceId: payload.invoiceId, foreignAmount: payload.foreignAmount, settlementRate: payload.settlementRate, method: payload.paymentMethod }
+    })
+    return { success: true, data: payment }
+  } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+    const msg = err instanceof Error ? err.message : 'Failed to record foreign-currency settlement.'
+    return { success: false, error: { code: 'SYS-001', message: msg } }
+  }
+}
+
 // Real bug found live (core-commerce audit): `new Date(payload.paymentDate)`
 // below parsed a bare date-only "YYYY-MM-DD" string (exactly what a
 // backdated-payment date picker sends) as UTC midnight, not local midnight —
@@ -44,6 +174,8 @@ function parsePaymentDate(value: string): Date {
 }
 
 export const paymentService = {
+  recordForeignCurrencySettlement,
+
   // RULE PM001: amount > 0 enforced by Zod
   // RULE PM005: records only — never verifies or processes
   async recordPayment(payload: RecordPaymentPayload, userId?: string) {

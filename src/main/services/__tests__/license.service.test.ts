@@ -156,6 +156,81 @@ describe('license key signing and verification', () => {
   })
 })
 
+describe('SARANG2 (Ed25519) key signing and verification', () => {
+  // Ephemeral test keypair — never the real production private key.
+  const { generateKeyPairSync } = require('crypto') as typeof import('crypto')
+  const { publicKey, privateKey } = generateKeyPairSync('ed25519')
+  const TEST_PUBLIC_PEM = publicKey.export({ type: 'spki', format: 'pem' }).toString()
+  const TEST_PRIVATE_PEM = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
+
+  it('round-trips a freshly generated SARANG2 key', async () => {
+    vi.stubEnv('SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM', TEST_PUBLIC_PEM)
+    const { generateLicenseKeyV2, parseAndVerifyLicenseKey } = await importFresh()
+    const issuedAt = new Date('2026-01-15T00:00:00Z')
+    const key = generateLicenseKeyV2('TRIAL', 'IN', issuedAt, TEST_PRIVATE_PEM)
+    expect(key.startsWith('SARANG2-')).toBe(true)
+    const parsed = parseAndVerifyLicenseKey(key)
+    expect(parsed).not.toBeNull()
+    expect(parsed?.tier).toBe('TRIAL')
+    expect(parsed?.region).toBe('IN')
+    expect(parsed?.issuedAt.toISOString().slice(0, 10)).toBe('2026-01-15')
+  })
+
+  it('rejects a SARANG2 key with a tampered signature', async () => {
+    vi.stubEnv('SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM', TEST_PUBLIC_PEM)
+    const { generateLicenseKeyV2, parseAndVerifyLicenseKey } = await importFresh()
+    const key = generateLicenseKeyV2('PAID', 'INTL', new Date(), TEST_PRIVATE_PEM)
+    const tampered = key.slice(0, -2) + (key.slice(-2) === 'aa' ? 'bb' : 'aa')
+    expect(parseAndVerifyLicenseKey(tampered)).toBeNull()
+  })
+
+  it('rejects a SARANG2 key with a tampered tier', async () => {
+    vi.stubEnv('SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM', TEST_PUBLIC_PEM)
+    const { generateLicenseKeyV2, parseAndVerifyLicenseKey } = await importFresh()
+    const key = generateLicenseKeyV2('TRIAL', 'IN', new Date(), TEST_PRIVATE_PEM)
+    const forged = key.replace('TRIAL', 'PAID')
+    expect(parseAndVerifyLicenseKey(forged)).toBeNull()
+  })
+
+  it('a SARANG2 key signed with a DIFFERENT keypair fails verification (proves the public key is actually checked, not just the shape)', async () => {
+    vi.stubEnv('SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM', TEST_PUBLIC_PEM)
+    const { generateLicenseKeyV2, parseAndVerifyLicenseKey } = await importFresh()
+    const otherPair = generateKeyPairSync('ed25519')
+    const otherPrivatePem = otherPair.privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
+    const key = generateLicenseKeyV2('TRIAL', 'IN', new Date(), otherPrivatePem)
+    expect(parseAndVerifyLicenseKey(key)).toBeNull()
+  })
+
+  it('legacy 5-part, current 6-part HMAC, and SARANG2 keys all validate side by side', async () => {
+    vi.stubEnv('SARANG_LICENSE_HMAC_SECRET', 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP')
+    vi.stubEnv('SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM', TEST_PUBLIC_PEM)
+    const { generateLicenseKey, generateLicenseKeyV2, parseAndVerifyLicenseKey } = await importFresh()
+    const { createHmac } = await import('crypto')
+    const days = Math.floor(new Date('2026-01-15T00:00:00Z').getTime() / 86_400_000)
+    const legacyPayload = `TRIAL-IN-${days.toString(36)}`
+    const legacySig = createHmac('sha256', 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP').update(legacyPayload).digest('hex').slice(0, 12)
+    const legacyKey = `SARANG-${legacyPayload}-${legacySig}`
+    const currentKey = generateLicenseKey('TRIAL', 'IN', new Date('2026-01-15T00:00:00Z'))
+    const v2Key = generateLicenseKeyV2('TRIAL', 'IN', new Date('2026-01-15T00:00:00Z'), TEST_PRIVATE_PEM)
+
+    expect(parseAndVerifyLicenseKey(legacyKey)).not.toBeNull()
+    expect(parseAndVerifyLicenseKey(currentKey)).not.toBeNull()
+    expect(parseAndVerifyLicenseKey(v2Key)).not.toBeNull()
+  })
+
+  it('activating and checking state with a SARANG2 key makes zero network calls', async () => {
+    vi.stubEnv('SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM', TEST_PUBLIC_PEM)
+    const fetchSpy = vi.fn()
+    vi.stubGlobal('fetch', fetchSpy)
+    const { generateLicenseKeyV2, activateLicenseKey, getLicenseState } = await importFresh()
+    const key = generateLicenseKeyV2('TRIAL', 'IN', new Date(), TEST_PRIVATE_PEM)
+    await activateLicenseKey(key)
+    await getLicenseState()
+    expect(fetchSpy).not.toHaveBeenCalled()
+    vi.unstubAllGlobals()
+  })
+})
+
 describe('getLicenseState — offline, tamper-resistant, threshold-correct', () => {
   it('reports NOT_ACTIVATED when no key has ever been entered', async () => {
     const { getLicenseState } = await importFresh()
@@ -181,26 +256,26 @@ describe('getLicenseState — offline, tamper-resistant, threshold-correct', () 
     expect(state.daysSinceIssue).toBeGreaterThanOrEqual(400)
   })
 
-  it('is ACTIVE with no banner before day 335', async () => {
+  it('is ACTIVE with no banner before day 70 of its 100-day trial', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
-    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 100 * 86_400_000))
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 50 * 86_400_000))
     await activateLicenseKey(key)
     const state = await getLicenseState()
     expect(state.status).toBe('ACTIVE')
   })
 
-  it('is WARNING between day 335 and day 364', async () => {
+  it('is WARNING between day 70 and day 99 of its 100-day trial', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
-    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 340 * 86_400_000))
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 75 * 86_400_000))
     await activateLicenseKey(key)
     const state = await getLicenseState()
     expect(state.status).toBe('WARNING')
     expect(state.daysRemaining).toBeGreaterThan(0)
   })
 
-  it('is EXPIRED at exactly day 365', async () => {
+  it('is EXPIRED at exactly day 100 of its trial', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
-    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 365 * 86_400_000))
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 100 * 86_400_000))
     await activateLicenseKey(key)
     const state = await getLicenseState()
     expect(state.status).toBe('EXPIRED')
@@ -224,7 +299,7 @@ describe('getLicenseState — offline, tamper-resistant, threshold-correct', () 
     expect(state.tier).toBe('PAID')
   })
 
-  it('a PAID key shows WARNING in the 335-364 day window of its own paid year, same as TRIAL', async () => {
+  it('a PAID key shows WARNING in the 335-364 day window of its own paid year (same 30-day warning window length as TRIAL, though PAID keeps a 365-day cycle vs. TRIAL\'s 100)', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
     const key = generateLicenseKey('PAID', 'IN', new Date(Date.now() - 340 * 86_400_000))
     await activateLicenseKey(key)
@@ -268,16 +343,76 @@ describe('pingLicenseStatusIfDue and the remote kill switch', () => {
     vi.unstubAllGlobals()
   })
 
-  it('the kill switch only ever relaxes enforcement, never tightens it — an EXPIRED trial becomes ACTIVE when suspended', async () => {
-    const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
+  it('the kill switch only ever relaxes enforcement, never tightens it — an EXPIRED trial becomes ACTIVE when suspended by a validly signed token', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState, signKillSwitchToken } = await importFresh()
     const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 400 * 86_400_000))
     await activateLicenseKey(key)
     expect((await getLicenseState()).status).toBe('EXPIRED')
 
-    db.__store.set('license_enforcement_suspended', 'true')
+    db.__store.set('license_enforcement_suspended', signKillSwitchToken(true))
     const state = await getLicenseState()
     expect(state.status).toBe('ACTIVE')
     expect(state.daysRemaining).not.toBeNull() // still reports the real numbers, just doesn't act on them
+  })
+
+  // 2026-09-02 hardening — real hole closed: this exact bare string used to
+  // flip enforcement off with zero cryptographic check, reachable via a raw
+  // SQLite edit or (worse) the generic settings:set IPC channel from
+  // DevTools. It must now be cryptographically inert.
+  it('a bare unsigned "true" string (the old hole) no longer suspends enforcement', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 400 * 86_400_000))
+    await activateLicenseKey(key)
+
+    db.__store.set('license_enforcement_suspended', 'true')
+    const state = await getLicenseState()
+    expect(state.status).toBe('EXPIRED')
+  })
+
+  it('a tampered kill-switch token (flipped suspended flag, stale signature) is rejected', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState, signKillSwitchToken } = await importFresh()
+    const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 400 * 86_400_000))
+    await activateLicenseKey(key)
+
+    const token = signKillSwitchToken(true)
+    const tampered = token.replace('-1-', '-0-') // flip the suspended flag, signature now stale
+    db.__store.set('license_enforcement_suspended', tampered)
+    const state = await getLicenseState()
+    expect(state.status).toBe('EXPIRED')
+  })
+})
+
+describe('kill-switch token signing and verification', () => {
+  it('round-trips a signed suspend token', async () => {
+    const { signKillSwitchToken, parseAndVerifyKillSwitchToken } = await importFresh()
+    const token = signKillSwitchToken(true)
+    expect(parseAndVerifyKillSwitchToken(token)).toEqual({ suspended: true })
+  })
+
+  it('round-trips a signed not-suspended token', async () => {
+    const { signKillSwitchToken, parseAndVerifyKillSwitchToken } = await importFresh()
+    const token = signKillSwitchToken(false)
+    expect(parseAndVerifyKillSwitchToken(token)).toEqual({ suspended: false })
+  })
+
+  it('rejects null/undefined/empty', async () => {
+    const { parseAndVerifyKillSwitchToken } = await importFresh()
+    expect(parseAndVerifyKillSwitchToken(null)).toBeNull()
+    expect(parseAndVerifyKillSwitchToken(undefined)).toBeNull()
+    expect(parseAndVerifyKillSwitchToken('')).toBeNull()
+  })
+
+  it('rejects a tampered signature', async () => {
+    const { signKillSwitchToken, parseAndVerifyKillSwitchToken } = await importFresh()
+    const token = signKillSwitchToken(true)
+    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A')
+    expect(parseAndVerifyKillSwitchToken(tampered)).toBeNull()
+  })
+
+  it('rejects a plain license key passed by mistake (wrong shape)', async () => {
+    const { generateLicenseKey, parseAndVerifyKillSwitchToken } = await importFresh()
+    const key = generateLicenseKey('TRIAL', 'IN', new Date())
+    expect(parseAndVerifyKillSwitchToken(key)).toBeNull()
   })
 })
 

@@ -14,7 +14,8 @@ import { getPrisma } from '../../database/db'
 import { loadSavedSession, clearSavedSession, saveSession } from '../../security/session-persistence'
 import {
   loginWithToken, getPasswordMinLength, checkPasswordLength, changePassword,
-  generateRecoveryCode, resetPasswordWithRecoveryCode, regenerateRecoveryCode
+  generateRecoveryCode, resetPasswordWithRecoveryCode, regenerateRecoveryCode,
+  getPasswordExpiryDays, getPasswordHistoryCount, isPasswordExpired, checkPasswordNotReused
 } from '../auth.service'
 
 // Real Setting-table-shaped mock — needed because the rate limiter
@@ -215,6 +216,7 @@ describe('changePassword', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       setting: makeSettingStore({ password_min_length: '10' }),
+      passwordHistory: { create: vi.fn().mockResolvedValue({}), findMany: vi.fn().mockResolvedValue([]) },
       ...overrides
     }
   }
@@ -353,6 +355,7 @@ describe('resetPasswordWithRecoveryCode', () => {
         findUnique: vi.fn().mockResolvedValue({ id: 'user-1', username: 'admin', isActive: true, passwordHash: 'irrelevant' }),
         update: vi.fn().mockResolvedValue({}),
       },
+      passwordHistory: { create: vi.fn().mockResolvedValue({}), findMany: vi.fn().mockResolvedValue([]) },
       ...overrides
     }
   }
@@ -473,5 +476,105 @@ describe('regenerateRecoveryCode', () => {
     const upsertCall = vi.mocked(db.setting.upsert).mock.calls[0][0] as { update: { settingValue: string } }
     expect(upsertCall.update.settingValue).not.toBe(returnedCode)
     expect(bcrypt.compareSync(returnedCode, upsertCall.update.settingValue)).toBe(true)
+  })
+})
+
+describe('Password Policy — expiry', () => {
+  it('getPasswordExpiryDays defaults to 0 (disabled) with no Setting row', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ setting: { findUnique: vi.fn().mockResolvedValue(null) } } as never)
+    expect(await getPasswordExpiryDays()).toBe(0)
+  })
+
+  it('isPasswordExpired is always false when expiry is disabled, regardless of age', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ setting: { findUnique: vi.fn().mockResolvedValue(null) } } as never)
+    const tenYearsAgo = new Date(Date.now() - 10 * 365 * 24 * 60 * 60 * 1000)
+    expect(await isPasswordExpired(tenYearsAgo)).toBe(false)
+  })
+
+  it('isPasswordExpired is true once the password is older than the configured number of days', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_expiry_days', settingValue: '90' }) },
+    } as never)
+    const ninetyOneDaysAgo = new Date(Date.now() - 91 * 24 * 60 * 60 * 1000)
+    expect(await isPasswordExpired(ninetyOneDaysAgo)).toBe(true)
+  })
+
+  it('isPasswordExpired is false when the password is younger than the configured number of days', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_expiry_days', settingValue: '90' }) },
+    } as never)
+    const tenDaysAgo = new Date(Date.now() - 10 * 24 * 60 * 60 * 1000)
+    expect(await isPasswordExpired(tenDaysAgo)).toBe(false)
+  })
+})
+
+describe('Password Policy — history (reuse prevention)', () => {
+  const currentHash = bcrypt.hashSync('CurrentPassword1', 12)
+
+  it('getPasswordHistoryCount defaults to 0 (disabled) with no Setting row', async () => {
+    vi.mocked(getPrisma).mockReturnValue({ setting: { findUnique: vi.fn().mockResolvedValue(null) } } as never)
+    expect(await getPasswordHistoryCount()).toBe(0)
+  })
+
+  it('never checks history at all when disabled — a repeat of the current password is allowed through', async () => {
+    const db = { setting: { findUnique: vi.fn().mockResolvedValue(null) }, passwordHistory: { findMany: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await checkPasswordNotReused('user-1', 'CurrentPassword1', currentHash)
+
+    expect(result).toBeNull()
+    expect(db.passwordHistory.findMany).not.toHaveBeenCalled()
+  })
+
+  it('rejects re-using the current live password when history checking is enabled', async () => {
+    const db = {
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_history_count', settingValue: '3' }) },
+      passwordHistory: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await checkPasswordNotReused('user-1', 'CurrentPassword1', currentHash)
+
+    expect(result?.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-006')
+  })
+
+  it('rejects re-using a password found among the most recent N history rows', async () => {
+    const oldHash = bcrypt.hashSync('OldPassword2', 12)
+    const db = {
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_history_count', settingValue: '3' }) },
+      passwordHistory: { findMany: vi.fn().mockResolvedValue([{ passwordHash: oldHash }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await checkPasswordNotReused('user-1', 'OldPassword2', currentHash)
+
+    expect(result?.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('AUTH-006')
+  })
+
+  it('allows a genuinely new password not found in the current hash or recent history', async () => {
+    const oldHash = bcrypt.hashSync('OldPassword2', 12)
+    const db = {
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_history_count', settingValue: '3' }) },
+      passwordHistory: { findMany: vi.fn().mockResolvedValue([{ passwordHash: oldHash }]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await checkPasswordNotReused('user-1', 'GenuinelyNewPassword9', currentHash)
+
+    expect(result).toBeNull()
+  })
+
+  it('only queries the configured N most recent history rows', async () => {
+    const db = {
+      setting: { findUnique: vi.fn().mockResolvedValue({ settingKey: 'password_history_count', settingValue: '5' }) },
+      passwordHistory: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await checkPasswordNotReused('user-1', 'GenuinelyNewPassword9', currentHash)
+
+    expect(db.passwordHistory.findMany).toHaveBeenCalledWith(expect.objectContaining({ take: 5 }))
   })
 })

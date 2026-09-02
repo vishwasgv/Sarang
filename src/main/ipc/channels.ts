@@ -294,6 +294,8 @@ export interface IpcChannels {
   }
   supplierPayments: {
     record: (payload: unknown) => Promise<ApiResponse>
+    // 2026-09 — settling a foreign-currency Bill in full, in its own currency.
+    recordForeignCurrencySettlement: (payload: { billId: string; foreignAmount: number; settlementRate: number; paymentMethod: string; referenceNumber?: string; remarks?: string; paymentDate?: string }) => Promise<ApiResponse>
     recordBulk: (payload: unknown) => Promise<ApiResponse>
     reverse: (payload: { paymentId: string; reason: string }) => Promise<ApiResponse>
     list: (payload?: { billId?: string; supplierId?: string; method?: string; dateFrom?: string; dateTo?: string; search?: string; page?: number; limit?: number }) => Promise<ApiResponse>
@@ -345,6 +347,13 @@ export interface IpcChannels {
     getNextNumber: (bankAccountId: string) => Promise<ApiResponse>
     setActive: (payload: { id: string; isActive: boolean }) => Promise<ApiResponse>
   }
+  // 2026-09-02 — Bank Deposit Slips.
+  bankDeposits: {
+    create: (payload: unknown) => Promise<ApiResponse>
+    list: (payload?: { bankAccountId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
+    get: (payload: { id: string }) => Promise<ApiResponse>
+    listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
+  }
   fixedAssets: {
     create: (payload: unknown) => Promise<ApiResponse>
     list: (payload?: { status?: string; category?: string }) => Promise<ApiResponse>
@@ -379,6 +388,8 @@ export interface IpcChannels {
   }
   payments: {
     record: (payload: unknown) => Promise<ApiResponse>
+    // 2026-09 — settling a foreign-currency Invoice in full, in its own currency.
+    recordForeignCurrencySettlement: (payload: { invoiceId: string; foreignAmount: number; settlementRate: number; paymentMethod: string; referenceNumber?: string; remarks?: string; paymentDate?: string }) => Promise<ApiResponse>
     recordSplit: (payload: { invoiceId: string; legs: { paymentMethod: string; amount: number; referenceNumber?: string }[] }) => Promise<ApiResponse>
     reverse: (payload: { paymentId: string; reason: string }) => Promise<ApiResponse>
     list: (payload?: { invoiceId?: string; customerId?: string; method?: string; dateFrom?: string; dateTo?: string; search?: string; page?: number; limit?: number }) => Promise<ApiResponse>
@@ -602,6 +613,24 @@ export interface IpcChannels {
     institutionalOrderHistory: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     locationStockSplit: () => Promise<ApiResponse>
     deliveryInstallationSchedule: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // Deferred-item closure 2026-09-01 — Electrical item 4 + Plumbing items 3/4.
+    specWiseFastMovers: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    fittingCrossSell: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    materialSalesMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // 2026-09 §12 — Grocery/Kirana new vertical.
+    mrpViolation: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    perishableWastage: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    dailyRestockAlert: () => Promise<ApiResponse>
+    looseVsPackagedMix: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    khataRisk: () => Promise<ApiResponse>
+    // 2026-09 §12 — Bakery wow feature.
+    preOrderProductionSheet: (payload: { date: string }) => Promise<ApiResponse>
+    // 2026-09 §12 — Tours & Travels new vertical.
+    vehicleServiceDue: () => Promise<ApiResponse>
+    commissionByAgent: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    tripProfitability: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    // 2026-09-02 — Catering Events (Bakery/Sweet Shop/Catering).
+    eventProfitability: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
   }
   export: {
     toCsv: (payload: { filename: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
@@ -634,6 +663,11 @@ export interface IpcChannels {
     // earlier via a save dialog — no new attack surface.
     showItemInFolder: (payload: { filePath: string }) => Promise<ApiResponse>
   }
+  // 2026-09 §12 — Grocery/Kirana item 3: Khata (credit) auto-reminder.
+  khataReminder: {
+    listCandidates: () => Promise<ApiResponse>
+    buildLink: (payload: { customerId: string }) => Promise<ApiResponse<string>>
+  }
   analytics: {
     getDashboardKpis: (payload?: { forceRefresh?: boolean }) => Promise<ApiResponse>
     getRevenueTrend: (payload: { period: '1d' | '7d' | '30d' | '90d' | '12m' | 'custom'; customFrom?: string; customTo?: string }) => Promise<ApiResponse>
@@ -657,6 +691,8 @@ export interface IpcChannels {
     create: () => Promise<ApiResponse>
     list: () => Promise<ApiResponse>
     restore: (payload: { backupId: string }) => Promise<ApiResponse>
+    pickBackupFile: () => Promise<ApiResponse<{ filePath: string } | null>>
+    restoreFromFile: (payload: { filePath: string }) => Promise<ApiResponse>
     validate: (payload: { backupId: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     checkIntegrity: () => Promise<ApiResponse<{ ok: boolean; message: string }>>
@@ -770,6 +806,13 @@ export interface IpcChannels {
     listKOTs: (payload?: { status?: string; tableId?: string }) => Promise<ApiResponse>
     createKOT: (payload: { invoiceId: string; tableId?: string }) => Promise<ApiResponse>
     updateKOTStatus: (payload: { kotId: string; status: string }) => Promise<ApiResponse>
+    // 2026-09-02 — a table's running, un-invoiced tab: see everything
+    // ordered so far, and the one place billing actually happens.
+    getTableOrderSummary: (payload: { tableId: string }) => Promise<ApiResponse>
+    checkoutTable: (payload: { tableId: string; paymentMethod: string; customerId?: string }) => Promise<ApiResponse>
+    // 2026-09-02 — staff-facing "send to kitchen" from BillingScreen's
+    // dine-in flow; creates a KOT with no invoice, same as the QR path.
+    sendTableOrder: (payload: { tableId: string; items: Array<{ productId: string; quantity: number; unitPrice: number; taxRate?: number }> }) => Promise<ApiResponse>
     listRecipes: () => Promise<ApiResponse>
     getRecipe: (productId: string) => Promise<ApiResponse>
     upsertRecipe: (payload: { productId: string; recipeName: string; items: Array<{ ingredientProductId: string; quantity: number }> }) => Promise<ApiResponse>
@@ -779,7 +822,10 @@ export interface IpcChannels {
     // Phase 47 — QR Table Ordering
     getQrOrderingStatus: () => Promise<ApiResponse>
     listOrderRequests: (payload?: { status?: string }) => Promise<ApiResponse>
-    acceptOrderRequest: (payload: { requestId: string; paymentMethod: string; customerId?: string }) => Promise<ApiResponse>
+    // 2026-09-02 — accepting an order only sends it to the kitchen now
+    // (see restaurant-order.service.ts's acceptOrderRequest); billing
+    // happens once, at checkoutTable above.
+    acceptOrderRequest: (payload: { requestId: string }) => Promise<ApiResponse>
     rejectOrderRequest: (payload: { requestId: string }) => Promise<ApiResponse>
     generateTableQr: (payload: { tableId: string }) => Promise<ApiResponse<{ qrDataUrl: string; orderUrl: string; wifiQrDataUrl: string | null; wifiSsid: string | null }>>
     // Task 18 — WiFi-join QR printed alongside the order QR. Password is
@@ -1153,6 +1199,63 @@ export interface IpcChannels {
     linkToInvoice: (payload: { tradeInId: string; invoiceId: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
+  // 2026-09 §12 — Bakery/Sweet Shop/Catering: custom order booking.
+  customOrderBooking: {
+    list: (payload?: { customerId?: string; status?: string }) => Promise<ApiResponse>
+    create: (payload: { customerId: string; dueDate?: string; deliveryAddress?: string; advanceAmount?: number; advancePaymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET'; notes?: string; items: Array<{ productId: string; quantity: number; unitPrice: number; customFlavor?: string; customSize?: string; customMessage?: string; customDesign?: string }> }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: 'BOOKED' | 'DELIVERED' | 'CANCELLED' }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  // 2026-09-02 — Catering event booking (Bakery/Sweet Shop/Catering).
+  cateringEvent: {
+    list: (payload?: { customerId?: string; status?: string }) => Promise<ApiResponse>
+    get: (payload: { id: string }) => Promise<ApiResponse>
+    create: (payload: {
+      customerId: string; eventStartDate: string; eventEndDate?: string; venueAddress?: string
+      attendeeCount: number; pricePerPlate: number; advanceAmount?: number; advancePaymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET'; notes?: string
+      menuItems?: Array<{ productId: string; quantity: number; unitPrice: number }>
+      days?: Array<{ serviceDate: string; mealsCount?: number; snacksCount?: number }>
+      staff?: Array<{ role: 'COOK' | 'SERVER' | 'CLEANER' | 'OTHER'; workerCount: number; ratePerWorker: number; serviceDate?: string }>
+    }) => Promise<ApiResponse>
+    recordFinalNegotiatedPrice: (payload: { id: string; finalNegotiatedPrice: number }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: 'BOOKED' | 'COMPLETED' | 'CANCELLED' }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  // 2026-09 §12 — Tours & Travels: fleet + service log + availability.
+  vehicle: {
+    list: (payload?: { status?: string }) => Promise<ApiResponse>
+    create: (payload: { registrationNumber: string; vehicleType: 'SEDAN' | 'SUV' | 'TEMPO_TRAVELLER' | 'MINI_BUS' | 'BUS'; seatingCapacity: number; notes?: string }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: 'ACTIVE' | 'IN_SERVICE' | 'INACTIVE' }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    createServiceLog: (payload: { vehicleId: string; serviceDate: string; serviceType: 'SERVICE' | 'REPAIR' | 'MAINTENANCE'; odometerAtService: number; cost?: number; nextServiceDueKm?: number; nextServiceDueDate?: string; vendorName?: string; notes?: string }) => Promise<ApiResponse>
+    listServiceLogs: (payload?: { vehicleId?: string }) => Promise<ApiResponse>
+    fleetAvailability: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+  }
+  // 2026-09 §12 — Tours & Travels: tour package templates + departures.
+  tourPackage: {
+    list: (payload?: { isActive?: boolean }) => Promise<ApiResponse>
+    create: (payload: { packageName: string; itineraryDescription?: string; durationDays: number; defaultTotalSeats: number; farePerSeat: number }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; isActive: boolean }) => Promise<ApiResponse>
+    listDepartures: (payload?: { tourPackageId?: string; status?: string }) => Promise<ApiResponse>
+    createDeparture: (payload: { tourPackageId: string; departureDate: string; vehicleId?: string; totalSeats?: number }) => Promise<ApiResponse>
+    updateDepartureStatus: (payload: { id: string; status: 'SCHEDULED' | 'COMPLETED' | 'CANCELLED' }) => Promise<ApiResponse>
+  }
+  // 2026-09 §12 — Tours & Travels: dual booking modes (CHARTER + SEAT).
+  tripBooking: {
+    list: (payload?: { customerId?: string; bookingType?: string; status?: string }) => Promise<ApiResponse>
+    createCharter: (payload: { customerId: string; vehicleId: string; tripStartDate: string; tripEndDate?: string; pickupLocation?: string; dropLocation?: string; route?: string; packageRate: number; includedKmPerDay?: number; includedHoursPerDay?: number; advanceAmount?: number; advancePaymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET'; referringAgentName?: string; commissionType?: 'PERCENTAGE' | 'FIXED'; commissionValue?: number; notes?: string }) => Promise<ApiResponse>
+    createSeat: (payload: { customerId: string; tourDepartureId: string; seatsBooked: number; advanceAmount?: number; advancePaymentMethod?: 'CASH' | 'UPI' | 'CARD' | 'WALLET'; referringAgentName?: string; commissionType?: 'PERCENTAGE' | 'FIXED'; commissionValue?: number; notes?: string }) => Promise<ApiResponse>
+    updateStatus: (payload: { id: string; status: 'BOOKED' | 'COMPLETED' | 'CANCELLED' }) => Promise<ApiResponse>
+    generateInvoice: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  // 2026-09 §12 — Tours & Travels: driver duty log & excess-km/hour settlement.
+  driverDutyLog: {
+    list: (payload?: { tripBookingId?: string; driverId?: string }) => Promise<ApiResponse>
+    start: (payload: { tripBookingId: string; driverId: string; dutyDate: string; startOdometer: number; dutyStartTime: string; driverBataAmount?: number; nightHaltCharge?: number; nightDrivingAllowance?: number; notes?: string }) => Promise<ApiResponse>
+    close: (payload: { id: string; endOdometer: number; dutyEndTime: string }) => Promise<ApiResponse>
+  }
   // Phase 67 §9.1 — Jewellery item 1: gold savings (chit) scheme ledger.
   goldSavings: {
     list: (payload?: { customerId?: string; status?: string }) => Promise<ApiResponse>
@@ -1490,6 +1593,21 @@ export interface IpcChannels {
     getAttendance: (payload: { classId: string; sessionDate?: string }) => Promise<ApiResponse>
     // Phase 68 §9.1 — Gym/Studio item 3: occupancy-based class scheduling.
     occupancySummary: () => Promise<ApiResponse>
+  }
+  // 2026-09 — Gym/Studio: machine-based workout progress tracking.
+  workoutLog: {
+    create: (payload: { customerId: string; trainerId?: string | null; exerciseName: string; machineName?: string | null; weight?: number | null; reps?: number | null; sets?: number | null; notes?: string | null; loggedAt?: string }) => Promise<ApiResponse>
+    delete: (payload: { id: string }) => Promise<ApiResponse>
+    listForCustomer: (payload: { customerId: string; dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
+    listRecent: (payload?: { limit?: number }) => Promise<ApiResponse>
+    knownExerciseNames: () => Promise<ApiResponse>
+  }
+  // 2026-09 — universal visit check-in/check-out log, any business type.
+  customerCheckIn: {
+    checkIn: (payload: { customerId: string; notes?: string }) => Promise<ApiResponse>
+    checkOut: (payload: { checkInId: string }) => Promise<ApiResponse>
+    active: () => Promise<ApiResponse>
+    list: (payload?: { dateFrom?: string; dateTo?: string; customerId?: string }) => Promise<ApiResponse>
   }
   learnerProfile: {
     get: (payload: { customerId: string }) => Promise<ApiResponse>

@@ -16,9 +16,11 @@
  *     CONFIRMED HotelBooking), and the guarantee (exactly one
  *     HotelGuestId register entry survives) is a simple COUNT(*).
  *   - restaurant-order.service.ts acceptOrderRequest — picked. Same shape,
- *     and it's the one race whose failure mode (double-billing a real
- *     customer) is the most consequential of the five, so worth the extra
- *     setup (a real Product + TableOrderRequest + TableOrderRequestItem).
+ *     and it's the one race whose failure mode (a customer's order sent to
+ *     the kitchen twice — see the 2026-09-02 deferred-billing rework, which
+ *     moved acceptOrderRequest off createInvoice entirely) is the most
+ *     consequential of the five, so worth the extra setup (a real Product +
+ *     TableOrderRequest + TableOrderRequestItem).
  *   - blood-bank.service.ts updateScreeningStatus — picked. Same shape,
  *     minimal fixture (Donor + PENDING DonationRecord), and the guarantee
  *     (exactly one ProductBatch per physical donation) is safety-critical
@@ -39,8 +41,9 @@
  * ProductBatch) — h.cleanupByNamePrefix only knows about Customer/Product
  * and their Invoice/CustomerLedger/Inventory dependents, so it's reused
  * here only for the one real Product this suite creates (the restaurant
- * test item) and the Invoice/InvoiceItem/Payment that acceptOrderRequest's
- * single winning call creates against it. Every other row this suite
+ * test item) — acceptOrderRequest itself no longer creates an Invoice at
+ * all (see the 2026-09-02 deferred-billing rework), only a KOT/KOTItem,
+ * which rawCleanup() below deletes explicitly. Every other row this suite
  * creates is deleted by rawCleanup() below, called both as a self-healing
  * pre-run sweep (same rationale as 09-stress.js's own pre-cleanup — a
  * force-killed prior run skips the `finally` block) and in the real
@@ -84,6 +87,13 @@ function rawCleanup(prefix) {
       // after this) tries to delete the Invoice they reference — its own
       // Invoice-delete is a best-effort try/catch that silently leaves the
       // Invoice behind on any FK block, and KOT is exactly such a block.
+      // KOTItem rows must go first too — this raw connection never sets
+      // PRAGMA foreign_keys=ON, so KOT's ON DELETE CASCADE to KOTItem never
+      // fires here the way it would through a real Prisma delete.
+      const kotIds = db.prepare('SELECT id FROM KOT WHERE tableId = ?').all(tid).map((r) => r.id)
+      for (const kid of kotIds) {
+        db.prepare('DELETE FROM KOTItem WHERE kotId = ?').run(kid)
+      }
       db.prepare('DELETE FROM KOT WHERE tableId = ?').run(tid)
       db.prepare('DELETE FROM TableOrderRequest WHERE tableId = ?').run(tid)
     }
@@ -208,12 +218,20 @@ async function run() {
 
     await r.step('restaurant-concurrent-accept-never-double-bills', async () => {
       if (!restoProductId) return r.log('restaurant-concurrent-accept-never-double-bills', false, 'no test product — setup failed')
+      // 2026-09-02 — acceptOrderRequest no longer bills anything itself
+      // (see restaurant-order.service.ts): accepting a QR order now just
+      // sends it to the kitchen as an unbilled KOT, added to the table's
+      // running tab. Billing happens once, later, at explicit table
+      // checkout. The race guarantee under test is unchanged in spirit —
+      // one physical QR order must produce exactly one KOT, never
+      // RESTO_N duplicates — just verified against KOT/KOTItem instead of
+      // Invoice/Payment.
       const results = await page.evaluate(async ({ requestId, n }) => {
         const calls = Array.from({ length: n }, () => window.api.restaurant.acceptOrderRequest({
-          requestId, paymentMethod: 'CASH',
+          requestId,
         }).catch((e) => ({ success: false, error: { code: 'PROMISE-REJECTED', message: String((e && e.message) || e) } })))
         const settled = await Promise.all(calls)
-        return settled.map((res) => ({ success: res?.success, code: res?.error?.code, invoiceId: res?.data?.invoiceId }))
+        return settled.map((res) => ({ success: res?.success, code: res?.error?.code, kotId: res?.data?.kotId }))
       }, { requestId: restoRequestId, n: RESTO_N })
 
       const successes = results.filter((x) => x.success)
@@ -223,26 +241,24 @@ async function run() {
         `success=${successes.length}/${RESTO_N}, codes=${JSON.stringify(results.filter((x) => !x.success).map((x) => x.code))}`
       )
 
-      const distinctInvoiceIds = new Set(successes.map((x) => x.invoiceId).filter(Boolean))
-      r.log('restaurant-only-one-invoice-id-returned', distinctInvoiceIds.size === 1, `invoiceIds=${JSON.stringify([...distinctInvoiceIds])}`)
+      const distinctKotIds = new Set(successes.map((x) => x.kotId).filter(Boolean))
+      r.log('restaurant-only-one-kot-id-returned', distinctKotIds.size === 1, `kotIds=${JSON.stringify([...distinctKotIds])}`)
 
-      // acceptOrderRequest passes `QR-${tableId.slice(-6)}` as
-      // createInvoice's `referenceNumber`, which billing.service.ts stores
-      // on the created Payment row (Invoice itself has no referenceNumber
-      // column) — count ground-truth Payment rows tagged with it, not just
-      // trust the IPC responses above.
       const state = h.withDb((db) => ({
         request: db.prepare('SELECT status, invoiceId FROM TableOrderRequest WHERE id = ?').get(restoRequestId),
-        invoiceCount: db.prepare('SELECT COUNT(*) c FROM Payment WHERE referenceNumber = ?').get(`QR-${restoTableId.slice(-6)}`).c,
+        kotCount: db.prepare('SELECT COUNT(*) c FROM KOT WHERE tableId = ?').get(restoTableId).c,
       }))
       r.log('restaurant-request-ends-accepted', state.request?.status === 'ACCEPTED', `status=${state.request?.status}`)
+      // Accepting a QR order never bills it directly — no invoice exists
+      // yet for this table.
+      r.log('restaurant-request-still-unbilled-no-invoice', state.request?.invoiceId === null, `invoiceId=${state.request?.invoiceId}`)
       // The one non-negotiable guarantee: one physical QR order must
-      // produce exactly one Invoice, never RESTO_N duplicate bills for the
-      // same order.
+      // produce exactly one KOT, never RESTO_N duplicate kitchen tickets
+      // for the same order.
       r.log(
-        'restaurant-customer-billed-exactly-once-not-doubled',
-        state.invoiceCount === 1,
-        `invoiceCount=${state.invoiceCount} (expected 1 — the bug this guards against would have created up to ${RESTO_N})`
+        'restaurant-order-sent-to-kitchen-exactly-once-not-doubled',
+        state.kotCount === 1,
+        `kotCount=${state.kotCount} (expected 1 — the bug this guards against would have created up to ${RESTO_N})`
       )
     })
 

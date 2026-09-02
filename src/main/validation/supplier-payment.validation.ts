@@ -19,6 +19,18 @@ export const RecordSupplierPaymentSchema = z.object({
   tdsSection: z.string().max(20).optional(),
 })
 
+// 2026-09 — settling a foreign-currency Bill in full, in its own currency.
+// Mirrors payment.validation.ts's own RecordForeignCurrencySettlementSchema.
+export const RecordForeignCurrencyBillSettlementSchema = z.object({
+  billId: z.string().min(1, 'Bill ID is required'),
+  foreignAmount: z.number().positive('Amount must be greater than zero'),
+  settlementRate: z.number().positive('Exchange rate must be greater than zero'),
+  paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'BANK_TRANSFER', 'CHEQUE']),
+  referenceNumber: z.string().max(100).optional(),
+  remarks: z.string().max(255).optional(),
+  paymentDate: z.string().optional(),
+})
+
 export const ReverseSupplierPaymentSchema = z.object({
   paymentId: z.string().min(1, 'Payment ID is required'),
   reason: z.string().min(1, 'Reason is required for payment reversal').max(255),
@@ -42,5 +54,6 @@ export const RecordBulkSupplierPaymentSchema = z.object({
 })
 
 export type RecordSupplierPaymentPayload = z.infer<typeof RecordSupplierPaymentSchema>
+export type RecordForeignCurrencyBillSettlementPayload = z.infer<typeof RecordForeignCurrencyBillSettlementSchema>
 export type ReverseSupplierPaymentPayload = z.infer<typeof ReverseSupplierPaymentSchema>
 export type RecordBulkSupplierPaymentPayload = z.infer<typeof RecordBulkSupplierPaymentSchema>

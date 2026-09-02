@@ -17,7 +17,7 @@ import {
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat, Tent,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
-  BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank,
+  BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank, Cake, Bus,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -57,6 +57,12 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Recipes', path: '/restaurant/recipes', icon: BookOpen, permissionKey: 'restaurant.manageRecipes', requiredModule: 'recipes' },
   // Retail-only items
   { label: 'Returns', i18nKey: 'nav.returns', path: '/returns', icon: RotateCcw, permissionKey: 'billing.createInvoice', requiredModule: 'returns' },
+  // 2026-09 — universal visit check-in/check-out (any business type opts in
+  // from Settings → Business Features), same "toggle-able for anyone" shape
+  // as Returns above — properly localized (unlike GYM_STUDIO's own English-
+  // locked nav items) since a RETAIL/GENERAL business enabling this stays
+  // fully multi-language.
+  { label: 'Check-In', i18nKey: 'nav.checkIn', path: '/attendance/checkin', icon: UserCheck, permissionKey: 'billing.view', requiredModule: 'customer_checkin' },
   // Distributor-only items
   { label: 'Bulk Orders', path: '/distributor/bulk-order', icon: PackagePlus, permissionKey: 'billing.createInvoice', requiredModule: 'bulk_orders' },
   { label: 'Outstanding', path: '/distributor/outstanding', icon: Activity, permissionKey: 'customers.view', requiredModule: 'outstanding_analytics' },
@@ -144,6 +150,16 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Furniture Bookings', path: '/furniture/bookings', icon: CalendarClock, permissionKey: 'furnitureBooking.view', requiredModule: 'deposit_booking' },
   // Phase 69 — Furniture old-item trade-in
   { label: 'Furniture Trade-Ins', path: '/furniture/trade-ins', icon: Repeat, permissionKey: 'furnitureTradeIn.view', requiredModule: 'trade_in_exchange' },
+  // 2026-09 §12 — Bakery custom order booking. Unlike Furniture's booking
+  // screen (deliberately English-only), this one IS i18n'd, so it carries
+  // an i18nKey like every other multi-language nav item.
+  { label: 'Custom Orders', i18nKey: 'nav.customOrders', path: '/bakery/custom-orders', icon: Cake, permissionKey: 'customOrderBooking.view', requiredModule: 'custom_order_booking' },
+  // 2026-09-02 — Catering event booking (Bakery/Sweet Shop/Catering).
+  { label: 'Catering Events', i18nKey: 'nav.cateringEvents', path: '/bakery/catering-events', icon: PartyPopper, permissionKey: 'cateringEvent.view', requiredModule: 'catering_events' },
+  // 2026-09 §12 — Tours & Travels. All 3 screens are fully i18n'd, carry an i18nKey.
+  { label: 'Vehicle Fleet', i18nKey: 'nav.vehicleFleet', path: '/tours/fleet', icon: Bus, permissionKey: 'vehicle.view', requiredModule: 'vehicle_fleet' },
+  { label: 'Tour Packages', i18nKey: 'nav.tourPackages', path: '/tours/packages', icon: MapPin, permissionKey: 'tourPackage.view', requiredModule: 'tour_packages' },
+  { label: 'Trip Bookings', i18nKey: 'nav.tripBookings', path: '/tours/bookings', icon: Ticket, permissionKey: 'tripBooking.view', requiredModule: 'trip_charter_booking' },
   // Phase 69 — Plumbing scheduled delivery for fragile sanitaryware
   { label: 'Scheduled Deliveries', path: '/plumbing/scheduled-deliveries', icon: Send, permissionKey: 'billing.view', requiredModule: 'scheduled_delivery' },
   // Phase 25 — Dental
@@ -156,6 +172,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Commission', path: '/commission', icon: DollarSign, permissionKey: 'hr.view', requiredModule: 'staff_commission' },
   { label: 'Memberships', path: '/gym/memberships', icon: Dumbbell, permissionKey: 'billing.view', requiredModule: 'memberships' },
   { label: 'Group Classes', path: '/gym/classes', icon: Layers, permissionKey: 'billing.view', requiredModule: 'batch_classes' },
+  { label: 'Workout Log', path: '/gym/workouts', icon: Activity, permissionKey: 'billing.view', requiredModule: 'workout_tracking' },
   { label: 'Learners', path: '/driving/learners', icon: GraduationCap, permissionKey: 'billing.view', requiredModule: 'learner_profiles' },
   { label: 'Drive Sessions', path: '/driving/sessions', icon: Car, permissionKey: 'billing.view', requiredModule: 'driving_sessions' },
   // Phase 28 — Legal
@@ -228,6 +245,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Journal Entries', path: '/accounting/journal-entries', icon: BookText, permissionKey: 'journalEntries.view' },
   { label: 'Bank Accounts', path: '/accounting/bank-accounts', icon: Wallet, permissionKey: 'bankAccounts.view' },
   { label: 'Post-Dated Cheques', path: '/accounting/post-dated-cheques', icon: Receipt, permissionKey: 'postDatedCheques.view' },
+  // 2026-09-02 — Bank Deposit Slips.
+  { label: 'Bank Deposits', path: '/accounting/bank-deposits', icon: PiggyBank, permissionKey: 'bankAccounts.view' },
   { label: 'Fixed Assets', path: '/accounting/fixed-assets', icon: Boxes, permissionKey: 'fixedAssets.view' },
   { label: 'Ledger Settings', path: '/accounting/ledger-settings', icon: Lock, permissionKey: 'bankAccounts.view' },
   { label: 'Customers', i18nKey: 'nav.customers', path: '/customers', icon: Users, permissionKey: 'customers.view' },

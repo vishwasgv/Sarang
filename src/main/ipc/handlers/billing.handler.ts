@@ -246,24 +246,37 @@ export function register(handle: HandleFn): void {
     const { kotId } = payload as { kotId: string }
     const bad = validateId(kotId, 'KOT ID'); if (bad) return bad
     const db = getPrisma()
+    // 2026-09-02 — a KOT is now created (and printed for the kitchen) the
+    // moment an order is accepted, well before any Invoice exists (see
+    // restaurant.service.ts's createKOT/checkoutTable header comments) —
+    // items and the ticket's own reference come from the KOT's own
+    // KOTItem rows, never invoice.items/invoiceNumber, which may not exist
+    // yet at print time.
     const [kot, kotPrinterSetting] = await Promise.all([
       db.kOT.findUnique({
         where: { id: kotId },
         include: {
           table: { select: { tableNumber: true, tableName: true } },
-          invoice: { include: { items: { include: { product: { select: { productName: true } } } } } }
+          items: true,
+          invoice: { select: { invoiceNumber: true } }
         }
       }),
       db.setting.findUnique({ where: { settingKey: 'kot_printer_name' } })
     ])
     if (!kot) return { success: false, error: { code: 'RST-015', message: 'KOT not found.' } }
+    const productIds = [...new Set(kot.items.map(i => i.productId))]
+    const products = productIds.length > 0 ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, productName: true } }) : []
+    const nameById = new Map(products.map(p => [p.id, p.productName]))
     const profile = await db.businessProfile.findFirst()
     const html = await printService.generateKOTHtml({
       kotId: kot.id,
       tableNumber: kot.table?.tableNumber ?? null,
       tableName: kot.table?.tableName ?? null,
-      invoiceNumber: kot.invoice.invoiceNumber,
-      items: kot.invoice.items.map(i => ({ productName: i.product.productName, quantity: i.quantity })),
+      // Not yet billed at print time in the common case — the ticket shows
+      // its own short KOT reference instead of an invoice number that may
+      // not exist for a while yet.
+      invoiceNumber: kot.invoice?.invoiceNumber ?? `KOT-${kot.id.slice(-6).toUpperCase()}`,
+      items: kot.items.map(i => ({ productName: nameById.get(i.productId) ?? 'Unknown item', quantity: i.quantity })),
       createdAt: kot.createdAt,
       status: kot.status,
       businessName: profile?.businessName ?? 'Restaurant'

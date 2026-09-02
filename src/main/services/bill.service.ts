@@ -155,6 +155,11 @@ export const billService = {
             // Phase 65 — Reporting Tags / Cost & Profit Centres.
             costCentreId: payload.costCentreId || null,
             notes: payload.notes || null,
+            // 2026-09 — foreign-currency overlay, same "both fields required
+            // together" reasoning as billing.service.ts's own createInvoice.
+            foreignCurrencyCode: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? payload.foreignCurrencyCode : null,
+            foreignExchangeRate: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? payload.foreignExchangeRate : null,
+            foreignTotalAmount: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? roundCurrency(totalAmount / payload.foreignExchangeRate) : null,
             createdById: userId ?? null,
             items: {
               create: lineRows.map(({ item, discountAmount: lineDiscount, taxAmount: lineTax, lineTotal }) => ({

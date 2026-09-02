@@ -27,7 +27,7 @@ export function LoginScreen() {
   const { t } = useTranslation()
   const { setUser, setPermissions } = useAuthStore()
   const profile = useBusinessStore((s) => s.profile)
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, warning } = useNotificationStore()
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [forgotOpen, setForgotOpen] = useState(false)
@@ -59,6 +59,13 @@ export function LoginScreen() {
 
     const user = res.data as User
     setUser(user)
+
+    // Password Policy — expiry never blocks login (see auth.service.ts's
+    // isPasswordExpired doc comment for why); this is the one place that
+    // surfaces it as a nudge instead, right after a successful sign-in.
+    if (user.passwordExpired) {
+      warning(t('auth.passwordExpiredTitle'), t('auth.passwordExpiredBody'))
+    }
 
     // Load permissions. Do not block or delay login/navigation on this —
     // the user is already authenticated at this point. Just surface

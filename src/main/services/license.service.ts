@@ -1,4 +1,4 @@
-import { createHash, createHmac, randomBytes, timingSafeEqual } from 'crypto'
+import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify as cryptoVerify, sign as cryptoSign } from 'crypto'
 import { hostname, networkInterfaces, platform } from 'os'
 import { getPrisma } from '../database/db'
 import type { ApiResponse } from '../ipc/channels'
@@ -21,20 +21,34 @@ const SETTING_KEYS = {
   tier: 'license_tier',
   issuedAt: 'license_issued_at',
   lastVerifiedAt: 'license_last_verified_at',
-  machineFingerprint: 'license_machine_fingerprint'
+  machineFingerprint: 'license_machine_fingerprint',
+  enforcementSuspended: 'license_enforcement_suspended'
 } as const
+
+// These Setting rows must only ever be written by this file's own functions
+// — never by the generic settings:set IPC channel (settings.service.ts's
+// setSetting() checks against this set), which has no per-key allowlist.
+export const LICENSE_INTERNAL_SETTING_KEYS: ReadonlySet<string> = new Set(Object.values(SETTING_KEYS))
 
 export type LicenseTier = 'TRIAL' | 'PAID'
 export type LicenseRegion = 'IN' | 'INTL'
 export type LicenseStatus = 'ACTIVE' | 'WARNING' | 'EXPIRED' | 'NOT_ACTIVATED'
 
-// Annual-cycle thresholds from Section 1B/59.6 — applied identically to a
-// TRIAL key's free year and to a PAID key's paid year (see the 2026-07-28
-// note on getLicenseState() below): banner from day 335 of the current key's
-// issuedAt, degrade (block new billable documents, never existing data) from
-// day 365. Named constants, not magic numbers scattered across call sites.
-export const LICENSE_WARNING_AFTER_DAYS = 335
-export const LICENSE_EXPIRES_AFTER_DAYS = 365
+// 2026-09-01 — trial length changed from 365 to 100 days (founder decision).
+// A PAID key's cycle stays a genuine annual renewal (365 days, matching the
+// "/year" pricing shown everywhere) — the two tiers now run on separate
+// cycle lengths, whereas before 2026-09-01 they deliberately shared one (see
+// the 2026-07-28 note on getLicenseState() below for why that unification
+// existed in the first place: PAID must still actually expire, not renew for
+// free forever). Both tiers keep the same 30-day warning window before their
+// own expiry — LICENSE_WARNING_WINDOW_DAYS is exported separately so
+// analytics.service.ts's severity math doesn't need to know which tier it's
+// looking at. Named constants, not magic numbers scattered across call sites.
+export const LICENSE_WARNING_WINDOW_DAYS = 30
+export const LICENSE_TRIAL_EXPIRES_AFTER_DAYS = 100
+export const LICENSE_TRIAL_WARNING_AFTER_DAYS = LICENSE_TRIAL_EXPIRES_AFTER_DAYS - LICENSE_WARNING_WINDOW_DAYS
+export const LICENSE_PAID_EXPIRES_AFTER_DAYS = 365
+export const LICENSE_PAID_WARNING_AFTER_DAYS = LICENSE_PAID_EXPIRES_AFTER_DAYS - LICENSE_WARNING_WINDOW_DAYS
 
 // HMAC secret shared between this app (verification) and the website's
 // key-issuance route (signing) — see 59.2. This is necessarily embedded in
@@ -44,6 +58,14 @@ export const LICENSE_EXPIRES_AFTER_DAYS = 365
 // real release — this default is dev/test-only and intentionally obviously
 // not production-safe so it can't be mistaken for a real deployed secret.
 const LICENSE_HMAC_SECRET = process.env.SARANG_LICENSE_HMAC_SECRET || 'DEV-ONLY-INSECURE-PLACEHOLDER-DO-NOT-SHIP'
+
+// Ed25519 is asymmetric — unlike LICENSE_HMAC_SECRET, this PUBLIC key is
+// safe to embed; extracting it gives no way to mint new keys, only to
+// verify ones signed by the private key (website-only, never shipped).
+// Dev default below is a real, valid public key so createPublicKey() never
+// throws — its matching private key is a throwaway test value.
+const LICENSE_ED25519_PUBLIC_KEY_PEM = process.env.SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM
+  || '-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMgopXjPtcF4Q7sU8uRUa26nE2FrPjVAj+2kml/jhgu0=\n-----END PUBLIC KEY-----\n'
 
 interface ParsedLicenseKey {
   tier: LicenseTier
@@ -83,6 +105,98 @@ function sign(payload: string): string {
   return createHmac('sha256', LICENSE_HMAC_SECRET).update(payload).digest('hex').slice(0, 12)
 }
 
+// Lazy + cached — createPublicKey() throws on malformed PEM, so this defers
+// that to first use rather than crashing the module at import time.
+let cachedEd25519PublicKey: ReturnType<typeof createPublicKey> | null | undefined
+function getEd25519PublicKey(): ReturnType<typeof createPublicKey> | null {
+  if (cachedEd25519PublicKey !== undefined) return cachedEd25519PublicKey
+  try {
+    cachedEd25519PublicKey = createPublicKey(LICENSE_ED25519_PUBLIC_KEY_PEM)
+  } catch {
+    cachedEd25519PublicKey = null
+  }
+  return cachedEd25519PublicKey
+}
+
+/** Verifies an Ed25519 signature (full 128-hex-char, never truncated — see the SARANG2 format doc comment below). Never throws. */
+function verifyEd25519(payload: string, sigHex: string): boolean {
+  const publicKey = getEd25519PublicKey()
+  if (!publicKey) return false
+  if (!/^[0-9a-f]{128}$/i.test(sigHex)) return false
+  try {
+    return cryptoVerify(null, Buffer.from(payload), publicKey, Buffer.from(sigHex, 'hex'))
+  } catch {
+    return false
+  }
+}
+
+// license_enforcement_suspended used to be a bare 'true'/'false' string —
+// now a signed token in the same shape as a license key, so a hand-edited
+// Setting row is cryptographically ignored, not just permission-gated.
+function buildKillSwitchPayload(suspended: boolean, issuedAt: Date): string {
+  const daysSinceEpoch = Math.floor(issuedAt.getTime() / 86_400_000)
+  return `KILLSWITCH-${suspended ? 1 : 0}-${daysSinceEpoch.toString(36)}`
+}
+
+/** Issues a signed kill-switch token. Used by the website's /api/sarang-heartbeat route (mirrored server-side) and by tests. */
+export function signKillSwitchToken(suspended: boolean, issuedAt: Date = new Date()): string {
+  const payload = buildKillSwitchPayload(suspended, issuedAt)
+  return `SARANG-${payload}-${sign(payload)}`
+}
+
+/**
+ * Null for anything malformed/tampered/unsigned — callers must treat that
+ * as "not suspended." No staleness check by design: the kill switch only
+ * ever relaxes enforcement, so a legitimate token should be honored offline
+ * forever, like a license key — adding one would reintroduce a network
+ * dependency.
+ */
+export function parseAndVerifyKillSwitchToken(token: string | null | undefined): { suspended: boolean } | null {
+  if (!token) return null
+  const parts = token.trim().toUpperCase().split('-')
+  if (parts[0] !== 'SARANG' || parts[1] !== 'KILLSWITCH' || parts.length !== 5) return null
+
+  const suspendedRaw = parts[2]
+  const daysRaw = parts[3]
+  const signature = parts[4]
+  if (suspendedRaw !== '0' && suspendedRaw !== '1') return null
+
+  const payload = `KILLSWITCH-${suspendedRaw}-${daysRaw.toLowerCase()}`
+  const expectedSig = sign(payload)
+  const a = Buffer.from(signature.toLowerCase())
+  const b = Buffer.from(expectedSig)
+  if (a.length !== b.length || !timingSafeEqual(a, b)) return null
+
+  return { suspended: suspendedRaw === '1' }
+}
+
+/**
+ * SARANG2-<TIER>-<REGION>-<issuedDateBase36Days>-<nonceHex6>-<ed25519SigHex128>
+ *
+ * Dispatched on the SARANG2 prefix, not part-count (it also splits into 6
+ * parts like the legacy nonce format). Signature must be hex, not base64 —
+ * parseAndVerifyLicenseKey() upper-cases the whole key first, and base64's
+ * case-sensitive alphabet would get silently corrupted. Full 128 hex chars,
+ * never truncated like the HMAC signature — Ed25519 needs the whole (R,S) pair.
+ */
+function buildSignedPayloadV2(tier: LicenseTier, region: LicenseRegion, issuedAt: Date, nonce: string): string {
+  const daysSinceEpoch = Math.floor(issuedAt.getTime() / 86_400_000)
+  return `${tier}-${region}-${daysSinceEpoch.toString(36)}-${nonce}`
+}
+
+/**
+ * privateKeyPem is an explicit parameter, never a constant in this file —
+ * the app itself must never hold real signing power. Exists here for tests
+ * (an ephemeral test keypair) and as a reference the website's own
+ * generateSarangLicenseKeyV2() mirrors.
+ */
+export function generateLicenseKeyV2(tier: LicenseTier, region: LicenseRegion, issuedAt: Date, privateKeyPem: string): string {
+  const nonce = randomBytes(6).toString('hex')
+  const payload = buildSignedPayloadV2(tier, region, issuedAt, nonce)
+  const sigHex = cryptoSign(null, Buffer.from(payload), privateKeyPem).toString('hex')
+  return `SARANG2-${payload}-${sigHex}`
+}
+
 /** Issues a new signed key. Used by the website's key-issuance route (mirrored server-side, not called from the app) and by tests. */
 export function generateLicenseKey(tier: LicenseTier, region: LicenseRegion, issuedAt: Date = new Date()): string {
   // 6 random bytes (12 hex chars, 48 bits of collision-space) — not a secret,
@@ -97,9 +211,34 @@ export function generateLicenseKey(tier: LicenseTier, region: LicenseRegion, iss
   return `SARANG-${payload}-${sign(payload)}`
 }
 
-/** Parses + verifies a key's signature. Returns null for any malformed or tampered key — never throws, callers treat null as "invalid, prompt for a real key." */
+/**
+ * Verifies a SARANG2 (Ed25519) key. Split into its own function since the
+ * dispatch in parseAndVerifyLicenseKey() below is by prefix, not part-count.
+ */
+function parseAndVerifyLicenseKeyV2(parts: string[]): ParsedLicenseKey | null {
+  if (parts.length !== 6) return null
+  const tierRaw = parts[1]
+  const regionRaw = parts[2]
+  const daysRaw = parts[3]
+  const nonce = parts[4]
+  const signature = parts[5]
+
+  if (tierRaw !== 'TRIAL' && tierRaw !== 'PAID') return null
+  if (regionRaw !== 'IN' && regionRaw !== 'INTL') return null
+
+  const payload = `${tierRaw}-${regionRaw}-${daysRaw.toLowerCase()}-${nonce.toLowerCase()}`
+  if (!verifyEd25519(payload, signature.toLowerCase())) return null
+
+  const days = parseInt(daysRaw, 36)
+  if (!Number.isFinite(days)) return null
+
+  return { tier: tierRaw, region: regionRaw, issuedAt: new Date(days * 86_400_000) }
+}
+
+/** Parses + verifies a key's signature. Returns null for any malformed/tampered key, never throws. Dispatches across three formats — legacy 5-part HMAC, 6-part HMAC, SARANG2 Ed25519 — all validated forever, none ever retired. */
 export function parseAndVerifyLicenseKey(key: string): ParsedLicenseKey | null {
   const parts = key.trim().toUpperCase().split('-')
+  if (parts[0] === 'SARANG2') return parseAndVerifyLicenseKeyV2(parts)
   if (parts[0] !== 'SARANG') return null
   if (parts.length !== 5 && parts.length !== 6) return null
 
@@ -168,19 +307,24 @@ interface LicenseState {
  * to ACTIVE regardless of age — meaning the very first renewal payment
  * bought a permanent, never-expiring unlock, even though every piece of
  * user-facing pricing copy (SetupWizard, the website pricing page, the
- * renewal email itself) says "₹599/year"/"$29/year". A PAID key now runs
- * through the exact same day-335/365 WARNING/EXPIRED threshold math as a
- * TRIAL key, computed from that key's own issuedAt (i.e. the date it was
- * paid for) — so year 2 genuinely has to be paid for too, degrading the
- * same non-destructive way (blocks only new billable documents, never
- * existing data) rather than silently granting a lifetime license.
+ * renewal email itself) says "₹599/year"/"$29/year" (price under review as
+ * of 2026-09-01 — not yet finalized, so not changed here). A PAID key runs
+ * through its own day-335/365 WARNING/EXPIRED threshold math (its 365-day
+ * annual cycle, unchanged), computed from that key's own issuedAt (i.e. the
+ * date it was paid for) — so year 2 genuinely has to be paid for too,
+ * degrading the same non-destructive way (blocks only new billable
+ * documents, never existing data) rather than silently granting a lifetime
+ * license. A TRIAL key runs the same WARNING/EXPIRED shape on its own
+ * shorter 70/100-day cycle (2026-09-01 — trial length changed from 365 to
+ * 100 days; see the constants' own comment above for why the two tiers no
+ * longer share one cycle length).
  */
 export async function getLicenseState(): Promise<LicenseState> {
   const db = getPrisma()
   const [keyRow, fingerprintRow, killSwitchRow] = await Promise.all([
     db.setting.findUnique({ where: { settingKey: SETTING_KEYS.key } }),
     db.setting.findUnique({ where: { settingKey: SETTING_KEYS.machineFingerprint } }),
-    db.setting.findUnique({ where: { settingKey: 'license_enforcement_suspended' } })
+    db.setting.findUnique({ where: { settingKey: SETTING_KEYS.enforcementSuspended } })
   ])
 
   // Fire-and-forget — never awaited, never allowed to slow this function
@@ -203,23 +347,26 @@ export async function getLicenseState(): Promise<LicenseState> {
   // Real bug found+fixed 2026-07-28: this used to round-trip through
   // `.toISOString().slice(0,10)` (UTC calendar date) then re-parse that as a
   // LOCAL date via parseLocalDateStart — for any non-UTC timezone this
-  // shifts the 335/365-day threshold by up to the timezone's offset (worst
-  // case ~14h), cutting the promised free period short for users west of
-  // UTC. Raw elapsed-time math sidesteps the UTC/local round-trip entirely:
-  // every install gets exactly LICENSE_EXPIRES_AFTER_DAYS × 24h of free use
-  // from the exact moment the key was issued, regardless of timezone or DST.
+  // shifts the day-threshold by up to the timezone's offset (worst case
+  // ~14h), cutting the promised free period short for users west of UTC.
+  // Raw elapsed-time math sidesteps the UTC/local round-trip entirely: every
+  // install gets exactly its tier's cycle length × 24h of use from the exact
+  // moment the key was issued, regardless of timezone or DST.
+  const cycleDays = parsed.tier === 'TRIAL' ? LICENSE_TRIAL_EXPIRES_AFTER_DAYS : LICENSE_PAID_EXPIRES_AFTER_DAYS
+  const warningDays = parsed.tier === 'TRIAL' ? LICENSE_TRIAL_WARNING_AFTER_DAYS : LICENSE_PAID_WARNING_AFTER_DAYS
   const daysSinceIssue = Math.floor((Date.now() - parsed.issuedAt.getTime()) / 86_400_000)
-  const daysRemaining = LICENSE_EXPIRES_AFTER_DAYS - daysSinceIssue
+  const daysRemaining = cycleDays - daysSinceIssue
 
   // Remote kill switch (59.6) — only ever relaxes enforcement, never tightens
   // it, and only takes effect if a prior online ping actually saw the flag
-  // set. Never blocks this function, never required.
-  const enforcementSuspended = killSwitchRow?.settingValue === 'true'
+  // set. Never blocks this function, never required. Signature-verified —
+  // an unsigned/tampered value fails safe as "not suspended."
+  const enforcementSuspended = parseAndVerifyKillSwitchToken(killSwitchRow?.settingValue)?.suspended === true
 
   let status: LicenseStatus = 'ACTIVE'
   if (!enforcementSuspended) {
-    if (daysSinceIssue >= LICENSE_EXPIRES_AFTER_DAYS) status = 'EXPIRED'
-    else if (daysSinceIssue >= LICENSE_WARNING_AFTER_DAYS) status = 'WARNING'
+    if (daysSinceIssue >= cycleDays) status = 'EXPIRED'
+    else if (daysSinceIssue >= warningDays) status = 'WARNING'
   }
 
   return { status, tier: parsed.tier, region: parsed.region, daysSinceIssue, daysRemaining, machineMismatch }
@@ -295,11 +442,11 @@ const LICENSE_PING_URL = 'https://aszurex.com/api/sarang-heartbeat'
  * any business data. Fire-and-forget: never awaited by callers, never
  * retried aggressively, never blocks or delays anything if unreachable —
  * this must stay true to the offline-first rule that no network call is
- * ever load-bearing. Reads back an optional `enforcementSuspended` flag
- * (the remote kill-switch, see 59.6) the founder can flip on the website
- * side without shipping a new app build, in case the day-335/365 logic
- * ever has a bug — this project has a real history of shipping
- * date-boundary bugs that looked fine until they weren't.
+ * ever load-bearing. Reads back a signed `enforcementToken` (the remote
+ * kill-switch, see 59.6) the founder can flip on the website side without
+ * shipping a new app build, in case the
+ * day-335/365 logic ever has a bug — this project has a real history of
+ * shipping date-boundary bugs that looked fine until they weren't.
  */
 export async function pingLicenseStatusIfDue(): Promise<void> {
   try {
@@ -326,12 +473,19 @@ export async function pingLicenseStatusIfDue(): Promise<void> {
     })
 
     if (res.ok) {
-      const body = await res.json().catch(() => null) as { enforcementSuspended?: boolean } | null
-      await db.setting.upsert({
-        where: { settingKey: 'license_enforcement_suspended' },
-        update: { settingValue: String(!!body?.enforcementSuspended) },
-        create: { settingKey: 'license_enforcement_suspended', settingValue: String(!!body?.enforcementSuspended), settingType: 'BOOLEAN' }
-      })
+      // 2026-09-02 hardening — the server now returns a signed token, not a
+      // bare boolean. Verified BEFORE persisting, so a spoofed/garbled
+      // response can't even get a bogus value written locally; getLicenseState()
+      // verifies again on every read as the real enforcement point, this is
+      // just a fail-fast so an obviously-bad value is never stored at all.
+      const body = await res.json().catch(() => null) as { enforcementToken?: string } | null
+      if (body?.enforcementToken && parseAndVerifyKillSwitchToken(body.enforcementToken)) {
+        await db.setting.upsert({
+          where: { settingKey: SETTING_KEYS.enforcementSuspended },
+          update: { settingValue: body.enforcementToken },
+          create: { settingKey: SETTING_KEYS.enforcementSuspended, settingValue: body.enforcementToken, settingType: 'STRING' }
+        })
+      }
     }
   } catch {
     // Fully expected when offline, or before the website endpoint exists —

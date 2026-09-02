@@ -74,6 +74,14 @@ If a customer or supplier has no phone number on file, the WhatsApp button is di
 
 Opening WhatsApp this way launches WhatsApp Desktop if it's installed, or WhatsApp Web in your browser otherwise. Opening Email launches whichever app is set as your computer's default mail app — if none is set, Windows will ask you to choose one; this is normal.
 
+## Foreign-currency invoicing and settlement
+
+If you sell to customers who pay in a foreign currency — an export sale, an overseas client — tick **Bill in foreign currency** while creating the invoice. Enter the three-letter currency code (e.g. `USD`) and the exchange rate at the time of billing (e.g. `83.25`); a live preview shows the invoice total converted at that rate. The invoice itself still totals and prints in your home currency as normal — the foreign-currency figure is an added reference line, both on screen and on the printed document (`≈ USD 1,200.00 @ 83.25`), not a second set of books.
+
+Exchange rates move between the day you raise the invoice and the day you're actually paid, so **settling** a foreign-currency invoice is its own step. Open the invoice and click **Record Payment**: since it carries a foreign currency, a **Settle in {code} (records the actual amount received and any exchange-rate gain/loss)** toggle appears. Switch it on, enter the amount you actually received in the foreign currency and the exchange rate on the day of settlement (which can differ from the rate the invoice was raised at), and confirm. Sarang converts that to your home currency, settles the invoice in full, and automatically posts the difference between what the invoice was worth at the original rate and what it was worth at the settlement rate as a **Realized FX Gain** or **Realized FX Loss** journal entry (see the Ledger & Journal Entries chapter) — you never calculate or post that adjustment by hand.
+
+The same foreign-currency billing and settlement flow is available on the purchase side for Bills you record from suppliers — see the Bills & Payments Made chapter.
+
 ## Notes on tax and rounding
 
 Every invoice total is rounded to the nearest whole unit of currency, with the rounding difference shown as its own line so the math always adds up visibly. Under the GST tax model, tax prints as CGST+SGST for an intra-state sale or a single IGST line for an inter-state one, based on the checkbox set when the invoice was created.

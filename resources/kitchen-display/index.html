@@ -66,9 +66,9 @@
   }
 
   function ticketHtml(kot) {
-    var title = (kot.table && (kot.table.tableName || kot.table.tableNumber)) || (kot.invoice && kot.invoice.invoiceNumber) || 'Order'
-    var items = ((kot.invoice && kot.invoice.items) || []).map(function (it) {
-      return '<div class="item-row"><span>' + escapeHtml(it.product ? it.product.productName : '') + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
+    var title = (kot.table && (kot.table.tableName || kot.table.tableNumber)) || (kot.invoice && kot.invoice.invoiceNumber) || ('KOT-' + String(kot.id).slice(-6).toUpperCase())
+    var items = (kot.items || []).map(function (it) {
+      return '<div class="item-row"><span>' + escapeHtml(it.productName) + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
     }).join('')
     var next = NEXT_STATUS[kot.status]
     var btn = next

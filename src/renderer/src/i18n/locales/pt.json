@@ -56,7 +56,13 @@
     "manual": "Manual",
     "costCentres": "Centros de Custo",
     "budgets": "Orçamentos",
-    "serviceCombos": "Service Combos"
+    "serviceCombos": "Service Combos",
+    "checkIn": "Check-in",
+    "customOrders": "Pedidos Personalizados",
+    "cateringEvents": "Eventos de Buffet",
+    "vehicleFleet": "Frota de Veículos",
+    "tourPackages": "Pacotes Turísticos",
+    "tripBookings": "Reservas de Viagem"
   },
   "common": {
     "save": "Salvar",
@@ -182,7 +188,9 @@
     "resetPassword": "Redefinir Senha",
     "passwordResetSuccessTitle": "Senha Redefinida",
     "passwordResetSuccessBody": "Sua senha foi alterada. Agora você pode entrar com sua nova senha.",
-    "backToSignIn": "Voltar para o Login"
+    "backToSignIn": "Voltar para o Login",
+    "passwordExpiredTitle": "Sua senha expirou",
+    "passwordExpiredBody": "Altere-a em breve em Settings → Security."
   },
   "dashboard": {
     "title": "Painel",
@@ -364,6 +372,8 @@
     "invoiceCreated": "Nota Criada",
     "creditInvoice": "Criar Nota a Crédito",
     "confirmSale": "Confirmar Venda",
+    "sendToKitchen": "Enviar para a Cozinha",
+    "orderSentToKitchen": "Pedido Enviado à Cozinha",
     "clearCart": "Limpar Tudo",
     "customerRequired": "Cliente necessário para vendas a crédito",
     "paymentHistory": "Histórico de Pagamentos",
@@ -479,7 +489,19 @@
     "shareEmailSubject": "{{documentType}} {{number}} de {{businessName}}",
     "shareEmailBody": "Prezado(a) Senhor(a),\n\nSegue em anexo {{documentType}} {{number}} de {{businessName}}, no valor total de {{amount}}.\n\nObrigado.\n\n{{businessName}}",
     "bargainedPriceToggleHint": "Alternar {{currSym}} / % / Preço Final Negociado",
-    "bargainedPriceInputHint": "Digite o preço final combinado para este item — o desconto é calculado automaticamente."
+    "bargainedPriceInputHint": "Digite o preço final combinado para este item — o desconto é calculado automaticamente.",
+    "foreignCurrency": {
+      "toggle": "Faturar em moeda estrangeira",
+      "codePlaceholder": "Código da moeda, ex. USD",
+      "ratePlaceholder": "Taxa de câmbio, ex. 83.25",
+      "preview": "≈ {{code}} {{amount}}",
+      "settleTitle": "Liquidar Fatura em Moeda Estrangeira",
+      "settleToggle": "Liquidar em {{code}} (registra o valor real recebido e qualquer ganho/perda cambial)",
+      "amountReceived": "Valor Recebido ({{code}})",
+      "settlementRate": "Taxa de Câmbio na Liquidação",
+      "settleNote": "Isso liquida a fatura por completo. Qualquer diferença em relação à taxa original é registrada como um ganho ou perda cambial realizado.",
+      "settleAction": "Liquidar Fatura"
+    }
   },
   "products": {
     "title": "Produtos",
@@ -503,7 +525,7 @@
     "manageVariants": "Gerenciar Variações",
     "description": "Descrição",
     "productType": "Tipo de Produto",
-    "physical": "Físico",
+    "physical": "Bens",
     "service": "Serviço",
     "hsnCode": "Código NCM / Item",
     "reorderLevel": "Ponto de Reposição",
@@ -697,7 +719,7 @@
     "noRepairHistory": "Ainda não há tickets de reparo para esta unidade.",
     "deviceSerial": "Dispositivo / Série",
     "warranty": "Garantia",
-    "changeStatus": "Alterar Status",
+    "changeStatus": "Alterar status do veículo",
     "updateStatus": "Atualizar Status",
     "importBtn": "Importar",
     "importing": "Importando…",
@@ -952,6 +974,26 @@
       "created": "Talão de cheque adicionado",
       "useNextNumber": "Usar o próximo número de cheque (nº {{number}})"
     },
+    "bankDeposits": {
+      "title": "Depósitos Bancários",
+      "depositsCount_one": "{{count}} depósito",
+      "depositsCount_other": "{{count}} depósitos",
+      "newDeposit": "Novo Depósito",
+      "noDepositsYet": "Ainda não há depósitos bancários registrados",
+      "colDepositNumber": "N.º do Depósito",
+      "colDate": "Data",
+      "colCash": "Dinheiro",
+      "colCheques": "Cheques",
+      "couldNotLoad": "Não foi possível carregar os depósitos bancários.",
+      "couldNotCreate": "Não foi possível criar o depósito bancário.",
+      "created": "Guia de depósito criada",
+      "selectAccount": "Selecione uma conta bancária.",
+      "needsCashOrCheques": "Uma guia de depósito deve incluir pelo menos algum dinheiro ou pelo menos um cheque.",
+      "denominationsLabel": "Denominações em Dinheiro",
+      "cashSubtotal": "Subtotal em Dinheiro",
+      "includeCheques": "Incluir Cheques Pendentes",
+      "chequeSubtotal": "Subtotal de Cheques"
+    },
     "fixedAssets": {
       "title": "Ativos Fixos",
       "assetsCount_one": "{{count}} ativo",
@@ -1106,6 +1148,17 @@
         "HANDLING": "Manuseio",
         "OTHER": "Outro"
       }
+    },
+    "foreignCurrency": {
+      "toggle": "Faturar em moeda estrangeira",
+      "codePlaceholder": "Código da moeda, ex. USD",
+      "ratePlaceholder": "Taxa de câmbio, ex. 83.25",
+      "settleTitle": "Liquidar Fatura de Compra em Moeda Estrangeira",
+      "settleToggle": "Liquidar em {{code}} (registra o valor real pago e qualquer ganho/perda cambial)",
+      "amountPaid": "Valor Pago ({{code}})",
+      "settlementRate": "Taxa de Câmbio na Liquidação",
+      "settleNote": "Isso liquida a fatura de compra por completo. Qualquer diferença em relação à taxa original é registrada como um ganho ou perda cambial realizado.",
+      "settleAction": "Liquidar Fatura de Compra"
     }
   },
   "salesOrders": {
@@ -2203,6 +2256,58 @@
       "deliveryInstallationSchedule": {
         "label": "Delivery & Installation Schedule",
         "description": "Furniture bookings with a delivery date in range, as a real schedule"
+      },
+      "specWiseFastMovers": {
+        "label": "Mais Vendidos por Especificação",
+        "description": "Qual especificação de voltagem, bitola ou amperagem realmente mais vende, classificada por unidades vendidas"
+      },
+      "fittingCrossSell": {
+        "label": "Venda Cruzada de Compatibilidade de Conexões",
+        "description": "Sinaliza vendas em que a conexão ou fita normalmente emparelhada não foi comprada desta vez"
+      },
+      "materialSalesMix": {
+        "label": "Mix de Vendas por Material",
+        "description": "Divisão da receita por categoria de material — PVC, CPVC, GI, cobre"
+      },
+      "mrpViolation": {
+        "label": "Conformidade com o Preço Máximo (MRP)",
+        "description": "Toda linha de venda passada em que o preço unitário excedeu o MRP impresso do produto"
+      },
+      "perishableWastage": {
+        "label": "Perda de Produtos Perecíveis",
+        "description": "Estoque baixado por vencimento, por produto e valor"
+      },
+      "dailyRestockAlert": {
+        "label": "Alerta de Reabastecimento Diário",
+        "description": "Produtos de venda rápida com estoque baixo, classificados por dias de estoque restante"
+      },
+      "looseVsPackagedMix": {
+        "label": "Mix de Vendas a Granel vs. Embalado",
+        "description": "Divisão da receita entre produtos a granel (faturados por peso) e embalados"
+      },
+      "khataRisk": {
+        "label": "Nível de Risco de Crédito (Khata)",
+        "description": "Clientes de crédito classificados por risco — antiguidade mais uma tendência de saldo de 30 dias, com um lembrete de WhatsApp em um toque"
+      },
+      "preOrderProductionSheet": {
+        "label": "Folha de Produção de Pedidos",
+        "description": "O que assar hoje — pedidos personalizados vencidos mais a demanda habitual, detalhados nos ingredientes que você precisará"
+      },
+      "vehicleServiceDue": {
+        "label": "Manutenção de Veículo Pendente",
+        "description": "Km totais percorridos por veículo desde a última manutenção, com veículos pendentes ou atrasados sinalizados"
+      },
+      "commissionByAgent": {
+        "label": "Comissão por Agente",
+        "description": "Comissão de indicação ganha por agente em todas as reservas de viagem"
+      },
+      "tripProfitability": {
+        "label": "Rentabilidade da Viagem",
+        "description": "Por viagem concluída: receita mais cobranças excedentes, menos custos do motorista, combustível, manutenção e comissão"
+      },
+      "eventProfitability": {
+        "label": "Rentabilidade do Evento",
+        "description": "Por evento de buffet concluído: o preço final acordado menos o custo de pessoal e o custo estimado de ingredientes"
       }
     },
     "summary": {
@@ -3399,7 +3504,11 @@
     "destinationSaved": "Pasta de backup atualizada",
     "destinationSaveFailed": "Não foi possível atualizar a pasta de backup",
     "destinationReset": "Pasta de backup redefinida para o padrão",
-    "destinationUnreachable": "\"{{path}}\" não está acessível no momento (desconectado?) — usando o local padrão."
+    "destinationUnreachable": "\"{{path}}\" não está acessível no momento (desconectado?) — usando o local padrão.",
+    "restoreFromFile": "Restore from File",
+    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
+    "restoreFromFileConfirmTitle": "Restore from Backup File",
+    "pickBackupFileFailed": "Could not open file picker."
   },
   "audit": {
     "title": "Auditoria",
@@ -3480,17 +3589,17 @@
   },
   "license": {
     "title": "Licença",
-    "subtitle": "O Sarang é gratuito durante os seus primeiros 12 meses. Depois disso, uma pequena licença anual o mantém funcionando.",
+    "subtitle": "O Sarang é gratuito durante os seus primeiros 100 dias. Depois disso, uma pequena licença anual o mantém funcionando.",
     "statusActive": "Ativa",
     "statusActivePaid": "Ativa — Paga",
-    "statusWarning": "O ano gratuito está terminando em breve",
+    "statusWarning": "O teste gratuito está terminando em breve",
     "statusWarningPaid": "Renovação vence em breve",
-    "statusExpired": "O ano gratuito terminou",
+    "statusExpired": "O teste gratuito terminou",
     "statusExpiredPaid": "Licença expirada",
     "statusNotActivated": "Não ativada",
-    "daysRemaining": "Restam {{days}} dia(s) no seu ano gratuito",
+    "daysRemaining": "Restam {{days}} dia(s) no seu teste gratuito",
     "daysRemainingPaid": "Restam {{days}} dia(s) antes da renovação",
-    "freeYearEndedNotice": "Seu ano gratuito terminou. Você ainda pode visualizar, imprimir, exportar e fazer backup de todos os seus dados existentes — apenas a criação de novas faturas é afetada até que você renove.",
+    "freeYearEndedNotice": "Seu teste gratuito terminou. Você ainda pode visualizar, imprimir, exportar e fazer backup de todos os seus dados existentes — apenas a criação de novas faturas é afetada até que você renove.",
     "licenseExpiredNoticePaid": "Sua licença expirou. Você ainda pode visualizar, imprimir, exportar e fazer backup de todos os seus dados existentes — apenas a criação de novas faturas é afetada até que você renove.",
     "deviceBoundNotice": "Sua chave de licença está vinculada a este único dispositivo.",
     "machineMismatchNotice": "Esta chave estava ativa anteriormente em outro dispositivo. Ela foi reativada aqui.",
@@ -3550,7 +3659,7 @@
       "backupTitle": "Backup e restauração",
       "backupBody": "Seus dados vivem apenas neste dispositivo — esta tela é como você os protege. Configure backups automáticos aqui para nunca ser pego de surpresa.",
       "licenseTitle": "Sua licença",
-      "licenseBody": "O Sarang é gratuito nos seus primeiros 12 meses. Esta tela sempre mostra exatamente onde você está, e é aqui que você renovará quando chegar a hora."
+      "licenseBody": "O Sarang é gratuito nos seus primeiros 100 dias. Esta tela sempre mostra exatamente onde você está, e é aqui que você renovará quando chegar a hora."
     },
     "items": {
       "restaurantTables": {
@@ -4017,9 +4126,45 @@
         "title": "Furniture Trade-Ins",
         "body": "Record an old piece traded in against a new purchase at a shop-assessed value, then apply it as a discount while billing that customer."
       },
+      "jobSiteAccounts": {
+        "title": "Contas de Obra",
+        "body": "Abra uma conta corrente para um empreiteiro que trabalha em um único canteiro — marque faturas de CRÉDITO nela ao faturar e veja o saldo corrente próprio dessa conta, separado do livro-razão geral dele."
+      },
+      "bulkListOrders": {
+        "title": "Pedidos por Lista em Massa",
+        "body": "Insira uma lista de suprimentos de uma escola ou escritório como linhas brutas, associe cada uma a um produto e preço do catálogo, e depois fature o pedido inteiro de uma vez assim que tudo estiver associado."
+      },
+      "furnitureBookings": {
+        "title": "Reservas de Móveis",
+        "body": "Reserve uma peça sob encomenda com um sinal, registre a personalização e gere a fatura de entrega quando estiver pronta — o adiantamento é aplicado automaticamente."
+      },
+      "furnitureTradeIns": {
+        "title": "Trocas de Móveis Usados",
+        "body": "Registre uma peça usada dada como entrada em uma compra nova pelo valor avaliado pela loja, e aplique-a como desconto ao faturar esse cliente."
+      },
       "scheduledDeliveries": {
-        "title": "Scheduled Deliveries",
-        "body": "Track a fragile-item delivery booked at billing time through Scheduled, Out for Delivery, and Delivered."
+        "title": "Entregas Agendadas",
+        "body": "Acompanhe uma entrega de item frágil reservada no momento do faturamento pelas etapas Agendada, Saiu para Entrega e Entregue."
+      },
+      "bakeryCustomOrders": {
+        "title": "Pedidos Personalizados",
+        "body": "Registre um pré-pedido em grande quantidade — um bolo de casamento, um pedido de lanche para escola — com data de entrega e pagamento adiantado, rastreado separadamente das suas vendas normais de balcão."
+      },
+      "cateringEvents": {
+        "title": "Eventos de Buffet",
+        "body": "Registre um evento de buffet completo: cardápio, contagem diária de refeições e lanches para eventos de vários dias, número de convidados, e linhas de custo separadas para cozinheiros, garçons e equipe de limpeza — fature pelo preço final negociado assim que acordado."
+      },
+      "toursFleet": {
+        "title": "Frota de Veículos",
+        "body": "Seus veículos, com leituras de odômetro e histórico de manutenção — é daqui que tanto as Reservas de Viagem quanto o relatório de Manutenção de Veículos Pendente obtêm seus dados."
+      },
+      "tourPackages": {
+        "title": "Pacotes Turísticos",
+        "body": "Pacotes de viagem predefinidos com uma tarifa fixa, prontos para associar a uma reserva em vez de precificar cada viagem do zero."
+      },
+      "tripBookings": {
+        "title": "Reservas de Viagem",
+        "body": "Reserve uma viagem para um veículo e pacote, registre o serviço diário (km percorridos, diária do motorista, cobranças excedentes), e fature assim que a viagem for concluída."
       }
     }
   },
@@ -5623,6 +5768,7 @@
     "seat": "Sentar",
     "noShow": "Não compareceu",
     "dayClosed": "Dia encerrado. KOTs atendidos: {{kotCount}} | Receita: {{revenue}} de {{invoiceCount}} notas.",
+    "unsettledTablesWarning": "{{count}} mesa(s) ignorada(s) — ainda têm pedidos não finalizados.",
     "dailyCloseFailed": "Falha no fechamento diário: {{message}}",
     "dailyCloseFailedUnknown": "Falha no fechamento diário: Erro desconhecido",
     "tableNumberPlaceholder": "Número da mesa (ex. T1)",
@@ -5649,7 +5795,18 @@
     "noFreeTablesToMerge": "Nenhuma mesa livre para mesclar.",
     "print": "Imprimir",
     "performDailyCloseConfirm": "Realizar o fechamento diário? Isso marcará todas as mesas ocupadas como disponíveis e registrará um resumo de fechamento.",
-    "scanToOrder": "Escaneie para ver o cardápio e fazer seu pedido"
+    "scanToOrder": "Escaneie para ver o cardápio e fazer seu pedido",
+    "viewOrder": "Ver Pedido",
+    "orderSummaryTitle": "Pedido — {{name}}",
+    "noItemsOrderedYet": "Nada pedido ainda.",
+    "estimatedTotal": "Total Estimado",
+    "checkout": "Fechar Conta",
+    "checkingOut": "Fechando conta…",
+    "couldNotLoadOrderSummary": "Não foi possível carregar o pedido desta mesa.",
+    "couldNotCheckout": "Não foi possível fechar a conta desta mesa.",
+    "tableCheckedOut": "Conta Fechada",
+    "billGenerated": "Conta gerada para {{name}}.",
+    "billRequested": "Conta solicitada"
   },
   "costCentres": {
     "title": "Centros de Custo",
@@ -5713,6 +5870,317 @@
     "empty": {
       "title": "No service combos yet",
       "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+    }
+  },
+  "checkin": {
+    "title": "Check-in de Clientes",
+    "subtitle": "Registre visitas — quem está aqui agora, e o histórico recente de check-in/check-out",
+    "notEnabled": "O Check-in de Clientes não está ativado para o seu negócio.",
+    "checkInAction": "Fazer Check-in",
+    "checkOutAction": "Fazer Check-out",
+    "customer": "Cliente",
+    "selectCustomer": "Selecione um cliente.",
+    "checkedIn": "Check-in realizado",
+    "checkedOut": "Check-out realizado",
+    "checkInFailed": "Não foi possível fazer o check-in. Tente novamente.",
+    "currentlyIn": "Presentes no momento ({{count}})",
+    "noOneIn": "Ninguém está presente no momento.",
+    "recentVisits": "Visitas Recentes",
+    "noVisits": "Nenhuma visita registrada ainda.",
+    "inAt": "Entrada {{time}}",
+    "outAt": "Saída {{time}}",
+    "stillIn": "ainda presente"
+  },
+  "bakery": {
+    "customOrders": {
+      "title": "Pedidos Personalizados",
+      "subtitle": "Reserva com sinal + saldo para bolos personalizados e itens feitos sob encomenda",
+      "refresh": "Atualizar",
+      "newOrder": "Novo Pedido",
+      "cancel": "Cancelar",
+      "book": "Reservar",
+      "customer": "Cliente",
+      "dueDate": "Data de Entrega",
+      "deliveryAddress": "Endereço de Entrega",
+      "itemsSection": "Itens",
+      "searchProduct": "Buscar produto…",
+      "noProductsMatch": "Nenhum produto corresponde.",
+      "qty": "Qtd.",
+      "price": "Preço",
+      "flavorPlaceholder": "Sabor / Tamanho",
+      "add": "Adicionar",
+      "total": "Total",
+      "advanceAmount": "Valor do Sinal ({{sym}})",
+      "advancePaymentMethod": "Método de Pagamento do Sinal",
+      "cash": "Dinheiro",
+      "upi": "UPI",
+      "card": "Cartão",
+      "wallet": "Carteira",
+      "notes": "Notas",
+      "selectCustomerError": "Selecione um cliente.",
+      "addItemError": "Adicione pelo menos um item.",
+      "advanceExceedsError": "O sinal não pode exceder o total do pedido.",
+      "orderCreated": "Pedido criado",
+      "orderCreateFailed": "Não foi possível criar o pedido.",
+      "generateInvoice": "Gerar Fatura",
+      "generatingInvoice": "Gerando…",
+      "invoiceGenerated": "Fatura gerada",
+      "invoiceGeneratedDetail": "Fatura de entrega criada e sinal aplicado.",
+      "invoiceGenerateFailed": "Não foi possível gerar a fatura.",
+      "loading": "Carregando…",
+      "noOrdersYet": "Ainda não há pedidos.",
+      "dueOn": "vencimento {{date}}",
+      "itemsCount": "{{count}} item(ns)",
+      "advanceLabel": "{{amount}} de sinal",
+      "loadFailed": "Não foi possível carregar os pedidos."
+    },
+    "cateringEvents": {
+      "title": "Eventos de Buffet",
+      "subtitle": "Reserve eventos de buffet — cardápio, preço por prato, refeições e lanches por dia, e custo de equipe por função",
+      "refresh": "Atualizar",
+      "newEvent": "Novo Evento",
+      "cancel": "Cancelar",
+      "book": "Reservar Evento",
+      "save": "Salvar",
+      "customer": "Cliente",
+      "venueAddress": "Endereço do Local",
+      "eventStartDate": "Data de Início do Evento",
+      "eventEndDate": "Data de Término do Evento",
+      "attendeeCount": "Número de Convidados",
+      "pricePerPlate": "Preço por Prato ({{sym}})",
+      "estimatedTotal": "Total Estimado",
+      "menuSection": "Cardápio",
+      "searchProduct": "Buscar produto…",
+      "qty": "Qtd.",
+      "price": "Preço",
+      "add": "Adicionar",
+      "daysSection": "Refeições e Lanches por Dia",
+      "serviceDate": "Data",
+      "mealsCount": "Refeições",
+      "snacksCount": "Lanches",
+      "addDay": "Adicionar Dia",
+      "staffSection": "Equipe",
+      "role": "Função",
+      "cook": "Cozinheiro",
+      "server": "Garçom",
+      "cleaner": "Limpeza",
+      "other": "Outro",
+      "workerCount": "Trabalhadores",
+      "ratePerWorker": "Taxa por Trabalhador ({{sym}})",
+      "addStaff": "Adicionar Equipe",
+      "staffCostTotal": "Custo Total da Equipe",
+      "advanceAmount": "Valor do Sinal ({{sym}})",
+      "advancePaymentMethod": "Método de Pagamento do Sinal",
+      "cash": "Dinheiro",
+      "upi": "UPI",
+      "card": "Cartão",
+      "wallet": "Carteira",
+      "notes": "Notas",
+      "loading": "Carregando…",
+      "noEventsYet": "Ainda não há eventos de buffet.",
+      "attendeesLabel": "{{count}} convidados",
+      "finalPriceLabel": "{{amount}} acordado",
+      "quotedLabel": "{{amount}} cotado",
+      "advanceLabel": "{{amount}} de sinal",
+      "recordFinalPrice": "Registrar Preço Final",
+      "finalPricePrompt": "Preço Final Negociado ({{sym}})",
+      "finalPriceRecorded": "Preço final registrado",
+      "finalPriceRecordFailed": "Não foi possível registrar o preço final.",
+      "recordingPrice": "Salvando…",
+      "generateInvoice": "Gerar Fatura",
+      "generatingInvoice": "Gerando…",
+      "invoiceGenerated": "Fatura gerada",
+      "invoiceGeneratedDetail": "Fatura criada e sinal aplicado.",
+      "invoiceGenerateFailed": "Não foi possível gerar a fatura.",
+      "loadFailed": "Não foi possível carregar os eventos de buffet.",
+      "selectCustomerError": "Selecione um cliente.",
+      "eventStartDateError": "A data de início do evento é obrigatória.",
+      "attendeeCountError": "O número de convidados deve ser maior que zero.",
+      "pricePerPlateError": "O preço por prato é obrigatório.",
+      "advanceExceedsError": "O sinal não pode exceder o total estimado.",
+      "eventCreated": "Evento reservado",
+      "eventCreateFailed": "Não foi possível reservar o evento."
+    }
+  },
+  "tours": {
+    "fleet": {
+      "title": "Frota de Veículos",
+      "subtitle": "Frota, registro de manutenção e calendário de disponibilidade de 30 dias",
+      "refresh": "Atualizar",
+      "newVehicle": "Novo Veículo",
+      "regNumber": "Número de Registro",
+      "regNumberRequired": "O número de registro é obrigatório.",
+      "vehicleType": "Tipo de Veículo",
+      "seatingCapacity": "Capacidade de Assentos",
+      "capacityRequired": "A capacidade de assentos deve ser maior que zero.",
+      "cancel": "Cancelar",
+      "add": "Adicionar Veículo",
+      "vehicleAdded": "Veículo adicionado",
+      "vehicleAddFailed": "Não foi possível adicionar o veículo.",
+      "loading": "Carregando…",
+      "noVehiclesYet": "Ainda não há veículos. Adicione seu primeiro veículo para começar.",
+      "loadFailed": "Não foi possível carregar os veículos.",
+      "seats": "{{count}} assentos",
+      "odometer": "{{km}} km",
+      "serviceLog": "Registro de Manutenção",
+      "serviceLogFor": "Registro de Manutenção — {{reg}}",
+      "serviceDate": "Data da Manutenção",
+      "serviceType": "Tipo",
+      "odometerReading": "Leitura do Odômetro",
+      "cost": "Custo",
+      "close": "Fechar",
+      "logService": "Registrar Manutenção",
+      "serviceLogged": "Manutenção registrada",
+      "serviceLogFailed": "Não foi possível registrar a manutenção.",
+      "availabilityNext30Days": "Disponibilidade de Frota e Assentos — Próximos 30 Dias",
+      "free": "Livre",
+      "bookedCount": "{{count}} reserva(s)",
+      "seatsRemaining": "{{count}} assentos restantes",
+      "vehicleTypes": {
+        "SEDAN": "Sedã",
+        "SUV": "SUV / Innova",
+        "TEMPO_TRAVELLER": "Tempo Traveller",
+        "MINI_BUS": "Micro-ônibus",
+        "BUS": "Ônibus"
+      },
+      "serviceTypes": {
+        "SERVICE": "Manutenção",
+        "REPAIR": "Reparo",
+        "MAINTENANCE": "Manutenção Preventiva"
+      },
+      "status": {
+        "ACTIVE": "Ativo",
+        "IN_SERVICE": "Em Manutenção",
+        "INACTIVE": "Inativo"
+      },
+      "changeStatus": "Change vehicle status",
+      "statusUpdated": "Status atualizado",
+      "statusUpdateFailed": "Não foi possível atualizar o status do veículo."
+    },
+    "packages": {
+      "title": "Pacotes Turísticos",
+      "subtitle": "Modelos de pacotes, partidas e reserva de assentos",
+      "refresh": "Atualizar",
+      "newPackage": "Novo Pacote",
+      "packageName": "Nome do Pacote",
+      "nameRequired": "O nome do pacote é obrigatório.",
+      "itinerary": "Itinerário",
+      "durationDays": "Duração (Dias)",
+      "defaultSeats": "Assentos Padrão",
+      "farePerSeat": "Tarifa por Assento",
+      "cancel": "Cancelar",
+      "add": "Adicionar Pacote",
+      "save": "Salvar",
+      "packageAdded": "Pacote adicionado",
+      "packageAddFailed": "Não foi possível adicionar o pacote.",
+      "loading": "Carregando…",
+      "noPackagesYet": "Ainda não há pacotes turísticos. Adicione seu primeiro pacote para começar.",
+      "loadFailed": "Não foi possível carregar os pacotes.",
+      "durationLabel": "{{days}} dia(s)",
+      "seatsLabel": "{{count}} assentos",
+      "perSeat": " / assento",
+      "departures": "Partidas",
+      "addDeparture": "Adicionar Partida",
+      "departureDate": "Data de Partida",
+      "totalSeats": "Total de Assentos",
+      "departureAdded": "Partida adicionada",
+      "departureAddFailed": "Não foi possível adicionar a partida.",
+      "noDeparturesYet": "Ainda não há partidas agendadas.",
+      "seatsRemainingOf": "{{remaining}} de {{total}} assentos restantes",
+      "bookSeats": "Reservar Assentos",
+      "bookSeatsTitle": "Reservar Assentos",
+      "customer": "Cliente",
+      "seatsToBook": "Assentos a Reservar",
+      "advanceAmount": "Valor do Adiantamento",
+      "confirmBooking": "Confirmar Reserva",
+      "seatsBooked": "Assentos reservados",
+      "bookingFailed": "Não foi possível reservar os assentos.",
+      "status": {
+        "ACTIVE": "Ativo",
+        "INACTIVE": "Inativo"
+      },
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "packageStatusUpdated": "Status do pacote atualizado",
+      "packageStatusUpdateFailed": "Não foi possível atualizar o status do pacote.",
+      "markComplete": "Mark Complete",
+      "cancelDeparture": "Cancelar",
+      "departureStatusUpdated": "Status da partida atualizado",
+      "departureStatusUpdateFailed": "Não foi possível atualizar o status da partida.",
+      "departureStatus": {
+        "COMPLETED": "Concluído",
+        "CANCELLED": "Cancelado"
+      }
+    },
+    "bookings": {
+      "title": "Reservas de Viagem",
+      "subtitle": "Reservas fretadas, registro de turno do motorista e acerto de km/horas excedentes",
+      "refresh": "Atualizar",
+      "newCharterBooking": "Nova Reserva Fretada",
+      "customer": "Cliente",
+      "customerRequired": "O cliente é obrigatório.",
+      "vehicle": "Veículo",
+      "vehicleRequired": "O veículo é obrigatório.",
+      "selectVehicle": "Selecione um veículo",
+      "tripStartDate": "Data de Início da Viagem",
+      "tripStartDateRequired": "A data de início da viagem é obrigatória.",
+      "tripEndDate": "Data de Término da Viagem",
+      "pickupLocation": "Local de Embarque",
+      "dropLocation": "Local de Desembarque",
+      "route": "Rota",
+      "packageRate": "Tarifa do Pacote",
+      "includedKmPerDay": "Km Incluídos/Dia",
+      "includedHoursPerDay": "Horas Incluídas/Dia",
+      "advanceAmount": "Valor do Adiantamento",
+      "referringAgent": "Agente Indicador",
+      "commissionType": "Tipo de Comissão",
+      "none": "Nenhum",
+      "percentage": "Percentual",
+      "fixed": "Fixa",
+      "commissionValue": "Valor da Comissão",
+      "cancel": "Cancelar",
+      "createBooking": "Criar Reserva",
+      "bookingCreated": "Reserva criada",
+      "bookingCreateFailed": "Não foi possível criar a reserva.",
+      "loading": "Carregando…",
+      "noBookingsYet": "Ainda não há reservas de viagem.",
+      "advanceOf": "(adiantamento de {{amount}})",
+      "agentLabel": "agente: {{name}}",
+      "startDuty": "Iniciar Turno",
+      "startDutyTitle": "Iniciar Turno do Motorista",
+      "driver": "Motorista",
+      "selectDriver": "Selecione um motorista",
+      "startOdometer": "Odômetro Inicial",
+      "dutyStartTime": "Horário de Início do Turno",
+      "driverBata": "Diária do Motorista",
+      "nightHaltCharge": "Taxa de Pernoite",
+      "nightDrivingAllowance": "Adicional de Condução Noturna",
+      "dutyStarted": "Turno iniciado",
+      "dutyStartFailed": "Não foi possível iniciar o turno.",
+      "closeDuty": "Encerrar Turno",
+      "closeDutyTitle": "Encerrar Turno do Motorista",
+      "endOdometer": "Odômetro Final",
+      "dutyEndTime": "Horário de Término do Turno",
+      "dutyClosed": "Turno encerrado",
+      "dutyCloseFailed": "Não foi possível encerrar o turno.",
+      "dutyOpen": "turno em andamento",
+      "kmDrivenLabel": "{{km}} km percorridos",
+      "excessChargeLabel": "cobrança excedente {{amount}}",
+      "generateInvoice": "Gerar Fatura",
+      "invoiceGenerated": "Fatura gerada",
+      "invoiceGenerateFailed": "Não foi possível gerar a fatura.",
+      "type": {
+        "CHARTER": "Fretado",
+        "SEAT": "Assento"
+      },
+      "status": {
+        "BOOKED": "Reservado",
+        "COMPLETED": "Concluído",
+        "CANCELLED": "Cancelado"
+      },
+      "cancelBooking": "Cancelar Reserva",
+      "bookingCancelled": "Reserva cancelada",
+      "bookingCancelFailed": "Não foi possível cancelar a reserva."
     }
   }
 }

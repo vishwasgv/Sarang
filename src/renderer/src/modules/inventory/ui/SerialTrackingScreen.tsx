@@ -113,7 +113,7 @@ interface SerialFormState {
 export function SerialTrackingScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
-  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const { success: toastSuccess, error: toastError, info: toastInfo } = useNotificationStore()
   // IMEI is phone/mobile-specific — not every business type that enables serial_tracking
   // (e.g. Phase 49 Agricultural Inputs equipment) also enables imei_tracking. Gate all
   // IMEI-specific UI on the module flag rather than assuming it's always relevant.
@@ -243,6 +243,20 @@ export function SerialTrackingScreen() {
       })
       if (res.success) {
         toastSuccess('Warranty Transferred', `Installation warranty for S/N ${warrantyResult.serial.serialNumber} now attributed to ${warrantyCustomer.customerName}.`)
+        // Phase 69 §11 wow-feature closure (2026-09-01) — Plumbing's
+        // Installation Warranty Transfer previously only re-attributed the
+        // record; the "claimable WhatsApp warranty card" to the homeowner
+        // (the actual point of the feature — warranty paperwork otherwise
+        // sits with the contractor who bought the unit) was never sent.
+        if (warrantyCustomer.phone) {
+          const installDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+          const message = `Dear ${warrantyCustomer.customerName}, this is your warranty confirmation for ${warrantyResult.serial.productName} (S/N ${warrantyResult.serial.serialNumber})${warrantyAddress.trim() ? `, installed at ${warrantyAddress.trim()}` : ''} on ${installDate}. Keep this message — it is your claimable warranty card for any future service request. Thank you!`
+          const linkRes = await window.api.share.buildWhatsAppLink({ phone: warrantyCustomer.phone, message })
+          if (linkRes.success && linkRes.data) {
+            window.open(linkRes.data as string, '_blank')
+            toastInfo('Opening WhatsApp…', 'Send the warranty card to the customer.')
+          }
+        }
         setWarrantyResult(null); setWarrantySearch(''); setWarrantyCustomer(null); setWarrantyAddress('')
       } else {
         toastError('Error', res.error?.message ?? 'Could not transfer warranty.')

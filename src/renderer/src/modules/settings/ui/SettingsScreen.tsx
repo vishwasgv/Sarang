@@ -1407,6 +1407,8 @@ function SecuritySection() {
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const { settings, getSetting, setSettings } = useBusinessStore()
   const minLen = parseInt(getSetting('password_min_length', '10'), 10) || 10
+  const expiryDays = parseInt(getSetting('password_expiry_days', '0'), 10) || 0
+  const historyCount = parseInt(getSetting('password_history_count', '0'), 10) || 0
 
   async function handleChangePassword() {
     setError(null); setSuccess(false)
@@ -1472,7 +1474,10 @@ function SecuritySection() {
       </Card>
 
       {hasPermission('settings.modify') && (
-        <PasswordPolicyCard minLen={minLen} onSaved={(value) => setSettings({ ...settings, password_min_length: value })} />
+        <PasswordPolicyCard
+          minLen={minLen} expiryDays={expiryDays} historyCount={historyCount}
+          onSaved={(values) => setSettings({ ...settings, ...values })}
+        />
       )}
 
       {hasPermission('settings.modify') && <RecoveryCodeCard />}
@@ -1560,8 +1565,13 @@ function RecoveryCodeCard() {
   )
 }
 
-function PasswordPolicyCard({ minLen, onSaved }: { minLen: number; onSaved: (value: string) => void }) {
+function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
+  minLen: number; expiryDays: number; historyCount: number
+  onSaved: (values: { password_min_length: string; password_expiry_days: string; password_history_count: string }) => void
+}) {
   const [value, setValue] = useState(String(minLen))
+  const [expiryValue, setExpiryValue] = useState(String(expiryDays))
+  const [historyValue, setHistoryValue] = useState(String(historyCount))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [success, setSuccess] = useState(false)
@@ -1570,17 +1580,32 @@ function PasswordPolicyCard({ minLen, onSaved }: { minLen: number; onSaved: (val
     setError(null); setSuccess(false)
     const parsed = parseInt(value, 10)
     if (!Number.isFinite(parsed) || parsed < 4 || parsed > 64) {
-      setError('Enter a number between 4 and 64.')
+      setError('Minimum length must be a number between 4 and 64.')
+      return
+    }
+    const parsedExpiry = parseInt(expiryValue, 10)
+    if (!Number.isFinite(parsedExpiry) || parsedExpiry < 0 || parsedExpiry > 3650) {
+      setError('Password expiry must be 0 (never) or a number of days up to 3650.')
+      return
+    }
+    const parsedHistory = parseInt(historyValue, 10)
+    if (!Number.isFinite(parsedHistory) || parsedHistory < 0 || parsedHistory > 24) {
+      setError('Password history must be 0 (off) or a number between 1 and 24.')
       return
     }
     setSaving(true)
     try {
-      const res = await window.api.settings.set({ key: 'password_min_length', value: String(parsed) })
-      if (res.success) {
+      const [r1, r2, r3] = await Promise.all([
+        window.api.settings.set({ key: 'password_min_length', value: String(parsed) }),
+        window.api.settings.set({ key: 'password_expiry_days', value: String(parsedExpiry) }),
+        window.api.settings.set({ key: 'password_history_count', value: String(parsedHistory) }),
+      ])
+      const failed = [r1, r2, r3].find((r) => !r.success)
+      if (!failed) {
         setSuccess(true)
-        onSaved(String(parsed))
+        onSaved({ password_min_length: String(parsed), password_expiry_days: String(parsedExpiry), password_history_count: String(parsedHistory) })
       } else {
-        setError(res.error?.message ?? 'Failed to save.')
+        setError(failed.error?.message ?? 'Failed to save.')
       }
     } catch {
       setError('Failed to save.')
@@ -1593,14 +1618,28 @@ function PasswordPolicyCard({ minLen, onSaved }: { minLen: number; onSaved: (val
     <Card padding="lg" className="space-y-4">
       <div>
         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Password Policy</h4>
-        <p className="text-xs text-slate-500 mt-1">The minimum password length required for every user account — applies the next time a password is created or changed. Existing passwords are not affected retroactively.</p>
+        <p className="text-xs text-slate-500 mt-1">Applies the next time a password is created or changed — existing passwords are never affected retroactively.</p>
       </div>
       {error && <div className="bg-danger/10 text-danger text-sm rounded-lg px-3 py-2">{error}</div>}
       {success && <div className="bg-success/10 text-success text-sm rounded-lg px-3 py-2">Password policy updated.</div>}
-      <div className="max-w-[200px]">
-        <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Minimum Length</label>
-        <input type="number" min={4} max={64} value={value} onChange={e => setValue(e.target.value)}
-          className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Minimum Length</label>
+          <input type="number" min={4} max={64} value={value} onChange={e => setValue(e.target.value)}
+            className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Expires After (days)</label>
+          <input type="number" min={0} max={3650} value={expiryValue} onChange={e => setExpiryValue(e.target.value)} placeholder="0 = never"
+            className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+          <p className="text-[11px] text-slate-400 mt-1">0 = never expires. A user is prompted to change it after login, never locked out.</p>
+        </div>
+        <div>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Block Reusing Last N</label>
+          <input type="number" min={0} max={24} value={historyValue} onChange={e => setHistoryValue(e.target.value)} placeholder="0 = off"
+            className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
+          <p className="text-[11px] text-slate-400 mt-1">0 = off. Includes the current password.</p>
+        </div>
       </div>
       <div className="flex justify-end pt-1">
         <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
@@ -2327,13 +2366,14 @@ function BusinessFeaturesSection() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [saving, setSaving] = useState<string | null>(null)
 
-  const MODULES: Array<{ key: 'returns' | 'area_pricing' | 'credit_limit_enforcement' | 'bulk_orders' | 'outstanding_analytics' | 'time_entries'; label: string; desc: string }> = [
+  const MODULES: Array<{ key: 'returns' | 'area_pricing' | 'credit_limit_enforcement' | 'bulk_orders' | 'outstanding_analytics' | 'time_entries' | 'customer_checkin'; label: string; desc: string }> = [
     { key: 'returns', label: 'Returns Workflow', desc: 'Accept product returns with automatic inventory and ledger reversal (Retail default)' },
     { key: 'area_pricing', label: 'Area Pricing Calculator', desc: 'Price by area (sq ft / sq m) for products like glass, plywood, or tiles (Hardware default)' },
     { key: 'credit_limit_enforcement', label: 'Credit Limit Enforcement', desc: "Block a credit sale once a customer's outstanding balance would exceed their credit limit. Only applies to customers who have a credit limit set — walk-in customers are never affected (Hardware/Distributor default)" },
     { key: 'bulk_orders', label: 'Bulk Order Workflow', desc: 'A separate bulk-order screen with volume-based discount tiers for wholesale/dealer customers (Distributor default)' },
     { key: 'outstanding_analytics', label: 'Outstanding Analytics', desc: 'Extra reporting on customer outstanding balances and aging (Distributor default)' },
     { key: 'time_entries', label: 'Billable Time Tracking', desc: 'Log billable hours against a project or retainer, then invoice logged time (Lawyer/CA Firm/Architect and similar time-billed professions default on)' },
+    { key: 'customer_checkin', label: 'Customer Check-In', desc: 'A simple visit check-in/check-out log for any customer — useful for gyms, coaching institutes, clinics, co-working spaces, or any business that tracks recurring visits. No membership or plan required.' },
   ]
 
   // Fresh-audit fix (2026-07-12): LOGISTICS_MODULES (Fleet/Carriers/

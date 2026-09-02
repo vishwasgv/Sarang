@@ -26,3 +26,14 @@ if (!secret || secret === PLACEHOLDER) {
 }
 
 console.log('✅ SARANG_LICENSE_HMAC_SECRET is set and is not the dev placeholder.')
+
+// 2026-09-02 — Ed25519 public key. Safe to be public, but shipping the dev
+// placeholder would mean the app can't verify any real SARANG2 key ever
+// issued (fails safe, but still worth catching here rather than in a
+// support ticket).
+if (!process.env.SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM) {
+  console.error('\n❌ SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM is not set.')
+  console.error('   Packaging would ship an app that cannot verify SARANG2 license keys.\n')
+  process.exit(1)
+}
+console.log('✅ SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM is set.')

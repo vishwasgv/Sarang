@@ -17,15 +17,14 @@ interface OrderRequest {
   items: OrderRequestItem[]
 }
 
-const PAYMENT_METHODS = ['CASH', 'UPI', 'CARD', 'WALLET', 'CREDIT', 'SPLIT'] as const
-
-interface KOTItem { id: string; product: { productName: string }; quantity: number }
+interface KOTItem { productId: string; productName: string; quantity: number; unitPriceSnapshot: number }
 interface KOT {
   id: string
   status: string
   createdAt: string
   table?: { tableNumber: string; tableName?: string | null } | null
-  invoice: { invoiceNumber: string; totalAmount: number; items: KOTItem[] }
+  invoice?: { invoiceNumber: string; totalAmount: number } | null
+  items: KOTItem[]
 }
 
 const STATUS_CONFIG = {
@@ -71,7 +70,6 @@ export function KOTScreen() {
   // must never see Accept/Reject actions they have no permission to use.
   const [orderRequests, setOrderRequests] = useState<OrderRequest[]>([])
   const [acceptTarget, setAcceptTarget] = useState<OrderRequest | null>(null)
-  const [acceptPaymentMethod, setAcceptPaymentMethod] = useState<typeof PAYMENT_METHODS[number]>('CASH')
   const [acceptSubmitting, setAcceptSubmitting] = useState(false)
 
   // Poll-friendly loaders: real failures are toasted only on the transition
@@ -144,12 +142,12 @@ export function KOTScreen() {
     if (!acceptTarget) return
     setAcceptSubmitting(true)
     try {
-      const res = await api.restaurant.acceptOrderRequest({ requestId: acceptTarget.id, paymentMethod: acceptPaymentMethod })
+      const res = await api.restaurant.acceptOrderRequest({ requestId: acceptTarget.id })
       if (res.success) {
         setAcceptTarget(null)
         loadOrderRequests()
         load()
-        toastSuccess('Order Accepted', 'Invoice and kitchen ticket created.')
+        toastSuccess('Order Accepted', 'Kitchen ticket created for this table.')
       } else {
         toastError('Error', (res.error as { message?: string })?.message ?? 'Could not accept order.')
       }
@@ -236,7 +234,7 @@ export function KOTScreen() {
                   </ul>
                 </div>
                 <div className="flex gap-2 shrink-0">
-                  <button onClick={() => { setAcceptTarget(r); setAcceptPaymentMethod('CASH') }}
+                  <button onClick={() => setAcceptTarget(r)}
                     className="px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors">
                     Accept
                   </button>
@@ -273,7 +271,7 @@ export function KOTScreen() {
         <Card padding="none" className="p-12 text-center">
           <Ticket size={32} className="text-slate-300 mx-auto mb-3" />
           <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No KOTs found</p>
-          <p className="text-xs text-slate-400 mt-1">KOTs are created when an invoice is sent to the kitchen</p>
+          <p className="text-xs text-slate-400 mt-1">KOTs are created when an order is sent to the kitchen</p>
         </Card>
       ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -287,7 +285,7 @@ export function KOTScreen() {
                 className={cn('bg-white dark:bg-slate-900 rounded-xl border-2 p-4 space-y-3', config.color)}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-bold text-dark dark:text-slate-100">{kot.invoice.invoiceNumber}</p>
+                    <p className="text-sm font-bold text-dark dark:text-slate-100">{kot.invoice?.invoiceNumber ?? `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
                     {kot.table && (
                       <p className="text-xs text-slate-400">
                         {kot.table.tableName || kot.table.tableNumber}
@@ -305,9 +303,9 @@ export function KOTScreen() {
 
                 {/* Items list */}
                 <div className="space-y-1">
-                  {kot.invoice.items.map(item => (
-                    <div key={item.id} className="flex justify-between text-xs text-dark dark:text-slate-100">
-                      <span>{item.product.productName}</span>
+                  {kot.items.map((item, idx) => (
+                    <div key={idx} className="flex justify-between text-xs text-dark dark:text-slate-100">
+                      <span>{item.productName}</span>
                       <span className="font-semibold">× {item.quantity}</span>
                     </div>
                   ))}
@@ -354,18 +352,16 @@ export function KOTScreen() {
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4">
             <h2 className="text-lg font-bold text-dark dark:text-slate-100">Accept Order — {acceptTarget.table.tableName || acceptTarget.table.tableNumber}</h2>
-            <div>
-              <label className="text-xs font-semibold text-slate-500 dark:text-slate-400">Payment Method</label>
-              <select value={acceptPaymentMethod} onChange={e => setAcceptPaymentMethod(e.target.value as typeof PAYMENT_METHODS[number])}
-                className="w-full mt-1 px-3 py-2.5 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand bg-white dark:bg-slate-900">
-                {PAYMENT_METHODS.map(m => <option key={m} value={m}>{m}</option>)}
-              </select>
-            </div>
-            <p className="text-xs text-slate-400">This creates an invoice and a kitchen order ticket for this table.</p>
+            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+              {acceptTarget.items.map((it, idx) => (
+                <li key={idx}>{it.quantity} × {it.productName}</li>
+              ))}
+            </ul>
+            <p className="text-xs text-slate-400">This sends the order to the kitchen and adds it to the table's running bill. Billing happens once, at checkout.</p>
             <div className="flex gap-3">
               <button onClick={handleAccept} disabled={acceptSubmitting}
                 className="flex-1 px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
-                {acceptSubmitting ? 'Creating…' : 'Confirm & Bill'}
+                {acceptSubmitting ? 'Sending…' : 'Confirm & Send to Kitchen'}
               </button>
               <button onClick={() => setAcceptTarget(null)}
                 className="flex-1 px-4 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors">

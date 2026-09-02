@@ -279,6 +279,32 @@ describe('inventoryService.adjustStock', () => {
       expect.objectContaining({ data: expect.objectContaining({ movementType: 'ADJUSTMENT' }) })
     )
   })
+
+  // 2026-09 §12 — Grocery item 2: EXPIRY reasonCategory now produces its own
+  // distinct movementType, mirroring the pre-existing DAMAGE behavior above.
+  it('records an EXPIRY movement when reasonCategory is EXPIRY and the adjustment is a decrease', async () => {
+    const db = makeDb()
+    db._tx.inventory.findUnique = vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 100 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.adjustStock({ productId: 'prod-1', quantity: 92, reason: '8 units past expiry, written off', reasonCategory: 'EXPIRY' })
+
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ movementType: 'EXPIRY', quantity: -8 }) })
+    )
+  })
+
+  it('never records EXPIRY for an increase, even if reasonCategory is EXPIRY — you cannot expire stock into existence', async () => {
+    const db = makeDb()
+    db._tx.inventory.findUnique = vi.fn().mockResolvedValue(makeInventoryRecord({ quantity: 100 }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await inventoryService.adjustStock({ productId: 'prod-1', quantity: 110, reason: 'Miscategorized', reasonCategory: 'EXPIRY' })
+
+    expect(db._tx.inventoryMovement.create).toHaveBeenCalledWith(
+      expect.objectContaining({ data: expect.objectContaining({ movementType: 'ADJUSTMENT', quantity: 10 }) })
+    )
+  })
 })
 
 describe('inventoryService.getInventoryValue', () => {

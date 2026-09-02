@@ -19,6 +19,12 @@ const SYSTEM_ACCOUNTS: Array<{ accountCode: string; accountName: string; account
   { accountCode: '3000', accountName: 'Owner’s Capital', accountType: 'EQUITY' },
   { accountCode: '4000', accountName: 'Sales Revenue', accountType: 'INCOME' },
   { accountCode: '4100', accountName: 'Interest Income', accountType: 'INCOME' },
+  // 2026-09 — realized FX gain/loss on settling a foreign-currency invoice/
+  // bill at a different rate than it was raised at. A single account for
+  // both directions (a loss just posts as a debit here instead of a
+  // credit) — same convention as most small-business chart-of-accounts
+  // templates, not a contrived simplification.
+  { accountCode: '4200', accountName: 'Realized Exchange Gain/Loss', accountType: 'INCOME' },
   { accountCode: '5000', accountName: 'Cost of Goods Sold', accountType: 'EXPENSE' },
   { accountCode: '6000', accountName: 'Operating Expenses', accountType: 'EXPENSE' },
   { accountCode: '6100', accountName: 'Depreciation Expense', accountType: 'EXPENSE' },
@@ -129,5 +135,22 @@ export const chartOfAccountsService = {
     const account = await db.chartOfAccounts.findUnique({ where: { accountCode } })
     if (!account) throw new ServiceError('COA-007', `System account "${accountCode}" not found — has the Chart of Accounts been initialized?`)
     return account
+  },
+
+  // Same lookup as getSystemAccountByCode, but creates the account on the
+  // fly if missing instead of throwing — for a system account added to
+  // SYSTEM_ACCOUNTS AFTER an install already ran ensureSystemAccountsSeeded()
+  // once (that seed only ever fires once, when the catalog is completely
+  // empty — see its own comment), so an existing install would otherwise
+  // never pick up a brand-new code like '4200' automatically. Only meant for
+  // codes that ARE in SYSTEM_ACCOUNTS (throws if the code isn't a known one,
+  // same as a typo would in getSystemAccountByCode).
+  async getOrCreateSystemAccountByCode(accountCode: string, tx?: unknown) {
+    const db = (tx as ReturnType<typeof getPrisma>) ?? getPrisma()
+    const existing = await db.chartOfAccounts.findUnique({ where: { accountCode } })
+    if (existing) return existing
+    const def = SYSTEM_ACCOUNTS.find((a) => a.accountCode === accountCode)
+    if (!def) throw new ServiceError('COA-007', `System account "${accountCode}" not found — has the Chart of Accounts been initialized?`)
+    return db.chartOfAccounts.create({ data: { ...def, isSystem: true } })
   }
 }

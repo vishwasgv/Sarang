@@ -17,6 +17,10 @@ Chaque ligne est soit :
 
 Chaque ligne comporte également son propre montant de remise et son propre taux de taxe, de sorte que les totaux de la facture sont calculés correctement ligne par ligne avant d'être additionnés — le même ordre remise-puis-taxe que suit déjà tout autre document dans Sarang.
 
+## Factures fournisseur en devise étrangère
+
+Une facture d'un fournisseur étranger peut être enregistrée de la même façon qu'une facture de vente — cochez **Bill in foreign currency** lors de son enregistrement, saisissez le code de devise et le taux de change, et la facture portera un montant de référence converti en plus de son total en devise locale, affiché à l'écran comme à l'impression. Lorsque vous la réglez (voir ci-dessous), une option **Settle in {code}** apparaît comme pour les factures de vente, et tout gain ou perte entre le taux auquel la facture a été enregistrée et celui du jour où vous payez réellement est automatiquement enregistré comme une écriture de Gain/Perte de Change Réalisé — voir le chapitre Facturation et documents pour le déroulé complet du fonctionnement de l'option, de l'aperçu et du calcul du règlement ; ici, cela fonctionne exactement de la même façon.
+
 ## Enregistrer un Paiement contre une Facture
 
 Ouvrez une facture et cliquez sur **Enregistrer un Paiement**. Les paiements aux fournisseurs acceptent les espèces, l'UPI, la carte, le virement bancaire ou le chèque — un ensemble plus large que les paiements destinés aux clients, car les paiements B2B se font régulièrement par virement bancaire ou par chèque. Un paiement peut être partiel ; le solde et le statut de la facture sont mis à jour immédiatement, et le montant est déduit de ce que vous devez à ce fournisseur.

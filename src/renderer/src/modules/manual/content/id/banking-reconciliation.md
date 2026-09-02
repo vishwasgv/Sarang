@@ -27,3 +27,13 @@ File rekening koran asli — PDF atau CSV yang dikirim bank Anda — dapat dilam
 Buka **Post-Dated Cheques** dari bilah sisi untuk melacak register cek — nomor cek, rekening bank yang terhubung, tanggal jatuh tempo, jumlah, dan arah (Received dari pelanggan, atau Issued kepada pemasok). Cek yang Anda catat dimulai sebagai **Pending** dan belum menyentuh pembukuan Anda — persis seperti cara kerja cek mundur sungguhan: ini masih janji, bukan transaksi.
 
 Ketika tanggal cek tiba dan benar-benar dicairkan di bank, tandai sebagai **Cleared** — hanya saat itulah Sarang membukukan pembayaran sungguhan (Debit atau Kredit ke Cash, terhadap saldo pelanggan atau pemasok yang diselesaikannya). Jika kembali tanpa dibayar, tandai sebagai **Bounced**; jika dibatalkan sebelum salah satu hasil tersebut, tandai sebagai **Cancelled**. Keduanya hanyalah perubahan status tanpa entri keuangan apa pun, karena keduanya tidak pernah benar-benar menjadi uang sungguhan.
+
+## Slip Setoran Bank
+
+Buka **Bank Deposits** untuk mencatat kunjungan nyata ke bank — uang tunai dan cek yang Anda serahkan di loket. Pilih rekening tujuan dan tanggal, lalu masukkan berapa lembar uang dari setiap pecahan (dari ₹500 hingga ₹1) yang benar-benar Anda bawa; Sarang menjumlahkan uang tunai untuk Anda saat mengetik. Jika rekening memiliki cek **Received** yang tertunda untuk disetorkan, centang yang akan ikut dalam kunjungan ini — totalnya ditambahkan ke slip, dan masing-masing berpindah dari Pending ke Deposited.
+
+Hanya bagian tunai yang diperlakukan sebagai uang sungguhan begitu Anda menyimpan slip — ini langsung ditambahkan ke saldo rekening tujuan, sama seperti penjualan tunai. Cek yang Anda sertakan belum dihitung sebagai uang — masing-masing baru memengaruhi pembukuan Anda saat Anda menandainya secara terpisah sebagai **Cleared** di layar Post-Dated Cheques (cek yang sudah disetor masih bisa ditolak), jadi tidak pernah dihitung dua kali. Klik setoran sebelumnya mana pun dalam daftar untuk melihat kembali rincian lengkap pecahan dan ceknya.
+
+## Buku Cek
+
+Jika Anda menerbitkan cek kepada pemasok, klik **Cheque Books** di layar Post-Dated Cheques untuk mendaftarkan buku cek fisik untuk sebuah rekening bank — cukup nomor cek awal dan akhirnya. Ketika Anda kemudian mencatat cek **Issued** terhadap rekening tersebut, muncul kotak centang **Use next cheque book number (#...)**; mencentangnya secara otomatis mengisi nomor urut berikutnya dari buku tersebut alih-alih Anda mengetiknya sendiri, dan penghitung "berikutnya" milik buku itu bergerak maju sehingga nomor yang sama tidak akan pernah disarankan dua kali. Buku yang sudah habis terpakai ditampilkan sebagai **Exhausted**; nonaktifkan buku yang tidak lagi Anda gunakan agar berhenti ditawarkan.

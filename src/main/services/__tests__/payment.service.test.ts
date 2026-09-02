@@ -416,3 +416,126 @@ describe('paymentService.getPayments', () => {
     expect(db.payment.findMany).toHaveBeenCalledWith(expect.objectContaining({ orderBy: { paymentDate: 'desc' } }))
   })
 })
+
+// 2026-09 — foreign-currency settlement. A $500 invoice raised at 83.25
+// (totalAmount/balanceAmount = 41,625 base currency) is the fixture used
+// throughout: settling at a HIGHER rate (84.00) is the gain case, a LOWER
+// rate (82.00) is the loss case — see recordForeignCurrencySettlement's own
+// header comment in payment.service.ts for the accounting reasoning this
+// verifies.
+describe('paymentService.recordForeignCurrencySettlement', () => {
+  function foreignInvoice(overrides: Record<string, unknown> = {}) {
+    return baseInvoice({
+      foreignCurrencyCode: 'USD', foreignExchangeRate: 83.25, foreignTotalAmount: 500,
+      balanceAmount: 41625, paidAmount: 0,
+      ...overrides,
+    })
+  }
+
+  // getOrCreateSystemAccountByCode does a findUnique then falls back to
+  // create — this mock never has a pre-existing '4200' row, so every gain/
+  // loss test exercises the create-on-the-fly path too, not just the lookup.
+  function makeFxMockDb(invoiceOverrides: Record<string, unknown> = {}) {
+    const db = makeMockDb(invoiceOverrides)
+    const accountsByCode: Record<string, { id: string; accountCode: string; accountName: string; accountType: string }> = {
+      '1000': { id: 'coa-cash', accountCode: '1000', accountName: 'Cash & Bank', accountType: 'ASSET' },
+      '1100': { id: 'coa-ar', accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET' },
+    }
+    db.chartOfAccounts.findUnique = vi.fn(async ({ where }: { where: { accountCode: string } }) => accountsByCode[where.accountCode] ?? null)
+    db.chartOfAccounts.create = vi.fn(async ({ data }: { data: { accountCode: string } }) => {
+      const created = { id: `coa-${data.accountCode}`, ...data }
+      accountsByCode[data.accountCode] = created as never
+      return created
+    })
+    return db
+  }
+
+  it('rejects an invoice that was not raised in a foreign currency', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeFxMockDb({ foreignCurrencyCode: null, foreignExchangeRate: null }) as never)
+
+    const res = await paymentService.recordForeignCurrencySettlement({ invoiceId: 'inv-1', foreignAmount: 500, settlementRate: 84, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PM-008')
+  })
+
+  it('rejects an already fully-paid foreign-currency invoice', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeFxMockDb(foreignInvoice({ balanceAmount: 0 })) as never)
+
+    const res = await paymentService.recordForeignCurrencySettlement({ invoiceId: 'inv-1', foreignAmount: 500, settlementRate: 84, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PM-002')
+  })
+
+  it('gain case: settling at a HIGHER rate applies the invoice balance as Payment.amount and posts the excess as a Cash/FX-Gain entry', async () => {
+    const db = makeFxMockDb(foreignInvoice())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordForeignCurrencySettlement({ invoiceId: 'inv-1', foreignAmount: 500, settlementRate: 84, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    // Payment.amount is capped at the invoice's own balance (41,625), never
+    // the raw 500*84=42,000 — that would silently violate RULE PM002 if it
+    // ever leaked into the normal payment path.
+    expect(db.payment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ amount: 41625, foreignAmount: 500, foreignExchangeRate: 84, foreignCurrencyCode: 'USD' })
+    }))
+    // Invoice always reaches exactly zero balance / PAID on a full foreign-currency settlement.
+    expect(db.invoice.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ paidAmount: 41625, balanceAmount: 0, paymentStatus: 'PAID' })
+    }))
+    // Two journal entries: the normal payment posting (Cash/AR 41,625), and
+    // the FX gain posting (Cash/FX-Gain for the 375 excess: 42,000-41,625).
+    const journalCalls = vi.mocked(db.journalEntry.create).mock.calls
+    expect(journalCalls).toHaveLength(2)
+    const fxCall = journalCalls.find((c: any) => c[0].data.sourceType === 'REALIZED_FX_GAIN_LOSS')
+    expect(fxCall).toBeDefined()
+    const fxLines = fxCall![0].data.lines.create as Array<{ accountId: string; debitAmount: number; creditAmount: number }>
+    expect(fxLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: 'coa-cash', debitAmount: 375, creditAmount: 0 }),
+      expect.objectContaining({ accountId: 'coa-4200', debitAmount: 0, creditAmount: 375 }),
+    ]))
+  })
+
+  it('loss case: settling at a LOWER rate applies the computed (lower) base amount as Payment.amount and writes off the shortfall as an AR/FX-Loss entry', async () => {
+    const db = makeFxMockDb(foreignInvoice())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordForeignCurrencySettlement({ invoiceId: 'inv-1', foreignAmount: 500, settlementRate: 82, paymentMethod: 'CASH' })
+
+    expect(res.success).toBe(true)
+    // 500*82 = 41,000 — LESS than the invoice's own 41,625 balance, so the
+    // full computed amount (not a capped value) is what's actually applied.
+    expect(db.payment.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ amount: 41000, foreignAmount: 500, foreignExchangeRate: 82 })
+    }))
+    // Invoice still reaches exactly zero / PAID — the foreign-currency
+    // obligation is fully discharged even though less cash came in.
+    expect(db.invoice.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ paidAmount: 41625, balanceAmount: 0, paymentStatus: 'PAID' })
+    }))
+    const journalCalls = vi.mocked(db.journalEntry.create).mock.calls
+    expect(journalCalls).toHaveLength(2)
+    const fxCall = journalCalls.find((c: any) => c[0].data.sourceType === 'REALIZED_FX_GAIN_LOSS')
+    expect(fxCall).toBeDefined()
+    const fxLines = fxCall![0].data.lines.create as Array<{ accountId: string; debitAmount: number; creditAmount: number }>
+    // 625 shortfall (41,625 - 41,000) written off: Dr FX-Loss / Cr AR — NOT
+    // touching Cash, since no extra cash ever moved for this leg.
+    expect(fxLines).toEqual(expect.arrayContaining([
+      expect.objectContaining({ accountId: 'coa-4200', debitAmount: 625, creditAmount: 0 }),
+      expect.objectContaining({ accountId: 'coa-ar', debitAmount: 0, creditAmount: 625 }),
+    ]))
+  })
+
+  it('skips the FX journal entry entirely when the rate is unchanged (no real gain/loss)', async () => {
+    const db = makeFxMockDb(foreignInvoice())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await paymentService.recordForeignCurrencySettlement({ invoiceId: 'inv-1', foreignAmount: 500, settlementRate: 83.25, paymentMethod: 'CASH' })
+
+    const journalCalls = vi.mocked(db.journalEntry.create).mock.calls
+    expect(journalCalls).toHaveLength(1) // only the normal payment posting, no FX entry
+    expect(journalCalls[0][0].data.sourceType).toBe('PAYMENT')
+  })
+})

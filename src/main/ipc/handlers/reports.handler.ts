@@ -5,7 +5,7 @@ import {
   ExpenseReportSchema, CustomerLedgerReportSchema, SupplierLedgerReportSchema, AuditReportSchema, GSTR1Schema,
   OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema, DiscountReportSchema,
   CashBookReportSchema, TrialBalanceReportSchema, CostCentreTreemapReportSchema, BudgetVsActualReportSchema, StatutoryComplianceSummaryReportSchema, CashFlowProjectionReportSchema, PaymentPerformanceReportSchema,
-  ReferralLeaderboardReportSchema
+  ReferralLeaderboardReportSchema, SingleDateSchema
 } from '../../validation/report.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -1274,6 +1274,110 @@ export function register(handle: HandleFn): void {
     const parsed = DateRangeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateDeliveryInstallationScheduleReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Deferred-item closure — Electrical item 4 + Plumbing items 3/4, found
+  // missing during the 2026-09-01 Phase-69 signature-feature verification.
+  handle('reports:specWiseFastMovers', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateSpecWiseFastMoversReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:fittingCrossSell', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateFittingCrossSellReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:materialSalesMix', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateMaterialSalesMixReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // 2026-09 §12 — Grocery/Kirana new vertical.
+  handle('reports:mrpViolation', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateMrpViolationReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:perishableWastage', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePerishableWastageReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:dailyRestockAlert', async () => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const data = await reportService.generateDailyRestockAlertReport()
+    return { success: true, data }
+  })
+
+  handle('reports:looseVsPackagedMix', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateLooseVsPackagedMixReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:khataRisk', async () => {
+    const deny = await requirePermission('reports.outstanding'); if (deny) return deny
+    const data = await reportService.generateKhataRiskReport()
+    return { success: true, data }
+  })
+
+  // 2026-09 §12 — Bakery wow feature: Pre-Order Production Sheet.
+  handle('reports:preOrderProductionSheet', async (payload) => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const parsed = SingleDateSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generatePreOrderProductionSheetReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // 2026-09 §12 — Tours & Travels new vertical.
+  handle('reports:vehicleServiceDue', async () => {
+    const deny = await requirePermission('reports.inventory'); if (deny) return deny
+    const data = await reportService.generateVehicleServiceDueReport()
+    return { success: true, data }
+  })
+
+  handle('reports:commissionByAgent', async (payload) => {
+    const deny = await requirePermission('reports.sales'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateCommissionByAgentReport(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:tripProfitability', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateTripProfitabilityReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // 2026-09-02 — Catering Events (Bakery/Sweet Shop/Catering).
+  handle('reports:eventProfitability', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const parsed = DateRangeSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await reportService.generateEventProfitabilityReport(parsed.data)
     return { success: true, data }
   })
 }

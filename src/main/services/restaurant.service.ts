@@ -14,8 +14,13 @@ export async function listTables() {
     const tables = await db.restaurantTable.findMany({
       orderBy: { tableNumber: 'asc' },
       include: {
+        // 2026-09-02 — every un-invoiced, non-cancelled KOT, not just
+        // PENDING/IN_PROGRESS ones. Under the deferred-billing model a KOT
+        // can reach DONE (food served) while still unbilled, and the table
+        // list needs to know that so it can offer checkout, not just show
+        // "0 KOTs" and look free.
         kots: {
-          where: { status: { in: ['PENDING', 'IN_PROGRESS'] } },
+          where: { invoiceId: null, status: { not: 'CANCELLED' } },
           select: { id: true, status: true }
         },
         waiter: { select: { id: true, fullName: true } }
@@ -145,6 +150,23 @@ export async function mergeTableIntoInvoice(tableId: string, invoiceId: string, 
       return { success: false, error: { code: 'RST-041', message: 'Can only merge into a running, unpaid order.' } }
     }
 
+    // Real bug found 2026-09-02 (audit pass): a table with `currentInvoiceId:
+    // null` used to always mean "genuinely free, nothing pending" — under
+    // the deferred-billing model that's no longer true, a table can have
+    // real open (un-invoiced) KOTs of its own with currentInvoiceId still
+    // null. Merging such a table in here would silently orphan those KOTs:
+    // they never get folded into the target invoice, and the table can no
+    // longer be checked out on its own either (checkoutTable's own
+    // createInvoice call would now find this table already claimed by the
+    // invoice it was just merged into). No invoice-append capability
+    // exists in this codebase to fold them in safely — block the merge
+    // instead and tell staff to check the table out (or cancel its orders)
+    // first.
+    const hasOpenKot = await db.kOT.findFirst({ where: { tableId, invoiceId: null, status: { not: 'CANCELLED' } }, select: { id: true } })
+    if (hasOpenKot) {
+      return { success: false, error: { code: 'RST-044', message: 'This table has its own pending order — check it out (or cancel the order) before merging it into another bill.' } }
+    }
+
     const claim = await db.restaurantTable.updateMany({
       where: { id: tableId, currentInvoiceId: null },
       data: { currentInvoiceId: invoiceId, status: 'OCCUPIED' }
@@ -166,6 +188,11 @@ export async function mergeTableIntoInvoice(tableId: string, invoiceId: string, 
 export async function listKOTs(filters?: { status?: string; tableId?: string }) {
   try {
     const db = getPrisma()
+    // 2026-09-02 — items now come from the KOT's own KOTItem rows (its real
+    // source of truth, present the moment an order is accepted, well
+    // before any Invoice may exist) rather than invoice.items, which used
+    // to require an Invoice to already exist before a KOT could show what
+    // was actually ordered.
     const kots = await db.kOT.findMany({
       where: {
         ...(filters?.status ? { status: filters.status } : {}),
@@ -173,43 +200,163 @@ export async function listKOTs(filters?: { status?: string; tableId?: string }) 
       },
       include: {
         table: { select: { tableNumber: true, tableName: true } },
-        invoice: {
-          select: {
-            invoiceNumber: true,
-            totalAmount: true,
-            items: {
-              include: { product: { select: { productName: true } } }
-            }
-          }
-        }
+        items: true,
+        invoice: { select: { invoiceNumber: true, totalAmount: true } }
       },
       orderBy: { createdAt: 'desc' }
     })
-    return { success: true, data: kots }
+    const productIds = [...new Set(kots.flatMap(k => k.items.map(i => i.productId)))]
+    const products = productIds.length > 0 ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, productName: true } }) : []
+    const nameById = new Map(products.map(p => [p.id, p.productName]))
+    const withItemNames = kots.map(k => ({
+      ...k,
+      items: k.items.map(i => ({ ...i, productName: nameById.get(i.productId) ?? 'Unknown item' }))
+    }))
+    return { success: true, data: withItemNames }
   } catch (err) {
     return { success: false, error: { code: 'RST-010', message: err instanceof Error ? err.message : 'Could not list KOTs.' } }
   }
 }
 
-export async function createKOT(invoiceId: string, tableId?: string, userId?: string) {
+// 2026-09-02 — a table's orders now accumulate across multiple rounds
+// before any Invoice exists (mirrors Hotel/Lodge's HotelExtraCharge ->
+// generateInvoice "accumulate then bill once" pattern) — a KOT is created
+// the moment an order is accepted/sent to kitchen, independent of billing.
+// `invoiceId` is only ever passed for a NON-table (counter/takeaway) sale
+// that was already invoiced immediately (no running tab to defer against —
+// InvoiceDetailScreen's "Send to Kitchen" button, the one caller that still
+// creates a KOT from an existing invoice). A table order NEVER passes
+// invoiceId here; it only ever gets one back-filled later by
+// checkoutTable().
+export async function createKOT(
+  items: Array<{ productId: string; quantity: number; unitPrice: number; taxRate?: number }>,
+  tableId?: string,
+  userId?: string,
+  invoiceId?: string
+) {
   try {
+    if (!items || items.length === 0) return { success: false, error: { code: 'RST-018', message: 'A KOT needs at least one item.' } }
     const db = getPrisma()
-    const invoice = await db.invoice.findUnique({ where: { id: invoiceId } })
-    if (!invoice) return { success: false, error: { code: 'RST-011', message: 'Invoice not found.' } }
 
-    const existing = await db.kOT.findUnique({ where: { invoiceId } })
-    if (existing) return { success: false, error: { code: 'RST-012', message: 'KOT already exists for this invoice.' } }
-
-    // Mark table occupied if tableId provided
-    if (tableId) {
-      await db.restaurantTable.update({ where: { id: tableId }, data: { status: 'OCCUPIED' } })
+    if (invoiceId) {
+      const invoice = await db.invoice.findUnique({ where: { id: invoiceId } })
+      if (!invoice) return { success: false, error: { code: 'RST-011', message: 'Invoice not found.' } }
+      const existing = await db.kOT.findUnique({ where: { invoiceId } })
+      if (existing) return { success: false, error: { code: 'RST-012', message: 'KOT already exists for this invoice.' } }
     }
 
-    const kot = await db.kOT.create({ data: { invoiceId, tableId, status: 'PENDING' } })
+    const kot = await db.$transaction(async (tx) => {
+      if (tableId) {
+        await tx.restaurantTable.update({ where: { id: tableId }, data: { status: 'OCCUPIED' } })
+      }
+      return tx.kOT.create({
+        data: {
+          invoiceId: invoiceId ?? null, tableId: tableId ?? null, status: 'PENDING',
+          items: { create: items.map(i => ({ productId: i.productId, quantity: i.quantity, unitPriceSnapshot: i.unitPrice, taxRateSnapshot: i.taxRate ?? 0 })) }
+        }
+      })
+    })
     await logAction(userId, 'KOT_CREATED', 'KOT', kot.id)
     return { success: true, data: kot }
   } catch (err) {
     return { success: false, error: { code: 'RST-013', message: err instanceof Error ? err.message : 'Could not create KOT.' } }
+  }
+}
+
+// The one place table billing gets finalized, for orders sourced from the
+// QR menu, staff "send another round" actions, or the manual dine-in
+// opener alike — all of which now only ever create un-invoiced KOTs
+// against a table (see createKOT above). Aggregates every un-invoiced
+// KOT's items (summing duplicate products across rounds), bills them in
+// ONE createInvoice call (reusing the existing atomic tableIds claim in
+// billing.service.ts unchanged), then back-fills invoiceId on every
+// included KOT so print/history/audit still correctly trace each ticket
+// back to the final bill.
+export async function checkoutTable(
+  tableId: string,
+  payload: { paymentMethod: 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'; customerId?: string },
+  userId?: string
+) {
+  const db = getPrisma()
+  try {
+    const table = await db.restaurantTable.findUnique({ where: { id: tableId } })
+    if (!table) return { success: false, error: { code: 'RST-050', message: 'Table not found.' } }
+
+    const openKots = await db.kOT.findMany({ where: { tableId, invoiceId: null, status: { not: 'CANCELLED' } }, include: { items: true } })
+    if (openKots.length === 0) return { success: false, error: { code: 'RST-051', message: 'This table has nothing to bill.' } }
+
+    // Sum duplicate products across rounds into one line each — a customer
+    // ordering the same dish twice across two scans shouldn't show as two
+    // separate invoice lines.
+    const merged = new Map<string, { productId: string; quantity: number; unitPrice: number; taxRate: number }>()
+    for (const kot of openKots) {
+      for (const item of kot.items) {
+        const existing = merged.get(item.productId)
+        if (existing) existing.quantity += item.quantity
+        else merged.set(item.productId, { productId: item.productId, quantity: item.quantity, unitPrice: item.unitPriceSnapshot, taxRate: item.taxRateSnapshot })
+      }
+    }
+
+    const { billingService } = await import('./billing.service')
+    const invoiceResult = await billingService.createInvoice({
+      customerId: payload.customerId,
+      paymentMethod: payload.paymentMethod,
+      items: Array.from(merged.values()).map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice, discountAmount: 0, taxRate: i.taxRate })),
+      globalDiscount: 0,
+      tableIds: [tableId],
+    }, userId)
+
+    if (!invoiceResult.success || !invoiceResult.data) {
+      return { success: false, error: (invoiceResult as { error?: { code: string; message: string } }).error ?? { code: 'RST-052', message: 'Could not generate the bill for this table.' } }
+    }
+    const invoice = invoiceResult.data as { id: string }
+
+    await db.kOT.updateMany({ where: { id: { in: openKots.map(k => k.id) } }, data: { invoiceId: invoice.id } })
+    await db.restaurantTable.update({ where: { id: tableId }, data: { checkoutRequestedAt: null } })
+    await logAction(userId, 'TABLE_CHECKED_OUT', 'RestaurantTable', tableId, undefined, invoice.id)
+
+    return { success: true, data: { invoiceId: invoice.id } }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-053', message: err instanceof Error ? err.message : 'Could not check out this table.' } }
+  }
+}
+
+// Everything currently ordered for a table, before checkout — the "click
+// table, see everything ordered" view the founder asked for. Aggregates
+// un-invoiced KOTs the same way checkoutTable does, but read-only.
+export async function getTableOrderSummary(tableId: string) {
+  try {
+    const db = getPrisma()
+    const openKots = await db.kOT.findMany({
+      where: { tableId, invoiceId: null, status: { not: 'CANCELLED' } },
+      include: { items: true },
+      orderBy: { createdAt: 'asc' }
+    })
+    const productIds = [...new Set(openKots.flatMap(k => k.items.map(i => i.productId)))]
+    const products = productIds.length > 0 ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, productName: true } }) : []
+    const nameById = new Map(products.map(p => [p.id, p.productName]))
+
+    const merged = new Map<string, { productId: string; productName: string; quantity: number; unitPrice: number }>()
+    let runningTotal = 0
+    for (const kot of openKots) {
+      for (const item of kot.items) {
+        runningTotal += item.quantity * item.unitPriceSnapshot
+        const existing = merged.get(item.productId)
+        if (existing) existing.quantity += item.quantity
+        else merged.set(item.productId, { productId: item.productId, productName: nameById.get(item.productId) ?? 'Unknown item', quantity: item.quantity, unitPrice: item.unitPriceSnapshot })
+      }
+    }
+
+    return {
+      success: true,
+      data: {
+        rounds: openKots.map(k => ({ kotId: k.id, status: k.status, createdAt: k.createdAt, items: k.items.map(i => ({ productId: i.productId, productName: nameById.get(i.productId) ?? 'Unknown item', quantity: i.quantity, unitPrice: i.unitPriceSnapshot })) })),
+        aggregated: Array.from(merged.values()),
+        estimatedTotal: roundCurrency(runningTotal),
+      }
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-054', message: err instanceof Error ? err.message : 'Could not load the table order summary.' } }
   }
 }
 
@@ -221,7 +368,7 @@ export async function updateKOTStatus(kotId: string, status: string, userId?: st
 
     const kot = await db.kOT.findUnique({
       where: { id: kotId },
-      include: { invoice: { include: { items: { include: { product: true } } } } }
+      include: { items: true }
     })
     if (!kot) return { success: false, error: { code: 'RST-015', message: 'KOT not found.' } }
 
@@ -234,17 +381,29 @@ export async function updateKOTStatus(kotId: string, status: string, userId?: st
       return { success: false, error: { code: 'RST-017', message: `Cannot change status of a ${kot.status.toLowerCase()} KOT.` } }
     }
 
-    // When KOT is fulfilled (DONE), deduct ingredient stock
+    // When KOT is fulfilled (DONE), deduct ingredient stock — reads the
+    // KOT's own item snapshot now (2026-09-02) rather than invoice.items,
+    // since a table's KOTs are created well before any Invoice exists.
     if (status === 'DONE' && kot.status !== 'DONE') {
-      await deductIngredients(kot.invoice.items, userId)
+      await deductIngredients(kot.items.map(i => ({ productId: i.productId, quantity: i.quantity })), userId)
     }
 
-    // When KOT is done or cancelled, free the table
-    if ((status === 'DONE' || status === 'CANCELLED') && kot.tableId) {
-      const hasOtherActive = await db.kOT.count({
-        where: { tableId: kot.tableId, status: { in: ['PENDING', 'IN_PROGRESS'] }, id: { not: kotId } }
+    // 2026-09-02 — a table stays OCCUPIED for as long as it has a running,
+    // un-checked-out tab, regardless of whether the kitchen has finished
+    // cooking every round — the guests are still eating/haven't paid.
+    // Table release now happens ONLY at actual payment settlement
+    // (releaseTablesForInvoiceTx, triggered from checkoutTable's invoice),
+    // EXCEPT one case: this specific KOT being CANCELLED with nothing else
+    // left billable for the table (no other open round, nothing already
+    // invoiced) — there's genuinely nothing to check out, so free it back
+    // up rather than leaving it stuck OCCUPIED forever with no path to
+    // AVAILABLE again.
+    if (status === 'CANCELLED' && kot.tableId) {
+      const table = await db.restaurantTable.findUnique({ where: { id: kot.tableId }, select: { currentInvoiceId: true } })
+      const hasOtherBillable = await db.kOT.count({
+        where: { tableId: kot.tableId, invoiceId: null, status: { not: 'CANCELLED' }, id: { not: kotId } }
       })
-      if (hasOtherActive === 0) {
+      if (hasOtherBillable === 0 && !table?.currentInvoiceId) {
         await db.restaurantTable.update({ where: { id: kot.tableId }, data: { status: 'AVAILABLE' } })
       }
     }
@@ -264,8 +423,14 @@ export async function updateKOTStatus(kotId: string, status: string, userId?: st
 // warning or runtime error.
 export const INGREDIENT_DEDUCTION_REMARKS_PREFIX = 'Ingredient deduction for KOT'
 
-// Deduct ingredient stock when KOT is fulfilled
-async function deductIngredients(
+// Deduct ingredient stock when KOT is fulfilled. Exported (2026-09 §12) so
+// Bakery — which has ingredient_tracking/recipes but deliberately no KOT
+// (a bakery counter sale isn't a dine-in ticket flow) — can call this same,
+// proven deduction logic directly at invoice-creation time instead of on a
+// KOT status transition. Reuses the exact same remarks prefix, so both
+// triggers are picked up identically by generateFoodCostReport/
+// generateDishContributionMarginReport with no change to either.
+export async function deductIngredients(
   invoiceItems: Array<{ productId: string; quantity: number }>,
   userId?: string
 ): Promise<void> {
@@ -630,15 +795,31 @@ export async function performDailyClose(userId?: string) {
     // and settled the orphaned invoice. Clearing both together matches
     // every other release path in this file (releaseTablesForInvoiceTx,
     // mergeTableIntoInvoice's claim guard).
+    // Real bug found 2026-09-02 (audit pass, post-deferred-billing rework):
+    // a table can now be OCCUPIED with real, un-invoiced KOTs sitting on it
+    // — billing only happens at explicit checkout under the new model, so
+    // this is the normal state of a table mid-service, not an edge case.
+    // Force-freeing it here (the pre-rework behavior, when every occupied
+    // table always had a currentInvoiceId by construction) would silently
+    // orphan that food: the table would show AVAILABLE, and checkoutTable()
+    // for the NEXT party seated there would fold the PREVIOUS party's
+    // unpaid order into their bill (its query only cares about tableId +
+    // invoiceId:null, not "which seating"). Skip freeing any table with an
+    // open KOT — staff must check it out first; everything else closes as
+    // before.
+    let skippedUnsettledTables = 0
     for (const table of openTables) {
+      const hasOpenKot = await db.kOT.findFirst({ where: { tableId: table.id, invoiceId: null, status: { not: 'CANCELLED' } }, select: { id: true } })
+      if (hasOpenKot) { skippedUnsettledTables++; continue }
       await db.restaurantTable.update({ where: { id: table.id }, data: { status: 'AVAILABLE', currentInvoiceId: null } })
     }
 
     const summary = await getDailyClosingSummary()
+    const summaryData = summary.data ? { ...summary.data, skippedUnsettledTables } : summary.data
 
-    await logAction(userId, 'RESTAURANT_DAILY_CLOSE', 'Restaurant', undefined, undefined, summary.data)
+    await logAction(userId, 'RESTAURANT_DAILY_CLOSE', 'Restaurant', undefined, undefined, summaryData)
 
-    return { success: true, data: summary.data }
+    return { success: true, data: summaryData }
   } catch (err) {
     return { success: false, error: { code: 'RST-031', message: err instanceof Error ? err.message : 'Daily close failed.' } }
   }

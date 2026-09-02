@@ -8,7 +8,7 @@ import {
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp, HeartPulse,
   Briefcase, Wrench, BedDouble, FolderOpen,
   Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins,
-  PieChart, ShieldCheck, LineChart, Clock, Target, Share2, Timer
+  PieChart, ShieldCheck, LineChart, Clock, Target, Share2, Timer, Trash2, Bell, Gauge, ChefHat
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, ReferenceLine, Treemap,
@@ -40,6 +40,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
+import { Button } from '@shared/ui/atoms/Button'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (local duplicates — avoids cross-boundary imports from main process)
@@ -801,6 +802,129 @@ interface DeliveryInstallationScheduleReport {
   summary: { totalBookings: number; deliveredCount: number; pendingCount: number }
 }
 
+// Deferred-item closure 2026-09-01 — Electrical item 4 + Plumbing items 3/4,
+// found missing during a Phase-69 signature-feature re-verification pass.
+interface SpecWiseFastMoverRow { spec: string; productName: string; unitsSold: number; revenue: number }
+interface SpecWiseFastMoversReport {
+  dateFrom: string; dateTo: string
+  rows: SpecWiseFastMoverRow[]
+  summary: { totalUnitsSold: number; topSpec: string | null }
+}
+
+interface CrossSellMissRow {
+  invoiceId: string; invoiceNumber: string; invoiceDate: string
+  anchorProductId: string; anchorProductName: string
+  expectedPartnerProductId: string; expectedPartnerProductName: string
+  pairStrengthPercent: number
+}
+interface FittingCrossSellReport {
+  dateFrom: string; dateTo: string
+  rows: CrossSellMissRow[]
+  summary: { missedOpportunities: number; invoicesScanned: number }
+}
+
+interface MaterialSalesMixRow { categoryId: string; materialName: string; unitsSold: number; revenue: number; revenueSharePercent: number }
+interface MaterialSalesMixReport {
+  dateFrom: string; dateTo: string
+  rows: MaterialSalesMixRow[]
+  summary: { totalRevenue: number; materialCount: number }
+}
+
+// 2026-09 §12 — Grocery/Kirana new vertical.
+interface MrpViolationRow {
+  invoiceId: string; invoiceNumber: string; invoiceDate: string
+  productId: string; productName: string; sku: string | null
+  unitPrice: number; mrp: number; excessPerUnit: number; quantity: number
+}
+interface MrpViolationReport {
+  dateFrom: string; dateTo: string
+  rows: MrpViolationRow[]
+  summary: { violationCount: number; totalExcessCollected: number }
+}
+
+interface PerishableWastageRow { productId: string; productName: string; sku: string | null; expiredWastageQty: number; expiredWastageValue: number }
+interface PerishableWastageReport {
+  dateFrom: string; dateTo: string
+  rows: PerishableWastageRow[]
+  summary: { totalWastageQty: number; totalWastageValue: number }
+}
+
+interface RestockAlertRow { productId: string; productName: string; sku: string | null; currentStock: number; dailyVelocity: number; daysOfStockRemaining: number }
+interface RestockAlertReport {
+  rows: RestockAlertRow[]
+  summary: { urgentCount: number; watchlistCount: number }
+}
+
+interface LooseVsPackagedRow { label: string; unitsSold: number; revenue: number }
+interface LooseVsPackagedMixReport {
+  dateFrom: string; dateTo: string
+  rows: LooseVsPackagedRow[]
+  summary: { totalRevenue: number; loosePercent: number }
+}
+
+interface KhataRiskRow {
+  customerId: string; customerName: string; phone: string | null
+  outstanding: number; daysOldOfOldestDebt: number
+  trend: 'RISING' | 'FALLING' | 'STABLE'
+  riskTier: 'LOW' | 'MEDIUM' | 'HIGH'
+}
+interface KhataRiskReport {
+  generatedAt: string
+  rows: KhataRiskRow[]
+  summary: { highRiskCount: number; mediumRiskCount: number }
+}
+
+// 2026-09 §12 — Bakery wow feature: Pre-Order Production Sheet.
+interface ProductionSheetProductRow { productId: string; productName: string; qtyFromOrders: number; qtyFromDemandForecast: number; totalQtyNeeded: number }
+interface ProductionSheetIngredientRow { ingredientProductId: string; ingredientName: string; unit: string; totalQtyNeeded: number }
+interface PreOrderProductionSheetReport {
+  date: string
+  products: ProductionSheetProductRow[]
+  ingredients: ProductionSheetIngredientRow[]
+  summary: { orderCount: number; totalProductQty: number }
+}
+
+// 2026-09 §12 — Tours & Travels.
+interface VehicleServiceDueRow {
+  vehicleId: string; registrationNumber: string; vehicleType: string; currentOdometer: number
+  kmSinceLastService: number | null; lastServiceDate: string | null
+  nextServiceDueKm: number | null; nextServiceDueDate: string | null
+  isDueSoon: boolean
+}
+interface VehicleServiceDueReport {
+  rows: VehicleServiceDueRow[]
+  summary: { dueSoonCount: number; totalFleetKm: number }
+}
+
+interface CommissionByAgentRow { agentName: string; bookingCount: number; totalPackageRevenue: number; totalCommission: number }
+interface CommissionByAgentReport {
+  dateFrom: string; dateTo: string
+  rows: CommissionByAgentRow[]
+  summary: { totalCommission: number; agentCount: number }
+}
+
+// Wow feature — Trip Profitability Calculator.
+interface TripProfitabilityRow {
+  bookingId: string; bookingNumber: string; customerName: string
+  revenue: number; driverCost: number; fuelCostEstimate: number; maintenanceCostEstimate: number; commission: number; netProfit: number
+}
+interface TripProfitabilityReport {
+  dateFrom: string; dateTo: string
+  rows: TripProfitabilityRow[]
+  summary: { totalRevenue: number; totalNetProfit: number }
+}
+
+// 2026-09-02 — Catering Events wow feature: Event Profitability.
+interface EventProfitabilityRow {
+  eventId: string; eventNumber: string; customerName: string
+  revenue: number; staffCost: number; ingredientCostEstimate: number; netProfit: number
+}
+interface EventProfitabilityReport {
+  dateFrom: string; dateTo: string
+  rows: EventProfitabilityRow[]
+  summary: { totalRevenue: number; totalNetProfit: number }
+}
+
 interface ComplianceTaskReportRow {
   clientName: string; title: string; category: string; dueDate: string
   daysUntilDue: number; status: string; priority: string
@@ -881,6 +1005,14 @@ type ReportType =
   // Phase 68 §9.1 — Coaching Institute items 3 & 4
   | 'batchPerformanceTrend' | 'attendancePerformanceCorrelation' | 'feeDueUnderperformanceAlert'
   | 'coilWastageYield' | 'isiBisSafetyRegister' | 'seasonalDemandForecast' | 'institutionalOrderHistory' | 'locationStockSplit' | 'deliveryInstallationSchedule'
+  | 'specWiseFastMovers' | 'fittingCrossSell' | 'materialSalesMix'
+  // 2026-09 §12 — Grocery/Kirana new vertical.
+  | 'mrpViolation' | 'perishableWastage' | 'dailyRestockAlert' | 'looseVsPackagedMix' | 'khataRisk'
+  | 'preOrderProductionSheet'
+  // 2026-09 §12 — Tours & Travels new vertical.
+  | 'vehicleServiceDue' | 'commissionByAgent' | 'tripProfitability'
+  // 2026-09-02 — Catering Events (Bakery/Sweet Shop/Catering).
+  | 'eventProfitability'
   // Phase 68 §9.1 — Car Service Center items 3 & 4
   | 'carPartsVariance' | 'serviceTypeRevenue'
   // Phase 68 §9.1 — Tailor/Boutique items 2, 3 & 4
@@ -1071,6 +1203,31 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'institutionalOrderHistory', icon: <FileStack size={18} />, category: 'customers', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'STATIONERY' },
   { id: 'locationStockSplit', icon: <Boxes size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'FURNITURE' },
   { id: 'deliveryInstallationSchedule', icon: <Truck size={18} />, category: 'service', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'FURNITURE' },
+  // Deferred-item closure 2026-09-01 — Electrical item 4 + Plumbing items 3/4,
+  // found missing during a Phase-69 signature-feature re-verification pass.
+  { id: 'specWiseFastMovers', icon: <Target size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'ELECTRICAL' },
+  { id: 'fittingCrossSell', icon: <Share2 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PLUMBING' },
+  { id: 'materialSalesMix', icon: <PieChart size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'PLUMBING' },
+  // 2026-09 §12 — Grocery/Kirana new vertical.
+  { id: 'mrpViolation', icon: <ShieldCheck size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'GROCERY' },
+  // 2026-09 §12 — genuinely applies to both Grocery (perishables) and
+  // Bakery (short-shelf-life baked goods) — the underlying query is scoped
+  // by the EXPIRY movementType, not by vertical, same "shared, not
+  // duplicated" precedent as coilWastageYield above.
+  { id: 'perishableWastage', icon: <Trash2 size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: ['GROCERY', 'BAKERY'] },
+  { id: 'dailyRestockAlert', icon: <Bell size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'GROCERY' },
+  { id: 'looseVsPackagedMix', icon: <PieChart size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'GROCERY' },
+  { id: 'khataRisk', icon: <Gauge size={18} />, category: 'finance', requiresDateRange: false, permission: 'reports.outstanding', requiredBusinessType: 'GROCERY' },
+  // 2026-09 §12 — Bakery wow feature. Uses the date-range picker's "from"
+  // date as the single production date — see the fetch switch below.
+  { id: 'preOrderProductionSheet', icon: <ChefHat size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory', requiredBusinessType: 'BAKERY' },
+  // 2026-09-02 — Catering Events (Bakery/Sweet Shop/Catering).
+  { id: 'eventProfitability', icon: <PartyPopper size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'catering_events' },
+  // 2026-09 §12 — Tours & Travels.
+  { id: 'vehicleServiceDue', icon: <Wrench size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory', requiredBusinessType: 'TOURS_TRAVELS' },
+  { id: 'commissionByAgent', icon: <HandCoins size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales', requiredBusinessType: 'TOURS_TRAVELS' },
+  // Wow feature — per-trip profit synthesis. Scoped to COMPLETED bookings.
+  { id: 'tripProfitability', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial', requiredBusinessType: 'TOURS_TRAVELS' },
   { id: 'complianceTasks', icon: <ClipboardCheck size={18} />, category: 'service', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'compliance_tasks' },
   { id: 'rentalStatus', icon: <CalendarClock size={18} />, category: 'rental', requiresDateRange: false, permission: 'reports.sales', requiredModule: 'rental_bookings' },
   { id: 'rentalRevenue', icon: <BarChart3 size={18} />, category: 'rental', requiresDateRange: true, permission: 'reports.sales', requiredModule: 'rental_bookings' },
@@ -1877,6 +2034,45 @@ export function ReportsScreen() {
           break
         case 'deliveryInstallationSchedule':
           res = await window.api.reports.deliveryInstallationSchedule({ dateFrom, dateTo })
+          break
+        case 'specWiseFastMovers':
+          res = await window.api.reports.specWiseFastMovers({ dateFrom, dateTo })
+          break
+        case 'fittingCrossSell':
+          res = await window.api.reports.fittingCrossSell({ dateFrom, dateTo })
+          break
+        case 'materialSalesMix':
+          res = await window.api.reports.materialSalesMix({ dateFrom, dateTo })
+          break
+        case 'mrpViolation':
+          res = await window.api.reports.mrpViolation({ dateFrom, dateTo })
+          break
+        case 'perishableWastage':
+          res = await window.api.reports.perishableWastage({ dateFrom, dateTo })
+          break
+        case 'dailyRestockAlert':
+          res = await window.api.reports.dailyRestockAlert()
+          break
+        case 'looseVsPackagedMix':
+          res = await window.api.reports.looseVsPackagedMix({ dateFrom, dateTo })
+          break
+        case 'khataRisk':
+          res = await window.api.reports.khataRisk()
+          break
+        case 'preOrderProductionSheet':
+          res = await window.api.reports.preOrderProductionSheet({ date: dateFrom })
+          break
+        case 'vehicleServiceDue':
+          res = await window.api.reports.vehicleServiceDue()
+          break
+        case 'commissionByAgent':
+          res = await window.api.reports.commissionByAgent({ dateFrom, dateTo })
+          break
+        case 'tripProfitability':
+          res = await window.api.reports.tripProfitability({ dateFrom, dateTo })
+          break
+        case 'eventProfitability':
+          res = await window.api.reports.eventProfitability({ dateFrom, dateTo })
           break
         default:
           return
@@ -3080,6 +3276,100 @@ export function ReportsScreen() {
           rows: d.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, r.totalValue.toFixed(2)])
         }
       }
+      case 'specWiseFastMovers': {
+        const d = reportData as SpecWiseFastMoversReport
+        return {
+          headers: ['Spec', 'Product', 'Units Sold', `Revenue (${currencySymbol})`],
+          rows: d.rows.map(r => [r.spec, r.productName, r.unitsSold, r.revenue.toFixed(2)])
+        }
+      }
+      case 'fittingCrossSell': {
+        const d = reportData as FittingCrossSellReport
+        return {
+          headers: ['Invoice #', 'Date', 'Product Sold', 'Usually Paired With (Not Bought)', 'Pair Strength %'],
+          rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.anchorProductName, r.expectedPartnerProductName, r.pairStrengthPercent])
+        }
+      }
+      case 'materialSalesMix': {
+        const d = reportData as MaterialSalesMixReport
+        return {
+          headers: ['Material', 'Units Sold', `Revenue (${currencySymbol})`, 'Revenue Share %'],
+          rows: d.rows.map(r => [r.materialName, r.unitsSold, r.revenue.toFixed(2), r.revenueSharePercent])
+        }
+      }
+      case 'mrpViolation': {
+        const d = reportData as MrpViolationReport
+        return {
+          headers: ['Invoice #', 'Date', 'Product', 'SKU', `Unit Price (${currencySymbol})`, `MRP (${currencySymbol})`, `Excess/Unit (${currencySymbol})`, 'Qty'],
+          rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.sku ?? '—', r.unitPrice.toFixed(2), r.mrp.toFixed(2), r.excessPerUnit.toFixed(2), r.quantity])
+        }
+      }
+      case 'perishableWastage': {
+        const d = reportData as PerishableWastageReport
+        return {
+          headers: ['Product', 'SKU', 'Wastage Qty', `Wastage Value (${currencySymbol})`],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.expiredWastageQty, r.expiredWastageValue.toFixed(2)])
+        }
+      }
+      case 'dailyRestockAlert': {
+        const d = reportData as RestockAlertReport
+        return {
+          headers: ['Product', 'SKU', 'Current Stock', 'Daily Velocity', 'Days of Stock Remaining'],
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.currentStock, r.dailyVelocity, r.daysOfStockRemaining])
+        }
+      }
+      case 'looseVsPackagedMix': {
+        const d = reportData as LooseVsPackagedMixReport
+        return {
+          headers: ['Type', 'Units Sold', `Revenue (${currencySymbol})`],
+          rows: d.rows.map(r => [r.label, r.unitsSold, r.revenue.toFixed(2)])
+        }
+      }
+      case 'khataRisk': {
+        const d = reportData as KhataRiskReport
+        return {
+          headers: ['Customer', 'Phone', `Outstanding (${currencySymbol})`, 'Oldest Debt (days)', 'Trend', 'Risk Tier'],
+          rows: d.rows.map(r => [r.customerName, r.phone ?? '—', r.outstanding.toFixed(2), r.daysOldOfOldestDebt, r.trend, r.riskTier])
+        }
+      }
+      case 'preOrderProductionSheet': {
+        const d = reportData as PreOrderProductionSheetReport
+        return {
+          headers: ['Section', 'Name', 'Qty from Orders', 'Qty from Forecast', 'Total Qty Needed', 'Unit'],
+          rows: [
+            ...d.products.map(p => ['Product', p.productName, p.qtyFromOrders, p.qtyFromDemandForecast, p.totalQtyNeeded, '—']),
+            ...d.ingredients.map(i => ['Ingredient', i.ingredientName, '—', '—', i.totalQtyNeeded, i.unit])
+          ]
+        }
+      }
+      case 'vehicleServiceDue': {
+        const d = reportData as VehicleServiceDueReport
+        return {
+          headers: ['Vehicle', 'Type', 'Odometer (km)', 'Km Since Last Service', 'Last Service', 'Next Service Due (km)', 'Due Soon'],
+          rows: d.rows.map(r => [r.registrationNumber, r.vehicleType, r.currentOdometer, r.kmSinceLastService ?? '—', r.lastServiceDate ?? '—', r.nextServiceDueKm ?? '—', r.isDueSoon ? 'Yes' : 'No'])
+        }
+      }
+      case 'commissionByAgent': {
+        const d = reportData as CommissionByAgentReport
+        return {
+          headers: ['Agent', 'Bookings', `Package Revenue (${currencySymbol})`, `Commission (${currencySymbol})`],
+          rows: d.rows.map(r => [r.agentName, r.bookingCount, r.totalPackageRevenue.toFixed(2), r.totalCommission.toFixed(2)])
+        }
+      }
+      case 'tripProfitability': {
+        const d = reportData as TripProfitabilityReport
+        return {
+          headers: ['Booking #', 'Customer', `Revenue (${currencySymbol})`, `Driver Cost (${currencySymbol})`, `Fuel Est. (${currencySymbol})`, `Maintenance Est. (${currencySymbol})`, `Commission (${currencySymbol})`, `Net Profit (${currencySymbol})`],
+          rows: d.rows.map(r => [r.bookingNumber, r.customerName, r.revenue.toFixed(2), r.driverCost.toFixed(2), r.fuelCostEstimate.toFixed(2), r.maintenanceCostEstimate.toFixed(2), r.commission.toFixed(2), r.netProfit.toFixed(2)])
+        }
+      }
+      case 'eventProfitability': {
+        const d = reportData as EventProfitabilityReport
+        return {
+          headers: ['Event #', 'Customer', `Revenue (${currencySymbol})`, `Staff Cost (${currencySymbol})`, `Ingredient Est. (${currencySymbol})`, `Net Profit (${currencySymbol})`],
+          rows: d.rows.map(r => [r.eventNumber, r.customerName, r.revenue.toFixed(2), r.staffCost.toFixed(2), r.ingredientCostEstimate.toFixed(2), r.netProfit.toFixed(2)])
+        }
+      }
       case 'complianceTasks': {
         const d = reportData as ComplianceTaskReport
         return {
@@ -4167,6 +4457,97 @@ export function ReportsScreen() {
           { label: 'Pending', value: String(d.summary.pendingCount) }
         ]
       }
+      case 'specWiseFastMovers': {
+        const d = reportData as SpecWiseFastMoversReport
+        return [
+          { label: 'Total Units Sold', value: String(d.summary.totalUnitsSold) },
+          { label: 'Top Spec', value: d.summary.topSpec ?? '—' }
+        ]
+      }
+      case 'fittingCrossSell': {
+        const d = reportData as FittingCrossSellReport
+        return [
+          { label: 'Missed Opportunities', value: String(d.summary.missedOpportunities) },
+          { label: 'Invoices Scanned', value: String(d.summary.invoicesScanned) }
+        ]
+      }
+      case 'materialSalesMix': {
+        const d = reportData as MaterialSalesMixReport
+        return [
+          { label: 'Total Revenue', value: fmt(d.summary.totalRevenue) },
+          { label: 'Materials', value: String(d.summary.materialCount) }
+        ]
+      }
+      case 'mrpViolation': {
+        const d = reportData as MrpViolationReport
+        return [
+          { label: 'Violations', value: String(d.summary.violationCount) },
+          { label: 'Total Excess Collected', value: fmt(d.summary.totalExcessCollected) }
+        ]
+      }
+      case 'perishableWastage': {
+        const d = reportData as PerishableWastageReport
+        return [
+          { label: 'Total Wastage Qty', value: String(d.summary.totalWastageQty) },
+          { label: 'Total Wastage Value', value: fmt(d.summary.totalWastageValue) }
+        ]
+      }
+      case 'dailyRestockAlert': {
+        const d = reportData as RestockAlertReport
+        return [
+          { label: 'Urgent (≤2 days)', value: String(d.summary.urgentCount) },
+          { label: 'Watchlist', value: String(d.summary.watchlistCount) }
+        ]
+      }
+      case 'looseVsPackagedMix': {
+        const d = reportData as LooseVsPackagedMixReport
+        return [
+          { label: 'Total Revenue', value: fmt(d.summary.totalRevenue) },
+          { label: 'Loose Share', value: `${d.summary.loosePercent}%` }
+        ]
+      }
+      case 'khataRisk': {
+        const d = reportData as KhataRiskReport
+        return [
+          { label: 'High Risk', value: String(d.summary.highRiskCount) },
+          { label: 'Medium Risk', value: String(d.summary.mediumRiskCount) }
+        ]
+      }
+      case 'preOrderProductionSheet': {
+        const d = reportData as PreOrderProductionSheetReport
+        return [
+          { label: 'Orders Due', value: String(d.summary.orderCount) },
+          { label: 'Total Product Qty', value: String(d.summary.totalProductQty) }
+        ]
+      }
+      case 'vehicleServiceDue': {
+        const d = reportData as VehicleServiceDueReport
+        return [
+          { label: 'Due Soon', value: String(d.summary.dueSoonCount) },
+          { label: 'Total Fleet Km', value: String(d.summary.totalFleetKm) }
+        ]
+      }
+      case 'commissionByAgent': {
+        const d = reportData as CommissionByAgentReport
+        return [
+          { label: 'Total Commission', value: fmt(d.summary.totalCommission) },
+          { label: 'Agents', value: String(d.summary.agentCount) }
+        ]
+      }
+      case 'tripProfitability': {
+        const d = reportData as TripProfitabilityReport
+        return [
+          { label: 'Total Revenue', value: fmt(d.summary.totalRevenue) },
+          { label: 'Total Net Profit', value: fmt(d.summary.totalNetProfit) }
+        ]
+      }
+      case 'eventProfitability': {
+        const d = reportData as EventProfitabilityReport
+        return [
+          { label: 'Total Revenue', value: fmt(d.summary.totalRevenue) },
+          { label: 'Total Net Profit', value: fmt(d.summary.totalNetProfit) }
+        ]
+      }
       default: return []
     }
   }
@@ -4660,6 +5041,62 @@ export function ReportsScreen() {
         return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Total Stock by Product', data: top.map(r => ({ label: r.productName, value: r.totalQty })) }] : []
       }
       case 'deliveryInstallationSchedule': return []
+      case 'specWiseFastMovers': {
+        const d = reportData as SpecWiseFastMoversReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Fast Movers by Spec', data: top.map(r => ({ label: `${r.spec} (${r.productName})`, value: r.unitsSold })) }] : []
+      }
+      // Register-shaped (a list of individual missed pairings, not an
+      // aggregate metric) — same "chart-free" precedent as
+      // isiBisSafetyRegister/institutionalOrderHistory above.
+      case 'fittingCrossSell': return []
+      case 'materialSalesMix': {
+        const d = reportData as MaterialSalesMixReport
+        return d.rows.length ? [{ type: 'pie', title: 'Material Sales Mix', valueIsCurrency: true, data: d.rows.map(r => ({ label: r.materialName, value: r.revenue })) }] : []
+      }
+      // Register-shaped (a list of individual sale-line violations), same
+      // "chart-free" precedent as fittingCrossSell above.
+      case 'mrpViolation': return []
+      case 'perishableWastage': {
+        const d = reportData as PerishableWastageReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Wastage Value by Product', data: top.map(r => ({ label: r.productName, value: r.expiredWastageValue })), valueIsCurrency: true }] : []
+      }
+      case 'dailyRestockAlert': {
+        const d = reportData as RestockAlertReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Days of Stock Remaining', data: top.map(r => ({ label: r.productName, value: r.daysOfStockRemaining })) }] : []
+      }
+      case 'looseVsPackagedMix': {
+        const d = reportData as LooseVsPackagedMixReport
+        return d.rows.length ? [{ type: 'pie', title: 'Loose vs. Packaged Sales Mix', valueIsCurrency: true, data: d.rows.map(r => ({ label: r.label, value: r.revenue })) }] : []
+      }
+      // Register-shaped (a ranked customer risk list, not an aggregate
+      // metric), same "chart-free" precedent as mrpViolation above.
+      case 'khataRisk': return []
+      case 'preOrderProductionSheet': {
+        const d = reportData as PreOrderProductionSheetReport
+        const top = d.ingredients.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Ingredients Needed', data: top.map(i => ({ label: `${i.ingredientName} (${i.unit})`, value: i.totalQtyNeeded })) }] : []
+      }
+      // Register-shaped (a fleet worklist, not an aggregate metric), same
+      // "chart-free" precedent as khataRisk above.
+      case 'vehicleServiceDue': return []
+      case 'commissionByAgent': {
+        const d = reportData as CommissionByAgentReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Commission by Agent', data: top.map(r => ({ label: r.agentName, value: r.totalCommission })), valueIsCurrency: true }] : []
+      }
+      case 'tripProfitability': {
+        const d = reportData as TripProfitabilityReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Net Profit by Trip', data: top.map(r => ({ label: r.bookingNumber, value: r.netProfit })), valueIsCurrency: true }] : []
+      }
+      case 'eventProfitability': {
+        const d = reportData as EventProfitabilityReport
+        const top = d.rows.slice(0, 10)
+        return top.length ? [{ type: 'bar', orientation: 'vertical', title: 'Net Profit by Event', data: top.map(r => ({ label: r.eventNumber, value: r.netProfit })), valueIsCurrency: true }] : []
+      }
       // Phase 68 §9.1 — Car Service Center items 3 & 4. Chart-free, same as
       // this file's other worklist/breakdown-table reports (e.g.
       // channelPerformance, shootTypeRevenueMix above).
@@ -5343,6 +5780,19 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'institutionalOrderHistory': return <InstitutionalOrderHistoryView data={data as InstitutionalOrderHistoryReport} fmt={fmt} />
     case 'locationStockSplit': return <LocationStockSplitView data={data as LocationStockSplitReport} />
     case 'deliveryInstallationSchedule': return <DeliveryInstallationScheduleView data={data as DeliveryInstallationScheduleReport} fmt={fmt} />
+    case 'specWiseFastMovers': return <SpecWiseFastMoversView data={data as SpecWiseFastMoversReport} fmt={fmt} />
+    case 'fittingCrossSell': return <FittingCrossSellView data={data as FittingCrossSellReport} />
+    case 'materialSalesMix': return <MaterialSalesMixView data={data as MaterialSalesMixReport} fmt={fmt} />
+    case 'mrpViolation': return <MrpViolationView data={data as MrpViolationReport} fmt={fmt} />
+    case 'perishableWastage': return <PerishableWastageView data={data as PerishableWastageReport} fmt={fmt} />
+    case 'dailyRestockAlert': return <RestockAlertView data={data as RestockAlertReport} />
+    case 'looseVsPackagedMix': return <LooseVsPackagedMixView data={data as LooseVsPackagedMixReport} fmt={fmt} />
+    case 'khataRisk': return <KhataRiskView data={data as KhataRiskReport} fmt={fmt} />
+    case 'preOrderProductionSheet': return <PreOrderProductionSheetView data={data as PreOrderProductionSheetReport} />
+    case 'vehicleServiceDue': return <VehicleServiceDueView data={data as VehicleServiceDueReport} />
+    case 'commissionByAgent': return <CommissionByAgentView data={data as CommissionByAgentReport} fmt={fmt} />
+    case 'tripProfitability': return <TripProfitabilityView data={data as TripProfitabilityReport} fmt={fmt} />
+    case 'eventProfitability': return <EventProfitabilityView data={data as EventProfitabilityReport} fmt={fmt} />
     case 'complianceTasks': return <ComplianceTaskView data={data as ComplianceTaskReport} />
     default: return null
   }
@@ -5413,6 +5863,7 @@ function InventoryReportView({ data, fmt }: { data: InventoryReport; fmt: (n: nu
         { label: t('reports.summary.lowStock'), value: String(s.lowStockItems), sub: t('reports.summary.lowStockSub') },
         { label: t('reports.summary.outOfStock'), value: String(s.outOfStockItems) }
       ]} />
+      <BreakdownChart title={t('reports.section.topProductsByStockValue')} data={data.rows} labelKey="productName" valueKey="stockValue" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.sku'), t('reports.col.product'), t('reports.col.category'), t('reports.col.type'), t('reports.col.stock'), t('common.unit'), t('reports.col.costShort'), t('reports.col.sellPriceShort'), t('reports.col.valueShort'), t('reports.col.alert')]}
         rows={data.rows.map(r => [
@@ -5442,6 +5893,7 @@ function TaxReportView({ data, fmt }: { data: TaxReport; fmt: (n: number) => str
         { label: t('reports.summary.totalTaxable'), value: fmt(s.totalTaxableAmount) },
         { label: t('reports.summary.taxCollected'), value: fmt(s.totalTaxCollected) }
       ]} />
+      <BreakdownChart title={t('reports.summary.taxCollected')} data={data.rows} labelKey="taxName" valueKey="taxCollected" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.taxName'), t('reports.col.type'), t('reports.col.ratePercent'), t('reports.col.taxableAmount'), t('reports.summary.taxCollected'), t('reports.col.invoiceCount')]}
         rows={data.rows.map(r => [r.taxName, r.taxType, `${r.rate}%`, fmt(r.taxableAmount), fmt(r.taxCollected), r.invoiceCount])}
@@ -5485,6 +5937,7 @@ function OutstandingReportView({ data, fmt }: { data: OutstandingReport; fmt: (n
       <div>
         <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.customerDues')}</h3>
         <AgingSummary aging={data.customers.agingTotals} fmt={fmt} />
+        <BreakdownChart title={t('reports.col.customer')} data={data.customers.rows} labelKey="customerName" valueKey="outstanding" fmt={fmt} />
         <DataTable
           headers={[t('reports.col.customer'), t('common.phone'), t('reports.col.outstanding'), t('reports.aging.current'), t('reports.aging.d1to30Short'), t('reports.aging.d31to60Short'), t('reports.aging.d61to90Short'), t('reports.aging.d90plusShort')]}
           rows={data.customers.rows.map(r => [
@@ -5497,6 +5950,7 @@ function OutstandingReportView({ data, fmt }: { data: OutstandingReport; fmt: (n
       <div>
         <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.summary.supplierPayables')}</h3>
         <AgingSummary aging={data.suppliers.agingTotals} fmt={fmt} />
+        <BreakdownChart title={t('reports.col.supplier')} data={data.suppliers.rows} labelKey="supplierName" valueKey="outstanding" fmt={fmt} />
         <DataTable
           headers={[t('reports.col.supplier'), t('common.phone'), t('reports.col.payable'), t('reports.aging.current'), t('reports.aging.d1to30Short'), t('reports.aging.d31to60Short'), t('reports.aging.d61to90Short'), t('reports.aging.d90plusShort')]}
           rows={data.suppliers.rows.map(r => [
@@ -5603,6 +6057,7 @@ function ExpenseReportView({ data, fmt }: { data: ExpenseReport; fmt: (n: number
       {data.byCategory.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.byCategory')}</h3>
+          <BreakdownChart title={t('reports.section.byCategory')} data={data.byCategory} labelKey="category" valueKey="amount" fmt={fmt} kind="pie" />
           <DataTable
             headers={[t('reports.col.category'), t('common.amount'), t('reports.col.count')]}
             rows={data.byCategory.map(c => [c.category, fmt(c.amount), c.count])}
@@ -5636,6 +6091,7 @@ function ProfitAndLossView({ data, fmt }: { data: ProfitAndLossReport; fmt: (n: 
         { label: t('reports.summary.totalExpenses'), value: fmt(s.totalExpenses) },
         { label: t('reports.summary.netProfit'), value: `${fmt(s.netProfit)} (${s.netMarginPercent}%)` }
       ]} />
+      <BreakdownChart title={t('reports.summary.totalExpenses')} data={data.expensesByCategory} labelKey="category" valueKey="amount" fmt={fmt} kind="pie" />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <div className="divide-y divide-slate-100 dark:divide-slate-800">
           <div className="flex items-center justify-between px-5 py-3">
@@ -5683,6 +6139,7 @@ function CashBookView({ data, fmt }: { data: CashBookReport; fmt: (n: number) =>
           <div className={cn('text-sm font-bold', data.closingBalance >= 0 ? 'text-success' : 'text-danger')}>{fmt(data.closingBalance)}</div>
         </div>
       </Card>
+      <BreakdownChart title={t('common.balance')} data={sampleLedgerRowsForChart(data.entries).map(e => ({ label: formatDate(e.date), balance: e.runningBalance }))} labelKey="label" valueKey="balance" fmt={fmt} kind="line" />
       {/* REAL BUG found+fixed 2026-07-30: same fix as LedgerReportView above —
           raw .toFixed(2) had no digit grouping and always 2 decimals
           regardless of currency; routed through fmt() to match. */}
@@ -5813,6 +6270,7 @@ function FoodCostReportView({ data, fmt }: { data: FoodCostReport; fmt: (n: numb
         { label: t('reports.summary.totalFoodCost'), value: fmt(data.totalCost) },
         { label: t('reports.summary.ingredientsUsed'), value: String(data.rows.length) },
       ]} />
+      <BreakdownChart title={t('reports.col.totalCost')} data={data.rows} labelKey="ingredientName" valueKey="totalCost" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.ingredient'), t('common.unit'), t('reports.col.qtyUsed'), t('reports.col.costPrice'), t('reports.col.totalCost')]}
         rows={data.rows.map(r => [
@@ -6794,10 +7252,13 @@ function RentalRevenueView({ data, fmt }: { data: RentalRevenueReport; fmt: (n: 
         { label: t('reports.col.bookingCount'), value: String(data.summary.totalBookings) },
       ]} />
       {data.rows.length > 0 ? (
-        <DataTable
-          headers={[t('rental.col.item'), t('reports.col.bookingCount'), t('reports.col.value'), t('rental.utilization')]}
-          rows={data.rows.map(r => [r.productName, r.bookingCount, fmt(r.totalRevenue), r.utilizationPercent != null ? `${r.utilizationPercent.toFixed(0)}%` : '—'])}
-        />
+        <>
+          <BreakdownChart title={t('reports.summary.totalRevenue')} data={data.rows} labelKey="productName" valueKey="totalRevenue" fmt={fmt} />
+          <DataTable
+            headers={[t('rental.col.item'), t('reports.col.bookingCount'), t('reports.col.value'), t('rental.utilization')]}
+            rows={data.rows.map(r => [r.productName, r.bookingCount, fmt(r.totalRevenue), r.utilizationPercent != null ? `${r.utilizationPercent.toFixed(0)}%` : '—'])}
+          />
+        </>
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">{t('rental.empty.revenue')}</div>
       )}
@@ -7037,6 +7498,7 @@ function CaseAgingView({ data }: { data: CaseAgingReport }) {
         { label: t('reports.summary.avgDaysInCurrentStage'), value: String(data.summary.avgDaysInCurrentStage) },
         { label: t('reports.summary.staleCaseCount'), value: String(data.summary.staleCaseCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.daysInStage')} data={data.rows} labelKey="caseNumber" valueKey="daysInCurrentStage" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.caseNumber'), t('reports.col.caseTitle'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.daysInStage'), t('reports.col.daysSinceFiling')]}
         rows={data.rows.map(r => [r.caseNumber, r.caseTitle, r.clientName, r.caseStage, r.daysInCurrentStage, r.daysSinceFiling ?? '—'])}
@@ -7089,6 +7551,7 @@ function FeeRealizationView({ data, fmt }: { data: FeeRealizationReport; fmt: (n
         { label: t('reports.col.realizedFee'), value: fmt(data.summary.totalRealizedFee) },
         { label: t('reports.col.realizationPercent'), value: `${data.summary.realizationPercent}%` },
       ]} />
+      <BreakdownChart title={t('reports.col.expectedFee')} data={data.rows} labelKey="engagementTitle" valueKey="expectedFee" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.engagement'), t('reports.col.clientName'), t('common.amount'), t('reports.col.invoicedThisPeriod')]}
         rows={data.rows.map(r => [r.engagementTitle, r.clientName, fmt(r.expectedFee), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])}
@@ -7139,6 +7602,7 @@ function ProjectStageProgressView({ data }: { data: ProjectStageProgressReport }
         { label: t('reports.summary.totalActiveProjects'), value: String(data.summary.totalActiveProjects) },
         { label: t('reports.summary.avgDaysInStage'), value: String(data.summary.avgDaysInStage) },
       ]} />
+      <BreakdownChart title={t('reports.col.daysInStage')} data={data.rows} labelKey="projectName" valueKey="daysInStage" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.projectName'), t('reports.col.clientName'), t('reports.col.stage'), t('reports.col.stageProgress'), t('reports.col.daysInStage')]}
         rows={data.rows.map(r => [r.projectName, r.clientName, r.stage, r.stageProgressPercent != null ? `${r.stageProgressPercent}%` : '—', r.daysInStage])}
@@ -7158,6 +7622,7 @@ function SiteVisitBillingView({ data, fmt }: { data: SiteVisitBillingReport; fmt
         { label: t('reports.summary.totalUnbilledAmount'), value: fmt(data.summary.totalUnbilledAmount) },
         { label: t('reports.summary.unbilledCount'), value: String(data.summary.unbilledCount) },
       ]} />
+      <BreakdownChart title={t('common.amount')} data={data.rows} labelKey="projectName" valueKey="billableAmount" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.projectName'), t('reports.col.visitDate'), t('reports.col.visitType'), t('common.amount'), t('reports.col.billedStatus')]}
         rows={data.rows.map(r => [r.projectName, r.visitDate, r.visitType, fmt(r.billableAmount), r.isBilled ? t('common.yes') : t('common.no')])}
@@ -7178,6 +7643,15 @@ function MaterialTestResultsView({ data }: { data: MaterialTestResultsReport }) 
         { label: t('reports.summary.failCount'), value: String(data.summary.failCount) },
         { label: t('reports.summary.pendingCount'), value: String(data.summary.pendingCount) },
       ]} />
+      <BreakdownChart
+        title={t('reports.summary.passRatePercent')}
+        data={[
+          { label: t('reports.summary.passCount'), value: data.summary.passCount },
+          { label: t('reports.summary.failCount'), value: data.summary.failCount },
+          { label: t('reports.summary.pendingCount'), value: data.summary.pendingCount },
+        ]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
       <DataTable
         headers={[t('reports.col.projectName'), t('reports.col.testType'), t('reports.col.materialDescription'), t('reports.col.testValue'), t('reports.col.unit'), t('reports.col.requiredMinValue'), t('reports.col.result'), t('reports.col.testedDate')]}
         rows={data.rows.map(r => [r.projectName, r.testType, r.materialDescription ?? '—', r.testValue ?? '—', r.unit ?? '—', r.requiredMinValue ?? '—', r.result, r.testedDate ?? '—'])}
@@ -7197,6 +7671,7 @@ function RetainerUtilizationView({ data, fmt }: { data: RetainerUtilizationRepor
         { label: t('reports.summary.overUtilizedCount'), value: String(data.summary.overUtilizedCount) },
         { label: t('reports.summary.unbilledCount'), value: String(data.summary.unbilledCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.utilizationPercent')} data={data.rows} labelKey="title" valueKey="utilizationPercent" fmt={(n) => `${n}%`} />
       <DataTable
         headers={[t('reports.col.title'), t('reports.col.client'), t('reports.col.hoursPerMonth'), t('reports.col.hoursUsed'), t('reports.col.utilizationPercent'), t('common.amount'), t('reports.col.billedThisPeriod')]}
         rows={data.rows.map(r => [r.title, r.clientName, r.hoursPerMonth, r.hoursUsed, `${r.utilizationPercent}%`, fmt(r.monthlyAmount), r.billedThisPeriod ? t('common.yes') : t('common.no')])}
@@ -7218,6 +7693,15 @@ function ProposalWinRateView({ data, fmt }: { data: ProposalWinRateReport; fmt: 
         { label: t('reports.summary.pendingCount'), value: String(data.summary.pendingCount) },
         { label: t('reports.summary.wonValue'), value: fmt(data.summary.wonValue) },
       ]} />
+      <BreakdownChart
+        title={t('reports.summary.winRatePercent')}
+        data={[
+          { label: t('reports.summary.wonCount'), value: data.summary.wonCount },
+          { label: t('reports.summary.lostCount'), value: data.summary.lostCount },
+          { label: t('reports.summary.pendingCount'), value: data.summary.pendingCount },
+        ]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
     </div>
   )
 }
@@ -7232,6 +7716,7 @@ function ClientRevenueConcentrationView({ data, fmt }: { data: ClientRevenueConc
         { label: t('reports.summary.topClientSharePercent'), value: `${data.summary.topClientSharePercent}%` },
         { label: t('reports.summary.top3SharePercent'), value: `${data.summary.top3SharePercent}%` },
       ]} />
+      <BreakdownChart title={t('reports.summary.totalRevenue')} data={data.rows} labelKey="clientName" valueKey="revenue" fmt={fmt} kind="pie" />
       <DataTable
         headers={[t('reports.col.client'), t('common.amount'), t('reports.col.revenueSharePercent'), t('reports.col.cumulativeSharePercent')]}
         rows={data.rows.map(r => [r.clientName, fmt(r.revenue), `${r.revenueSharePercent}%`, `${r.cumulativeSharePercent}%`])}
@@ -7252,6 +7737,7 @@ function CampaignROIView({ data, fmt }: { data: CampaignROIReport; fmt: (n: numb
         { label: t('reports.summary.totalActualSpend'), value: fmt(data.summary.totalActualSpend) },
         { label: t('reports.summary.overBudgetCount'), value: String(data.summary.overBudgetCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.actualSpend')} data={data.rows} labelKey="projectName" valueKey="actualSpend" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.projectName'), t('reports.col.client'), t('reports.col.targetChannel'), t('reports.col.adSpendBudget'), t('reports.col.actualSpend'), t('reports.col.budgetVariancePercent'), t('reports.col.conversions'), t('reports.col.costPerConversion')]}
         rows={data.rows.map(r => [r.projectName, r.clientName, r.targetChannel ?? '—', r.adSpendBudget != null ? fmt(r.adSpendBudget) : '—', fmt(r.actualSpend), r.budgetVariancePercent != null ? `${r.budgetVariancePercent}%` : '—', r.conversions, r.costPerConversion != null ? fmt(r.costPerConversion) : '—'])}
@@ -7296,6 +7782,7 @@ function ChannelPerformanceView({ data, fmt }: { data: ChannelPerformanceReport;
   const { t } = useTranslation()
   return (
     <div className="space-y-6">
+      <BreakdownChart title={t('reports.col.totalConversions')} data={data.rows} labelKey="channel" valueKey="totalConversions" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.targetChannel'), t('reports.col.campaignCount'), t('reports.col.totalImpressions'), t('reports.col.totalClicks'), t('reports.col.totalConversions'), t('common.amount'), t('reports.col.ctrPercent'), t('reports.col.costPerConversion')]}
         rows={data.rows.map(r => [r.channel, r.campaignCount, r.totalImpressions, r.totalClicks, r.totalConversions, fmt(r.totalActualSpend), r.ctrPercent != null ? `${r.ctrPercent}%` : '—', r.costPerConversion != null ? fmt(r.costPerConversion) : '—'])}
@@ -7314,6 +7801,7 @@ function RetainerWorkDeliveredView({ data, fmt }: { data: RetainerWorkDeliveredR
         { label: t('reports.summary.totalRetainers'), value: String(data.summary.totalRetainers) },
         { label: t('reports.summary.zeroDeliveredCount'), value: String(data.summary.zeroDeliveredCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.deliveredCount')} data={data.rows} labelKey="title" valueKey="deliveredCount" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.title'), t('reports.col.client'), t('common.amount'), t('reports.col.deliveredCount'), t('reports.col.billedThisPeriod')]}
         rows={data.rows.map(r => [r.title, r.clientName, fmt(r.monthlyAmount), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])}
@@ -7332,6 +7820,7 @@ function IssueAgingView({ data }: { data: IssueAgingReport }) {
         { label: t('reports.summary.totalOpenIssues'), value: String(data.summary.totalOpenIssues) },
         { label: t('reports.summary.breachedCount'), value: String(data.summary.breachedCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.daysOpen')} data={data.rows} labelKey="title" valueKey="daysOpen" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.title'), t('reports.col.projectName'), t('reports.col.priority'), t('common.status'), t('reports.col.daysOpen'), t('reports.col.slaBreached')]}
         rows={data.rows.map(r => [r.title, r.projectName, r.priority, r.status, r.daysOpen, r.slaBreached ? t('common.yes') : t('common.no')])}
@@ -7351,6 +7840,7 @@ function TeamUtilizationView({ data }: { data: TeamUtilizationReport }) {
         { label: t('reports.summary.totalNonBillableHours'), value: String(data.summary.totalNonBillableHours) },
         { label: t('reports.summary.overallUtilizationPercent'), value: `${data.summary.overallUtilizationPercent}%` },
       ]} />
+      <BreakdownChart title={t('reports.col.utilizationPercent')} data={data.rows} labelKey="employeeName" valueKey="utilizationPercent" fmt={(n) => `${n}%`} />
       <DataTable
         headers={[t('reports.col.employeeName'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), t('reports.col.totalHours'), t('reports.col.utilizationPercent')]}
         rows={data.rows.map(r => [r.employeeName, r.billableHours, r.nonBillableHours, r.totalHours, `${r.utilizationPercent}%`])}
@@ -7369,6 +7859,7 @@ function SprintBillingView({ data, fmt }: { data: SprintBillingReport; fmt: (n: 
         { label: t('reports.summary.totalCompletedSprints'), value: String(data.summary.totalCompletedSprints) },
         { label: t('reports.summary.unlinkedCount'), value: String(data.summary.unlinkedCount) },
       ]} />
+      <BreakdownChart title={t('common.amount')} data={data.rows.filter(r => r.milestoneAmount != null)} labelKey="projectName" valueKey="milestoneAmount" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.projectName'), t('reports.col.sprintNumber'), t('reports.col.sprintName'), t('reports.col.milestoneStatus'), t('common.amount')]}
         rows={data.rows.map(r => [r.projectName, r.sprintNumber, r.sprintName ?? '—', r.milestoneStatus ?? 'Not billed', r.milestoneAmount != null ? fmt(r.milestoneAmount) : '—'])}
@@ -7424,6 +7915,7 @@ function ShootTypeRevenueMixView({ data, fmt }: { data: ShootTypeRevenueMixRepor
         { label: t('reports.summary.totalRevenue'), value: fmt(data.summary.totalRevenue) },
         { label: t('reports.summary.totalBookings'), value: String(data.summary.totalBookings) },
       ]} />
+      <BreakdownChart title={t('reports.summary.totalRevenue')} data={data.rows} labelKey="shootType" valueKey="totalRevenue" fmt={fmt} kind="pie" />
       <DataTable
         headers={[t('reports.col.shootType'), t('reports.col.bookingCount'), t('common.amount'), t('reports.col.avgTicket'), t('reports.col.revenueSharePercent')]}
         rows={data.rows.map(r => [r.shootType, r.bookingCount, fmt(r.totalRevenue), fmt(r.avgTicket), `${r.revenueSharePercent}%`])}
@@ -7442,6 +7934,7 @@ function EquipmentCheckoutView({ data }: { data: EquipmentCheckoutReport }) {
         { label: t('reports.summary.totalOutstanding'), value: String(data.summary.totalOutstanding) },
         { label: t('reports.summary.overdueCount'), value: String(data.summary.overdueCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.daysOut')} data={data.rows} labelKey="assetName" valueKey="daysOut" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.assetName'), t('reports.col.checkedOutToName'), t('reports.col.checkedOutDate'), t('reports.col.expectedReturnDate'), t('reports.col.daysOut'), t('reports.col.isOverdue')]}
         rows={data.rows.map(r => [r.assetName, r.checkedOutToName ?? '—', r.checkedOutDate, r.expectedReturnDate ?? '—', r.daysOut, r.isOverdue ? t('common.yes') : t('common.no')])}
@@ -7461,6 +7954,7 @@ function VendorCostVsBudgetView({ data, fmt }: { data: VendorCostVsBudgetReport;
         { label: t('reports.summary.totalVendorCost'), value: fmt(data.summary.totalVendorCost) },
         { label: t('reports.summary.overBudgetCount'), value: String(data.summary.overBudgetCount) },
       ]} />
+      <BreakdownChart title={t('reports.col.totalVendorCost')} data={data.rows} labelKey="eventName" valueKey="totalVendorCost" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.eventName'), t('reports.col.client'), t('reports.col.clientBudget'), t('reports.col.totalVendorCost'), t('reports.col.budgetVariancePercent')]}
         rows={data.rows.map(r => [r.eventName, r.clientName, r.clientBudget != null ? fmt(r.clientBudget) : '—', fmt(r.totalVendorCost), r.budgetVariancePercent != null ? `${r.budgetVariancePercent}%` : '—'])}
@@ -7479,6 +7973,7 @@ function VendorPerformanceHistoryView({ data }: { data: VendorPerformanceReport 
         { label: t('reports.summary.totalRatedVendors'), value: String(data.summary.totalRatedVendors) },
         { label: t('reports.summary.overallAvgRating'), value: String(data.summary.overallAvgRating) },
       ]} />
+      <BreakdownChart title={t('reports.col.avgRating')} data={data.rows} labelKey="vendorName" valueKey="avgRating" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.vendorName'), t('reports.col.ratedEventCount'), t('reports.col.avgRating')]}
         rows={data.rows.map(r => [r.vendorName, r.ratedEventCount, r.avgRating])}
@@ -7500,6 +7995,14 @@ function HotelOccupancyView({ data }: { data: HotelOccupancyReport }) {
         { label: 'Available', value: String(data.available) },
         { label: 'Occupancy %', value: `${data.occupancyPercent}%` },
       ]} />
+      <BreakdownChart
+        title="Room Status"
+        data={[
+          { label: 'Occupied', value: data.occupied }, { label: 'Available', value: data.available },
+          { label: 'Cleaning', value: data.cleaning }, { label: 'Maintenance / Out of Order', value: data.maintenance },
+        ]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
       <DataTable
         headers={['Status', 'Room Count']}
         rows={[
@@ -7536,10 +8039,13 @@ function OccupancyTrendView({ data }: { data: OccupancyTrendReport }) {
         { label: 'Peak Occupancy %', value: `${data.summary.peakOccupancyPercent}%` },
       ]} />
       {data.points.length > 0 ? (
-        <DataTable
-          headers={['Date', 'Occupied Rooms', 'Total Rooms', 'Occupancy %']}
-          rows={data.points.map(p => [p.date, p.occupiedRooms, p.totalRooms, `${p.occupancyPercent}%`])}
-        />
+        <>
+          <BreakdownChart title="Occupancy %" data={data.points} labelKey="date" valueKey="occupancyPercent" fmt={(n) => `${n}%`} kind="line" />
+          <DataTable
+            headers={['Date', 'Occupied Rooms', 'Total Rooms', 'Occupancy %']}
+            rows={data.points.map(p => [p.date, p.occupiedRooms, p.totalRooms, `${p.occupancyPercent}%`])}
+          />
+        </>
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">No data for this date range.</div>
       )}
@@ -7557,10 +8063,13 @@ function RoomWiseADRView({ data, fmt }: { data: RoomWiseADRReport; fmt: (n: numb
         { label: 'Total Revenue', value: fmt(data.summary.totalRevenue) },
       ]} />
       {data.rows.length > 0 ? (
-        <DataTable
-          headers={['Room #', 'Room Type', 'Nights Sold', 'Total Revenue', 'ADR']}
-          rows={data.rows.map(r => [r.roomNumber, r.roomType, r.nightsSold, fmt(r.totalRevenue), fmt(r.adr)])}
-        />
+        <>
+          <BreakdownChart title="ADR" data={data.rows} labelKey="roomNumber" valueKey="adr" fmt={fmt} />
+          <DataTable
+            headers={['Room #', 'Room Type', 'Nights Sold', 'Total Revenue', 'ADR']}
+            rows={data.rows.map(r => [r.roomNumber, r.roomType, r.nightsSold, fmt(r.totalRevenue), fmt(r.adr)])}
+          />
+        </>
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">No stays in this date range.</div>
       )}
@@ -7578,10 +8087,13 @@ function ADRRevPARView({ data, fmt }: { data: ADRRevPARReport; fmt: (n: number) 
         { label: 'Overall RevPAR', value: fmt(data.summary.overallRevPAR) },
       ]} />
       {data.rows.length > 0 ? (
-        <DataTable
-          headers={['Period', 'Room Revenue', 'Nights Sold', 'Available Room-Nights', 'ADR', 'RevPAR']}
-          rows={data.rows.map(r => [r.period, fmt(r.roomRevenue), r.nightsSold, r.availableRoomNights, fmt(r.adr), fmt(r.revPAR)])}
-        />
+        <>
+          <BreakdownChart title="RevPAR" data={data.rows} labelKey="period" valueKey="revPAR" fmt={fmt} kind="line" />
+          <DataTable
+            headers={['Period', 'Room Revenue', 'Nights Sold', 'Available Room-Nights', 'ADR', 'RevPAR']}
+            rows={data.rows.map(r => [r.period, fmt(r.roomRevenue), r.nightsSold, r.availableRoomNights, fmt(r.adr), fmt(r.revPAR)])}
+          />
+        </>
       ) : (
         <div className="text-center py-12 text-slate-400 text-sm">No data for this date range.</div>
       )}
@@ -7608,6 +8120,7 @@ function AppointmentUtilisationView({ data }: { data: AppointmentUtilisationRepo
       {data.byProvider.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.byProvider')}</h3>
+          <BreakdownChart title={t('reports.col.completionPercent')} data={data.byProvider} labelKey="providerName" valueKey="completionRate" fmt={(n) => `${n}%`} />
           <DataTable
             headers={[t('reports.col.provider'), t('reports.col.providerTotal'), t('reports.summary.completed'), t('reports.summary.cancelled'), t('reports.col.noShow'), t('reports.col.completionPercent')]}
             rows={data.byProvider.map(p => [p.providerName, p.total, p.completed, p.cancelled, p.noShow, `${p.completionRate}%`])}
@@ -7658,6 +8171,14 @@ function ClientRetentionView({ data }: { data: ClientRetentionReport }) {
           {t('reports.section.atRiskBanner', { count: s.atRiskCount })}
         </div>
       )}
+      <BreakdownChart
+        title={t('reports.summary.retentionRate')}
+        data={[
+          { label: t('reports.summary.newClients'), value: s.newClients },
+          { label: t('reports.summary.returningClients'), value: s.returningClients },
+        ]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
       <DataTable
         headers={[t('reports.col.customer'), t('common.phone'), t('reports.col.firstVisitEverParen'), t('reports.col.lastVisit'), t('reports.col.visitsInPeriod'), t('reports.col.newQ'), t('reports.col.atRiskQ')]}
         rows={data.rows.map(r => [
@@ -7688,6 +8209,7 @@ function CommissionReportView({ data, fmt }: { data: CommissionReport; fmt: (n: 
       {data.byStaff.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.byStaff')}</h3>
+          <BreakdownChart title={t('reports.col.commission')} data={data.byStaff} labelKey="staffName" valueKey="commissionAmount" fmt={fmt} />
           <DataTable
             headers={[t('reports.col.staff'), t('reports.col.serviceRevenue'), t('reports.col.commission'), t('reports.col.tips'), t('common.paid'), t('common.unpaid'), t('reports.summary.records')]}
             rows={data.byStaff.map(st => [st.staffName, fmt(st.serviceRevenue), fmt(st.commissionAmount), fmt(st.tipAmount), fmt(st.paidAmount), fmt(st.unpaidAmount), st.recordCount])}
@@ -7735,6 +8257,83 @@ function sampleLedgerRowsForChart<T>(rows: T[]): T[] {
   for (let i = 0; i < LEDGER_CHART_MAX_POINTS - 1; i++) sampled.push(rows[Math.floor(i * step)])
   sampled.push(rows[rows.length - 1]) // always keep the true final balance, never a sampled approximation of it
   return sampled
+}
+
+// 2026-09 — generic small breakdown chart, built to close the "most reports
+// have no graph at all" gap in one reusable piece rather than hand-rolling a
+// bespoke <ResponsiveContainer> block in each of ~70 report views. Every
+// report view below that uses this already had its own aggregate array
+// (byCategory/byStaff/stages/buckets/rows, etc.) sitting unused for charting
+// — this just visualizes it. Bar for a small set of categories (the default),
+// line for a chronological trend (month/day labels), pie for a share-of-whole
+// breakdown. Renders nothing (not even the card) when there's no data, so it
+// never adds an empty box to a report that generated zero rows this run.
+function BreakdownChart<T>({
+  title, data, labelKey, valueKey, fmt, color, kind = 'bar', maxBars = 12, height = 220
+}: {
+  title: string
+  data: T[] | undefined | null
+  labelKey: keyof T & string
+  valueKey: keyof T & string
+  fmt: (n: number) => string
+  color?: string
+  kind?: 'bar' | 'line' | 'pie'
+  maxBars?: number
+  height?: number
+}) {
+  if (!data || data.length === 0) return null
+  // Bar/pie charts stay readable only with a small category count — a
+  // "rows"-shaped array (SKU/customer/invoice-level) can run into the
+  // hundreds, so cap it to the top values by magnitude rather than
+  // rendering an unreadable wall of bars. A line chart is chronological
+  // (month/day already small-N in practice) and is never truncated this way.
+  const chartData = kind === 'line'
+    ? data
+    : [...data].sort((a, b) => (Number(b[valueKey]) || 0) - (Number(a[valueKey]) || 0)).slice(0, maxBars)
+  const brand = color ?? STATUS_COLORS.brand
+  const pieColors = [STATUS_COLORS.brand, STATUS_COLORS.success, STATUS_COLORS.warning, STATUS_COLORS.danger, '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{title}</h3>
+      <ResponsiveContainer width="100%" height={height}>
+        {kind === 'pie' ? (
+          <RCPieChart>
+            <Pie data={chartData} dataKey={valueKey as string} nameKey={labelKey as string} outerRadius={Math.min(height, 220) / 2 - 30} label={false}>
+              {chartData.map((_, i) => <Cell key={i} fill={pieColors[i % pieColors.length]} />)}
+            </Pie>
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Legend layout="vertical" align="right" verticalAlign="middle" wrapperStyle={{ fontSize: 11 }} />
+          </RCPieChart>
+        ) : kind === 'line' ? (
+          <RCLineChart data={chartData}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey={labelKey as string} tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Line type="monotone" dataKey={valueKey as string} stroke={brand} strokeWidth={2} dot={false} />
+          </RCLineChart>
+        ) : (
+          <BarChart data={chartData} layout={chartData.length > 6 ? 'vertical' : 'horizontal'} margin={chartData.length > 6 ? { left: 12 } : undefined}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            {chartData.length > 6 ? (
+              <>
+                <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+                <YAxis type="category" dataKey={labelKey as string} tick={CHART_TICK} tickLine={false} axisLine={false} width={110} />
+              </>
+            ) : (
+              <>
+                <XAxis dataKey={labelKey as string} tick={CHART_TICK} tickLine={false} axisLine={false} />
+                <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
+              </>
+            )}
+            <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Bar dataKey={valueKey as string} fill={brand} radius={chartData.length > 6 ? [0, 4, 4, 0] : [4, 4, 0, 0]} />
+          </BarChart>
+        )}
+      </ResponsiveContainer>
+    </div>
+  )
 }
 
 function OrderVolumeView({ data }: { data: OrderVolumeReport }) {
@@ -8095,6 +8694,7 @@ function StatutoryComplianceSummaryView({ data, fmt }: { data: StatutoryComplian
         { label: t('reports.col.totalAmount'), value: fmt(totalAmount) },
         { label: t('nav.employees'), value: String(data.totalEmployees) }
       ]} />
+      <BreakdownChart title={t('reports.col.totalAmount')} data={data.rows} labelKey="name" valueKey="totalAmount" fmt={fmt} kind="pie" />
       <DataTable
         headers={[t('reports.col.deductionName'), t('reports.col.totalAmount'), t('reports.col.employeeCount')]}
         rows={data.rows.map(r => [r.name, fmt(r.totalAmount), String(r.employeeCount)])}
@@ -8189,6 +8789,7 @@ function PaymentPerformanceView({ data, fmt }: { data: PaymentPerformanceReport;
         { label: t('reports.col.avgDaysToPay'), value: data.overallAvgDaysToPay != null ? String(data.overallAvgDaysToPay) : '—' },
         { label: t('reports.col.outstanding'), value: fmt(totalOutstanding) }
       ]} />
+      <BreakdownChart title={t('reports.col.outstanding')} data={data.rows} labelKey="customerName" valueKey="outstandingAmount" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.customer'), t('reports.col.paidInvoiceCount'), t('reports.col.avgDaysToPay'), t('reports.col.outstandingInvoiceCount'), t('reports.col.outstanding')]}
         rows={data.rows.map(r => [r.customerName, String(r.paidInvoiceCount), r.avgDaysToPay != null ? String(r.avgDaysToPay) : '—', String(r.outstandingInvoiceCount), fmt(r.outstandingAmount)])}
@@ -9018,6 +9619,7 @@ function CarPartsVarianceView({ data, fmt }: { data: CarPartsVarianceReport; fmt
         { label: 'Total Actual', value: fmt(s.totalActual) },
         { label: 'Total Overage', value: fmt(s.totalOverage) }
       ]} />
+      <BreakdownChart title="Variance" data={data.rows} labelKey="jobNumber" valueKey="variance" fmt={fmt} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Variance Details</h3>
         <DataTable
@@ -9039,6 +9641,7 @@ function ServiceTypeRevenueView({ data, fmt }: { data: ServiceTypeRevenueReport;
         { label: t('common.amount'), value: fmt(data.summary.totalRevenue) },
         { label: 'Service Types', value: String(data.summary.distinctServiceTypes) }
       ]} />
+      <BreakdownChart title={t('common.amount')} data={data.rows} labelKey="serviceType" valueKey="totalRevenue" fmt={fmt} kind="pie" />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Service Type</h3>
         <DataTable
@@ -9099,6 +9702,7 @@ function OrderTurnaroundView({ data }: { data: OrderTurnaroundReport }) {
         { label: 'Fastest (days)', value: String(s.minTurnaroundDays) },
         { label: 'Slowest (days)', value: String(s.maxTurnaroundDays) }
       ]} />
+      <BreakdownChart title="Turnaround Days" data={data.rows} labelKey="orderNumber" valueKey="turnaroundDays" fmt={(n) => String(n)} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Turnaround Details</h3>
         <DataTable
@@ -9115,12 +9719,17 @@ function OrderTurnaroundView({ data }: { data: OrderTurnaroundReport }) {
 function FittingStageTrackerView({ data }: { data: FittingStageReport }) {
   const { t } = useTranslation()
   const s = data.summary
+  const byStatus = Object.entries(data.rows.reduce<Record<string, number>>((acc, r) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1
+    return acc
+  }, {})).map(([status, count]) => ({ status, count }))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: 'Orders in Fitting', value: String(s.totalInFitting) },
         { label: 'Avg. Days in Stage', value: String(s.avgDaysInStage) }
       ]} />
+      <BreakdownChart title={t('common.status')} data={byStatus} labelKey="status" valueKey="count" fmt={(n) => String(n)} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Fitting-Stage Details</h3>
         <DataTable
@@ -9142,6 +9751,7 @@ function FabricPopularityView({ data, fmt }: { data: FabricPopularityReport; fmt
         { label: t('common.amount'), value: fmt(data.summary.totalRevenue) },
         { label: 'Distinct Fabrics', value: String(data.summary.distinctFabrics) }
       ]} />
+      <BreakdownChart title={t('common.amount')} data={data.rows} labelKey="fabricDescription" valueKey="totalRevenue" fmt={fmt} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Fabric / Design</h3>
         <DataTable
@@ -9198,6 +9808,7 @@ function RenewalFunnelView({ data, fmt }: { data: RenewalFunnelReport; fmt: (n: 
         { label: 'Contracts with End Date', value: String(data.summary.totalWithEndDate) },
         { label: 'Total Value', value: fmt(data.summary.totalValue) }
       ]} />
+      <BreakdownChart title="Renewal Urgency" data={data.stages} labelKey="stage" valueKey="count" fmt={(n) => String(n)} />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Renewal Urgency</h3>
         <div className="space-y-2">
@@ -9222,6 +9833,7 @@ function ChemicalUsageComplianceView({ data }: { data: ChemicalUsageComplianceRe
         { label: 'Completed Visits', value: String(data.summary.totalCompletedVisits) },
         { label: 'Undocumented Visits', value: String(data.summary.undocumentedCount) }
       ]} />
+      <BreakdownChart title="Total Quantity Used" data={data.rows} labelKey="pesticideName" valueKey="totalQuantityUsed" fmt={(n) => String(n)} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Chemical Usage</h3>
         <DataTable
@@ -9253,6 +9865,7 @@ function PestRecurringValueTrendView({ data, fmt }: { data: RecurringValueTrendR
         { label: 'Total Recurring Revenue', value: fmt(data.summary.totalRecurringRevenue) },
         { label: 'Invoices', value: String(data.summary.invoiceCount) }
       ]} />
+      <BreakdownChart title={t('common.amount')} data={data.rows} labelKey="period" valueKey="totalValue" fmt={fmt} kind="line" />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Month</h3>
         <DataTable
@@ -9312,6 +9925,7 @@ function RetainerReportView({ data, fmt }: { data: RetainerReport; fmt: (n: numb
         { label: 'Total MRR', value: fmt(s.totalMRR) },
         { label: 'Billed This Period', value: `${s.billedThisPeriodCount} (${fmt(s.billedThisPeriodAmount)})` }
       ]} />
+      <BreakdownChart title="Monthly Amount" data={data.rows} labelKey="title" valueKey="monthlyAmount" fmt={fmt} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Retainers ({data.targetPeriod})</h3>
         <DataTable
@@ -9407,6 +10021,13 @@ function PlacementReportView({ data, fmt }: { data: PlacementReport; fmt: (n: nu
         { label: 'Invoiced', value: String(s.invoiced) },
         { label: 'Total Commission', value: fmt(s.totalCommission) }
       ]} />
+      <BreakdownChart
+        title="Placements"
+        data={[
+          { label: 'Total', value: s.totalPlacements }, { label: 'Joined', value: s.joined }, { label: 'Invoiced', value: s.invoiced },
+        ]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)}
+      />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Placement Details</h3>
         <DataTable
@@ -9457,6 +10078,7 @@ function JobOrderFunnelView({ data }: { data: JobOrderFunnelReport }) {
         { label: 'Total Job Orders', value: String(data.summary.totalJobOrders) },
         { label: 'Open Positions', value: String(data.summary.openPositions) }
       ]} />
+      <BreakdownChart title="Job Orders by Status" data={data.stages} labelKey="status" valueKey="count" fmt={(n) => String(n)} />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Job Orders by Status</h3>
         <div className="space-y-2">
@@ -9481,6 +10103,7 @@ function FeePercentageView({ data }: { data: FeePercentageReport }) {
         { label: 'Avg. Agreed Fee %', value: `${data.summary.avgAgreedFeePercent}%` },
         { label: 'Avg. Realized Fee %', value: data.summary.avgRealizedFeePercent != null ? `${data.summary.avgRealizedFeePercent}%` : '—' }
       ]} />
+      <BreakdownChart title="Agreed Fee %" data={data.rows} labelKey="jobOrderNumber" valueKey="agreedFeePercent" fmt={(n) => `${n}%`} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Fee Percentage Details</h3>
         <DataTable
@@ -9503,6 +10126,7 @@ function TimeToFillView({ data }: { data: TimeToFillReport }) {
         { label: 'Fastest (days)', value: String(data.summary.minDaysToFill) },
         { label: 'Slowest (days)', value: String(data.summary.maxDaysToFill) }
       ]} />
+      <BreakdownChart title="Days to Fill" data={data.rows} labelKey="jobTitle" valueKey="daysToFill" fmt={(n) => String(n)} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">Time-to-Fill Details</h3>
         <DataTable
@@ -9523,6 +10147,7 @@ function SourceEffectivenessView({ data }: { data: SourceEffectivenessReport }) 
         { label: 'Total Candidates', value: String(data.summary.totalCandidates) },
         { label: 'Overall Placement Rate %', value: `${data.summary.overallPlacementRatePercent}%` }
       ]} />
+      <BreakdownChart title="Placement Rate %" data={data.rows} labelKey="source" valueKey="placementRatePercent" fmt={(n) => `${n}%`} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">By Source</h3>
         <DataTable
@@ -9968,6 +10593,10 @@ function DiagnosisCategoryTrendView({ data }: { data: DiagnosisCategoryTrendRepo
 function ReferralOutcomeView({ data }: { data: ReferralOutcomeReport }) {
   const { t } = useTranslation()
   const s = data.summary
+  const byStatus = Object.entries(data.rows.reduce<Record<string, number>>((acc, r) => {
+    acc[r.status] = (acc[r.status] ?? 0) + 1
+    return acc
+  }, {})).map(([status, count]) => ({ status, count }))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
@@ -9975,6 +10604,7 @@ function ReferralOutcomeView({ data }: { data: ReferralOutcomeReport }) {
         { label: t('reports.summary.outcomeRecorded'), value: String(s.outcomeRecordedCount) },
         { label: t('reports.summary.pendingReferrals'), value: String(s.pendingCount) }
       ]} />
+      <BreakdownChart title={t('common.status')} data={byStatus} labelKey="status" valueKey="count" fmt={(n) => String(n)} kind="pie" />
       <div>
         <DataTable
           headers={[t('reports.col.patientName'), t('reports.col.referredTo'), t('common.date'), t('common.status'), t('reports.col.outcome')]}
@@ -10169,6 +10799,14 @@ function SecondOpinionConversionView({ data }: { data: SecondOpinionConversionRe
         { label: t('reports.summary.convertedCount'), value: String(s.convertedCount) },
         { label: t('reports.summary.conversionPercent'), value: s.conversionPercent != null ? `${s.conversionPercent}%` : '—' }
       ]} />
+      <BreakdownChart
+        title={t('reports.summary.conversionPercent')}
+        data={[
+          { label: t('reports.summary.convertedCount'), value: s.convertedCount },
+          { label: t('common.no'), value: s.totalSecondOpinionVisits - s.convertedCount },
+        ]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
       <div>
         <DataTable
           headers={[t('reports.col.patientName'), t('reports.col.visitDate'), t('reports.col.converted'), t('reports.col.nextVisitDate')]}
@@ -10525,6 +11163,7 @@ function FarmerRepaymentView({ data, fmt }: { data: FarmerRepaymentReport; fmt: 
         { label: t('reports.summary.totalOutstanding'), value: fmt(data.summary.totalOutstanding) },
         { label: t('reports.summary.overallRepaymentRate'), value: `${data.summary.overallRepaymentRatePercent}%` },
       ]} />
+      <BreakdownChart title={t('reports.col.outstandingBalance')} data={data.rows} labelKey="customerName" valueKey="outstandingBalance" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.customer'), t('reports.col.totalPurchased'), t('reports.col.totalRepaid'), t('reports.col.outstandingBalance'), t('reports.col.repaymentRatePercent')]}
         rows={data.rows.map(r => [r.customerName, fmt(r.totalPurchased), fmt(r.totalRepaid), fmt(r.outstandingBalance), `${r.repaymentRatePercent}%`])}
@@ -10704,6 +11343,7 @@ function VariantStockView({ data }: { data: VariantStockReport }) {
         { label: t('reports.summary.totalStockQty'), value: String(s.totalStockQty) },
         { label: t('reports.summary.outOfStockVariants'), value: String(s.outOfStockVariants) }
       ]} />
+      <BreakdownChart title={t('reports.col.stockQty')} data={data.rows} labelKey="productName" valueKey="stockQty" fmt={(n) => String(n)} />
       <DataTable
         headers={[t('reports.col.product'), t('reports.col.size'), t('reports.col.color'), t('reports.col.sku'), t('reports.col.stockQty')]}
         rows={data.rows.map(r => [r.productName, r.size, r.color, r.sku, r.stockQty])}
@@ -10755,11 +11395,19 @@ function TestScoreView({ data }: { data: TestScoreReport }) {
 
 // Phase 68 §9.1 — Coaching Institute item 2: Batch Performance Trend.
 function BatchPerformanceTrendView({ data }: { data: BatchPerformanceTrendReport }) {
+  // One point per batch (its own average % across every period it has data
+  // for) — a quick way to compare batches at a glance; each batch's own
+  // period-by-period trend is still the DataTable below, per batch.
+  const batchAverages = data.rows.map(r => ({
+    batchName: r.batchName,
+    avgPercentage: r.points.length > 0 ? Math.round(r.points.reduce((s, p) => s + p.avgPercentage, 0) / r.points.length) : 0,
+  }))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: 'Batches', value: String(data.rows.length) },
       ]} />
+      <BreakdownChart title="Avg % Across Range" data={batchAverages} labelKey="batchName" valueKey="avgPercentage" fmt={(n) => `${n}%`} />
       {data.rows.length === 0 ? (
         <div className="text-center py-12 text-slate-400 text-sm">No test scores in this date range.</div>
       ) : (
@@ -10780,18 +11428,36 @@ function BatchPerformanceTrendView({ data }: { data: BatchPerformanceTrendReport
 }
 
 // Phase 68 §9.1 — Coaching Institute item 3: Attendance vs. Performance
-// Correlation. Deliberately no chart (see the return-[] comment in the
-// chart-config switch above) — a real Pearson coefficient is shown in the
-// summary card instead of a fabricated visual.
+// Correlation. A real Pearson coefficient is shown in the summary card; the
+// scatter plot below is the actual per-student (attendance%, avg test%)
+// points themselves (nulls filtered — either metric can be genuinely
+// unavailable for a student), not a synthesized trend line, so it stays
+// honest to the same "no fabricated visual" standard this report was
+// originally built to.
 function AttendancePerformanceCorrelationView({ data }: { data: AttendancePerformanceReport }) {
   const { t } = useTranslation()
   const s = data.summary
+  const scatterData = data.rows.filter(r => r.attendancePercent != null && r.avgTestPercentage != null)
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: t('reports.summary.studentCount'), value: String(s.studentCount) },
         { label: t('reports.summary.correlationCoefficient'), value: s.correlationCoefficient != null ? s.correlationCoefficient.toFixed(2) : '—' }
       ]} />
+      {scatterData.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.col.attendancePercent')} vs {t('reports.col.avgTestPercentage')}</h3>
+          <ResponsiveContainer width="100%" height={260}>
+            <ScatterChart margin={{ left: 4, right: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" dataKey="attendancePercent" name={t('reports.col.attendancePercent')} unit="%" domain={[0, 100]} tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="number" dataKey="avgTestPercentage" name={t('reports.col.avgTestPercentage')} unit="%" domain={[0, 100]} tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} cursor={{ strokeDasharray: '3 3' }} formatter={(v: number) => `${v}%`} />
+              <Scatter data={scatterData} fill={STATUS_COLORS.brand} />
+            </ScatterChart>
+          </ResponsiveContainer>
+        </div>
+      )}
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.attendancePerformanceDetails')}</h3>
         <DataTable
@@ -10812,6 +11478,7 @@ function FeeDueUnderperformanceAlertView({ data, fmt }: { data: FeeDueUnderperfo
       <SummaryCards cards={[
         { label: t('reports.summary.alertCount'), value: String(data.summary.alertCount) }
       ]} />
+      <BreakdownChart title={t('reports.col.feeDueAmount')} data={data.rows} labelKey="studentName" valueKey="feeDueAmount" fmt={fmt} />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.feeDueUnderperformanceDetails')}</h3>
         <DataTable
@@ -10892,6 +11559,11 @@ function SafetyRegisterView({ data }: { data: SafetyRegisterReport }) {
         { label: 'Sold Units', value: String(s.soldUnits) },
         { label: 'Available Units', value: String(s.availableUnits) }
       ]} />
+      <BreakdownChart
+        title="Units"
+        data={[{ label: 'Sold', value: s.soldUnits }, { label: 'Available', value: s.availableUnits }]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
       <DataTable
         headers={['Product', 'SKU', 'Serial/Batch No.', 'Status', 'Purchase Date', 'Warranty (mo.)', 'Sold Date', 'Invoice ID']}
         rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.serialNumber, r.status, r.purchaseDate ?? '—', r.warrantyMonths ?? '—', r.soldDate ?? '—', r.invoiceId ?? '—'])}
@@ -10942,6 +11614,7 @@ function InstitutionalOrderHistoryView({ data, fmt }: { data: InstitutionalOrder
         { label: 'Billed Orders', value: String(s.billedOrders) },
         { label: 'Total Value', value: fmt(s.totalValue) }
       ]} />
+      <BreakdownChart title="Total Value" data={data.rows} labelKey="institutionName" valueKey="totalValue" fmt={fmt} />
       <DataTable
         headers={['Order #', 'Institution', 'List Name', 'Status', 'Items', 'Total Value', 'Created']}
         rows={data.rows.map(r => [r.orderNumber, r.institutionName, r.listName, r.status, r.itemCount, fmt(r.totalValue), r.createdAt])}
@@ -10992,10 +11665,378 @@ function DeliveryInstallationScheduleView({ data, fmt }: { data: DeliveryInstall
         { label: 'Delivered', value: String(s.deliveredCount) },
         { label: 'Pending', value: String(s.pendingCount) }
       ]} />
+      <BreakdownChart
+        title="Delivery Status"
+        data={[{ label: 'Delivered', value: s.deliveredCount }, { label: 'Pending', value: s.pendingCount }]}
+        labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
+      />
       <DataTable
         headers={['Booking #', 'Customer', 'Delivery Date', 'Address', 'Status', 'Items', 'Value']}
         rows={data.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, fmt(r.totalValue)])}
         emptyText="No deliveries scheduled in this range."
+      />
+    </div>
+  )
+}
+
+// Deferred-item closure 2026-09-01 — Electrical item 4: Spec-Wise Fast Movers.
+function SpecWiseFastMoversView({ data, fmt }: { data: SpecWiseFastMoversReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Units Sold', value: String(s.totalUnitsSold) },
+        { label: 'Top Spec', value: s.topSpec ?? '—' }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Fast Movers by Spec</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows.map(r => ({ label: `${r.spec} (${r.productName})`, value: r.unitsSold }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name="Units Sold" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={['Spec', 'Product', 'Units Sold', 'Revenue']}
+        rows={data.rows.map(r => [r.spec, r.productName, r.unitsSold, fmt(r.revenue)])}
+        emptyText="No variant-tracked sales with a spec set in this range."
+      />
+    </div>
+  )
+}
+
+// Deferred-item closure 2026-09-01 — Plumbing item 3: Fitting Compatibility
+// Cross-Sell. Register-shaped (a list of individual missed pairings), no
+// chart — same precedent as SafetyRegisterView/InstitutionalOrderHistoryView.
+function FittingCrossSellView({ data }: { data: FittingCrossSellReport }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Missed Opportunities', value: String(s.missedOpportunities) },
+        { label: 'Invoices Scanned', value: String(s.invoicesScanned) }
+      ]} />
+      <DataTable
+        headers={['Invoice #', 'Date', 'Product Sold', 'Usually Paired With (Not Bought)', 'Pair Strength']}
+        rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.anchorProductName, r.expectedPartnerProductName, `${r.pairStrengthPercent}%`])}
+        emptyText="No usual-pairing gaps found in this range — either sales history is too thin, or customers are consistently buying the full set."
+      />
+    </div>
+  )
+}
+
+// Deferred-item closure 2026-09-01 — Plumbing item 4: Material Sales Mix.
+function MaterialSalesMixView({ data, fmt }: { data: MaterialSalesMixReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
+        { label: 'Materials', value: String(s.materialCount) }
+      ]} />
+      <BreakdownChart title="Material Sales Mix" data={data.rows} labelKey="materialName" valueKey="revenue" fmt={fmt} kind="pie" />
+      <DataTable
+        headers={['Material', 'Units Sold', 'Revenue', 'Revenue Share']}
+        rows={data.rows.map(r => [r.materialName, r.unitsSold, fmt(r.revenue), `${r.revenueSharePercent}%`])}
+        emptyText="No categorized sales in this range — assign products to a Category named by material (PVC/CPVC/GI/Copper) to see this breakdown."
+      />
+    </div>
+  )
+}
+
+// 2026-09 §12 — Grocery/Kirana item 1: MRP Compliance. Register-shaped, no chart.
+function MrpViolationView({ data, fmt }: { data: MrpViolationReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Violations', value: String(s.violationCount) },
+        { label: 'Total Excess Collected', value: fmt(s.totalExcessCollected) }
+      ]} />
+      <DataTable
+        headers={['Invoice #', 'Date', 'Product', 'SKU', 'Unit Price', 'MRP', 'Excess/Unit', 'Qty']}
+        rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.sku ?? '—', fmt(r.unitPrice), fmt(r.mrp), fmt(r.excessPerUnit), r.quantity])}
+        emptyText="No MRP violations found in this range — every sale was at or below the product's printed MRP."
+      />
+    </div>
+  )
+}
+
+// Grocery item 2: Perishable Wastage.
+function PerishableWastageView({ data, fmt }: { data: PerishableWastageReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  const chartRows = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Wastage Qty', value: String(s.totalWastageQty) },
+        { label: 'Total Wastage Value', value: fmt(s.totalWastageValue) }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Wastage Value by Product</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows.map(r => ({ label: r.productName, value: r.expiredWastageValue }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name="Wastage Value" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.danger} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={['Product', 'SKU', 'Wastage Qty', 'Wastage Value']}
+        rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.expiredWastageQty, fmt(r.expiredWastageValue)])}
+        emptyText="No expiry write-offs recorded in this range — use the EXPIRY reason when adjusting stock for expired goods to see this breakdown."
+      />
+    </div>
+  )
+}
+
+// Grocery item 4: Daily Restock Alert — no date range, always "as of now".
+function RestockAlertView({ data }: { data: RestockAlertReport }) {
+  const s = data.summary
+  // Rows arrive pre-sorted most-urgent-first (ascending days remaining) —
+  // slice the top 10 directly rather than routing through BreakdownChart,
+  // which re-sorts by value magnitude descending and would show the LEAST
+  // urgent of the bunch first, backwards for this specific metric.
+  const chartRows = data.rows.slice(0, 10)
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Urgent (≤2 days)', value: String(s.urgentCount) },
+        { label: 'Watchlist', value: String(s.watchlistCount) }
+      ]} />
+      {chartRows.length > 0 && (
+        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Days of Stock Remaining</h3>
+          <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
+            <BarChart data={chartRows.map(r => ({ label: r.productName, value: r.daysOfStockRemaining }))} layout="vertical" margin={{ left: 12 }}>
+              <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
+              <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
+              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
+              <Bar dataKey="value" name="Days Remaining" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.warning} />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
+      )}
+      <DataTable
+        headers={['Product', 'SKU', 'Current Stock', 'Daily Velocity', 'Days of Stock Remaining']}
+        rows={data.rows.map(r => [
+          r.productName, r.sku ?? '—', r.currentStock, r.dailyVelocity,
+          r.daysOfStockRemaining <= 2 ? `${r.daysOfStockRemaining} — URGENT` : String(r.daysOfStockRemaining)
+        ])}
+        emptyText="Nothing needs restocking soon — every recently-selling product has more than 6 days of stock left."
+      />
+    </div>
+  )
+}
+
+// Grocery item 5: Loose vs. Packaged Sales Mix.
+function LooseVsPackagedMixView({ data, fmt }: { data: LooseVsPackagedMixReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
+        { label: 'Loose Share', value: `${s.loosePercent}%` }
+      ]} />
+      <BreakdownChart title="Loose vs. Packaged Sales Mix" data={data.rows} labelKey="label" valueKey="revenue" fmt={fmt} kind="pie" />
+      <DataTable
+        headers={['Type', 'Units Sold', 'Revenue']}
+        rows={data.rows.map(r => [r.label, r.unitsSold, fmt(r.revenue)])}
+        emptyText="No sales in this range."
+      />
+    </div>
+  )
+}
+
+// Grocery wow feature: Khata Risk Tier — includes a live "Send Reminder"
+// action per row (window.api.khataReminder.buildLink → window.open), same
+// "build the link, hand off to WhatsApp, neutral toast" shape ShareMenu.tsx
+// already established (never a "Sent!" toast — the app can't know that).
+const KHATA_RISK_BADGE: Record<KhataRiskRow['riskTier'], 'danger' | 'warning' | 'neutral'> = { HIGH: 'danger', MEDIUM: 'warning', LOW: 'neutral' }
+
+function KhataRiskView({ data, fmt }: { data: KhataRiskReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const [sendingId, setSendingId] = useState<string | null>(null)
+
+  async function handleSendReminder(customerId: string) {
+    setSendingId(customerId)
+    try {
+      const res = await window.api.khataReminder.buildLink({ customerId })
+      if (res.success && res.data) {
+        window.open(res.data as string, '_blank')
+        toastSuccess('Opening WhatsApp…', 'Send the reminder to the customer.')
+      } else {
+        toastError('Could Not Send', res.error?.message ?? 'Could not build the reminder link.')
+      }
+    } finally {
+      setSendingId(null)
+    }
+  }
+
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'High Risk', value: String(s.highRiskCount) },
+        { label: 'Medium Risk', value: String(s.mediumRiskCount) }
+      ]} />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-slate-50 dark:bg-slate-800 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
+            <tr>
+              <th className="px-4 py-3">Customer</th>
+              <th className="px-4 py-3">Outstanding</th>
+              <th className="px-4 py-3">Oldest Debt</th>
+              <th className="px-4 py-3">Trend</th>
+              <th className="px-4 py-3">Risk</th>
+              <th className="px-4 py-3"></th>
+            </tr>
+          </thead>
+          <tbody>
+            {data.rows.length === 0 && (
+              <tr><td colSpan={6} className="px-4 py-8 text-center text-slate-400">No customers currently carry an outstanding khata balance.</td></tr>
+            )}
+            {data.rows.map(r => (
+              <tr key={r.customerId} className="border-t border-slate-100 dark:border-slate-800">
+                <td className="px-4 py-3 font-medium text-dark dark:text-slate-100">{r.customerName}</td>
+                <td className="px-4 py-3">{fmt(r.outstanding)}</td>
+                <td className="px-4 py-3">{r.daysOldOfOldestDebt} days</td>
+                <td className="px-4 py-3">{r.trend}</td>
+                <td className="px-4 py-3"><Badge variant={KHATA_RISK_BADGE[r.riskTier]}>{r.riskTier}</Badge></td>
+                <td className="px-4 py-3 text-right">
+                  {r.phone && (
+                    <Button size="sm" variant="outline" loading={sendingId === r.customerId} onClick={() => handleSendReminder(r.customerId)}>
+                      Send Reminder
+                    </Button>
+                  )}
+                </td>
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  )
+}
+
+// 2026-09 §12 — Bakery wow feature: Pre-Order Production Sheet. Two tables —
+// products to bake (bookings + demand forecast) and the ingredient
+// quantities that mix expands into — the actual "what do I need to buy/prep
+// today" artifact.
+function PreOrderProductionSheetView({ data }: { data: PreOrderProductionSheetReport }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Orders Due', value: String(s.orderCount) },
+        { label: 'Total Product Qty', value: String(s.totalProductQty) }
+      ]} />
+      <DataTable
+        headers={['Product', 'From Orders', 'From Forecast', 'Total to Bake']}
+        rows={data.products.map(p => [p.productName, p.qtyFromOrders, p.qtyFromDemandForecast, p.totalQtyNeeded])}
+        emptyText="No custom orders due and no historical demand for this day yet."
+      />
+      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Ingredients Needed</h3>
+        <BreakdownChart title="Ingredients Needed" data={data.ingredients} labelKey="ingredientName" valueKey="totalQtyNeeded" fmt={(n) => String(n)} kind="bar" />
+        <DataTable
+          headers={['Ingredient', 'Unit', 'Total Qty Needed']}
+          rows={data.ingredients.map(i => [i.ingredientName, i.unit, i.totalQtyNeeded])}
+          emptyText="No recipes configured for the products above yet."
+        />
+      </div>
+    </div>
+  )
+}
+
+// 2026-09 §12 — Tours & Travels item 4: Vehicle Service-Due & Total-KM-Run.
+function VehicleServiceDueView({ data }: { data: VehicleServiceDueReport }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Due Soon', value: String(s.dueSoonCount) },
+        { label: 'Total Fleet Km', value: String(s.totalFleetKm) }
+      ]} />
+      <DataTable
+        headers={['Vehicle', 'Type', 'Odometer (km)', 'Km Since Last Service', 'Last Service', 'Next Service Due (km)', 'Status']}
+        rows={data.rows.map(r => [
+          r.registrationNumber, r.vehicleType, r.currentOdometer, r.kmSinceLastService ?? '—', r.lastServiceDate ?? '—', r.nextServiceDueKm ?? '—',
+          r.isDueSoon ? 'DUE SOON' : 'OK'
+        ])}
+        emptyText="No active vehicles in the fleet."
+      />
+    </div>
+  )
+}
+
+// 2026-09 §12 — Tours & Travels item 5: Commission by Agent. Direct
+// structural reuse of the JobOrder commission-report precedent.
+function CommissionByAgentView({ data, fmt }: { data: CommissionByAgentReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Commission', value: fmt(s.totalCommission) },
+        { label: 'Agents', value: String(s.agentCount) }
+      ]} />
+      <BreakdownChart title="Commission by Agent" data={data.rows} labelKey="agentName" valueKey="totalCommission" fmt={fmt} kind="bar" />
+      <DataTable
+        headers={['Agent', 'Bookings', 'Package Revenue', 'Commission']}
+        rows={data.rows.map(r => [r.agentName, r.bookingCount, fmt(r.totalPackageRevenue), fmt(r.totalCommission)])}
+        emptyText="No commissioned bookings in this range."
+      />
+    </div>
+  )
+}
+
+// Wow feature — Trip Profitability Calculator. Synthesizes booking revenue,
+// driver settlement, fuel/maintenance estimates, and commission into one
+// real per-trip margin no other report computes.
+function TripProfitabilityView({ data, fmt }: { data: TripProfitabilityReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
+        { label: 'Total Net Profit', value: fmt(s.totalNetProfit) }
+      ]} />
+      <BreakdownChart title="Net Profit by Trip" data={data.rows} labelKey="bookingNumber" valueKey="netProfit" fmt={fmt} kind="bar" />
+      <DataTable
+        headers={['Booking #', 'Customer', 'Revenue', 'Driver Cost', 'Fuel Est.', 'Maintenance Est.', 'Commission', 'Net Profit']}
+        rows={data.rows.map(r => [r.bookingNumber, r.customerName, fmt(r.revenue), fmt(r.driverCost), fmt(r.fuelCostEstimate), fmt(r.maintenanceCostEstimate), fmt(r.commission), fmt(r.netProfit)])}
+        emptyText="No completed trips in this range."
+      />
+    </div>
+  )
+}
+
+function EventProfitabilityView({ data, fmt }: { data: EventProfitabilityReport; fmt: (n: number) => string }) {
+  const s = data.summary
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
+        { label: 'Total Net Profit', value: fmt(s.totalNetProfit) }
+      ]} />
+      <BreakdownChart title="Net Profit by Event" data={data.rows} labelKey="eventNumber" valueKey="netProfit" fmt={fmt} kind="bar" />
+      <DataTable
+        headers={['Event #', 'Customer', 'Revenue', 'Staff Cost', 'Ingredient Est.', 'Net Profit']}
+        rows={data.rows.map(r => [r.eventNumber, r.customerName, fmt(r.revenue), fmt(r.staffCost), fmt(r.ingredientCostEstimate), fmt(r.netProfit)])}
+        emptyText="No completed catering events in this range."
       />
     </div>
   )

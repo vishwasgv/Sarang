@@ -38,6 +38,10 @@ export interface User {
   permissions?: string[]
   isActive: boolean
   lastLogin?: string
+  // 2026-09-02 — Password Policy. True when the configured
+  // 'password_expiry_days' has elapsed since this user's password was last
+  // set — never blocks login itself, the renderer just prompts a change.
+  passwordExpired?: boolean
 }
 
 export interface BusinessProfile {

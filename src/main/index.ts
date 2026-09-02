@@ -19,7 +19,7 @@ import { recurringProfileService } from './services/recurring-profile.service'
 import { priceMarkdownService } from './services/price-markdown.service'
 import { isModuleEnabled } from './services/industry-template.service'
 import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
-import { shutdownAi } from './services/ai-query.service'
+import { shutdownAi, warmUpAiProvider } from './services/ai-query.service'
 import { resolveTutorialBoot, getTutorialDbPath, seedTutorialDemoData, deleteTutorialArtifacts } from './services/tutorial.service'
 import { isSetupComplete, completeSetup } from './services/setup.service'
 import { login } from './services/auth.service'
@@ -387,6 +387,12 @@ app.whenReady().then(async () => {
   registerAllIpcHandlers()
   initKitchenDisplayWindowWatcher()
   createWindow()
+
+  // Warm up the local AI model as soon as the app opens (not lazily on the
+  // first question) so the first real question in a session doesn't pay the
+  // full cold-start load cost. Fire-and-forget: never blocks window creation,
+  // never throws — see warmUpAiProvider()'s own header comment.
+  warmUpAiProvider().catch(() => {})
 
   // Phase 47 — starts the local LAN QR-ordering HTTP server only if the
   // opt-in module is already enabled from a prior session; zero-footprint

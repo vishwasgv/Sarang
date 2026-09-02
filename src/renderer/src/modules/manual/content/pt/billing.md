@@ -72,6 +72,14 @@ Se um cliente ou fornecedor não tiver número de telefone cadastrado, o botão 
 
 Abrir o WhatsApp dessa forma inicia o WhatsApp Desktop, se estiver instalado, ou o WhatsApp Web no seu navegador, caso contrário. Abrir o E-mail inicia o aplicativo definido como padrão de e-mail no seu computador — se nenhum estiver definido, o Windows pedirá que você escolha um; isso é normal.
 
+## Faturamento e liquidação em moeda estrangeira
+
+Se você vende para clientes que pagam em moeda estrangeira — uma venda de exportação, um cliente no exterior — marque **Bill in foreign currency** ao criar a fatura. Informe o código de moeda de três letras (ex.: `USD`) e a taxa de câmbio no momento do faturamento (ex.: `83.25`); uma pré-visualização em tempo real mostra o total da fatura convertido nessa taxa. A fatura em si continua totalizando e imprimindo normalmente na sua moeda local — o valor em moeda estrangeira é apenas uma linha de referência adicional, tanto na tela quanto no documento impresso (`≈ USD 1,200.00 @ 83.25`), não um segundo conjunto de contas.
+
+As taxas de câmbio mudam entre o dia em que você emite a fatura e o dia em que efetivamente recebe o pagamento, então **liquidar** uma fatura em moeda estrangeira é uma etapa própria. Abra a fatura e clique em **Record Payment**: como ela tem uma moeda estrangeira, aparece um alternador **Settle in {code} (records the actual amount received and any exchange-rate gain/loss)**. Ative-o, informe o valor que você realmente recebeu na moeda estrangeira e a taxa de câmbio do dia da liquidação (que pode diferir da taxa em que a fatura foi emitida), e confirme. O Sarang converte isso para sua moeda local, liquida a fatura por completo, e lança automaticamente a diferença entre o valor da fatura na taxa original e seu valor na taxa de liquidação como um lançamento de **Ganho** ou **Perda Cambial Realizada** (veja o capítulo Livro Razão e Lançamentos Contábeis) — você nunca precisa calcular ou lançar esse ajuste manualmente.
+
+O mesmo fluxo de faturamento e liquidação em moeda estrangeira está disponível no lado de compras para as Faturas de fornecedor que você registrar — veja o capítulo Faturas e Pagamentos Efetuados.
+
 ## Observações sobre impostos e arredondamento
 
 Todo total de nota fiscal é arredondado para a unidade inteira mais próxima da moeda, com a diferença de arredondamento mostrada em sua própria linha para que a conta sempre feche de forma visível. No modelo de imposto GST, o imposto é impresso como CGST+SGST para uma venda dentro do mesmo estado, ou como uma única linha de IGST para uma venda interestadual, com base na caixa de seleção marcada no momento em que a nota foi criada.
