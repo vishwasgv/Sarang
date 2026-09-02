@@ -4186,8 +4186,8 @@
     "invalidKey": "That license key is not valid. Double-check it and try again.",
     "activateError": "Could not activate this key right now. Please try again.",
     "renewTitle": "Renew your license",
-    "renewIndia": "₹599/year (less than ₹50/month)",
-    "renewIntl": "$29/year",
+    "renewIndia": "₹6,999/year (less than ₹600/month)",
+    "renewIntl": "$149/year",
     "renewButton": "Renew on aszurex.com",
     "renewedThankYou": "Thank you for renewing — Sarang will keep working exactly as before."
   },

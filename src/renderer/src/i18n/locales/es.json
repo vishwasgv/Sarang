@@ -3798,8 +3798,8 @@
     "invalidKey": "Esa clave de licencia no es válida. Verifícala e inténtalo de nuevo.",
     "activateError": "No se pudo activar esta clave en este momento. Por favor, inténtalo de nuevo.",
     "renewTitle": "Renueva tu licencia",
-    "renewIndia": "₹599/año (menos de ₹50/mes)",
-    "renewIntl": "$29/año",
+    "renewIndia": "₹6.999/año (menos de ₹600/mes)",
+    "renewIntl": "$149/año",
     "renewButton": "Renovar en aszurex.com",
     "renewedThankYou": "Gracias por renovar — Sarang seguirá funcionando exactamente igual que antes."
   },

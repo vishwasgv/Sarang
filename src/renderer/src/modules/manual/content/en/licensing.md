@@ -15,13 +15,17 @@ When you first downloaded Sarang from aszurex.com, a license key was emailed to 
 
 ## Renewing — every year, free or paid
 
-Once your current period is ending (or has ended) — whether that's your first free trial or any paid year after it — this screen shows a **Renew** section with your price — shown in ₹ if your business is registered in India, or in $ otherwise — and a **Renew** button. This opens the pricing page on aszurex.com in your browser, where you can complete payment and receive a new license key by email. Enter that new key the same way you activated the first one. This is a genuine yearly step: paying once does not make Sarang free forever — each new key is valid for one year from the day it's issued, and the same Renew section reappears as that year runs down, every year, for as long as you keep using Sarang.
+Once your current period is ending (or has ended) — whether that's your first free trial or any paid year after it — this screen shows a **Renew** section with your price — shown in ₹ if your business is registered in India, or in $ otherwise — and a **Renew** button. This opens the pricing page on aszurex.com in your browser, where you can complete payment and receive a new license key by email. Enter that new key the same way you activated the first one. This is a genuine yearly step: paying once does not make Sarang free forever — each new key is valid for one year from the day it's issued, and the same Renew section reappears as that year runs down, every year, for as long as you keep using Sarang. **License payments are non-refundable.**
 
 **What happens if your license expires and you haven't renewed yet:** Sarang does not lock you out or block access to your existing data — this is true whether it's your first free trial or a paid year that lapsed. You can still view, print, and export everything you've already created, and back up/restore normally. The only thing an expired license pauses is creating **new** invoices and other billable documents, until you renew.
 
 ## Moving to a new computer
 
 If you ever move Sarang to a new PC (a replacement laptop, for example), simply enter your existing license key again on the new device during setup — it activates immediately, with no waiting period or extra steps.
+
+## Your Password Recovery Code — save it or risk permanent lockout
+
+At setup, Sarang shows you a one-time **Password Recovery Code**. Because Sarang works fully offline, there is no email or SMS reset — this code is the *only* way to reset a forgotten password. **If you lose this code and later forget your password, that account is permanently locked out, with no other way back in.** Write it down or print it and keep it somewhere safe the moment it's shown; it is never shown again after that. You can generate a new one anytime from **Settings → Password Recovery Code** (this immediately invalidates the old one).
 
 ## Your privacy
 

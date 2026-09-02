@@ -307,8 +307,8 @@ interface LicenseState {
  * to ACTIVE regardless of age — meaning the very first renewal payment
  * bought a permanent, never-expiring unlock, even though every piece of
  * user-facing pricing copy (SetupWizard, the website pricing page, the
- * renewal email itself) says "₹599/year"/"$29/year" (price under review as
- * of 2026-09-01 — not yet finalized, so not changed here). A PAID key runs
+ * renewal email itself) says "₹6,999/year"/"$149/year" (finalized 2026-09-02).
+ * A PAID key runs
  * through its own day-335/365 WARNING/EXPIRED threshold math (its 365-day
  * annual cycle, unchanged), computed from that key's own issuedAt (i.e. the
  * date it was paid for) — so year 2 genuinely has to be paid for too,

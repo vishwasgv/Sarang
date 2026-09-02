@@ -108,7 +108,7 @@ export function AboutScreen() {
           <p>Sarang Business OS Lite is <strong>100% offline-first</strong>. All your data stays on this device.</p>
           <ul className="list-disc list-inside space-y-1 text-xs">
             <li>No cloud storage. No business-data telemetry — your invoices, customers, products, and reports never leave this device.</li>
-            <li>Free for your first 100 days. After that, ₹599/year (India) or $29/year (international) — no hidden charges beyond that one number. See License in Settings.</li>
+            <li>Free for your first 100 days. After that, ₹6,999/year (India) or $149/year (international) — no hidden charges beyond that one number. License payments are non-refundable. See License in Settings.</li>
             <li>No internet connection required for any core business feature — billing, inventory, customers, and reports all work fully offline. Three narrow, disclosed exceptions, none of which ever include business data and none of which block the app if you're offline: checking for software updates (Software Updates below — always toggleable, sends only the app's own version number), an optional once-a-day license-status check (a one-way scrambled version of your license key only, see License in Settings), and an anonymous daily usage-duration signal (how many minutes the app was open, tied to that same scrambled key — never anything that identifies you or your business, used only to see overall usage patterns across everyone).</li>
             <li>Your business data never leaves your device.</li>
             <li>Payments are recorded for your records only — Sarang does not process or verify payments.</li>

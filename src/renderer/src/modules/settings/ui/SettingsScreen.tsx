@@ -76,7 +76,7 @@ const SECTIONS: SettingsSection[] = [
   {
     id: 'industry',
     label: 'Switch Business / Industry Template',
-    description: 'Change your business type — Restaurant, Retail, Hardware, Distributor, and 40+ more. All your data is kept.',
+    description: 'Change your business type — Restaurant, Retail, Hardware, Distributor, and 45+ more (50 business verticals total). All your data is kept.',
     icon: <Layers size={18} />,
     permission: 'settings.modify',
     status: 'available'
@@ -1529,13 +1529,13 @@ function RecoveryCodeCard() {
     <Card padding="lg" className="space-y-4">
       <div>
         <h4 className="text-sm font-semibold text-slate-700 dark:text-slate-300">Password Recovery Code</h4>
-        <p className="text-xs text-slate-500 mt-1">Sarang works fully offline, so this code — not email or SMS — is what lets you (or any admin) reset a forgotten password from the Login screen. Regenerating it immediately invalidates your old code.</p>
+        <p className="text-xs text-slate-500 mt-1">Sarang works fully offline, so this code — not email or SMS — is what lets you (or any admin) reset a forgotten password from the Login screen. <strong>If this code is lost and a password is also forgotten, that account is permanently locked out — there is no other recovery path.</strong> Regenerating it immediately invalidates your old code.</p>
       </div>
       {error && <div className="bg-danger/10 text-danger text-sm rounded-lg px-3 py-2">{error}</div>}
 
       {newCode ? (
         <div className="bg-warning/5 border-2 border-warning/30 rounded-lg p-3">
-          <p className="text-xs font-semibold text-dark dark:text-slate-100 mb-2">New recovery code — save it now, it will never be shown again:</p>
+          <p className="text-xs font-semibold text-dark dark:text-slate-100 mb-2">New recovery code — save it now, it will never be shown again. <strong>Losing it means permanent lockout if the password is also forgotten.</strong></p>
           <div className="flex items-center gap-2">
             <code className="flex-1 text-center text-sm font-mono font-bold tracking-wider text-dark dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2 px-2 select-all">
               {newCode}

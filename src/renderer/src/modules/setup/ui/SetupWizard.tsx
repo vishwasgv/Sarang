@@ -727,7 +727,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
   const [activating, setActivating] = useState(false)
 
   const isIndia = isIndiaCountry(getValues('country'))
-  const priceLine = isIndia ? '₹599/year (less than ₹50/month)' : '$29/year'
+  const priceLine = isIndia ? '₹6,999/year (less than ₹600/month)' : '$149/year'
 
   async function copyCode() {
     if (!recoveryCode) return
@@ -777,7 +777,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
             <p className="text-sm font-bold text-dark dark:text-slate-100">Save your Password Recovery Code</p>
           </div>
           <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-            Sarang works fully offline — there's no email or SMS to reset a forgotten password. This code is the <strong>only</strong> way to reset your password if you ever forget it. Write it down or print it and keep it somewhere safe. <strong>It will never be shown again.</strong>
+            Sarang works fully offline — there's no email or SMS to reset a forgotten password. This code is the <strong>only</strong> way to reset your password if you ever forget it. <strong>If you lose this code and also forget your password, you will be permanently locked out of Sarang and everything on this device — there is no other way back in, not even for Aszurex.</strong> Write it down or print it and keep it somewhere safe. <strong>It will never be shown again.</strong>
           </p>
           <div className="flex items-center gap-2 mb-3">
             <code className="flex-1 text-center text-base font-mono font-bold tracking-wider text-dark dark:text-slate-100 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg py-2.5 px-3 select-all">
@@ -797,7 +797,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
       <div className="mb-6 p-4 bg-brand/5 border-2 border-brand/20 rounded-lg text-start">
         <p className="text-sm font-bold text-dark dark:text-slate-100 mb-2">Activate your license</p>
         <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">
-          Sarang is free to use for your first 12 months. After that, {priceLine} keeps it running — you'll get a reminder well before it applies, and your existing data is never at risk. This key ties to this one device.
+          Sarang is free to use for your first 100 days. After that, {priceLine} keeps it running — you'll get a reminder well before it applies, and your existing data is never at risk. This key ties to this one device. License payments are non-refundable.
         </p>
         <div className="flex items-center gap-2 mb-2">
           <Input
@@ -820,7 +820,7 @@ function CompleteStep({ onComplete, recoveryCode }: { onComplete: () => void; re
         )}
         <label className="flex items-start gap-2 cursor-pointer">
           <input type="checkbox" checked={licenseChecked} onChange={(e) => setLicenseChecked(e.target.checked)} className="mt-0.5" />
-          <span className="text-xs text-slate-600 dark:text-slate-300">I understand Sarang is free for my first 12 months, then {priceLine} keeps it running.</span>
+          <span className="text-xs text-slate-600 dark:text-slate-300">I understand Sarang is free for my first 100 days, then {priceLine} keeps it running, and that license payments are non-refundable.</span>
         </label>
       </div>
 

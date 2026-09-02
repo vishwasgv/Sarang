@@ -3611,8 +3611,8 @@
     "invalidKey": "Kunci lisensi tersebut tidak valid. Periksa kembali dan coba lagi.",
     "activateError": "Tidak dapat mengaktifkan kunci ini sekarang. Silakan coba lagi.",
     "renewTitle": "Perbarui lisensi Anda",
-    "renewIndia": "₹599/tahun (kurang dari ₹50/bulan)",
-    "renewIntl": "$29/tahun",
+    "renewIndia": "₹6.999/tahun (kurang dari ₹600/bulan)",
+    "renewIntl": "$149/tahun",
     "renewButton": "Perbarui di aszurex.com",
     "renewedThankYou": "Terima kasih telah memperbarui — Sarang akan terus berfungsi persis seperti sebelumnya."
   },
