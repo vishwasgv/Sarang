@@ -22,7 +22,8 @@ const SETTING_KEYS = {
   issuedAt: 'license_issued_at',
   lastVerifiedAt: 'license_last_verified_at',
   machineFingerprint: 'license_machine_fingerprint',
-  enforcementSuspended: 'license_enforcement_suspended'
+  enforcementSuspended: 'license_enforcement_suspended',
+  revocationToken: 'license_revocation_token'
 } as const
 
 // These Setting rows must only ever be written by this file's own functions
@@ -168,6 +169,45 @@ export function parseAndVerifyKillSwitchToken(token: string | null | undefined):
   if (a.length !== b.length || !timingSafeEqual(a, b)) return null
 
   return { suspended: suspendedRaw === '1' }
+}
+
+// Per-key revocation (2026-09-02) — the founder's answer to "the same key
+// works on unlimited devices forever": a key spotted on an unusual number of
+// distinct devices (via the device-activation Sheet) can be flagged revoked
+// on the website, and every device that shares it eventually finds out on
+// its next successful daily ping and drops to EXPIRED — same non-destructive
+// enforcement as a normal expiry, never a data lock. The token embeds the
+// key's own hash so it can never be replayed onto a different key, closing
+// the obvious griefing hole a bare boolean would have.
+function buildRevocationPayload(keyHash: string): string {
+  return `REVOKE-${keyHash.toLowerCase()}`
+}
+
+/** Issues a signed revocation token for one specific key (by its hash). Used by the website's /api/sarang-heartbeat route (mirrored server-side) and by tests. */
+export function signRevocationToken(keyHash: string): string {
+  const payload = buildRevocationPayload(keyHash)
+  return `SARANG-${payload}-${sign(payload)}`
+}
+
+/**
+ * Verifies a revocation token both signs correctly AND names this exact
+ * key — a validly-signed token for some OTHER key must never revoke this
+ * one. Null/malformed/mismatched/tampered all fail safe as "not revoked."
+ */
+export function parseAndVerifyRevocationToken(token: string | null | undefined, keyHash: string): boolean {
+  if (!token) return false
+  const parts = token.trim().toUpperCase().split('-')
+  if (parts[0] !== 'SARANG' || parts[1] !== 'REVOKE' || parts.length !== 4) return false
+
+  const keyHashRaw = parts[2]
+  const signature = parts[3]
+  if (keyHashRaw !== keyHash.toUpperCase()) return false
+
+  const payload = buildRevocationPayload(keyHashRaw)
+  const expectedSig = sign(payload)
+  const a = Buffer.from(signature.toLowerCase())
+  const b = Buffer.from(expectedSig)
+  return a.length === b.length && timingSafeEqual(a, b)
 }
 
 /**
@@ -321,10 +361,11 @@ interface LicenseState {
  */
 export async function getLicenseState(): Promise<LicenseState> {
   const db = getPrisma()
-  const [keyRow, fingerprintRow, killSwitchRow] = await Promise.all([
+  const [keyRow, fingerprintRow, killSwitchRow, revocationRow] = await Promise.all([
     db.setting.findUnique({ where: { settingKey: SETTING_KEYS.key } }),
     db.setting.findUnique({ where: { settingKey: SETTING_KEYS.machineFingerprint } }),
-    db.setting.findUnique({ where: { settingKey: SETTING_KEYS.enforcementSuspended } })
+    db.setting.findUnique({ where: { settingKey: SETTING_KEYS.enforcementSuspended } }),
+    db.setting.findUnique({ where: { settingKey: SETTING_KEYS.revocationToken } })
   ])
 
   // Fire-and-forget — never awaited, never allowed to slow this function
@@ -363,8 +404,20 @@ export async function getLicenseState(): Promise<LicenseState> {
   // an unsigned/tampered value fails safe as "not suspended."
   const enforcementSuspended = parseAndVerifyKillSwitchToken(killSwitchRow?.settingValue)?.suspended === true
 
+  // Per-key revocation (59.13) — a key flagged revoked on the website (spotted
+  // sharing across too many devices) forces EXPIRED regardless of how much of
+  // its cycle is left, the moment this device has picked that up via its
+  // daily ping. Same non-destructive enforcement as a normal expiry — never
+  // a data lock — just an earlier one. Verified against THIS key's own hash
+  // so a stale/mismatched token (e.g. left over after activating a different
+  // key on this device) can never wrongly revoke it.
+  const thisKeyHash = hashLicenseKeyForPing(keyRow.settingValue)
+  const revoked = parseAndVerifyRevocationToken(revocationRow?.settingValue, thisKeyHash)
+
   let status: LicenseStatus = 'ACTIVE'
-  if (!enforcementSuspended) {
+  if (revoked) {
+    status = 'EXPIRED'
+  } else if (!enforcementSuspended) {
     if (daysSinceIssue >= cycleDays) status = 'EXPIRED'
     else if (daysSinceIssue >= warningDays) status = 'WARNING'
   }
@@ -482,12 +535,23 @@ export async function pingLicenseStatusIfDue(): Promise<void> {
       // response can't even get a bogus value written locally; getLicenseState()
       // verifies again on every read as the real enforcement point, this is
       // just a fail-fast so an obviously-bad value is never stored at all.
-      const body = await res.json().catch(() => null) as { enforcementToken?: string } | null
+      const body = await res.json().catch(() => null) as { enforcementToken?: string; revocationToken?: string } | null
       if (body?.enforcementToken && parseAndVerifyKillSwitchToken(body.enforcementToken)) {
         await db.setting.upsert({
           where: { settingKey: SETTING_KEYS.enforcementSuspended },
           update: { settingValue: body.enforcementToken },
           create: { settingKey: SETTING_KEYS.enforcementSuspended, settingValue: body.enforcementToken, settingType: 'STRING' }
+        })
+      }
+      // Per-key revocation — verified against THIS device's own key hash
+      // before persisting, so a token for some other key can never revoke
+      // this install (see parseAndVerifyRevocationToken's own doc comment).
+      const thisKeyHash = hashLicenseKeyForPing(keyRow.settingValue)
+      if (body?.revocationToken && parseAndVerifyRevocationToken(body.revocationToken, thisKeyHash)) {
+        await db.setting.upsert({
+          where: { settingKey: SETTING_KEYS.revocationToken },
+          update: { settingValue: body.revocationToken },
+          create: { settingKey: SETTING_KEYS.revocationToken, settingValue: body.revocationToken, settingType: 'STRING' }
         })
       }
     }

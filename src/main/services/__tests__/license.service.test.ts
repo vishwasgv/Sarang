@@ -343,6 +343,29 @@ describe('pingLicenseStatusIfDue and the remote kill switch', () => {
     vi.unstubAllGlobals()
   })
 
+  it('persists a revocationToken from the ping response, but only once verified against this device\'s own key', async () => {
+    // Fetch is stubbed BEFORE any call that could trigger getLicenseState()'s
+    // own internal fire-and-forget ping (real, un-mocked fetch in a test
+    // env is a flaky/unwanted network call this test must never risk).
+    const { generateLicenseKey, activateLicenseKey, getLicenseState, hashLicenseKeyForPing, signRevocationToken, pingLicenseStatusIfDue } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date())
+    const revocationToken = signRevocationToken(hashLicenseKeyForPing(key))
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: async () => ({ revocationToken }) })
+    vi.stubGlobal('fetch', fetchSpy)
+
+    await activateLicenseKey(key)
+    // activateLicenseKey itself stamps license_last_verified_at (so a freshly
+    // activated device isn't immediately re-pinged) — clear it so this test's
+    // explicit ping below is treated as genuinely due, same as any real
+    // install's first daily ping the next day.
+    db.__store.delete('license_last_verified_at')
+    await pingLicenseStatusIfDue()
+
+    const state = await getLicenseState()
+    expect(state.status).toBe('EXPIRED')
+    vi.unstubAllGlobals()
+  })
+
   it('the kill switch only ever relaxes enforcement, never tightens it — an EXPIRED trial becomes ACTIVE when suspended by a validly signed token', async () => {
     const { generateLicenseKey, activateLicenseKey, getLicenseState, signKillSwitchToken } = await importFresh()
     const key = generateLicenseKey('TRIAL', 'IN', new Date(Date.now() - 400 * 86_400_000))
@@ -413,6 +436,87 @@ describe('kill-switch token signing and verification', () => {
     const { generateLicenseKey, parseAndVerifyKillSwitchToken } = await importFresh()
     const key = generateLicenseKey('TRIAL', 'IN', new Date())
     expect(parseAndVerifyKillSwitchToken(key)).toBeNull()
+  })
+})
+
+describe('per-key revocation — the same-key-on-many-devices countermeasure', () => {
+  it('a validly-signed revocation token for this exact key forces EXPIRED even with most of the cycle left', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState, signRevocationToken, hashLicenseKeyForPing } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date()) // issued today — 365 days remaining
+    await activateLicenseKey(key)
+    expect((await getLicenseState()).status).toBe('ACTIVE')
+
+    db.__store.set('license_revocation_token', signRevocationToken(hashLicenseKeyForPing(key)))
+    const state = await getLicenseState()
+    expect(state.status).toBe('EXPIRED')
+    expect(state.daysRemaining).not.toBeNull() // still reports the real numbers, just doesn't act on them — same as kill-switch
+  })
+
+  it('a revocation token signed for a DIFFERENT key does not revoke this one', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState, signRevocationToken, hashLicenseKeyForPing } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date())
+    await activateLicenseKey(key)
+
+    const someOtherKeyHash = hashLicenseKeyForPing(generateLicenseKey('PAID', 'IN', new Date()))
+    db.__store.set('license_revocation_token', signRevocationToken(someOtherKeyHash))
+    const state = await getLicenseState()
+    expect(state.status).toBe('ACTIVE')
+  })
+
+  it('a tampered revocation token (key hash swapped, stale signature) is rejected', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState, signRevocationToken, hashLicenseKeyForPing } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date())
+    await activateLicenseKey(key)
+
+    const token = signRevocationToken(hashLicenseKeyForPing(key))
+    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A')
+    db.__store.set('license_revocation_token', tampered)
+    const state = await getLicenseState()
+    expect(state.status).toBe('ACTIVE')
+  })
+
+  it('a bare unsigned revocation flag (hand-edited Setting row) is ignored', async () => {
+    const { generateLicenseKey, activateLicenseKey, getLicenseState } = await importFresh()
+    const key = generateLicenseKey('PAID', 'IN', new Date())
+    await activateLicenseKey(key)
+
+    db.__store.set('license_revocation_token', 'true')
+    const state = await getLicenseState()
+    expect(state.status).toBe('ACTIVE')
+  })
+})
+
+describe('revocation token signing and verification', () => {
+  it('round-trips a signed token for the key it names', async () => {
+    const { signRevocationToken, parseAndVerifyRevocationToken } = await importFresh()
+    const token = signRevocationToken('abc123')
+    expect(parseAndVerifyRevocationToken(token, 'abc123')).toBe(true)
+  })
+
+  it('rejects that same valid token against a different key hash', async () => {
+    const { signRevocationToken, parseAndVerifyRevocationToken } = await importFresh()
+    const token = signRevocationToken('abc123')
+    expect(parseAndVerifyRevocationToken(token, 'def456')).toBe(false)
+  })
+
+  it('rejects null/undefined/empty', async () => {
+    const { parseAndVerifyRevocationToken } = await importFresh()
+    expect(parseAndVerifyRevocationToken(null, 'abc123')).toBe(false)
+    expect(parseAndVerifyRevocationToken(undefined, 'abc123')).toBe(false)
+    expect(parseAndVerifyRevocationToken('', 'abc123')).toBe(false)
+  })
+
+  it('rejects a tampered signature', async () => {
+    const { signRevocationToken, parseAndVerifyRevocationToken } = await importFresh()
+    const token = signRevocationToken('abc123')
+    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A')
+    expect(parseAndVerifyRevocationToken(tampered, 'abc123')).toBe(false)
+  })
+
+  it('rejects a kill-switch token passed by mistake (wrong shape)', async () => {
+    const { signKillSwitchToken, parseAndVerifyRevocationToken } = await importFresh()
+    const token = signKillSwitchToken(true)
+    expect(parseAndVerifyRevocationToken(token, 'abc123')).toBe(false)
   })
 })
 
