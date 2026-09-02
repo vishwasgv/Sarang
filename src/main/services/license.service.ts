@@ -438,15 +438,19 @@ const LICENSE_PING_URL = 'https://aszurex.com/api/sarang-heartbeat'
 
 /**
  * Optional, best-effort, at-most-once-per-day active-usage ping (59.6).
- * Sends only a one-way hash of the license key — never the raw key, never
- * any business data. Fire-and-forget: never awaited by callers, never
- * retried aggressively, never blocks or delays anything if unreachable —
- * this must stay true to the offline-first rule that no network call is
- * ever load-bearing. Reads back a signed `enforcementToken` (the remote
- * kill-switch, see 59.6) the founder can flip on the website side without
- * shipping a new app build, in case the
- * day-335/365 logic ever has a bug — this project has a real history of
- * shipping date-boundary bugs that looked fine until they weren't.
+ * Sends only a one-way hash of the license key plus a one-way hash of this
+ * device's machine fingerprint (same hash `activateLicenseKey` already
+ * computes locally to rebind on a new device — sending it lets the website
+ * log how many distinct devices a given key has been seen on, for the
+ * founder to review manually; it is never used to block anything client-side).
+ * Never the raw key, never the raw fingerprint, never any business data.
+ * Fire-and-forget: never awaited by callers, never retried aggressively,
+ * never blocks or delays anything if unreachable — this must stay true to
+ * the offline-first rule that no network call is ever load-bearing. Reads
+ * back a signed `enforcementToken` (the remote kill-switch, see 59.6) the
+ * founder can flip on the website side without shipping a new app build,
+ * in case the day-335/365 logic ever has a bug — this project has a real
+ * history of shipping date-boundary bugs that looked fine until they weren't.
  */
 export async function pingLicenseStatusIfDue(): Promise<void> {
   try {
@@ -463,7 +467,7 @@ export async function pingLicenseStatusIfDue(): Promise<void> {
     const res = await fetch(LICENSE_PING_URL, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ keyHash: hashLicenseKeyForPing(keyRow.settingValue) }),
+      body: JSON.stringify({ keyHash: hashLicenseKeyForPing(keyRow.settingValue), fingerprintHash: computeMachineFingerprint() }),
       signal: AbortSignal.timeout(5000)
     })
     await db.setting.upsert({
