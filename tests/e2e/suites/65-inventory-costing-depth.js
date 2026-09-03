@@ -37,6 +37,7 @@ async function run() {
   let newLocationId = null
   let poId = null
   let supplierId = null
+  let poCancelId = null
   // Phase 64 gap-closure additions (2026-08-27).
   const valuationProductIds = []
   let rawMaterialId = null
@@ -303,6 +304,66 @@ async function run() {
       r.log('product-B-unit-cost-includes-landed-cost', !!histB && Math.abs(histB.unitCost - 100) < 1, JSON.stringify(histB))
     }))
 
+    // ── purchaseOrders.removeLandedCost and purchaseOrders.cancel -- both
+    // ZERO E2E coverage of any kind before this step, found via a full
+    // audit cross-referencing every mutating UI action against every E2E
+    // suite (addLandedCost itself, just above, turned out already covered
+    // -- driven via real UI clicks with no literal API-name string in test
+    // code, the same false-positive shape that audit had to filter out
+    // repeatedly). Uses its own fresh PO so it doesn't disturb the
+    // already-verified receive/costing flow above. ─────────────────────────
+    await r.step('remove-landed-cost-then-cancel-po-via-real-ui', async () => {
+      const prodRes = await page.evaluate((name) => window.api.products.create({
+        productName: name, productType: 'STANDARD', unit: 'PCS', costPrice: 20, sellingPrice: 30, taxRate: 18, openingQuantity: 0,
+      }), `${TEST_PREFIX} PO Cancel Item ${suffix}`)
+      productIds.poCancel = prodRes?.data?.id
+      r.log('cancel-po-product-created', !!productIds.poCancel, JSON.stringify(prodRes?.error || ''))
+
+      const poRes = await page.evaluate(async ({ supplierId, productId }) => window.api.purchaseOrders.create({
+        supplierId, items: [{ productId, quantity: 4, unitCost: 20, taxRate: 18 }],
+      }), { supplierId, productId: productIds.poCancel })
+      poCancelId = poRes?.data?.id
+      r.log('cancel-po-created', !!poCancelId, JSON.stringify(poRes?.error || ''))
+      if (!poCancelId) return
+
+      await h.gotoHash(page, `#/purchase-orders/${poCancelId}`)
+      await page.waitForTimeout(700)
+      await page.locator('button', { hasText: 'Add Landed Cost' }).click()
+      await page.waitForTimeout(400)
+      await page.locator('input[type="number"]').first().fill('80')
+      await page.getByRole('button', { name: 'Add', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('second-landed-cost-added', !(await h.hasErrorBoundary(page)))
+
+      // Remove it via the row's own "Remove" link.
+      await page.locator('button', { hasText: 'Remove' }).first().click()
+      await page.waitForTimeout(600)
+      r.log('remove-landed-cost-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('landed-cost-removal-persisted', () => h.withDb((db) => {
+      if (!poCancelId) return r.log('skipped-no-cancel-po-id', false)
+      const row = db.prepare('SELECT * FROM LandedCostAllocation WHERE purchaseOrderId = ?').get(poCancelId)
+      r.log('landed-cost-row-actually-gone', !row, JSON.stringify(row))
+    }))
+
+    await r.step('cancel-po-via-real-ui', async () => {
+      if (!poCancelId) return r.log('skipped-no-cancel-po-id', false)
+      await page.locator('button', { hasText: 'Cancel PO' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByPlaceholder('e.g. Supplier unavailable, order changed').fill('E2E Costing64 PO cancellation test')
+      await modal.getByRole('button', { name: 'Cancel PO', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('cancel-po-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('cancelled-po-persisted', () => h.withDb((db) => {
+      if (!poCancelId) return r.log('skipped-no-cancel-po-id', false)
+      const row = db.prepare('SELECT * FROM "PurchaseOrder" WHERE id = ?').get(poCancelId)
+      r.log('po-status-cancelled', row?.status === 'CANCELLED', `status=${row?.status}`)
+    }))
+
     // ── Stock valuation method switching: STANDARD_COST override, then a
     // real FIFO newest-layers-first computation distinct from the
     // Inventory.averageCost a naive full-average would give. ──────────────
@@ -509,6 +570,11 @@ async function run() {
         del('LandedCostAllocation', 'purchaseOrderId = ?', poId)
         del('PurchaseOrderItem', 'purchaseOrderId = ?', poId)
         del('"PurchaseOrder"', 'id = ?', poId)
+      }
+      if (poCancelId) {
+        del('LandedCostAllocation', 'purchaseOrderId = ?', poCancelId)
+        del('PurchaseOrderItem', 'purchaseOrderId = ?', poCancelId)
+        del('"PurchaseOrder"', 'id = ?', poCancelId)
       }
       for (const pid of allIds) {
         try { db.prepare('DELETE FROM Product WHERE id = ?').run(pid) } catch { db.prepare('UPDATE Product SET isActive = 0 WHERE id = ?').run(pid) }

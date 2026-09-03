@@ -52,6 +52,72 @@ async function run() {
     const page = await h.getMainWindow(app)
     await h.login(page)
 
+    // ── users.update / users.disable — ZERO E2E coverage of any kind
+    // before this suite, found via a full mutating-action audit. Both are
+    // Admin-only permissions, so this must run before switchToUser() below
+    // logs this session in as a lower-privileged Cashier/Staff account.
+    const editUserUsername = `e2eedituser${Date.now()}`
+    let editUserId = null
+    await r.step('create-user-for-update-deactivate-coverage', async () => {
+      const rolesRes = await page.evaluate(async () => window.api.roles.list())
+      const staffRole = (rolesRes?.data || []).find((rl) => rl.roleName === 'Staff')
+      const res = await page.evaluate(async ({ roleId, username, password, fullName }) => window.api.users.create({
+        fullName, username, password, roleId,
+      }), { roleId: staffRole?.id, username: editUserUsername, password: TEST_USER_PASSWORD, fullName: `${TEST_PREFIX} EditTarget` })
+      editUserId = res?.data?.id
+      r.log('edit-target-user-created', !!editUserId, JSON.stringify(res?.error || ''))
+    })
+
+    await r.step('user-edited-via-real-ui', async () => {
+      if (!editUserId) return r.log('skipped-no-user-id', false)
+      await h.gotoHash(page, '#/settings')
+      await page.waitForTimeout(600)
+      await page.locator('button', { hasText: 'Users & Roles' }).click()
+      await page.waitForTimeout(500)
+      const row = page.locator('div', { hasText: `${TEST_PREFIX} EditTarget` }).filter({ has: page.locator('button[title="Edit user"]') }).last()
+      r.log('user-row-visible-in-list', await row.count() > 0)
+      await row.locator('button[title="Edit user"]').click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      const emailInput = modal.locator('input[type="email"]')
+      await emailInput.fill('e2e-edituser-updated@example.com')
+      await modal.getByRole('button', { name: 'Save Changes' }).click()
+      await page.waitForTimeout(800)
+      r.log('user-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('user-edit-persisted', () => h.withDb((db) => {
+      if (!editUserId) return r.log('skipped-no-user-id', false)
+      const row = db.prepare('SELECT * FROM User WHERE id = ?').get(editUserId)
+      r.log('user-email-updated', row?.email === 'e2e-edituser-updated@example.com', JSON.stringify(row?.email))
+    }))
+
+    await r.step('user-deactivated-via-real-ui', async () => {
+      if (!editUserId) return r.log('skipped-no-user-id', false)
+      const row = page.locator('div', { hasText: `${TEST_PREFIX} EditTarget` }).filter({ has: page.locator('button[title="Deactivate user"]') }).last()
+      await row.locator('button[title="Deactivate user"]').click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Deactivate', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('user-deactivate-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('user-deactivate-persisted-and-shown-inactive-in-ui', async () => {
+      if (!editUserId) return r.log('skipped-no-user-id', false)
+      const row = h.withDb((db) => db.prepare('SELECT * FROM User WHERE id = ?').get(editUserId))
+      r.log('user-marked-inactive', row?.isActive === 0, JSON.stringify(row?.isActive))
+
+      // The Deactivate button is gone now that isActive is false, so scope
+      // via the still-present Reset Password button instead — without any
+      // button filter, `div, {hasText}` + `.last()` matches the narrower
+      // "flex-1 min-w-0" text-only div (a sibling of the Badge, not an
+      // ancestor of it), missing the Active/Inactive badge entirely.
+      const uiRow = page.locator('div', { hasText: `${TEST_PREFIX} EditTarget` }).filter({ has: page.locator('button[title="Reset password"]') }).last()
+      const rowText = await uiRow.innerText().catch(() => '')
+      r.log('user-shows-inactive-badge-in-ui', /Inactive/i.test(rowText), rowText)
+    })
+
     const cashierUsername = `e2ecashier${Date.now()}`
     const staffUsername = `e2estaff${Date.now()}`
 

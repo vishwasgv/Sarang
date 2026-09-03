@@ -46,6 +46,12 @@ async function run() {
   const createdNoteSupplierIds = []
   const createdChallanIds = []
   let originalBusinessDefaultTemplateId
+  // Declared here, not inside try{} -- a let/const declared directly inside
+  // try{} is block-scoped to that block alone and invisible from the
+  // paired finally{} (same gotcha this codebase's other suites already
+  // document). Needed in finally{} to clear Invoice.salesOrderId's FK
+  // (no cascade) before the SalesOrder row itself can be deleted.
+  let soInvoiceId = null
 
   let page
   try {
@@ -132,6 +138,65 @@ async function run() {
       if (!soId) { r.log('skipped-no-so-id', false); return }
       const row = db.prepare('SELECT status FROM SalesOrder WHERE id = ?').get(soId)
       r.log('sales-order-status-confirmed', row?.status === 'CONFIRMED', `status=${row?.status}`)
+    }))
+
+    // ── salesOrders.createInvoice (via the real "Create Invoice" partial-
+    // invoice modal) and salesOrders.cancel — both had ZERO E2E coverage of
+    // any kind before this step, found via a full audit cross-referencing
+    // every mutating UI action against every E2E suite. ────────────────────
+    await r.step('create-invoice-from-confirmed-sales-order-via-real-ui', async () => {
+      if (!soId) { r.log('skipped-no-so-id', false); return }
+      await h.gotoHash(page, `#/sales-orders/${soId}`)
+      await page.waitForTimeout(700)
+      await page.locator('button', { hasText: 'Create Invoice' }).click()
+      await page.waitForTimeout(400)
+      // The modal pre-fills each line's input with its full remaining
+      // quantity (5, the whole order) -- accepting the default invoices it
+      // in full, in one shot.
+      const modal = h.topModal(page)
+      await modal.getByRole('button', { name: 'Create Invoice', exact: true }).click()
+      await page.waitForTimeout(1000)
+      r.log('create-invoice-from-so-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('sales-order-invoice-persisted-and-order-fully-invoiced', () => h.withDb((db) => {
+      if (!soId) { r.log('skipped-no-so-id', false); return }
+      const row = db.prepare('SELECT * FROM SalesOrder WHERE id = ?').get(soId)
+      r.log('sales-order-status-invoiced', row?.status === 'INVOICED', `status=${row?.status}`)
+      const items = db.prepare('SELECT * FROM SalesOrderItem WHERE salesOrderId = ?').all(soId)
+      r.log('sales-order-item-fully-invoiced', items[0]?.invoicedQty === 5, JSON.stringify(items[0]))
+      const inv = db.prepare('SELECT * FROM Invoice WHERE salesOrderId = ?').get(soId)
+      r.log('invoice-linked-back-to-sales-order', !!inv, JSON.stringify(inv))
+      // Invoice.salesOrderId has no onDelete cascade -- must be cleared
+      // before this suite's own cleanup can delete the SalesOrder row below.
+      if (inv) soInvoiceId = inv.id
+    }))
+
+    let cancelSoId = null
+    await r.step('cancel-a-different-sales-order-via-real-ui', async () => {
+      const soRes = await page.evaluate(async ({ customerId, productId }) => window.api.salesOrders.create({
+        customerId, items: [{ productId, quantity: 2, unitPrice: 100, taxRate: 0 }],
+      }), { customerId, productId })
+      cancelSoId = soRes?.data?.id
+      r.log('second-sales-order-created-for-cancel-test', !!cancelSoId, JSON.stringify(soRes?.error || ''))
+      if (!cancelSoId) return
+
+      await h.gotoHash(page, `#/sales-orders/${cancelSoId}`)
+      await page.waitForTimeout(700)
+      await page.locator('button', { hasText: 'Cancel Order' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByPlaceholder('e.g. Customer changed mind, duplicate order').fill('E2E Sales63 cancellation test')
+      await modal.getByRole('button', { name: 'Cancel Order', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('cancel-so-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('cancelled-sales-order-persisted-with-reason', () => h.withDb((db) => {
+      if (!cancelSoId) { r.log('skipped-no-cancel-so-id', false); return }
+      const row = db.prepare('SELECT * FROM SalesOrder WHERE id = ?').get(cancelSoId)
+      r.log('sales-order-status-cancelled', row?.status === 'CANCELLED', `status=${row?.status}`)
+      r.log('cancellation-reason-persisted', (row?.notes || '').includes('E2E Sales63 cancellation test'), JSON.stringify(row?.notes))
     }))
 
     // ── Price Lists: create, add a tier, THEN assign to the customer ───────
@@ -572,6 +637,63 @@ async function run() {
       r.log('non-retainer-quotation-conversion-blocked-QT-004', convertPlainRes?.success === false && convertPlainRes?.error?.code === 'QT-004', JSON.stringify(convertPlainRes?.error))
     })
 
+    // ── quotations.convertToInvoice via the real "Convert to Invoice"
+    // button on the Quotations list -- ZERO E2E coverage of any kind
+    // before this step. Also exercises the /billing/invoices/:id route
+    // (distinct from /billing/:id, both render InvoiceDetailScreen) that
+    // this exact "jump from a converted Quotation" click is the only real
+    // path to in the whole app -- previously unvisited by any suite. ──────
+    let directQuoteInvoiceId = null
+    await r.step('quotation-converted-to-invoice-via-real-ui', async () => {
+      const custRes = await page.evaluate((name) => window.api.customers.create({ customerName: name, phone: `9${String(Date.now()).slice(-9)}`, creditLimit: 0, taxExempt: false }), `${TEST_PREFIX} Direct Quote Client ${suffix}`)
+      const directQuoteCustomerId = custRes?.data?.id
+      if (directQuoteCustomerId) createdRetainerCustomerIds.push(directQuoteCustomerId)
+
+      const quoteRes = await page.evaluate((cid) => window.api.quotations.create({
+        customerId: cid, items: [{ productName: 'E2E Sales63 Direct Convert Item', quantity: 1, unitPrice: 900 }],
+      }), directQuoteCustomerId)
+      const directQuoteId = quoteRes?.data?.id
+      if (directQuoteId) createdQuotationIds.push(directQuoteId)
+      r.log('direct-quotation-created', !!directQuoteId, JSON.stringify(quoteRes?.error || ''))
+
+      await h.gotoHash(page, '#/billing/quotations')
+      await page.waitForTimeout(700)
+      // The customer-name <p> and the action buttons are SIBLING divs under
+      // one row container (not nested) -- a hasText match on a `div` picks
+      // the innermost matching element (the customer-info <p>'s own parent,
+      // which has no buttons), same gotcha suite 01's return-processing
+      // step already documents. Walk up from the exact <p> to the shared
+      // row ancestor instead.
+      const nameP = page.locator('p', { hasText: `E2E Sales63 Direct Quote Client ${suffix}` }).first()
+      const row = nameP.locator('xpath=../..')
+      await row.getByRole('button', { name: 'Convert to Invoice' }).click()
+      await page.waitForTimeout(1000)
+      r.log('convert-to-invoice-no-crash', !(await h.hasErrorBoundary(page)))
+
+      // Successful conversion swaps the row's action buttons for a
+      // clickable invoice-number link (see QuotationsScreen's own
+      // q.invoice ? ... rendering) -- following it proves the
+      // /billing/invoices/:id route (not just /billing/:id) actually works.
+      const invoiceLink = nameP.locator('xpath=../..').locator('button.text-success')
+      r.log('row-now-shows-invoice-link', await invoiceLink.count() > 0)
+      if (await invoiceLink.count() > 0) {
+        await invoiceLink.click()
+        await page.waitForTimeout(700)
+        const url = page.url()
+        r.log('navigated-to-billing-invoices-id-route', /#\/billing\/invoices\/[a-zA-Z0-9]+/.test(url), url)
+        const match = url.match(/#\/billing\/invoices\/([a-zA-Z0-9]+)/)
+        if (match) directQuoteInvoiceId = match[1]
+        r.log('invoice-detail-screen-renders-via-that-route', !(await h.hasErrorBoundary(page)))
+      }
+    })
+
+    await r.step('quotation-to-invoice-conversion-persisted-correctly', () => h.withDb((db) => {
+      if (!directQuoteInvoiceId) return r.log('skipped-no-direct-quote-invoice-id', false)
+      const inv = db.prepare('SELECT * FROM Invoice WHERE id = ?').get(directQuoteInvoiceId)
+      r.log('converted-invoice-total-matches-quotation-900', inv?.totalAmount === 900, JSON.stringify(inv?.totalAmount))
+      r.log('converted-invoice-linked-to-source-quotation', !!inv?.quotationId, JSON.stringify(inv?.quotationId))
+    }))
+
     // ── Credit Note / Debit Note with real product-or-service line items
     // (Phase 63 upgrade) -- previously only the flat `amount` field was
     // ever exercised anywhere in E2E. ───────────────────────────────────────
@@ -637,7 +759,11 @@ async function run() {
     })
   } finally {
     const cleanup = h.withDb((db) => {
-      let counts = { soItems: 0, sos: 0, approvalActions: 0, approvalSteps: 0, approvalInstances: 0, workflows: 0, schemes: 0, priceListItems: 0, priceLists: 0, profiles: 0, category: 0, inventory: 0, products: 0, customers: 0, happyHourSchemes: 0, happyHourProducts: 0 }
+      let counts = { soItems: 0, sos: 0, approvalActions: 0, approvalSteps: 0, approvalInstances: 0, workflows: 0, schemes: 0, priceListItems: 0, priceLists: 0, profiles: 0, category: 0, inventory: 0, products: 0, customers: 0, happyHourSchemes: 0, happyHourProducts: 0, soInvoices: 0 }
+      if (soInvoiceId) {
+        db.prepare('DELETE FROM InvoiceItem WHERE invoiceId = ?').run(soInvoiceId)
+        try { counts.soInvoices += db.prepare('DELETE FROM Invoice WHERE id = ?').run(soInvoiceId).changes } catch { /* left in place if still referenced */ }
+      }
       const sos = db.prepare('SELECT id FROM SalesOrder WHERE customerId = ?').all(customerId)
       for (const so of sos) {
         counts.soItems += db.prepare('DELETE FROM SalesOrderItem WHERE salesOrderId = ?').run(so.id).changes

@@ -124,6 +124,50 @@ async function run() {
       r.log('credit-note-thermal-print-button-present', await receiptBtn.count() > 0)
     })
 
+    // ── creditNotes.update and creditNotes.delete — both ZERO E2E coverage
+    // of any kind before this step, found via a full audit cross-
+    // referencing every mutating UI action against every E2E suite. ───────
+    await r.step('credit-note-edited-and-deleted-via-real-ui', async () => {
+      const reasonP = page.locator('p', { hasText: 'E2E test credit' }).first()
+      const row = reasonP.locator('xpath=../..')
+      // Edit2/Trash2 render as classes "lucide-pen"/"lucide-trash2" under
+      // this project's installed lucide-react version, not the "lucide-
+      // edit-2"/"lucide-trash-2" the icon's own filename would suggest —
+      // confirmed live via the row's actual innerHTML.
+      await row.locator('button:has(svg.lucide-pen)').click()
+      await page.waitForTimeout(400)
+      // Not a div.fixed.inset-0 modal — CreditNotesScreen renders the edit
+      // form as an inline <Card> toggled by showForm, so h.topModal() can't
+      // find it. Scope to the page directly instead.
+      const reasonInput = page.getByPlaceholder('Return / overpayment / discount')
+      await reasonInput.fill('')
+      await reasonInput.fill('E2E test credit EDITED')
+      await page.getByRole('button', { name: 'Update Credit Note' }).click()
+      await page.waitForTimeout(800)
+      r.log('credit-note-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('credit-note-edit-persisted', () => h.withDb((db) => {
+      const row = db.prepare("SELECT * FROM CreditNote WHERE reason = 'E2E test credit EDITED'").get()
+      r.log('credit-note-reason-updated', !!row, JSON.stringify(row))
+    }))
+
+    await r.step('credit-note-deleted-via-real-ui', async () => {
+      const reasonP = page.locator('p', { hasText: 'E2E test credit EDITED' }).first()
+      const row = reasonP.locator('xpath=../..')
+      await row.locator('button:has(svg.lucide-trash2)').click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('credit-note-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('credit-note-actually-deleted', () => h.withDb((db) => {
+      const row = db.prepare("SELECT * FROM CreditNote WHERE reason = 'E2E test credit EDITED'").get()
+      r.log('credit-note-row-gone', !row, JSON.stringify(row))
+    }))
+
     await r.step('debit-note-thermal-print-button-present', async () => {
       const supRes = await page.evaluate(async (prefix) => window.api.suppliers.create({
         supplierName: `${prefix} DN Supplier`, phone: `6${String(Date.now()).slice(-9)}`,
@@ -141,6 +185,43 @@ async function run() {
       r.log('debit-note-a4-print-button-present', await printBtn.count() > 0)
       r.log('debit-note-thermal-print-button-present', await receiptBtn.count() > 0)
     })
+
+    // ── debitNotes.update and debitNotes.delete — both ZERO E2E coverage
+    // of any kind before this step. Mirrors the credit-note test above. ────
+    await r.step('debit-note-edited-and-deleted-via-real-ui', async () => {
+      const reasonP = page.locator('p', { hasText: 'E2E test debit' }).first()
+      const row = reasonP.locator('xpath=../..')
+      await row.locator('button:has(svg.lucide-pen)').click()
+      await page.waitForTimeout(400)
+      // Same inline-<Card> (not modal) form as CreditNotesScreen — see comment above.
+      const reasonInput = page.getByPlaceholder('Quality issue / overcharge / return')
+      await reasonInput.fill('')
+      await reasonInput.fill('E2E test debit EDITED')
+      await page.getByRole('button', { name: 'Update Debit Note' }).click()
+      await page.waitForTimeout(800)
+      r.log('debit-note-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('debit-note-edit-persisted', () => h.withDb((db) => {
+      const row = db.prepare("SELECT * FROM DebitNote WHERE reason = 'E2E test debit EDITED'").get()
+      r.log('debit-note-reason-updated', !!row, JSON.stringify(row))
+    }))
+
+    await r.step('debit-note-deleted-via-real-ui', async () => {
+      const reasonP = page.locator('p', { hasText: 'E2E test debit EDITED' }).first()
+      const row = reasonP.locator('xpath=../..')
+      await row.locator('button:has(svg.lucide-trash2)').click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('debit-note-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('debit-note-actually-deleted', () => h.withDb((db) => {
+      const row = db.prepare("SELECT * FROM DebitNote WHERE reason = 'E2E test debit EDITED'").get()
+      r.log('debit-note-row-gone', !row, JSON.stringify(row))
+    }))
 
     // ── Service Project Report (SERVICE/CONSULTANT zero-coverage fix) ───────
     // Real bug found 2026-07-21 (unrelated to that day's own changes): the

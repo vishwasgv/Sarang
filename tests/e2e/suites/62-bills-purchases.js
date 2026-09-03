@@ -338,6 +338,64 @@ async function run() {
       // pass-through of the client-sent amount.
       r.log('expense-amount-server-recomputed-from-mileage-480', Number(expRes?.data?.amount) === 480, `amount=${expRes?.data?.amount}`)
     })
+
+    // ── supplierPayments.recordForeignCurrencySettlement — a real,
+    // money-critical action with ZERO E2E coverage of any kind before this
+    // step, found via a full audit cross-referencing every mutating UI
+    // action against every E2E suite. The gain/loss direction is the
+    // opposite of the customer-invoice case (a payable, not a
+    // receivable) — settling at a LOWER rate than the bill was raised at
+    // is a GAIN here, proven directly against supplier-payment.service.ts's
+    // own header comment for why. ───────────────────────────────────────
+    let fxBillId = null
+    await r.step('foreign-currency-bill-raised-and-settled-at-a-gain-via-real-ui', async () => {
+      const supRes = await makeSupplier({ supplierName: `${TEST_PREFIX} FX Vendor` })
+      const fxSupplierId = supRes?.data?.id
+
+      // Raised at 8300 INR / 83 per USD = exactly $100.00 foreignTotalAmount.
+      const billRes = await page.evaluate(async (supplierId) => window.api.bills.create({
+        supplierId, items: [{ serviceDescription: 'E2E Bills FX consulting line', quantity: 1, unitCost: 8300, taxRate: 0 }],
+        foreignCurrencyCode: 'USD', foreignExchangeRate: 83,
+      }), fxSupplierId)
+      fxBillId = billRes?.data?.id
+      if (fxBillId) createdBillIds.push(fxBillId)
+      r.log('fx-bill-created-via-api', !!fxBillId, JSON.stringify(billRes?.error || ''))
+      r.log('fx-bill-foreign-total-correct', billRes?.data?.foreignTotalAmount === 100, JSON.stringify(billRes?.data?.foreignTotalAmount))
+
+      await h.gotoHash(page, `#/bills/${fxBillId}`)
+      await page.waitForTimeout(700)
+      await page.locator('button', { hasText: 'Record Payment' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.locator('label', { hasText: 'Settle in USD' }).locator('input[type="checkbox"]').check()
+      await page.waitForTimeout(300)
+      // Same $100 actually paid, but the rate moved 83 -> 81 by settlement
+      // time: computedBaseAmount = 100 x 81 = 8100 vs the 8300 book value it
+      // was raised at -- paying LESS cash than book value, an INR 200
+      // realized GAIN (opposite sign convention from the receivable case).
+      await modal.getByPlaceholder('100.00').fill('100')
+      await modal.getByPlaceholder('83').fill('81')
+      await modal.getByRole('button', { name: 'Settle Bill' }).click()
+      await page.waitForTimeout(1000)
+      r.log('fx-bill-settlement-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('foreign-currency-bill-settlement-persisted-with-realized-gain', () => h.withDb((db) => {
+      if (!fxBillId) return r.log('skipped-no-fx-bill-id', false)
+      const bill = db.prepare('SELECT * FROM Bill WHERE id = ?').get(fxBillId)
+      r.log('fx-bill-fully-settled', bill?.status === 'PAID' && bill?.balanceAmount === 0, JSON.stringify({ status: bill?.status, balanceAmount: bill?.balanceAmount }))
+      r.log('fx-bill-paid-amount-is-original-balance-not-settlement-value', bill?.paidAmount === 8300, JSON.stringify(bill?.paidAmount))
+
+      const pmt = db.prepare('SELECT * FROM SupplierPayment WHERE billId = ?').get(fxBillId)
+      r.log('fx-payment-leg-records-foreign-amount-and-settlement-rate', pmt?.foreignAmount === 100 && pmt?.foreignExchangeRate === 81, JSON.stringify({ foreignAmount: pmt?.foreignAmount, foreignExchangeRate: pmt?.foreignExchangeRate }))
+
+      const gainJe = db.prepare("SELECT * FROM JournalEntry WHERE sourceType = 'REALIZED_FX_GAIN_LOSS' AND sourceId = ?").get(pmt?.id)
+      r.log('realized-fx-gain-je-posted', !!gainJe && /gain/i.test(gainJe.narration || ''), JSON.stringify(gainJe))
+      if (gainJe) {
+        const lines = db.prepare('SELECT SUM(debitAmount) d, SUM(creditAmount) c FROM JournalEntryLine WHERE journalEntryId = ?').get(gainJe.id)
+        r.log('realized-fx-gain-je-balanced-at-200', lines.d === lines.c && lines.d === 200, JSON.stringify(lines))
+      }
+    }))
   } finally {
     await h.closeApp(app)
     h.randomizeAdminPassword()
