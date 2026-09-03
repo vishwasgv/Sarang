@@ -5,6 +5,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn(), getOrCreateServiceProduct: vi.fn().mockResolvedValue({ success: true, data: { id: 'svc-prod-1' } }) } }))
 vi.mock('../sequence.service', () => ({ generateSequenceNumber: vi.fn().mockResolvedValue('TRP-00001') }))
 vi.mock('../payment.service', () => ({ paymentService: { recordPayment: vi.fn().mockResolvedValue({ success: true }) } }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=trip') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -56,6 +57,36 @@ describe('trip-booking.service.createCharterBooking', () => {
 
     expect(res.success).toBe(true)
     expect((res as { data: { bookingNumber: string } }).data.bookingNumber).toBe('TRP-00001')
+  })
+
+  // 2026-09 §14 — real gap found via a WhatsApp-reminder audit across all
+  // 50 verticals: Tours & Travels had zero reminder of any kind before
+  // this pass.
+  it('queues a real WhatsApp departure reminder 1 day before a future trip', async () => {
+    const futureStart = new Date(Date.now() + 10 * 86400000)
+    const db: Record<string, any> = {
+      customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1' }) },
+      tourVehicle: { findUnique: vi.fn().mockResolvedValue({ id: 'v-1', status: 'ACTIVE' }) },
+      tripBooking: {
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'trp-1', ...data })),
+        findFirst: vi.fn().mockResolvedValue(null),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'trp-1', bookingNumber: 'TRP-00001', customerId: 'cust-1', tripStartDate: futureStart,
+          customer: { customerName: 'Rahul Sharma', phone: '9812340000' },
+        }),
+      },
+      notificationQueue: { create: vi.fn().mockResolvedValue({}) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createCharterBooking({ customerId: 'cust-1', vehicleId: 'v-1', tripStartDate: futureStart.toISOString().slice(0, 10), packageRate: 5000 })
+    await new Promise((r) => setTimeout(r, 0)) // let the fire-and-forget reminder settle
+
+    expect(res.success).toBe(true)
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'TRIP_DEPARTURE_REMINDER', customerPhone: '9812340000' }),
+    }))
   })
 })
 

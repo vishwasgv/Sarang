@@ -5,6 +5,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
 vi.mock('../sequence.service', () => ({ generateSequenceNumber: vi.fn().mockResolvedValue('HTL-00001') }))
 vi.mock('../payment.service', () => ({ paymentService: { recordPayment: vi.fn().mockResolvedValue({ success: true }) } }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=checkout') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -74,6 +75,7 @@ function makeBaseMockDb() {
     // to throw.
     hotelHousekeepingTask: { create: vi.fn().mockResolvedValue({}), count: vi.fn().mockResolvedValue(0) },
     product: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+    notificationQueue: { create: vi.fn().mockResolvedValue({}) },
   }
   db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
   return db
@@ -888,5 +890,53 @@ describe('hotel.service — getADRRevPARReport', () => {
     const rows = (res as { data: { rows: Array<{ availableRoomNights: number }> } }).data.rows
     // Aug 20-25 inclusive = 6 days × 1 room.
     expect(rows[0].availableRoomNights).toBe(6)
+  })
+})
+
+// 2026-09 §14 — real gap found via a WhatsApp-reminder audit across all 50
+// verticals: Hotel/Lodge had zero reminder of any kind before this pass.
+describe('hotel.service — createBooking schedules a checkout reminder', () => {
+  it('queues a real WhatsApp reminder 1 day before checkout when the guest has a phone', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.findUnique.mockResolvedValue(makeRoom())
+    db.hotelBooking.create.mockResolvedValue({ id: 'booking-1' })
+    const farFutureCheckOut = new Date(Date.now() + 10 * 86400000)
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking({
+      guestName: 'Jane Doe', guestPhone: '9812340000', checkOutDate: farFutureCheckOut, bookingType: 'OVERNIGHT',
+    }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createBooking({ roomId: 'room-1', guestName: 'Jane Doe', guestPhone: '9812340000', checkInDate: '2026-08-01', checkOutDate: '2026-08-03' })
+    await new Promise((r) => setTimeout(r, 0)) // let the fire-and-forget reminder promise settle
+
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'HOTEL_CHECKOUT_REMINDER', customerPhone: '9812340000' }),
+    }))
+  })
+
+  it('skips the reminder entirely for a DAY_USE booking', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.findUnique.mockResolvedValue(makeRoom())
+    db.hotelBooking.create.mockResolvedValue({ id: 'booking-1' })
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking({ guestPhone: '9812340000', bookingType: 'DAY_USE' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createBooking({ roomId: 'room-1', guestName: 'Jane Doe', guestPhone: '9812340000', checkInDate: '2026-08-01', bookingType: 'DAY_USE' })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
+  })
+
+  it('skips the reminder when the guest has no phone on file', async () => {
+    const db = makeBaseMockDb()
+    db.hotelRoom.findUnique.mockResolvedValue(makeRoom())
+    db.hotelBooking.create.mockResolvedValue({ id: 'booking-1' })
+    db.hotelBooking.findUnique.mockResolvedValue(makeBooking({ guestPhone: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createBooking({ roomId: 'room-1', guestName: 'Jane Doe', checkInDate: '2026-08-01', checkOutDate: '2026-08-03' })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
   })
 })

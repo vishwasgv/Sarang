@@ -5,6 +5,7 @@ import { billingService } from './billing.service'
 import { roundCurrency } from './currency.service'
 import { parseLocalDateStart, parseLocalDateEnd, toLocalISODate } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -537,9 +538,43 @@ export async function createBooking(payload: {
 
     if (!result.ok) return { success: false, error: result.error }
     await logAction({ userId: payload.createdById, action: 'HOTEL_BOOKING_CREATED', entityType: 'HotelBooking', entityId: result.bookingId })
+    await scheduleCheckoutReminder(result.bookingId).catch(() => {})
     return getBooking(result.bookingId)
   } catch (e) {
     return { success: false, error: { code: 'HTL-027', message: e instanceof Error ? e.message : 'Could not create booking.' } }
+  }
+}
+
+// 2026-09 §14 — real gap found via a WhatsApp-reminder audit across all 50
+// verticals: Hotel/Lodge had zero reminder of any kind, unlike every other
+// appointment/booking-shaped vertical. A guest checking out is exactly the
+// kind of day-of nudge this feature exists for. Mirrors rental.service.ts's
+// scheduleReturnReminder shape (single reminder 1 day before, fire-and-
+// forget, non-critical) — a HotelBooking has its own guestName/guestPhone
+// scalars rather than always a linked Customer (walk-ins are common), so
+// this reads those directly instead of requiring a customer join.
+async function scheduleCheckoutReminder(bookingId: string): Promise<void> {
+  try {
+    const db = getPrisma()
+    const booking = await db.hotelBooking.findUnique({ where: { id: bookingId } })
+    if (!booking || !booking.guestPhone) return
+    if (booking.bookingType === 'DAY_USE') return // same-day stay, a day-before reminder makes no sense
+
+    const reminderDate = new Date(booking.checkOutDate)
+    reminderDate.setDate(reminderDate.getDate() - 1)
+    if (reminderDate <= new Date()) return
+
+    const dateStr = booking.checkOutDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const body = `Dear ${booking.guestName}, this is a reminder that your check-out for booking ${booking.bookingNumber} is tomorrow, ${dateStr}. We hope you're enjoying your stay! Powered by Sarang | www.aszurex.com`
+    const link = await buildReminderWhatsAppLink(booking.guestPhone, body)
+    await db.notificationQueue.create({
+      data: {
+        customerId: booking.customerId, customerName: booking.guestName, customerPhone: booking.guestPhone,
+        notificationType: 'HOTEL_CHECKOUT_REMINDER', templateBody: body, whatsappLink: link, scheduledFor: reminderDate,
+      },
+    })
+  } catch {
+    // Non-critical — same convention as rental.service.ts/membership.service.ts
   }
 }
 

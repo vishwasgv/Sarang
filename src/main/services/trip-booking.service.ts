@@ -5,6 +5,7 @@ import { billingService } from './billing.service'
 import { roundCurrency } from './currency.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // 2026-09 §12 — Tours & Travels vertical: the core booking record. Two
 // flows off one `bookingType` discriminator (CHARTER|SEAT), mirroring
@@ -68,9 +69,40 @@ export async function createCharterBooking(payload: {
     })
 
     await logAction({ userId: payload.createdById, action: 'TRIP_CHARTER_BOOKING_CREATED', entityType: 'TripBooking', entityId: booking.id, newValue: { bookingNumber: booking.bookingNumber } })
+    await scheduleDepartureReminder(booking.id).catch(() => {})
     return { success: true, data: booking }
   } catch (err) {
     return { success: false, error: { code: 'TRB-015', message: err instanceof Error ? err.message : 'Could not create charter booking.' } }
+  }
+}
+
+// 2026-09 §14 — real gap found via a WhatsApp-reminder audit across all 50
+// verticals: Tours & Travels had zero reminder of any kind before this
+// pass. Shared by both booking types (CHARTER and SEAT both set
+// tripStartDate) — single reminder 1 day before departure, mirrors
+// rental.service.ts's scheduleReturnReminder shape (fire-and-forget,
+// non-critical).
+async function scheduleDepartureReminder(bookingId: string): Promise<void> {
+  try {
+    const db = getPrisma()
+    const booking = await db.tripBooking.findUnique({ where: { id: bookingId }, include: { customer: true } })
+    if (!booking?.customer?.phone) return
+
+    const reminderDate = new Date(booking.tripStartDate)
+    reminderDate.setDate(reminderDate.getDate() - 1)
+    if (reminderDate <= new Date()) return
+
+    const dateStr = booking.tripStartDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+    const body = `Dear ${booking.customer.customerName}, this is a reminder that your trip (${booking.bookingNumber}) departs tomorrow, ${dateStr}. Safe travels! Powered by Sarang | www.aszurex.com`
+    const link = await buildReminderWhatsAppLink(booking.customer.phone, body)
+    await db.notificationQueue.create({
+      data: {
+        customerId: booking.customerId, customerName: booking.customer.customerName, customerPhone: booking.customer.phone,
+        notificationType: 'TRIP_DEPARTURE_REMINDER', templateBody: body, whatsappLink: link, scheduledFor: reminderDate,
+      },
+    })
+  } catch {
+    // Non-critical — same convention as rental.service.ts/membership.service.ts
   }
 }
 
@@ -134,6 +166,7 @@ export async function createSeatBooking(payload: {
     })
 
     await logAction({ userId: payload.createdById, action: 'TRIP_SEAT_BOOKING_CREATED', entityType: 'TripBooking', entityId: booking.id, newValue: { bookingNumber: booking.bookingNumber, seatsBooked: payload.seatsBooked } })
+    await scheduleDepartureReminder(booking.id).catch(() => {})
     return { success: true, data: booking }
   } catch (err) {
     if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }

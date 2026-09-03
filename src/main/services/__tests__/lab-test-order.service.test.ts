@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=report') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -386,6 +387,45 @@ describe('lab-test-order.service', () => {
       expect(res.success).toBe(true)
       expect(orderStore.current?.status).toBe('REPORTED')
       expect(orderStore.current?.items.every((i: any) => i.status === 'REPORTED')).toBe(true)
+    })
+
+    // 2026-09 §14 — real gap found via a WhatsApp-reminder audit across all
+    // 50 verticals: Diagnostic Lab had zero notification of any kind before
+    // this pass.
+    it('queues a real WhatsApp "report ready" notification when the linked customer has a phone', async () => {
+      const { db } = makeMockDb(makeOrder({
+        status: 'SAMPLE_COLLECTED', customer: { id: 'cust-1', phone: '9876500000' },
+        items: [
+          { id: 'item-1', labTestOrderId: 'order-1', testName: 'CBC', price: 300, status: 'RESULT_READY', resultParameters: '[]', resultSummary: null },
+        ],
+      }))
+      db.notificationQueue = { create: vi.fn().mockResolvedValue({}) }
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await finalizeReport({ id: 'order-1' })
+      await new Promise((r) => setTimeout(r, 0)) // let the fire-and-forget notification settle
+
+      expect(res.success).toBe(true)
+      expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+        data: expect.objectContaining({ notificationType: 'LAB_REPORT_READY', customerPhone: '9876500000' }),
+      }))
+    })
+
+    it('skips the notification when the order has no linked customer phone', async () => {
+      const { db } = makeMockDb(makeOrder({
+        status: 'SAMPLE_COLLECTED',
+        items: [
+          { id: 'item-1', labTestOrderId: 'order-1', testName: 'CBC', price: 300, status: 'RESULT_READY', resultParameters: '[]', resultSummary: null },
+        ],
+      }))
+      db.notificationQueue = { create: vi.fn().mockResolvedValue({}) }
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await finalizeReport({ id: 'order-1' })
+      await new Promise((r) => setTimeout(r, 0))
+
+      expect(res.success).toBe(true)
+      expect(db.notificationQueue.create).not.toHaveBeenCalled()
     })
   })
 

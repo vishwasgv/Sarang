@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { logAction } from './audit.service'
 import { sumCurrency } from './currency.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -445,10 +446,36 @@ export async function finalizeReport(payload: { id: string; reportedById?: strin
       })
     })
     await logAction(userId, 'LAB_ORDER_FINALIZED', 'LabTestOrder', payload.id)
+    await notifyReportReady(payload.id).catch(() => {})
     return { success: true, data: updated }
   } catch (err) {
     return { success: false, error: { code: 'LAB-020', message: err instanceof Error ? err.message : 'Could not finalize report.' } }
   }
+}
+
+// 2026-09 §14 — real gap found via a WhatsApp-reminder audit across all 50
+// verticals: Diagnostic Lab had zero notification of any kind before this
+// pass, despite "your report is ready" being one of the single most
+// obviously useful messages a lab can send. Fire-and-forget, non-critical
+// — same shape as logistics-notification.service.ts's dispatch
+// notification (an immediate event, not a scheduled future reminder, so no
+// scheduledFor is set). patientName (not always the same as the linked
+// Customer, e.g. a family member's test) drives the message; the linked
+// Customer's own phone is still the delivery channel since LabTestOrder
+// carries no separate patient-phone field of its own.
+async function notifyReportReady(orderId: string): Promise<void> {
+  const db = getPrisma()
+  const order = await db.labTestOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { id: true, phone: true } } } })
+  if (!order?.customer?.phone) return
+
+  const body = `Dear ${order.patientName}, your lab report for order ${order.orderNumber} is ready. Please visit or contact us to collect it. Powered by Sarang | www.aszurex.com`
+  const link = await buildReminderWhatsAppLink(order.customer.phone, body)
+  await db.notificationQueue.create({
+    data: {
+      customerId: order.customer.id, customerName: order.patientName, customerPhone: order.customer.phone,
+      notificationType: 'LAB_REPORT_READY', templateBody: body, whatsappLink: link,
+    },
+  })
 }
 
 export async function markDelivered(id: string, userId?: string) {
