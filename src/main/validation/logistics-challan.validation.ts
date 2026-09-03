@@ -34,7 +34,15 @@ export const UpdateChallanSchema = z.object({
   driverName: z.string().max(100).optional(),
   driverPhone: z.string().max(30).optional(),
   dispatchDate: z.string().optional(),
-  expectedReturn: z.string().optional(),
+  // Real bug found live (2026-09-03 E2E audit): nullable, not just optional —
+  // ChallanScreen.tsx's saveEdit() explicitly sends `expectedReturn: null`
+  // whenever the edited challan's type is anything but RETURNABLE (i.e. on
+  // every edit of a DELIVERY or BRANCH_TRANSFER challan, the vast majority),
+  // to clear a field that's meaningless for those types. Without .nullable()
+  // here, that legitimate null was rejected by this schema with "Expected
+  // string, received null" — silently failing the ENTIRE edit (every other
+  // field included) for any non-RETURNABLE challan, every time.
+  expectedReturn: z.string().nullable().optional(),
   notes: z.string().max(2000).optional(),
   items: z.array(ChallanItemSchema).optional(),
 })

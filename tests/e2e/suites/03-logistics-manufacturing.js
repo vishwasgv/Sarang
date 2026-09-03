@@ -7,6 +7,7 @@
 const h = require('../harness')
 
 const TEST_PREFIX = 'E2E Log'
+const suffix = Date.now()
 
 async function run() {
   const r = h.makeResults()
@@ -161,6 +162,140 @@ async function run() {
       r.log('logistics-analytics-loads-no-crash', !(await h.hasErrorBoundary(page)))
       await h.shot(page, 'logistics-analytics')
     })
+
+    // ── logisticsChallan.update / .updateStatus / .recordReturn / .delete —
+    // ZERO E2E coverage of any kind before this step (create/list were
+    // already exercised, but only via a raw API call with challanType
+    // values 'DELIVERY_NOTE'/'PACKING_SLIP' that the real UI never
+    // produces — DeliveryChallan.challanType is DELIVERY/RETURNABLE/
+    // BRANCH_TRANSFER, per the schema's own comment). This drives the
+    // real Delivery Challans screen end to end: a RETURNABLE challan
+    // through Issue -> Record Return, and a separate DRAFT challan
+    // through Edit -> Delete. ───────────────────────────────────────────
+    const returnableCustomer = `${TEST_PREFIX} Returnable Customer ${suffix}`
+    const deletableCustomer = `${TEST_PREFIX} Deletable Customer ${suffix}`
+    await r.step('create-returnable-challan-then-issue-and-record-return-via-real-ui', async () => {
+      await h.gotoHash(page, '#/logistics/challan')
+      await page.waitForTimeout(700)
+      r.log('challan-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+
+      await page.locator('button', { hasText: 'New Challan' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.locator('select').first().selectOption('RETURNABLE')
+      await modal.locator('label', { hasText: 'Customer Name' }).locator('xpath=following-sibling::input').fill(returnableCustomer)
+      await modal.getByPlaceholder('Product name').fill(`${TEST_PREFIX} Crate`)
+      await modal.locator('input[type="number"]').first().fill('5')
+      await modal.locator('button', { hasText: 'Create', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('returnable-challan-create-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    let returnableChallanId = null
+    await r.step('returnable-challan-persisted-as-draft', () => h.withDb((db) => {
+      const row = db.prepare('SELECT * FROM DeliveryChallan WHERE customerName = ?').get(returnableCustomer)
+      r.log('returnable-challan-row-exists', !!row, JSON.stringify(row))
+      if (row) {
+        returnableChallanId = row.id
+        r.log('returnable-challan-is-draft-returnable', row.status === 'DRAFT' && row.challanType === 'RETURNABLE', JSON.stringify({ status: row.status, challanType: row.challanType }))
+      }
+    }))
+
+    await r.step('issue-returnable-challan-via-real-ui', async () => {
+      if (!returnableChallanId) return r.log('skipped-no-challan-id', false)
+      const nameP = page.locator('p', { hasText: returnableCustomer }).first()
+      const card = nameP.locator('xpath=../..')
+      await card.locator('button', { hasText: 'Issue' }).click()
+      await page.waitForTimeout(700)
+      r.log('issue-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const row = h.withDb((db) => db.prepare('SELECT status FROM DeliveryChallan WHERE id = ?').get(returnableChallanId))
+      r.log('challan-status-issued', row?.status === 'ISSUED', JSON.stringify(row))
+    })
+
+    await r.step('record-return-on-issued-challan-via-real-ui', async () => {
+      if (!returnableChallanId) return r.log('skipped-no-challan-id', false)
+      const nameP = page.locator('p', { hasText: returnableCustomer }).first()
+      const card = nameP.locator('xpath=../..')
+      await card.locator('button', { hasText: 'Record Return' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.locator('input[type="number"]').first().fill('3')
+      await modal.locator('button', { hasText: 'Confirm Return' }).click()
+      await page.waitForTimeout(800)
+      r.log('record-return-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('challan-return-persisted', () => h.withDb((db) => {
+      if (!returnableChallanId) return r.log('skipped-no-challan-id', false)
+      const row = db.prepare('SELECT * FROM DeliveryChallan WHERE id = ?').get(returnableChallanId)
+      r.log('challan-status-returned', row?.status === 'RETURNED', JSON.stringify(row?.status))
+      const item = db.prepare('SELECT * FROM ChallanItem WHERE challanId = ?').get(returnableChallanId)
+      r.log('challan-item-returnedQty-correct', item?.returnedQty === 3, JSON.stringify(item))
+    }))
+
+    await r.step('create-second-challan-then-edit-and-delete-via-real-ui', async () => {
+      await h.gotoHash(page, '#/logistics/challan')
+      await page.waitForTimeout(700)
+      await page.locator('button', { hasText: 'New Challan' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.locator('label', { hasText: 'Customer Name' }).locator('xpath=following-sibling::input').fill(deletableCustomer)
+      await modal.getByPlaceholder('Product name').fill(`${TEST_PREFIX} Box`)
+      await modal.locator('input[type="number"]').first().fill('2')
+      await modal.locator('button', { hasText: 'Create', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('deletable-challan-create-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    let deletableChallanId = null
+    await r.step('second-challan-persisted', () => h.withDb((db) => {
+      const row = db.prepare('SELECT * FROM DeliveryChallan WHERE customerName = ?').get(deletableCustomer)
+      r.log('deletable-challan-row-exists', !!row, JSON.stringify(row))
+      if (row) deletableChallanId = row.id
+    }))
+
+    await r.step('edit-draft-challan-via-real-ui', async () => {
+      if (!deletableChallanId) return r.log('skipped-no-challan-id', false)
+      // div+filter({has:button})+.last() has proven unreliable elsewhere in
+      // this codebase for reasons never fully pinned down (see CategoryManageModal's
+      // fix this same session) — walking up from the exact <p> containing the
+      // customer name to its shared row ancestor is the proven-reliable pattern.
+      const nameP = page.locator('p', { hasText: deletableCustomer }).first()
+      const card = nameP.locator('xpath=../..')
+      await card.locator('button', { hasText: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      const driverInput = modal.locator('label', { hasText: 'Driver Name' }).locator('xpath=following-sibling::input')
+      await driverInput.fill(`${TEST_PREFIX} Driver`)
+      await modal.locator('button', { hasText: 'Save Changes' }).click()
+      await page.waitForTimeout(800)
+      r.log('edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('challan-edit-persisted', () => h.withDb((db) => {
+      if (!deletableChallanId) return r.log('skipped-no-challan-id', false)
+      const row = db.prepare('SELECT * FROM DeliveryChallan WHERE id = ?').get(deletableChallanId)
+      r.log('challan-driver-name-updated', row?.driverName === `${TEST_PREFIX} Driver`, JSON.stringify(row?.driverName))
+    }))
+
+    await r.step('delete-draft-challan-via-real-ui', async () => {
+      if (!deletableChallanId) return r.log('skipped-no-challan-id', false)
+      const nameP = page.locator('p', { hasText: deletableCustomer }).first()
+      const card = nameP.locator('xpath=../..')
+      await card.locator('button', { hasText: 'Delete', exact: true }).click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(700)
+      r.log('delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('challan-actually-deleted', () => h.withDb((db) => {
+      if (!deletableChallanId) return r.log('skipped-no-challan-id', false)
+      const row = db.prepare('SELECT * FROM DeliveryChallan WHERE id = ?').get(deletableChallanId)
+      r.log('challan-row-gone', !row, JSON.stringify(row))
+    }))
   } finally {
     await h.closeApp(app)
     h.randomizeAdminPassword()
@@ -182,7 +317,12 @@ async function run() {
       for (const rid of rmIds) {
         try { db.prepare('DELETE FROM RawMaterial WHERE id = ?').run(rid) } catch { db.prepare('UPDATE RawMaterial SET isActive = 0 WHERE id = ?').run(rid) }
       }
-      console.log('logistics/mfg cleanup:', JSON.stringify({ grns: grnIds.length, rawMaterials: rmIds.length, orders: orderIds.length }))
+      const challanIds = db.prepare(`SELECT id FROM DeliveryChallan WHERE customerName LIKE '${TEST_PREFIX}%'`).all().map((row) => row.id)
+      for (const cid of challanIds) {
+        db.prepare('DELETE FROM ChallanItem WHERE challanId = ?').run(cid)
+        try { db.prepare('DELETE FROM DeliveryChallan WHERE id = ?').run(cid) } catch { /* leave it */ }
+      }
+      console.log('logistics/mfg cleanup:', JSON.stringify({ grns: grnIds.length, rawMaterials: rmIds.length, orders: orderIds.length, challans: challanIds.length }))
     })
   }
 

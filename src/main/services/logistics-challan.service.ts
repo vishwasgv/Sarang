@@ -195,7 +195,7 @@ export async function updateChallanStatus(payload: { id: string; status: string 
 export async function updateChallan(payload: {
   id: string; challanType?: string; customerName?: string; customerAddress?: string
   vehicleId?: string | null; driverName?: string; driverPhone?: string
-  dispatchDate?: string; expectedReturn?: string; notes?: string
+  dispatchDate?: string; expectedReturn?: string | null; notes?: string
   items?: Array<{ productId?: string; productName: string; quantity: number; unit?: string; unitValue?: number; notes?: string }>
 }, userId?: string) {
   try {
