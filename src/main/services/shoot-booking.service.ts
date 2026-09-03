@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // ShootBooking.estimatedDurationHours is a Prisma Decimal field —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -87,7 +88,29 @@ export async function createShootBooking(payload: {
     },
   })
   await db.auditLog.create({ data: { action: 'CREATE', entityType: 'ShootBooking', entityId: booking.id, newValue: JSON.stringify({ shootType: booking.shootType, clientId: booking.clientId }) } }).catch(() => {})
+  await scheduleShootReminder(booking.id).catch(() => {})
   return { success: true, data: serializeShootBooking(booking) }
+}
+
+async function scheduleShootReminder(bookingId: string): Promise<void> {
+  const db = getPrisma()
+  const booking = await db.shootBooking.findUnique({ where: { id: bookingId }, include: { client: true } })
+  if (!booking?.client?.phone) return
+
+  const reminderDate = new Date(booking.shootDate)
+  reminderDate.setDate(reminderDate.getDate() - 1)
+  if (reminderDate <= new Date()) return
+
+  const dateStr = booking.shootDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+  const timeStr = booking.shootTime ? ` at ${booking.shootTime}` : ''
+  const body = `Dear ${booking.client.customerName}, this is a reminder for your ${booking.shootType.toLowerCase()} shoot tomorrow, ${dateStr}${timeStr} at ${booking.shootLocation}. Powered by Sarang | www.aszurex.com`
+  const link = await buildReminderWhatsAppLink(booking.client.phone, body)
+  await db.notificationQueue.create({
+    data: {
+      customerId: booking.clientId, customerName: booking.client.customerName, customerPhone: booking.client.phone,
+      notificationType: 'SHOOT_DATE_REMINDER', templateBody: body, whatsappLink: link, scheduledFor: reminderDate,
+    },
+  })
 }
 
 export async function updateShootBooking(payload: {

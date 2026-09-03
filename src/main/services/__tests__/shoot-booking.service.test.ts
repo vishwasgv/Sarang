@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=shoot') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -49,6 +50,7 @@ function makeMockDb(existing: ReturnType<typeof makeBooking> | null = null) {
       ),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
+    notificationQueue: { create: vi.fn().mockResolvedValue({}) },
   }
   return db
 }
@@ -284,5 +286,33 @@ describe('shoot-booking.service — generateShootInvoice', () => {
     expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({
       items: [expect.objectContaining({ unitPrice: 50000 })],
     }))
+  })
+})
+
+describe('shoot-booking.service — createShootBooking schedules a shoot-date reminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('queues a WhatsApp reminder 1 day before a future shoot when the client has a phone', async () => {
+    const futureDate = new Date(Date.now() + 10 * 86400000)
+    const db = makeMockDb(makeBooking({ shootDate: futureDate, client: { id: 'cust-1', customerName: 'Ramesh Kumar', phone: '9812340000' } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createShootBooking({ clientId: 'cust-1', shootType: 'WEDDING', shootDate: futureDate.toISOString().slice(0, 10), shootLocation: 'Test Venue', estimatedDurationHours: 6.5 })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'SHOOT_DATE_REMINDER', customerPhone: '9812340000' }),
+    }))
+  })
+
+  it('skips the reminder when the client has no phone on file', async () => {
+    const futureDate = new Date(Date.now() + 10 * 86400000)
+    const db = makeMockDb(makeBooking({ shootDate: futureDate, client: { id: 'cust-1', customerName: 'Ramesh Kumar', phone: null } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createShootBooking({ clientId: 'cust-1', shootType: 'WEDDING', shootDate: futureDate.toISOString().slice(0, 10), shootLocation: 'Test Venue', estimatedDurationHours: 6.5 })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
   })
 })

@@ -2,6 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=event') }))
 
 import { getPrisma } from '../../database/db'
 import { billingService } from '../billing.service'
@@ -49,6 +50,7 @@ function makeMockDb(existing: ReturnType<typeof makeEvent> | null = null) {
   const db: Record<string, any> = {
     eventBooking: {
       findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
+      findUnique: vi.fn().mockResolvedValue(existing),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
         Promise.resolve(makeEvent({ id: 'event-new', ...data, vendorBookings: [] }))
       ),
@@ -57,6 +59,7 @@ function makeMockDb(existing: ReturnType<typeof makeEvent> | null = null) {
       ),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
+    notificationQueue: { create: vi.fn().mockResolvedValue({}) },
   }
   return db
 }
@@ -322,5 +325,33 @@ describe('event-booking.service — generateEventInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('EVT-004')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+})
+
+describe('event-booking.service — createEventBooking schedules an event-date reminder', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('queues a WhatsApp reminder 1 day before a future event when the client has a phone', async () => {
+    const futureDate = new Date(Date.now() + 10 * 86400000)
+    const db = makeMockDb(makeEvent({ eventDate: futureDate, client: { id: 'cust-1', customerName: 'Ramesh Kumar', phone: '9812340000' } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createEventBooking({ clientId: 'cust-1', eventName: 'Sharma Wedding', eventType: 'WEDDING', eventDate: futureDate.toISOString().slice(0, 10), venueName: 'Test Venue' })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ notificationType: 'EVENT_DATE_REMINDER', customerPhone: '9812340000' }),
+    }))
+  })
+
+  it('skips the reminder when the client has no phone on file', async () => {
+    const futureDate = new Date(Date.now() + 10 * 86400000)
+    const db = makeMockDb(makeEvent({ eventDate: futureDate, client: { id: 'cust-1', customerName: 'Ramesh Kumar', phone: null } }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await createEventBooking({ clientId: 'cust-1', eventName: 'Sharma Wedding', eventType: 'WEDDING', eventDate: futureDate.toISOString().slice(0, 10), venueName: 'Test Venue' })
+    await new Promise((r) => setTimeout(r, 0))
+
+    expect(db.notificationQueue.create).not.toHaveBeenCalled()
   })
 })

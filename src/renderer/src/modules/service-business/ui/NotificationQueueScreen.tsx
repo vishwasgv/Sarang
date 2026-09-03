@@ -65,6 +65,8 @@ const TYPE_LABELS: Record<string, string> = {
   HOTEL_CHECKOUT_REMINDER:   'Check-Out Reminder',
   LAB_REPORT_READY:          'Lab Report Ready',
   TRIP_DEPARTURE_REMINDER:   'Trip Departure Reminder',
+  SHOOT_DATE_REMINDER:      'Shoot Date Reminder',
+  EVENT_DATE_REMINDER:      'Event Date Reminder',
   SHIPMENT_DISPATCHED:       'Shipment Dispatched',
   SHIPMENT_DELAYED:          'Shipment Delayed',
   GRN_POSTED:                'GRN Posted',

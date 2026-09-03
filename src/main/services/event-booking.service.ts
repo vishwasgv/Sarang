@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { serializeVendorBooking, recomputePerHeadVendorBookings } from './event-vendor-booking.service'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // EventBooking.clientBudget/finalAmount are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws "An
@@ -78,7 +79,28 @@ export async function createEventBooking(payload: {
     },
   })
   await db.auditLog.create({ data: { action: 'CREATE', entityType: 'EventBooking', entityId: event.id, newValue: JSON.stringify({ eventName: event.eventName, eventType: event.eventType }) } }).catch(() => {})
+  await scheduleEventReminder(event.id).catch(() => {})
   return { success: true, data: serializeEventBooking(event) }
+}
+
+async function scheduleEventReminder(eventId: string): Promise<void> {
+  const db = getPrisma()
+  const event = await db.eventBooking.findUnique({ where: { id: eventId }, include: { client: true } })
+  if (!event?.client?.phone) return
+
+  const reminderDate = new Date(event.eventDate)
+  reminderDate.setDate(reminderDate.getDate() - 1)
+  if (reminderDate <= new Date()) return
+
+  const dateStr = event.eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
+  const body = `Dear ${event.client.customerName}, this is a reminder that "${event.eventName}" is tomorrow, ${dateStr} at ${event.venueName}. Powered by Sarang | www.aszurex.com`
+  const link = await buildReminderWhatsAppLink(event.client.phone, body)
+  await db.notificationQueue.create({
+    data: {
+      customerId: event.clientId, customerName: event.client.customerName, customerPhone: event.client.phone,
+      notificationType: 'EVENT_DATE_REMINDER', templateBody: body, whatsappLink: link, scheduledFor: reminderDate,
+    },
+  })
 }
 
 export async function updateEventBooking(payload: {
