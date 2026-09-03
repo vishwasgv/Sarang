@@ -665,6 +665,12 @@ export function DrivingSchoolScreen() {
       if (res.success) {
         setShowEnrollForm(false)
         setEnrollForm({ learnerId: '', packageId: '' })
+        // pickedEnrollLearner (the CustomerPicker's own display state) was
+        // never reset -- reopening the modal showed the PREVIOUS learner as
+        // still selected even though enrollForm.learnerId was already
+        // empty, so submitting again silently failed with "Learner and
+        // package are required." Real bug found live 2026-09-03.
+        setPickedEnrollLearner(null)
         loadEnrollments()
       } else {
         setEnrollError(res.error?.message ?? 'Could not enroll learner.')

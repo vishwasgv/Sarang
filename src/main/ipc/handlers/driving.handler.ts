@@ -1,5 +1,4 @@
 import { requirePermission } from '../permission-guard'
-import { getCurrentSession } from '../../services/auth.service'
 import {
   getLearnerProfile,
   upsertLearnerProfile,
@@ -246,8 +245,12 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('drivingSchool.manage'); if (deny) return deny
     const parsed = UpsertLearnerSkillAssessmentSchema.safeParse(raw)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    const session = getCurrentSession()
-    return upsertLearnerSkillAssessment({ ...parsed.data, assessedById: session?.userId })
+    // Real bug found live 2026-09-03: assessedById is FK'd to Employee, not
+    // User — the logged-in session's userId is a User record and there is
+    // no schema link from User to Employee (same class as the treatment-
+    // plan createdById bug). Passing it here made every skill-mastery click
+    // fail with a foreign-key violation, always, for every real user.
+    return upsertLearnerSkillAssessment(parsed.data)
   })
 
   // ── RTO test-slot reminder (Phase 68 §9.1 item 1) ───────────────────────────
