@@ -263,6 +263,15 @@ export function PetProfileScreen() {
 
   // ── Edit Pet ──────────────────────────────────────────────────────────────
 
+  // Date/DateTime fields cross the contextBridge as real JS Date objects
+  // (structuredClone preserves them), not ISO strings -- a bare .slice(0,10)
+  // throws (Date has no .slice). Real bug found live 2026-09-03 via E2E
+  // click-through on the Vaccinations tab's Edit button.
+  function toDateInputValue(v: string | Date | null | undefined): string {
+    if (!v) return ''
+    return new Date(v).toISOString().slice(0, 10)
+  }
+
   function openEditPet() {
     if (!pet) return
     setEditPetForm({
@@ -270,7 +279,7 @@ export function PetProfileScreen() {
       species: pet.species,
       breed: pet.breed ?? '',
       gender: pet.gender ?? '',
-      dateOfBirth: pet.dateOfBirth ? pet.dateOfBirth.slice(0, 10) : '',
+      dateOfBirth: toDateInputValue(pet.dateOfBirth),
       color: pet.color ?? '',
       microchipId: pet.microchipId ?? '',
       customerId: pet.customer?.id ?? '',
@@ -379,9 +388,9 @@ export function PetProfileScreen() {
       vaccineType: v.vaccineType ?? '',
       batchNumber: v.batchNumber ?? '',
       manufacturer: v.manufacturer ?? '',
-      administeredAt: v.administeredAt.slice(0, 10),
+      administeredAt: toDateInputValue(v.administeredAt),
       administeredBy: v.administeredBy ?? '',
-      nextDueDate: v.nextDueDate ? v.nextDueDate.slice(0, 10) : '',
+      nextDueDate: toDateInputValue(v.nextDueDate),
       notes: v.notes ?? '',
     })
     setEditVacId(v.id)

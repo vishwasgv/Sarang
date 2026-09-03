@@ -57,12 +57,163 @@ async function run() {
       await h.shot(page, 'vetclinic-pet-registered')
     })
 
+    let petId
+
     await r.step('verify-pet-via-api', async () => {
       const listRes = await page.evaluate(async () => window.api.pets.list({}))
       const pets = listRes?.data || []
       const found = pets.find((p) => p.petName === 'E2E Vet Buddy')
+      petId = found?.id
       r.log('pet-findable-via-api', !!found, JSON.stringify({ species: found?.species, breed: found?.breed, weight: found?.weight }))
       r.log('pet-linked-to-owner-correctly', found?.customerId === ownerId, JSON.stringify(found?.customerId))
+    })
+
+    // ── pets.update / addWeight via real UI (broader-gap-list closure) ──────
+    await r.step('edit-pet-details-via-ui', async () => {
+      if (!petId) return r.log('edit-pet-details-via-ui', false, 'no petId captured')
+      await h.gotoHash(page, `#/vet/pets/${petId}`)
+      await page.waitForTimeout(700)
+      await page.getByRole('button', { name: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByLabel('Breed').fill('Golden Retriever')
+      await modal.getByLabel('Weight (kg)').fill('14.2')
+      await modal.getByRole('button', { name: 'Save Changes' }).click()
+      await page.waitForTimeout(1000)
+      r.log('edit-pet-modal-closed-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const getRes = await page.evaluate((id) => window.api.pets.get({ id }), petId)
+      r.log('pet-breed-updated', getRes?.data?.breed === 'Golden Retriever', JSON.stringify(getRes?.data?.breed))
+      r.log('pet-weight-updated', getRes?.data?.weight === 14.2, JSON.stringify(getRes?.data?.weight))
+    })
+
+    await r.step('add-weight-entry-via-ui', async () => {
+      if (!petId) return r.log('add-weight-entry-via-ui', false, 'no petId captured')
+      await page.getByRole('button', { name: '+ Add Entry' }).click()
+      await page.waitForTimeout(300)
+      await page.getByLabel('Weight (kg)').fill('14.5')
+      await page.getByLabel('Notes (optional)').fill('E2E post-checkup weigh-in')
+      await page.getByRole('button', { name: 'Save', exact: true }).click()
+      await page.waitForTimeout(1000)
+      r.log('weight-entry-saved-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const getRes = await page.evaluate((id) => window.api.pets.get({ id }), petId)
+      const found = (getRes?.data?.weightHistory || []).some((w) => w.weightKg === 14.5 && w.notes === 'E2E post-checkup weigh-in')
+      r.log('weight-entry-persisted', found, JSON.stringify(getRes?.data?.weightHistory))
+    })
+
+    // ── vaccinations.* via real UI (broader-gap-list closure — whole-namespace gap) ──
+    let vacId
+
+    await r.step('add-vaccination-record-via-ui', async () => {
+      if (!petId) return r.log('add-vaccination-record-via-ui', false, 'no petId captured')
+      await page.getByRole('button', { name: /Vaccinations \(/ }).click()
+      await page.waitForTimeout(400)
+      await page.getByRole('button', { name: 'Add Record' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByLabel('Vaccine Name *').fill('E2E Rabies Shot')
+      await modal.getByLabel('Next Due Date').fill(h.toLocalISODate(new Date(Date.now() + 10 * 24 * 3600000)))
+      await modal.getByRole('button', { name: 'Save Record' }).click()
+      await page.waitForTimeout(1000)
+      r.log('vaccination-modal-closed-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const listRes = await page.evaluate((id) => window.api.vaccinations.list({ petId: id }), petId)
+      const found = (listRes?.data || []).find((v) => v.vaccineName === 'E2E Rabies Shot')
+      vacId = found?.id
+      r.log('vaccination-record-persisted', !!vacId, JSON.stringify(found))
+    })
+
+    await r.step('edit-vaccination-record-via-ui', async () => {
+      if (!vacId) return r.log('edit-vaccination-record-via-ui', false, 'no vacId captured')
+      const row = page.locator('p', { hasText: 'E2E Rabies Shot' }).first().locator('xpath=../../..')
+      await row.locator('button:has(svg.lucide-pen)').click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByLabel('Vaccine Name *').fill('E2E Rabies Shot Updated')
+      await modal.getByRole('button', { name: 'Update' }).click()
+      await page.waitForTimeout(1000)
+      r.log('vaccination-edit-modal-closed-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const getRes = await page.evaluate((id) => window.api.vaccinations.get({ id }), vacId)
+      r.log('vaccination-record-updated', getRes?.data?.vaccineName === 'E2E Rabies Shot Updated', JSON.stringify(getRes?.data?.vaccineName))
+    })
+
+    await r.step('vaccination-reminder-queued-via-ui', async () => {
+      if (!vacId) return r.log('vaccination-reminder-queued-via-ui', false, 'no vacId captured')
+      const row = page.locator('p', { hasText: 'E2E Rabies Shot Updated' }).first().locator('xpath=../../..')
+      await row.locator('button[title="Queue WhatsApp reminder"]').click()
+      await page.waitForTimeout(1000)
+      r.log('reminder-button-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const reminderRow = h.withDb((db) => db.prepare("SELECT * FROM NotificationQueue WHERE notificationType LIKE '%VACCIN%' ORDER BY createdAt DESC LIMIT 1").get())
+      r.log('reminder-row-queued', !!reminderRow, JSON.stringify(reminderRow))
+    })
+
+    await r.step('vaccinations-upcoming-includes-our-record', async () => {
+      const res = await page.evaluate(async () => window.api.vaccinations.upcoming({ daysAhead: 30 }))
+      const found = (res?.data || []).some((v) => v.id === vacId)
+      r.log('upcoming-vaccinations-includes-ours', found, JSON.stringify(res?.data?.map((v) => v.id)))
+    })
+
+    await r.step('delete-vaccination-record-via-ui', async () => {
+      if (!vacId) return r.log('delete-vaccination-record-via-ui', false, 'no vacId captured')
+      const row = page.locator('p', { hasText: 'E2E Rabies Shot Updated' }).first().locator('xpath=../../..')
+      await row.locator('button:has(svg.lucide-trash2)').click()
+      await page.waitForTimeout(300)
+      await row.getByRole('button', { name: 'Yes' }).click()
+      await page.waitForTimeout(1000)
+      r.log('vaccination-delete-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const getRes = await page.evaluate((id) => window.api.vaccinations.get({ id }), vacId)
+      r.log('vaccination-record-actually-gone', getRes?.success === false || !getRes?.data, JSON.stringify(getRes))
+    })
+
+    // pets.delete has no UI trigger anywhere in the renderer (the Archive
+    // Patient button in the edit modal calls pets.update({isActive:false}),
+    // never this channel) -- API-only coverage, same soft-delete semantics.
+    await r.step('pets-delete-channel-api-only', async () => {
+      const supRes = await page.evaluate(async () => window.api.customers.create({
+        customerName: 'E2E Vet Delete Owner', phone: `9${String(Date.now()).slice(-9)}`,
+      }))
+      const tempPetRes = await page.evaluate((customerId) => window.api.pets.create({
+        petName: 'E2E Vet Temp Delete Pet', species: 'Cat', customerId,
+      }), supRes?.data?.id)
+      const tempPetId = tempPetRes?.data?.id
+      r.log('temp-pet-created-for-delete-test', !!tempPetId, JSON.stringify(tempPetRes?.error || ''))
+      if (!tempPetId) return
+
+      const delRes = await page.evaluate((id) => window.api.pets.delete({ id }), tempPetId)
+      r.log('pets-delete-succeeds', !!delRes?.success, JSON.stringify(delRes?.error || ''))
+      const getRes = await page.evaluate((id) => window.api.pets.get({ id }), tempPetId)
+      r.log('pets-delete-soft-deactivates', getRes?.data?.isActive === false, JSON.stringify(getRes?.data?.isActive))
+    })
+
+    // ── pets.update archive/restore via real UI (broader-gap-list closure) ──
+    await r.step('archive-and-restore-pet-via-ui', async () => {
+      if (!petId) return r.log('archive-and-restore-pet-via-ui', false, 'no petId captured')
+      await page.getByRole('button', { name: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      await page.getByRole('button', { name: 'Archive Patient' }).click()
+      await page.waitForTimeout(300)
+      await page.getByRole('button', { name: 'Confirm' }).click()
+      await page.waitForTimeout(1000)
+      r.log('archive-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const afterArchive = await page.evaluate((id) => window.api.pets.get({ id }), petId)
+      r.log('pet-archived', afterArchive?.data?.isActive === false, JSON.stringify(afterArchive?.data?.isActive))
+
+      // Screen redirects to the list on archive -- navigate back in directly.
+      await h.gotoHash(page, `#/vet/pets/${petId}`)
+      await page.waitForTimeout(700)
+      await page.getByRole('button', { name: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      await page.getByRole('button', { name: 'Restore Patient' }).click()
+      await page.waitForTimeout(1000)
+      r.log('restore-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const afterRestore = await page.evaluate((id) => window.api.pets.get({ id }), petId)
+      r.log('pet-restored', afterRestore?.data?.isActive === true, JSON.stringify(afterRestore?.data?.isActive))
     })
 
     // ── Phase 67 §9.1 item 18.3 gap-closure (2026-08-27) — breed-specific
@@ -132,9 +283,20 @@ async function run() {
     const cleaned = h.cleanupByNamePrefix(TEST_PREFIX)
     console.log('cleanup:', JSON.stringify(cleaned))
     h.withDb((db) => {
+      // This raw connection doesn't enforce FK constraints (no `PRAGMA
+      // foreign_keys=ON`), so a bare `DELETE FROM Pet` neither cascades nor
+      // fails -- it just silently orphans VaccinationRecord/WeightHistory rows
+      // forever. Clear children first (broader-gap-list closure, 2026-09-03,
+      // once this suite started actually creating vaccination/weight data).
       const ids = db.prepare("SELECT id FROM Pet WHERE petName LIKE 'E2E Vet%'").all().map((r2) => r2.id)
-      for (const id of ids) { try { db.prepare('DELETE FROM Pet WHERE id = ?').run(id) } catch { /* noop */ } }
-      console.log('extra cleanup: pets', ids.length)
+      let vacs = 0, weights = 0
+      for (const id of ids) {
+        vacs += db.prepare('DELETE FROM VaccinationRecord WHERE petId = ?').run(id).changes
+        weights += db.prepare('DELETE FROM WeightHistory WHERE petId = ?').run(id).changes
+        try { db.prepare('DELETE FROM Pet WHERE id = ?').run(id) } catch { /* noop */ }
+      }
+      const notifs = db.prepare("DELETE FROM NotificationQueue WHERE notificationType LIKE 'VACCINE_%' AND customerName LIKE 'E2E Vet%'").run().changes
+      console.log('extra cleanup: pets', ids.length, 'vaccinationRecords', vacs, 'weightEntries', weights, 'notifications', notifs)
     })
   }
 
