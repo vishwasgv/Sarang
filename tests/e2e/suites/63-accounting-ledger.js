@@ -600,6 +600,73 @@ async function run() {
       r.log('bill-fully-paid-despite-tds-deduction', billAfter?.data?.status === 'PAID', JSON.stringify(billAfter?.data?.status))
     })
 
+    // ── supplierPayments.reverse via real UI (broader-gap-list closure) ─────
+    await r.step('reverse-supplier-payment-via-ui', async () => {
+      const supName = `${TEST_PREFIX} Reversal Vendor ${suffix}`
+      const supRes = await page.evaluate((name) => window.api.suppliers.create({ supplierName: name }), supName)
+      const supplierId = supRes?.data?.id
+      if (supplierId) createdSupplierIds.push(supplierId)
+      const billRes = await page.evaluate((supplierId) => window.api.bills.create({
+        supplierId, items: [{ serviceDescription: 'E2E reversal test line', quantity: 1, unitCost: 8000, taxRate: 0 }],
+      }), supplierId)
+      const billId = billRes?.data?.id
+      if (billId) createdBillIds.push(billId)
+
+      const payRes = await page.evaluate((billId) => window.api.supplierPayments.record({
+        billId, paymentMethod: 'CASH', amount: 8000,
+      }), billId)
+      r.log('payment-recorded-for-reversal-test', !!payRes?.success, JSON.stringify(payRes?.error || ''))
+
+      await h.gotoHash(page, '#/supplier-payments')
+      await page.waitForTimeout(700)
+      await page.getByPlaceholder(/search/i).fill(supName)
+      await page.waitForTimeout(600)
+
+      const row = page.locator('td', { hasText: supName }).first().locator('xpath=..')
+      const reverseBtn = row.locator('button[title="Reverse payment"]')
+      r.log('reverse-button-present', await reverseBtn.count() > 0)
+      await reverseBtn.click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.locator('input').first().fill('E2E reversal reason')
+      await modal.getByRole('button', { name: 'Reverse' }).click()
+      await page.waitForTimeout(1000)
+      r.log('reverse-modal-closed-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const dbState = h.withDb((db) => {
+        const payment = db.prepare('SELECT isReversed, reversalReason FROM SupplierPayment WHERE id = ?').get(payRes?.data?.id)
+        const bill = db.prepare('SELECT status, paidAmount, balanceAmount FROM Bill WHERE id = ?').get(billId)
+        const originalJe = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'SUPPLIER_PAYMENT' AND sourceId = ?").get(payRes?.data?.id)
+        const reversalJe = originalJe ? db.prepare("SELECT * FROM JournalEntry WHERE sourceType = 'SUPPLIER_PAYMENT' AND sourceId = ?").get(originalJe.id) : null
+        return { payment, bill, reversalJe }
+      })
+      r.log('payment-marked-reversed', dbState.payment?.isReversed === 1, JSON.stringify(dbState.payment))
+      r.log('bill-reopened-after-reversal', dbState.bill?.status === 'OPEN' && dbState.bill?.paidAmount === 0, JSON.stringify(dbState.bill))
+      r.log('reversal-journal-entry-posted', !!dbState.reversalJe, JSON.stringify(dbState.reversalJe))
+    })
+
+    // ── cashClose.create via real UI (broader-gap-list closure) ─────────────
+    await r.step('cash-close-create-via-ui', async () => {
+      const closeDate = '2020-01-15'
+      await h.gotoHash(page, '#/cash-close')
+      await page.waitForTimeout(700)
+      await page.locator('input[type="date"]').first().fill(closeDate)
+      await page.waitForTimeout(500)
+      await page.locator('input[type="number"]').first().fill('1234')
+      await page.waitForTimeout(200)
+      await page.getByRole('button', { name: /Record Close|Update Close/ }).click()
+      await page.waitForTimeout(1000)
+      r.log('cash-close-saved-no-crash', !(await h.hasErrorBoundary(page)))
+
+      // closeDate is stored as raw epoch-ms (Prisma SQLite DateTime), and
+      // local-midnight-of-2020-01-15 shifts into the previous UTC calendar
+      // day for any timezone ahead of UTC -- a LIKE '2020-01-15%' text match
+      // silently finds nothing. This suite runs alone against the shared dev
+      // DB (sequential runner), so "most recently created" is unambiguous.
+      const row = h.withDb((db) => db.prepare('SELECT * FROM DailyCashClose ORDER BY createdAt DESC LIMIT 1').get())
+      r.log('cash-close-row-persisted', !!row && row.actualCash === 1234, JSON.stringify(row))
+    })
+
     // ── MSME 45-day due-date auto-default ───────────────────────────────────
     await r.step('msme-supplier-bill-gets-45-day-due-date-by-default', async () => {
       const supRes = await page.evaluate((name) => window.api.suppliers.create({
@@ -631,6 +698,42 @@ async function run() {
       if (nonMsmeBillRes?.data?.id) createdBillIds.push(nonMsmeBillRes.data.id)
       r.log('non-msme-bill-has-no-auto-due-date', !nonMsmeBillRes?.data?.dueDate, JSON.stringify(nonMsmeBillRes?.data?.dueDate))
     })
+
+    // ── yearEndClose.execute via real UI (broader-gap-list closure) ─────────
+    // Deliberately the LAST step in this suite -- closing the year sets a
+    // global lockDate that blocks every dated financial write on/before it
+    // for every OTHER step, in this suite or any later one (run-all.js runs
+    // suites sequentially against the shared dev DB). finally{} below already
+    // has a standing safety net (`UPDATE BusinessProfile SET lockDate = NULL`)
+    // for exactly this reason -- never move this step earlier.
+    await r.step('close-financial-year-via-ui', async () => {
+      const today = h.toLocalISODate(new Date())
+      await h.gotoHash(page, '#/accounting/ledger-settings')
+      await page.waitForTimeout(600)
+      await page.locator('input[type="date"]').nth(1).fill(today)
+      await page.waitForTimeout(300)
+      await page.getByRole('button', { name: 'Close Financial Year' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByRole('button', { name: 'Close Year', exact: true }).click()
+      await page.waitForTimeout(1200)
+      r.log('year-end-close-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const dbState = h.withDb((db) => ({
+        profile: db.prepare('SELECT lockDate FROM BusinessProfile LIMIT 1').get(),
+        openingJe: db.prepare("SELECT * FROM JournalEntry WHERE sourceType = 'YEAR_END_OPENING' ORDER BY createdAt DESC LIMIT 1").get(),
+      }))
+      // lockDate comes back as raw epoch-ms from a raw SQL query (Prisma
+      // SQLite DateTime), not an ISO string -- same gotcha as elsewhere in
+      // this suite (e.g. dueDate over IPC).
+      const lockDateLocal = dbState.profile?.lockDate ? h.toLocalISODate(new Date(dbState.profile.lockDate)) : null
+      r.log('lock-date-set-to-closing-date', lockDateLocal === today, `lockDate=${lockDateLocal} expected=${today}`)
+      r.log('year-end-opening-je-posted', !!dbState.openingJe, JSON.stringify(dbState.openingJe))
+      if (dbState.openingJe) {
+        const lineCount = h.withDb((db) => db.prepare('SELECT COUNT(*) c FROM JournalEntryLine WHERE journalEntryId = ?').get(dbState.openingJe.id))
+        r.log('year-end-opening-je-has-lines', lineCount.c > 0, JSON.stringify(lineCount))
+      }
+    })
   } finally {
     // Safety nets -- must never leave the shared dev DB locked or with
     // credit interest silently enabled for every future invoice, even if an
@@ -659,10 +762,28 @@ async function run() {
       for (const cbId of createdChequeBookIds) chequeBooks += db.prepare('DELETE FROM ChequeBook WHERE id = ?').run(cbId).changes
 
       for (const billId of createdBillIds) {
+        // Each payment may have its own SUPPLIER_PAYMENT journal entry, plus
+        // a reversal entry sourced off that entry's own id (broader-gap-list
+        // closure, 2026-09-03) -- both must go before the payment row itself.
+        const paymentIds = db.prepare('SELECT id FROM SupplierPayment WHERE billId = ?').all(billId).map((p) => p.id)
+        for (const pid of paymentIds) {
+          const origJe = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'SUPPLIER_PAYMENT' AND sourceId = ?").get(pid)
+          if (origJe) {
+            const revJe = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'SUPPLIER_PAYMENT' AND sourceId = ?").get(origJe.id)
+            if (revJe) { jeLines += db.prepare('DELETE FROM JournalEntryLine WHERE journalEntryId = ?').run(revJe.id).changes; jes += db.prepare('DELETE FROM JournalEntry WHERE id = ?').run(revJe.id).changes }
+            jeLines += db.prepare('DELETE FROM JournalEntryLine WHERE journalEntryId = ?').run(origJe.id).changes
+            jes += db.prepare('DELETE FROM JournalEntry WHERE id = ?').run(origJe.id).changes
+          }
+        }
         payments += db.prepare('DELETE FROM SupplierPayment WHERE billId = ?').run(billId).changes
         billItems += db.prepare('DELETE FROM BillItem WHERE billId = ?').run(billId).changes
         try { bills += db.prepare('DELETE FROM Bill WHERE id = ?').run(billId).changes } catch { /* left as VOID if still referenced */ }
       }
+      // Same epoch-ms-vs-text gotcha as the create step's own verification --
+      // match by the known actualCash value the test always writes instead.
+      const cashCloseRemoved = db.prepare('DELETE FROM DailyCashClose WHERE actualCash = 1234').run().changes
+      const yeJe = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'YEAR_END_OPENING'").all()
+      for (const je of yeJe) { jeLines += db.prepare('DELETE FROM JournalEntryLine WHERE journalEntryId = ?').run(je.id).changes; jes += db.prepare('DELETE FROM JournalEntry WHERE id = ?').run(je.id).changes }
       for (const invId of createdInvoiceIds) {
         invoiceItems += db.prepare('DELETE FROM InvoiceItem WHERE invoiceId = ?').run(invId).changes
         try { invoices += db.prepare('DELETE FROM Invoice WHERE id = ?').run(invId).changes } catch { /* left in place if still referenced */ }
@@ -715,7 +836,7 @@ async function run() {
       for (const coaId of createdCoaIds) {
         coas += db.prepare('DELETE FROM ChartOfAccounts WHERE id = ?').run(coaId).changes
       }
-      return { jeLines, jes, deps, assets, pdcs, banks, coas, payments, bills, billItems, invoices, invoiceItems, chequeBooks, customers, suppliers, bankDeposits }
+      return { jeLines, jes, deps, assets, pdcs, banks, coas, payments, bills, billItems, invoices, invoiceItems, chequeBooks, customers, suppliers, bankDeposits, cashCloseRemoved, yearEndJes: yeJe.length }
     })
     console.log('extra cleanup (Phase 62 accounting tables):', JSON.stringify(cleanup))
     await h.closeApp(app)
