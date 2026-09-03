@@ -507,6 +507,11 @@ interface BPProfile {
   statutoryEsiPercent?: number | null
   statutoryEsiWageCeiling?: number | null
   statutoryProfessionalTax?: number | null
+  bankAccountName?: string | null
+  bankAccountNumber?: string | null
+  bankName?: string | null
+  bankBranch?: string | null
+  bankIfscCode?: string | null
 }
 
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
@@ -536,7 +541,12 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
     statutoryPfPercent: profile?.statutoryPfPercent != null ? String(profile.statutoryPfPercent) : '',
     statutoryEsiPercent: profile?.statutoryEsiPercent != null ? String(profile.statutoryEsiPercent) : '',
     statutoryEsiWageCeiling: profile?.statutoryEsiWageCeiling != null ? String(profile.statutoryEsiWageCeiling) : '',
-    statutoryProfessionalTax: profile?.statutoryProfessionalTax != null ? String(profile.statutoryProfessionalTax) : ''
+    statutoryProfessionalTax: profile?.statutoryProfessionalTax != null ? String(profile.statutoryProfessionalTax) : '',
+    bankAccountName: profile?.bankAccountName ?? '',
+    bankAccountNumber: profile?.bankAccountNumber ?? '',
+    bankName: profile?.bankName ?? '',
+    bankBranch: profile?.bankBranch ?? '',
+    bankIfscCode: profile?.bankIfscCode ?? ''
   })
   const setProfile = useBusinessStore((s) => s.setProfile)
   const { error: toastError, success: toastSuccess } = useNotificationStore()
@@ -565,7 +575,12 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
       statutoryPfPercent: profile?.statutoryPfPercent != null ? String(profile.statutoryPfPercent) : '',
       statutoryEsiPercent: profile?.statutoryEsiPercent != null ? String(profile.statutoryEsiPercent) : '',
       statutoryEsiWageCeiling: profile?.statutoryEsiWageCeiling != null ? String(profile.statutoryEsiWageCeiling) : '',
-      statutoryProfessionalTax: profile?.statutoryProfessionalTax != null ? String(profile.statutoryProfessionalTax) : ''
+      statutoryProfessionalTax: profile?.statutoryProfessionalTax != null ? String(profile.statutoryProfessionalTax) : '',
+      bankAccountName: profile?.bankAccountName ?? '',
+      bankAccountNumber: profile?.bankAccountNumber ?? '',
+      bankName: profile?.bankName ?? '',
+      bankBranch: profile?.bankBranch ?? '',
+      bankIfscCode: profile?.bankIfscCode ?? ''
     })
     setError(null)
     setEditing(true)
@@ -614,7 +629,12 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         statutoryPfPercent: form.statutoryPfPercent.trim() ? parseFloat(form.statutoryPfPercent) : null,
         statutoryEsiPercent: form.statutoryEsiPercent.trim() ? parseFloat(form.statutoryEsiPercent) : null,
         statutoryEsiWageCeiling: form.statutoryEsiWageCeiling.trim() ? parseFloat(form.statutoryEsiWageCeiling) : null,
-        statutoryProfessionalTax: form.statutoryProfessionalTax.trim() ? parseFloat(form.statutoryProfessionalTax) : null
+        statutoryProfessionalTax: form.statutoryProfessionalTax.trim() ? parseFloat(form.statutoryProfessionalTax) : null,
+        bankAccountName: form.bankAccountName.trim() || null,
+        bankAccountNumber: form.bankAccountNumber.trim() || null,
+        bankName: form.bankName.trim() || null,
+        bankBranch: form.bankBranch.trim() || null,
+        bankIfscCode: form.bankIfscCode.trim() || null
       })
       if (res.success) {
         const freshRes = await window.api.businessProfile.get()
@@ -800,6 +820,32 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
               <input value={form.postalCode} onChange={e => setForm(f => ({ ...f, postalCode: e.target.value }))} className={inputCls} />
             </div>
           </div>
+          <div>
+            <h4 className="text-sm font-semibold text-dark dark:text-slate-100">Bank Details</h4>
+            <p className="text-xs text-slate-500 mt-0.5 mb-3">Optional — printed on an invoice's Bank Details block (Settings → Invoice Templates) as a bank-transfer alternative to UPI.</p>
+            <div className="grid grid-cols-2 gap-4">
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Account Holder Name</label>
+                <input value={form.bankAccountName} onChange={e => setForm(f => ({ ...f, bankAccountName: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Account Number</label>
+                <input value={form.bankAccountNumber} onChange={e => setForm(f => ({ ...f, bankAccountNumber: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Bank Name</label>
+                <input value={form.bankName} onChange={e => setForm(f => ({ ...f, bankName: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Branch</label>
+                <input value={form.bankBranch} onChange={e => setForm(f => ({ ...f, bankBranch: e.target.value }))} className={inputCls} />
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">IFSC / Routing Code</label>
+                <input value={form.bankIfscCode} onChange={e => setForm(f => ({ ...f, bankIfscCode: e.target.value }))} className={inputCls} />
+              </div>
+            </div>
+          </div>
           <div className="flex justify-end gap-3 pt-2">
             <Button variant="ghost" size="sm" onClick={() => setEditing(false)}>Cancel</Button>
             <Button size="sm" onClick={save} disabled={saving}>{saving ? 'Saving…' : 'Save Changes'}</Button>
@@ -840,7 +886,11 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
             { label: 'Phone', value: profile?.phone },
             { label: 'Email', value: profile?.email },
             { label: 'Address', value: [profile?.address, profile?.city, profile?.state, profile?.postalCode].filter(Boolean).join(', ') || null },
-            { label: 'Website', value: profile?.website }
+            { label: 'Website', value: profile?.website },
+            ...(profile?.bankAccountNumber || profile?.bankName ? [{
+              label: 'Bank Details',
+              value: [profile?.bankName, profile?.bankAccountNumber, profile?.bankBranch].filter(Boolean).join(' · ')
+            }] : [])
           ].map(({ label, value }) => (
             <div key={label} className="flex items-center justify-between px-4 py-3">
               <span className="text-sm text-slate-500 dark:text-slate-400">{label}</span>
@@ -2490,7 +2540,10 @@ interface InvoiceTemplateRow {
   name: string
   isSystem: boolean
   isDefault: boolean
-  config: { accentColor?: string; footerText?: string; density?: 'comfortable' | 'compact' }
+  config: {
+    accentColor?: string; footerText?: string; density?: 'comfortable' | 'compact'
+    showAmountInWords?: boolean; showBankDetails?: boolean; showSignatureBlock?: boolean
+  }
 }
 
 // Phase 63 — the phase's own named "wow factor" item. A thin visual layer
@@ -2514,6 +2567,9 @@ function InvoiceTemplatesSection() {
   const [formAccentColor, setFormAccentColor] = useState('#00AEEF')
   const [formFooterText, setFormFooterText] = useState('')
   const [formDensity, setFormDensity] = useState<'comfortable' | 'compact'>('comfortable')
+  const [formShowAmountInWords, setFormShowAmountInWords] = useState(false)
+  const [formShowBankDetails, setFormShowBankDetails] = useState(false)
+  const [formShowSignatureBlock, setFormShowSignatureBlock] = useState(false)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -2540,6 +2596,9 @@ function InvoiceTemplatesSection() {
     setFormAccentColor('#00AEEF')
     setFormFooterText('')
     setFormDensity('comfortable')
+    setFormShowAmountInWords(false)
+    setFormShowBankDetails(false)
+    setFormShowSignatureBlock(false)
     setShowForm(true)
   }
 
@@ -2549,6 +2608,9 @@ function InvoiceTemplatesSection() {
     setFormAccentColor(tpl.config.accentColor ?? '#00AEEF')
     setFormFooterText(tpl.config.footerText ?? '')
     setFormDensity(tpl.config.density ?? 'comfortable')
+    setFormShowAmountInWords(tpl.config.showAmountInWords ?? false)
+    setFormShowBankDetails(tpl.config.showBankDetails ?? false)
+    setFormShowSignatureBlock(tpl.config.showSignatureBlock ?? false)
     setShowForm(true)
   }
 
@@ -2556,7 +2618,10 @@ function InvoiceTemplatesSection() {
     if (!formName.trim()) { toastError('Missing Name', 'Enter a template name.'); return }
     setSaving(true)
     try {
-      const config = { accentColor: formAccentColor, footerText: formFooterText || undefined, density: formDensity }
+      const config = {
+        accentColor: formAccentColor, footerText: formFooterText || undefined, density: formDensity,
+        showAmountInWords: formShowAmountInWords, showBankDetails: formShowBankDetails, showSignatureBlock: formShowSignatureBlock
+      }
       const res = editTarget
         ? await window.api.invoiceTemplates.update({ id: editTarget.id, name: formName.trim(), config })
         : await window.api.invoiceTemplates.create({ name: formName.trim(), config })
@@ -2687,6 +2752,21 @@ function InvoiceTemplatesSection() {
                 <textarea value={formFooterText} onChange={e => setFormFooterText(e.target.value)} rows={2}
                   placeholder="e.g. Thank you for your business!"
                   className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
+              </div>
+              <div className="space-y-2 pt-1 border-t border-gray-100 dark:border-slate-800">
+                <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase tracking-wide pt-3">Optional Sections</p>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={formShowAmountInWords} onChange={e => setFormShowAmountInWords(e.target.checked)} className="rounded border-gray-300" />
+                  Total Amount in Words
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={formShowBankDetails} onChange={e => setFormShowBankDetails(e.target.checked)} className="rounded border-gray-300" />
+                  Bank Details (set under Business Profile)
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={formShowSignatureBlock} onChange={e => setFormShowSignatureBlock(e.target.checked)} className="rounded border-gray-300" />
+                  Authorized Signature Block
+                </label>
               </div>
             </div>
             <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700">

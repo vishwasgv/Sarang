@@ -119,6 +119,101 @@ describe('printService.generateInvoiceHtml — Phase 63 template config', () => 
   })
 })
 
+// 2026-09-03 — real gap found via a side-by-side comparison against an
+// actual Zoho Books tax invoice: HSN/SAC, Due Date, Place of Supply and
+// Ship To all already existed as real, populated fields on Invoice/
+// InvoiceItem (fetched by getInvoice()'s Prisma query) but were never
+// rendered anywhere on the printed document. These print unconditionally
+// whenever their data is present — matching this file's existing
+// convention for legally-relevant fields (e.g. CGST/SGST) — no template
+// toggle needed.
+describe('printService.generateInvoiceHtml — HSN, Due Date, Place of Supply, Ship To', () => {
+  function makeInvoiceWithNewFields() {
+    return {
+      ...makeInvoice(),
+      dueDate: '2026-07-10T00:00:00.000Z',
+      buyerState: 'Karnataka (29)',
+      deliveryAddress: '99 Warehouse Road, Shivamogga',
+      items: [{ ...makeInvoice().items[0], hsnCode: '85287215' }],
+    }
+  }
+
+  it('shows the HSN/SAC column and code under a GST tax model', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoiceWithNewFields() as never, profile as never)
+    expect(html).toContain('HSN/SAC')
+    expect(html).toContain('85287215')
+  })
+
+  it('omits the HSN/SAC column entirely under a non-GST tax model', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoiceWithNewFields() as never, { ...profile, taxModel: 'VAT' } as never)
+    expect(html).not.toContain('HSN/SAC')
+    expect(html).not.toContain('85287215')
+  })
+
+  it('prints the due date when set', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoiceWithNewFields() as never, profile as never)
+    expect(html).toContain('Due:')
+  })
+
+  it('omits the due date line entirely when unset', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never)
+    expect(html).not.toContain('Due:')
+  })
+
+  it('prints Place of Supply when the invoice has a buyerState', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoiceWithNewFields() as never, profile as never)
+    expect(html).toContain('Place of Supply')
+    expect(html).toContain('Karnataka (29)')
+  })
+
+  it('prints a Ship To section alongside Bill To when deliveryAddress is set', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoiceWithNewFields() as never, profile as never)
+    expect(html).toContain('Ship To')
+    expect(html).toContain('99 Warehouse Road, Shivamogga')
+  })
+
+  it('omits Ship To entirely when deliveryAddress is unset', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never)
+    expect(html).not.toContain('Ship To')
+  })
+})
+
+describe('printService.generateInvoiceHtml — Amount in Words, Bank Details, Signature Block', () => {
+  const bankProfile = { ...profile, bankAccountName: 'Test Business', bankAccountNumber: '1234567890', bankName: 'Test Bank', bankBranch: 'Main Branch', bankIfscCode: 'TEST0001234' }
+
+  it('omits Amount in Words, Bank Details and Signature Block by default (no template config)', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, bankProfile as never)
+    expect(html).not.toContain('Amount in Words')
+    expect(html).not.toContain('Bank Details')
+    expect(html).not.toContain('Authorized Signature')
+  })
+
+  it('renders Amount in Words spelled out correctly when the toggle is on', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never, { showAmountInWords: true })
+    expect(html).toContain('Amount in Words')
+    // totalAmount 590, INR default -> "Five Hundred Ninety Indian Rupees Only"
+    expect(html).toContain('Five Hundred Ninety Indian Rupees Only')
+  })
+
+  it('renders Bank Details when the toggle is on and the business has bank fields set', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, bankProfile as never, { showBankDetails: true })
+    expect(html).toContain('Bank Details')
+    expect(html).toContain('1234567890')
+    expect(html).toContain('TEST0001234')
+  })
+
+  it('omits Bank Details when the toggle is on but the business has no bank fields set', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never, { showBankDetails: true })
+    expect(html).not.toContain('Bank Details')
+  })
+
+  it('renders a signature block with the business name when the toggle is on', async () => {
+    const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never, { showSignatureBlock: true })
+    expect(html).toContain('Authorized Signature')
+    expect(html).toContain('For Test Business')
+  })
+})
+
 // Regression coverage for a real gap found and fixed 2026-07-08: the UPI QR
 // only ever checked whether `upiId` was filled in, never the business's
 // actual country — UPI is exclusively an Indian payment system, so a

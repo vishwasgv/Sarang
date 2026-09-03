@@ -47,7 +47,14 @@ export const BusinessProfileUpdateSchema = z.object({
   statutoryPfPercent: z.number().min(0).max(100).nullable().optional(),
   statutoryEsiPercent: z.number().min(0).max(100).nullable().optional(),
   statutoryEsiWageCeiling: z.number().min(0).nullable().optional(),
-  statutoryProfessionalTax: z.number().min(0).nullable().optional()
+  statutoryProfessionalTax: z.number().min(0).nullable().optional(),
+  // 2026-09 §13 — printed on an invoice's optional Bank Details block
+  // (InvoiceTemplateConfig.showBankDetails), see print.service.ts.
+  bankAccountName: z.string().max(200).nullable().optional(),
+  bankAccountNumber: z.string().max(50).nullable().optional(),
+  bankName: z.string().max(200).nullable().optional(),
+  bankBranch: z.string().max(200).nullable().optional(),
+  bankIfscCode: z.string().max(20).nullable().optional()
 })
 
 export type BusinessProfileUpdatePayload = z.infer<typeof BusinessProfileUpdateSchema>

@@ -11,7 +11,21 @@ const STARTER_TEMPLATES: Array<{ name: string; config: InvoiceTemplateConfig }> 
   { name: 'Classic', config: { accentColor: '#00AEEF', density: 'comfortable' } },
   { name: 'Modern', config: { accentColor: '#7C3AED', density: 'comfortable' } },
   { name: 'Minimal', config: { accentColor: '#0F172A', density: 'compact' } },
-  { name: 'GST Detailed', config: { accentColor: '#059669', density: 'comfortable', footerText: 'Thank you for your business! — GST Invoice, computer-generated.' } },
+  // 2026-09 §13 — genuinely more detailed, not just a different accent
+  // color: the full B2B/wholesale document a business taking bank
+  // transfers and needing a signed copy actually wants (matches a
+  // typical GST tax invoice from accounting software like Zoho Books —
+  // HSN/Place of Supply/Ship To/Due Date print unconditionally already
+  // whenever their data exists, these three toggles are the
+  // business-preference layer on top of that).
+  {
+    name: 'GST Detailed',
+    config: {
+      accentColor: '#059669', density: 'comfortable',
+      footerText: 'Thank you for your business! — GST Invoice, computer-generated.',
+      showAmountInWords: true, showBankDetails: true, showSignatureBlock: true,
+    },
+  },
 ]
 
 // Lazy-seed, same convention as chartOfAccountsService's own 13 standard

@@ -4,6 +4,9 @@ const InvoiceTemplateConfigSchema = z.object({
   accentColor: z.string().max(20).optional(),
   footerText: z.string().max(300).optional(),
   density: z.enum(['comfortable', 'compact']).optional(),
+  showAmountInWords: z.boolean().optional(),
+  showBankDetails: z.boolean().optional(),
+  showSignatureBlock: z.boolean().optional(),
 })
 
 export const CreateInvoiceTemplateSchema = z.object({

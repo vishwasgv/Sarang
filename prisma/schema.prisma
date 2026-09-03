@@ -56,6 +56,17 @@ model BusinessProfile {
   // existing settings-row shape better than being the first ever added).
   // Null means "use the system default" (InvoiceTemplate.isDefault=true).
   defaultInvoiceTemplateId  String?
+  // 2026-09 §13 — printed on an invoice's optional Bank Details block
+  // (InvoiceTemplateConfig.showBankDetails) for businesses that take
+  // payment by bank transfer, alongside the existing UPI QR option. All
+  // null by default — no existing install prints an empty/broken block,
+  // and the print template only renders this section when at least an
+  // account number or bank name is present.
+  bankAccountName           String?
+  bankAccountNumber         String?
+  bankName                  String?
+  bankBranch                String?
+  bankIfscCode              String?
   // Phase 64 — job-costing overhead allocation, applied at production-order
   // completion time. Null basis means overhead allocation is disabled
   // (ProductionOrder.overheadCost stays 0), matching creditInterestEnabled's

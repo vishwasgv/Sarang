@@ -29,6 +29,15 @@ export interface InvoiceTemplateConfig {
   accentColor?: string
   footerText?: string
   density?: 'comfortable' | 'compact'
+  // Off by default — Amount in Words/bank details/a signature block are a
+  // business's own preference (a retail counter-sale template doesn't want
+  // them; a B2B/wholesale one does), unlike HSN/Due Date/Place of
+  // Supply/Ship To below which print unconditionally whenever their
+  // underlying data exists, matching this file's existing convention for
+  // legally-relevant fields (e.g. the CGST/SGST breakdown).
+  showAmountInWords?: boolean
+  showBankDetails?: boolean
+  showSignatureBlock?: boolean
 }
 
 interface BusinessProfile {
@@ -44,9 +53,15 @@ interface BusinessProfile {
   logoPath?: string | null
   enableDocumentWatermark?: boolean | null
   currencySymbol?: string
+  currencyCode?: string | null
   taxModel?: string | null
   country?: string | null
   gstScheme?: string | null
+  bankAccountName?: string | null
+  bankAccountNumber?: string | null
+  bankName?: string | null
+  bankBranch?: string | null
+  bankIfscCode?: string | null
 }
 
 // UPI is exclusively an Indian payment system — a business outside India
@@ -126,6 +141,59 @@ function getTaxLabel(taxModel?: string | null): string {
   }
 }
 
+const ONES = ['', 'One', 'Two', 'Three', 'Four', 'Five', 'Six', 'Seven', 'Eight', 'Nine', 'Ten',
+  'Eleven', 'Twelve', 'Thirteen', 'Fourteen', 'Fifteen', 'Sixteen', 'Seventeen', 'Eighteen', 'Nineteen']
+const TENS = ['', '', 'Twenty', 'Thirty', 'Forty', 'Fifty', 'Sixty', 'Seventy', 'Eighty', 'Ninety']
+
+function threeDigitsToWords(n: number): string {
+  const parts: string[] = []
+  if (n >= 100) { parts.push(`${ONES[Math.floor(n / 100)]} Hundred`); n %= 100 }
+  if (n >= 20) { parts.push(TENS[Math.floor(n / 10)]); n %= 10 }
+  if (n > 0) parts.push(ONES[n])
+  return parts.join(' ')
+}
+
+// Standard short-scale (Thousand/Million/Billion) English number-to-words —
+// deliberately not the Indian Lakh/Crore convention, so it reads correctly
+// for every offline-first install regardless of BusinessProfile.country,
+// not just India. Rounds to whole currency units; the fractional part (if
+// any) is spelled out as "and N/100" the way a cheque amount conventionally
+// is, rather than silently dropped.
+function amountToWords(amount: number, currencyName: string): string {
+  const whole = Math.floor(Math.abs(amount))
+  const fraction = Math.round((Math.abs(amount) - whole) * 100)
+
+  if (whole === 0 && fraction === 0) return `Zero ${currencyName} Only`
+
+  const scales: [number, string][] = [[1_000_000_000, 'Billion'], [1_000_000, 'Million'], [1_000, 'Thousand']]
+  let n = whole
+  const parts: string[] = []
+  for (const [scale, label] of scales) {
+    if (n >= scale) {
+      parts.push(`${threeDigitsToWords(Math.floor(n / scale))} ${label}`)
+      n %= scale
+    }
+  }
+  if (n > 0) parts.push(threeDigitsToWords(n))
+
+  const wholeWords = parts.length > 0 ? parts.join(' ') : 'Zero'
+  const fractionWords = fraction > 0 ? ` and ${fraction}/100` : ''
+  return `${wholeWords} ${currencyName}${fractionWords} Only`
+}
+
+const CURRENCY_NAMES: Record<string, string> = {
+  INR: 'Indian Rupees', USD: 'US Dollars', GBP: 'British Pounds', EUR: 'Euros',
+  AUD: 'Australian Dollars', CAD: 'Canadian Dollars', AED: 'UAE Dirhams',
+  SAR: 'Saudi Riyals', SGD: 'Singapore Dollars', MYR: 'Malaysian Ringgit',
+  NZD: 'New Zealand Dollars', ZAR: 'South African Rand', BDT: 'Bangladeshi Taka',
+  PKR: 'Pakistani Rupees', NPR: 'Nepalese Rupees', LKR: 'Sri Lankan Rupees',
+}
+
+function currencyNameFor(code?: string | null): string {
+  const key = (code ?? 'INR').toUpperCase()
+  return CURRENCY_NAMES[key] ?? key
+}
+
 interface InvoiceItem {
   // Snapshot at time of sale — the correct source for print output. Not
   // item.product.productName, which is the product's CURRENT (possibly later
@@ -151,6 +219,9 @@ interface InvoiceItem {
   // printed on the invoice so the compliance mark travels with the sale
   // record, not only the physical piece.
   jewelleryHallmarkNumber?: string | null
+  // Snapshot of Product.hsnCode at time of sale — same "the sale row is the
+  // source of truth, not today's product record" reasoning as productName above.
+  hsnCode?: string | null
 }
 
 function jewelleryDetailLine(item: InvoiceItem, sym: string): string {
@@ -192,6 +263,14 @@ interface Invoice {
   foreignCurrencyCode?: string | null
   foreignExchangeRate?: number | null
   foreignTotalAmount?: number | null
+  // All three already existed on the Invoice model (dueDate/buyerState for
+  // Phase 58's GST CGST-vs-IGST determination, deliveryAddress for Phase 69's
+  // scheduled-delivery verticals) and were already being fetched by
+  // getInvoice()'s Prisma query — they simply were never rendered on the
+  // printed document until this pass.
+  dueDate?: string | Date | null
+  buyerState?: string | null
+  deliveryAddress?: string | null
 }
 
 // Exported — Phase 47's QR table ordering reuses this to let a customer pay
@@ -302,15 +381,46 @@ export const printService = {
         : `<div class="totals-row"><span>${escHtml(getTaxLabel(profile?.taxModel))}</span><span>${formatAmount(invoice.taxAmount, sym)}</span></div>`
       : ''
 
-    const itemsHtml = invoice.items.map(item => `
+    // HSN/SAC is a legally-required GST line-item field in India above
+    // certain turnover thresholds — print unconditionally under the GST tax
+    // model whenever the item's own snapshotted code is present (matches
+    // this file's convention for legally-relevant fields elsewhere, e.g.
+    // the CGST/SGST breakdown above), not gated behind a template toggle.
+    const showHsn = isGstModel
+    const itemsHtml = invoice.items.map((item, i) => `
       <tr>
+        <td>${i + 1}</td>
         <td>${escHtml(item.productName)}${item.variantInfo ? `<br><span style="font-size:10px;color:#666">${escHtml(item.variantInfo)}</span>` : ''}${jewelleryDetailLine(item, sym) ? `<br><span style="font-size:10px;color:#666">${escHtml(jewelleryDetailLine(item, sym))}</span>` : ''}</td>
+        ${showHsn ? `<td>${escHtml(item.hsnCode) || '—'}</td>` : ''}
         <td class="right">${item.quantity} ${escHtml(item.product.unit)}</td>
         <td class="right">${formatAmount(item.unitPrice, sym)}</td>
         <td class="right">${item.discountAmount > 0 ? formatAmount(item.discountAmount, sym) : '—'}</td>
         <td class="right">${item.taxRate > 0 ? item.taxRate + '%' : '—'}</td>
         <td class="right bold">${formatAmount(item.lineTotal, sym)}</td>
       </tr>`).join('')
+
+    const placeOfSupply = invoice.buyerState ? escHtml(invoice.buyerState) : ''
+    const dueDateHtml = invoice.dueDate ? `<div class="inv-date">Due: ${formatDate(invoice.dueDate)}</div>` : ''
+
+    const amountInWordsHtml = templateConfig?.showAmountInWords
+      ? `<div class="amount-words"><span class="section-title">Amount in Words</span><p>${escHtml(amountToWords(invoice.totalAmount, currencyNameFor(profile?.currencyCode)))}</p></div>`
+      : ''
+
+    const hasBankDetails = !!(profile?.bankAccountNumber || profile?.bankName)
+    const bankDetailsHtml = templateConfig?.showBankDetails && hasBankDetails
+      ? `<div class="bank-details">
+          <div class="section-title">Bank Details</div>
+          ${profile?.bankAccountName ? `<div>Account Name: ${escHtml(profile.bankAccountName)}</div>` : ''}
+          ${profile?.bankAccountNumber ? `<div>Account No: ${escHtml(profile.bankAccountNumber)}</div>` : ''}
+          ${profile?.bankName ? `<div>Bank: ${escHtml(profile.bankName)}</div>` : ''}
+          ${profile?.bankBranch ? `<div>Branch: ${escHtml(profile.bankBranch)}</div>` : ''}
+          ${profile?.bankIfscCode ? `<div>IFSC: ${escHtml(profile.bankIfscCode)}</div>` : ''}
+        </div>`
+      : ''
+
+    const signatureHtml = templateConfig?.showSignatureBlock
+      ? `<div class="signature-block"><p>For ${bizName}</p><div class="signature-line"></div><p class="signature-caption">Authorized Signature</p></div>`
+      : ''
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -350,6 +460,18 @@ export const printService = {
   .qr-note { font-size: 9px; color: #94a3b8; margin-top: 6px; max-width: 200px; margin-left: auto; margin-right: auto; }
   .footer { margin-top: 32px; border-top: 1px solid #e2e8f0; padding-top: 12px; text-align: center; color: #94a3b8; font-size: 10px; }
   .notes-box { background: #fffbeb; border: 1px solid #fde68a; border-radius: 6px; padding: 8px 12px; font-size: 11px; color: #92400e; margin-bottom: 16px; }
+  .bill-ship-row { display: flex; gap: 16px; }
+  .bill-ship-row > div { flex: 1; }
+  .place-of-supply { font-size: 11px; color: #64748b; margin-top: 4px; }
+  .amount-words { margin-bottom: 16px; }
+  .amount-words p { font-size: 11px; font-style: italic; color: #1e293b; margin-top: 2px; }
+  .bottom-row { display: flex; justify-content: space-between; align-items: flex-end; gap: 16px; margin-top: 8px; }
+  .bank-details { font-size: 11px; color: #475569; line-height: 1.6; }
+  .bank-details div:first-child { font-size: 10px; font-weight: 600; color: #94a3b8; text-transform: uppercase; letter-spacing: 0.05em; margin-bottom: 4px; }
+  .signature-block { text-align: center; min-width: 180px; }
+  .signature-block p { font-size: 11px; color: #1e293b; }
+  .signature-line { height: 40px; }
+  .signature-caption { border-top: 1px solid #94a3b8; padding-top: 4px; color: #64748b !important; font-size: 10px !important; }
   @media print { body { padding: 0; } }
 </style>
 </head>
@@ -370,10 +492,13 @@ export const printService = {
     <div class="invoice-meta">
       <div class="inv-number">${escHtml(docLabel)} ${escHtml(invoice.invoiceNumber)}</div>
       <div class="inv-date">${formatDate(invoice.invoiceDate)}</div>
+      ${dueDateHtml}
       <div><span class="status-badge status-${isReturn ? 'RETURN' : invoice.status}">${isReturn ? 'RETURN' : invoice.status}</span></div>
+      ${placeOfSupply ? `<div class="place-of-supply">Place of Supply: ${placeOfSupply}</div>` : ''}
     </div>
   </div>
 
+  <div class="bill-ship-row">
   ${invoice.customer ? `
   <div class="section">
     <div class="section-title">Bill To</div>
@@ -383,13 +508,23 @@ export const printService = {
       ${invoice.customer.customerCode ? `<div style="color:#94a3b8;font-size:10px">${escHtml(invoice.customer.customerCode)}</div>` : ''}
     </div>
   </div>` : ''}
+  ${invoice.deliveryAddress ? `
+  <div class="section">
+    <div class="section-title">Ship To</div>
+    <div class="customer-box">
+      <div style="color:#1e293b;font-size:11px;white-space:pre-line">${escHtml(invoice.deliveryAddress)}</div>
+    </div>
+  </div>` : ''}
+  </div>
 
   <div class="section">
     <div class="section-title">Items</div>
     <table>
       <thead>
         <tr>
+          <th>Sl.</th>
           <th>Product</th>
+          ${showHsn ? '<th>HSN/SAC</th>' : ''}
           <th class="right">Qty</th>
           <th class="right">Unit Price</th>
           <th class="right">Discount</th>
@@ -416,7 +551,11 @@ export const printService = {
     </div>
   </div>
 
+  ${amountInWordsHtml}
+
   ${qrHtml}
+
+  ${(bankDetailsHtml || signatureHtml) ? `<div class="bottom-row">${bankDetailsHtml || '<div></div>'}${signatureHtml}</div>` : ''}
 
   <div class="footer">
     <p>${footerLine}</p>

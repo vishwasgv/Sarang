@@ -14,6 +14,14 @@ async function run() {
   h.resetAdminPasswordForSuite()
   const app = await h.launchApp()
 
+  // Declared here, not inside try{} — a let/const declared directly inside
+  // try{} is block-scoped to that block alone and invisible from the
+  // paired finally{} (same gotcha this codebase's other suites already
+  // document). Needed in finally{} to clean up the template row this
+  // suite creates.
+  let originalDefaultTemplateId = null
+  let newTemplateId = null
+
   try {
     const page = await h.getMainWindow(app)
     await h.login(page)
@@ -382,9 +390,51 @@ async function run() {
       const row = db.prepare("SELECT * FROM HeldSale WHERE label = ?").get(`${TEST_PREFIX} Held To Discard`)
       r.log('discarded-held-sale-row-gone', !row, JSON.stringify(row))
     }))
+
+    // ── Invoice print template: Amount in Words / Bank Details / Signature
+    // Block — ZERO E2E coverage before this step (already unit-tested in
+    // print.service.test.ts for the isolated function; this exercises the
+    // real IPC pipeline end-to-end: businessProfile.update ->
+    // invoiceTemplates.create/setBusinessDefault -> print.previewInvoice).
+    await r.step('gst-detailed-template-renders-new-sections-via-real-print-pipeline', async () => {
+      if (!invoiceId) { r.log('skipped-no-invoice-id', false); return }
+      const before = await page.evaluate(async () => window.api.businessProfile.get())
+      originalDefaultTemplateId = before?.data?.defaultInvoiceTemplateId ?? null
+
+      const bpRes = await page.evaluate(async () => window.api.businessProfile.update({
+        bankAccountName: 'E2E Commerce Test Business', bankAccountNumber: '9988776655',
+        bankName: 'E2E Test Bank', bankBranch: 'Test Branch', bankIfscCode: 'TEST0009988',
+      }))
+      r.log('bank-details-saved', !!bpRes?.success, JSON.stringify(bpRes?.error || ''))
+
+      const tplRes = await page.evaluate(async (name) => window.api.invoiceTemplates.create({
+        name, config: { accentColor: '#059669', showAmountInWords: true, showBankDetails: true, showSignatureBlock: true },
+      }), `${TEST_PREFIX} Print Template`)
+      newTemplateId = tplRes?.data?.id
+      r.log('print-template-created', !!newTemplateId, JSON.stringify(tplRes?.error || ''))
+
+      if (newTemplateId) {
+        await page.evaluate(async (id) => window.api.invoiceTemplates.setBusinessDefault({ id }), newTemplateId)
+      }
+
+      const previewRes = await page.evaluate(async (id) => window.api.print.previewInvoice({ invoiceId: id }), invoiceId)
+      const html = previewRes?.data ?? ''
+      r.log('preview-no-crash', !!previewRes?.success, JSON.stringify(previewRes?.error || ''))
+      r.log('amount-in-words-rendered', /Amount in Words/.test(html) && /Only/.test(html), html.match(/Amount in Words[\s\S]{0,80}/)?.[0] ?? 'not found')
+      r.log('bank-details-rendered', html.includes('9988776655') && html.includes('TEST0009988'), 'checked for account number and IFSC in HTML')
+      r.log('signature-block-rendered', html.includes('Authorized Signature') && /<p>For .+<\/p>/.test(html), html.match(/<p>For [^<]*<\/p>/)?.[0] ?? 'not found')
+    })
+
+    await r.step('restore-business-profile-and-template-default-after-print-test', async () => {
+      await page.evaluate(async () => window.api.businessProfile.update({
+        bankAccountName: null, bankAccountNumber: null, bankName: null, bankBranch: null, bankIfscCode: null,
+      }))
+      await page.evaluate(async (id) => window.api.invoiceTemplates.setBusinessDefault({ id }), originalDefaultTemplateId)
+    })
   } finally {
     await h.closeApp(app)
     h.randomizeAdminPassword()
+    if (newTemplateId) h.withDb((db) => db.prepare('DELETE FROM InvoiceTemplate WHERE id = ?').run(newTemplateId))
     const cleaned = h.cleanupByNamePrefix(TEST_PREFIX)
     console.log('cleanup:', JSON.stringify(cleaned))
   }
