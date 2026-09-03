@@ -769,7 +769,10 @@ const api: IpcChannels = {
     complete: (p) => invoke('production:complete', p),
     cancel: (p) => invoke('production:cancel', p),
     addLaborEntry: (p) => invoke('production:addLaborEntry', p),
-    removeLaborEntry: (id) => invoke('production:removeLaborEntry', id)
+    // Handler validates payload as { id }, not a bare string -- real bug
+    // found live 2026-09-03: every "Remove" click on a labor entry silently
+    // failed VAL-001 validation and did nothing.
+    removeLaborEntry: (id) => invoke('production:removeLaborEntry', { id })
   },
   workOrders: {
     list: (p) => invoke('workOrders:list', p),
