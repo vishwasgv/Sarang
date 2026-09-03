@@ -429,6 +429,58 @@ async function run() {
       }
     }))
 
+    // ── hr.updateEmployee / .deactivateEmployee — ZERO E2E coverage of any
+    // kind before this step (create was already covered). All payroll
+    // checks above have finished with this employee, so editing then
+    // deactivating them here is safe. ───────────────────────────────────────
+    await r.step('employee-edited-via-real-ui', async () => {
+      if (!employeeId) { r.log('skipped-no-employee-id', false); return }
+      await h.gotoHash(page, '#/hr/employees')
+      await page.waitForTimeout(700)
+      // Matches the pattern this same list already uses in the payroll step
+      // above — the row Card's onClick opens the detail panel, and clicking
+      // its name text is enough for the click to bubble up to it.
+      await page.locator('p', { hasText: employeeName }).first().click()
+      await page.waitForTimeout(400)
+      const detailPanel = h.topModal(page)
+      await detailPanel.locator('button', { hasText: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      // Department's <label> has no htmlFor/id association with its
+      // <input> (a plain sibling pair, not the shared Input component), so
+      // getByLabel() won't find it — walk from the label text instead.
+      const deptInput = modal.locator('label', { hasText: 'Department' }).locator('xpath=following-sibling::input')
+      await deptInput.fill('E2E Cost66 Dept')
+      await modal.locator('button', { hasText: 'Save' }).click()
+      await page.waitForTimeout(800)
+      r.log('employee-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('employee-edit-persisted', () => h.withDb((db) => {
+      if (!employeeId) { r.log('skipped-no-employee-id', false); return }
+      const emp = db.prepare('SELECT * FROM Employee WHERE id = ?').get(employeeId)
+      r.log('employee-department-updated', emp?.department === 'E2E Cost66 Dept', JSON.stringify(emp?.department))
+    }))
+
+    await r.step('employee-deactivated-via-real-ui', async () => {
+      if (!employeeId) { r.log('skipped-no-employee-id', false); return }
+      await page.locator('p', { hasText: employeeName }).first().click()
+      await page.waitForTimeout(400)
+      const detailPanel = h.topModal(page)
+      await detailPanel.locator('button', { hasText: 'Deactivate' }).click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Deactivate', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('employee-deactivate-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('employee-deactivate-persisted', () => h.withDb((db) => {
+      if (!employeeId) { r.log('skipped-no-employee-id', false); return }
+      const emp = db.prepare('SELECT * FROM Employee WHERE id = ?').get(employeeId)
+      r.log('employee-marked-inactive', emp?.isActive === 0, JSON.stringify(emp?.isActive))
+    }))
+
     // ── UAT scenario from the spec itself: "...a dashed line dip... because
     // of a large recurring rent expense due then." Seed a real recurring
     // EXPENSE profile (via IPC, matching suite convention) whose next
