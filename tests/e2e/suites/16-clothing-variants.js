@@ -535,6 +535,104 @@ async function run() {
       }
     })
 
+    // variants.delete — deleted via the same IPC call the real UI's Trash2 +
+    // Save flow uses, not re-driven through the UI a second time: ~48 stale
+    // products already share this exact name (see finally{} below), so a
+    // second name-search can't reliably re-find our specific row.
+    await r.step('add-then-delete-a-third-variant-via-real-ui', async () => {
+      await h.gotoHash(page, '#/products')
+      await page.waitForTimeout(700)
+      const searchBox = page.locator('input[placeholder="Search products…"]')
+      await searchBox.fill('E2E Cloth TShirt')
+      await page.waitForTimeout(600)
+      const row = page.locator('tr', { hasText: 'E2E Cloth TShirt' }).first()
+      await row.locator('button[title="Manage Variants"]').click()
+      await page.waitForTimeout(500)
+      const modal = h.topModal(page)
+      await modal.locator('p', { hasText: 'Loading' }).waitFor({ state: 'detached', timeout: 5000 }).catch(() => {})
+
+      await modal.getByRole('button', { name: 'Add Row' }).click()
+      await page.waitForTimeout(300)
+      const newRow = modal.locator('table tbody tr').last()
+      await newRow.getByPlaceholder('M, L, 32…').fill('XL')
+      await newRow.getByPlaceholder('Black, Red…').fill('Green')
+      await newRow.locator('input[type="number"]').nth(1).fill('5')
+      await modal.getByRole('button', { name: 'Save Variants' }).click()
+      await page.waitForTimeout(1000)
+      r.log('third-variant-add-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const afterAdd = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const xlGreen = (afterAdd?.data || []).find((v) => v.size === 'XL' && v.color === 'Green')
+      r.log('third-variant-created', !!xlGreen, JSON.stringify(xlGreen))
+      if (!xlGreen) return
+
+      const deleteRes = await page.evaluate(async (id) => window.api.variants.delete({ id }), xlGreen.id)
+      r.log('third-variant-delete-api-succeeds', !!deleteRes?.success, JSON.stringify(deleteRes?.error || ''))
+
+      const afterDelete = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const stillThere = (afterDelete?.data || []).find((v) => v.size === 'XL' && v.color === 'Green')
+      r.log('third-variant-actually-deleted', !stillThere, JSON.stringify(afterDelete?.data))
+      r.log('original-two-variants-untouched', (afterDelete?.data || []).length === 2, `count=${afterDelete?.data?.length}`)
+    })
+
+    // variants.adjustStock has no UI trigger anywhere in the renderer — API-only coverage.
+    await r.step('adjust-variant-stock-via-real-api', async () => {
+      const listRes = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const mBlue = (listRes?.data || []).find((v) => v.size === 'M' && v.color === 'Blue')
+      r.log('m-blue-variant-found-for-adjust-test', !!mBlue, JSON.stringify(mBlue))
+      if (!mBlue) return
+
+      const beforeQty = mBlue.stockQty
+      const adjustRes = await page.evaluate(async (variantId) => window.api.variants.adjustStock({
+        variantId, quantityDelta: 3,
+      }), mBlue.id)
+      r.log('adjust-stock-api-succeeds', !!adjustRes?.success, JSON.stringify(adjustRes?.error || ''))
+
+      const afterRes = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const mBlueAfter = (afterRes?.data || []).find((v) => v.size === 'M' && v.color === 'Blue')
+      r.log('variant-stock-increased-by-3', mBlueAfter?.stockQty === beforeQty + 3, `before=${beforeQty} after=${mBlueAfter?.stockQty}`)
+    })
+
+    await r.step('bulk-generate-missing-barcodes-via-real-ui', async () => {
+      await h.gotoHash(page, '#/products/print-labels')
+      await page.waitForTimeout(700)
+      r.log('print-labels-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const beforeRes = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+      const missingBefore = (beforeRes?.data || []).filter((v) => !v.barcode).length
+      r.log('captured-missing-barcode-count-before', true, `missing=${missingBefore}`)
+
+      // Searching and clicking a variant-tracked product opens the variant
+      // picker panel (PrintLabelsScreen.tsx's addLine()) rather than adding
+      // a line directly — "Generate missing barcodes for these variants"
+      // only renders inside that panel, and only when at least one variant
+      // still lacks a barcode.
+      const searchBox = page.getByPlaceholder('Search or scan a product to add…')
+      await searchBox.fill('E2E Cloth TShirt')
+      await page.waitForTimeout(600)
+      await page.locator('button', { hasText: 'E2E Cloth TShirt' }).first().click()
+      await page.waitForTimeout(400)
+
+      const genBtn = page.locator('button', { hasText: 'Generate missing barcodes for these variants' })
+      const genVisible = await genBtn.count() > 0
+      r.log('generate-missing-barcodes-button-visible', genVisible, `missingBefore=${missingBefore}`)
+      if (genVisible) {
+        await genBtn.click()
+        await page.waitForTimeout(1000)
+        r.log('bulk-generate-no-crash', !(await h.hasErrorBoundary(page)))
+
+        const afterRes = await page.evaluate(async (pid) => window.api.variants.list({ productId: pid }), productId)
+        const missingAfter = (afterRes?.data || []).filter((v) => !v.barcode).length
+        r.log('all-missing-barcodes-now-filled', missingAfter === 0, `missingAfter=${missingAfter}`)
+      } else {
+        // Every variant already has a barcode (e.g. a prior run in this
+        // same dev DB already generated them) — nothing to exercise, and
+        // that's the CORRECT state for the button to be absent in.
+        r.log('bulk-generate-no-crash', missingBefore === 0, `missingBefore=${missingBefore}`)
+        r.log('all-missing-barcodes-now-filled', missingBefore === 0, `missingBefore=${missingBefore}`)
+      }
+    })
+
     await r.step('restore-business-type', async () => {
       if (originalBusinessType && originalBusinessType !== 'CLOTHING') {
         const res = await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), originalBusinessType)
@@ -544,15 +642,19 @@ async function run() {
   } finally {
     await h.closeApp(app)
     h.randomizeAdminPassword()
-    const cleaned = h.cleanupByNamePrefix(TEST_PREFIX)
-    console.log('cleanup:', JSON.stringify(cleaned))
-    h.withDb((db) => {
+    // Variants must be deleted before cleanupByNamePrefix's Product delete,
+    // or the FK forces a silent soft-delete (isActive=0) that leaves a
+    // same-named zombie row forever — this had piled up ~48 stale rows.
+    const variantsRemoved = h.withDb((db) => {
       const rows = db.prepare("SELECT pv.id FROM ProductVariant pv JOIN Product p ON p.id = pv.productId WHERE p.productName LIKE 'E2E Cloth%'").all().map((r2) => r2.id)
       for (const vid of rows) {
         try { db.prepare('DELETE FROM ProductVariant WHERE id = ?').run(vid) } catch { /* leave it, harmless test row */ }
       }
-      console.log('extra cleanup: variants', rows.length)
+      return rows.length
     })
+    const cleaned = h.cleanupByNamePrefix(TEST_PREFIX)
+    console.log('cleanup:', JSON.stringify(cleaned))
+    console.log('extra cleanup: variants', variantsRemoved)
   }
 
   return r
