@@ -39,6 +39,7 @@ async function run() {
   let pdcId = null
   let bouncedChequeNumber = null
   let bankAccountId = null
+  let depositChequeNumber = null
 
   let page
   try {
@@ -314,6 +315,64 @@ async function run() {
       r.log('bounced-pdc-posts-no-clearing-je', !je, JSON.stringify(je))
     })
 
+    // ── Bank Deposit Slips (2026-09-02): cash + cheque combo, real UI ───────
+    // No prior E2E coverage at all (unit-tested only) — closes that gap.
+    let bankBalanceBeforeDeposit = null
+    await r.step('bank-deposit-cash-and-cheque-combo-via-ui', async () => {
+      if (!bankAccountId) return r.log('bank-deposit-cash-and-cheque-combo-via-ui', false, 'no bankAccountId captured')
+      bankBalanceBeforeDeposit = h.withDb((db) => db.prepare('SELECT currentBalance FROM BankAccount WHERE id = ?').get(bankAccountId))?.currentBalance ?? 0
+
+      // A fresh PENDING cheque on the same bank account, to fold into the deposit.
+      depositChequeNumber = `CHQD${suffix.toString().slice(-6)}`
+      const pdcRes = await page.evaluate((p) => window.api.postDatedCheques.create(p), {
+        bankAccountId, chequeNumber: depositChequeNumber, direction: 'RECEIVED', dueDate: '2026-12-31', amount: 750,
+      })
+      r.log('deposit-pdc-created', !!pdcRes?.success, JSON.stringify(pdcRes?.error || ''))
+
+      await h.gotoHash(page, '#/accounting/bank-deposits')
+      await page.waitForTimeout(700)
+      await page.locator('button', { hasText: 'New Deposit' }).click()
+      await page.waitForTimeout(400)
+      await page.getByLabel('Bank Account').selectOption({ label: bankAccountName })
+      await page.waitForTimeout(500) // lets listAvailableCheques resolve for the newly-selected account
+      // 2 x ₹500 + 3 x ₹100 = ₹1300 cash
+      await page.getByLabel('₹500').fill('2')
+      await page.getByLabel('₹100').fill('3')
+      const chequeRow = page.locator('label', { hasText: depositChequeNumber })
+      r.log('deposit-pending-cheque-listed', await chequeRow.count() > 0)
+      if (await chequeRow.count()) await chequeRow.locator('input[type="checkbox"]').check()
+      await page.getByRole('button', { name: 'New Deposit', exact: true }).last().click()
+      await page.waitForTimeout(800)
+      r.log('deposit-modal-closed-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('bank-deposit-persisted-cheque-linked-je-posted-and-balance-updated', () => h.withDb((db) => {
+      if (!depositChequeNumber) { r.log('skipped-no-deposit-cheque', false); return }
+      const balanceBefore = bankBalanceBeforeDeposit ?? 0
+
+      const deposit = db.prepare('SELECT * FROM BankDeposit WHERE bankAccountId = ? ORDER BY createdAt DESC LIMIT 1').get(bankAccountId)
+      r.log('bank-deposit-row-exists', !!deposit, JSON.stringify(deposit))
+      if (!deposit) return
+
+      r.log('bank-deposit-totals-correct', deposit.cashTotal === 1300 && deposit.chequeTotal === 750 && deposit.totalAmount === 2050, JSON.stringify(deposit))
+
+      const linkedCheque = db.prepare("SELECT * FROM PostDatedCheque WHERE chequeNumber = ?").get(depositChequeNumber)
+      r.log('deposit-cheque-marked-deposited-and-linked', linkedCheque?.status === 'DEPOSITED' && linkedCheque?.bankDepositId === deposit.id, JSON.stringify(linkedCheque))
+
+      // Only the cash portion posts a GL entry immediately — the cheque posts
+      // its own entry later, once it actually clears (see bank-deposit.service.ts's
+      // own header comment). So this JE's amount is cashTotal (1300), not totalAmount.
+      const je = db.prepare("SELECT * FROM JournalEntry WHERE sourceType = 'BANK_DEPOSIT' AND sourceId = ?").get(deposit.id)
+      r.log('bank-deposit-je-posted', !!je, JSON.stringify(je))
+      if (je) {
+        const lines = db.prepare('SELECT SUM(debitAmount) d, SUM(creditAmount) c FROM JournalEntryLine WHERE journalEntryId = ?').get(je.id)
+        r.log('bank-deposit-je-balanced-at-cash-only', lines.d === lines.c && lines.d === 1300, JSON.stringify(lines))
+      }
+
+      const updatedAccount = db.prepare('SELECT currentBalance FROM BankAccount WHERE id = ?').get(bankAccountId)
+      r.log('bank-account-balance-increased-by-cash-only', updatedAccount?.currentBalance === balanceBefore + 1300, `expected=${balanceBefore + 1300} actual=${updatedAccount?.currentBalance}`)
+    }))
+
     // ── Fixed Asset dispose ──────────────────────────────────────────────────
     await r.step('dispose-fixed-asset-via-api', async () => {
       if (!assetId) return r.log('dispose-fixed-asset-via-api', false, 'no assetId captured')
@@ -584,7 +643,7 @@ async function run() {
     // Phase 62 tables aren't covered by h.cleanupByNamePrefix — clean up
     // directly, same pattern suite 62's own "extra cleanup" block uses.
     const cleanup = h.withDb((db) => {
-      let jeLines = 0, jes = 0, deps = 0, assets = 0, pdcs = 0, banks = 0, coas = 0
+      let jeLines = 0, jes = 0, deps = 0, assets = 0, pdcs = 0, banks = 0, coas = 0, bankDeposits = 0
       let payments = 0, bills = 0, billItems = 0, invoices = 0, invoiceItems = 0, chequeBooks = 0, customers = 0, suppliers = 0
 
       // Gap-closure additions (2026-08-27), deleted first in FK order.
@@ -630,6 +689,15 @@ async function run() {
         assets += db.prepare('DELETE FROM FixedAsset WHERE id = ?').run(assetId).changes
       }
       pdcs += db.prepare('DELETE FROM PostDatedCheque WHERE chequeNumber = ?').run(chequeNumber).changes
+      if (depositChequeNumber) {
+        const deposit = db.prepare('SELECT id FROM BankDeposit WHERE bankAccountId = ?').get(bankAccountId)
+        if (deposit) {
+          const je = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'BANK_DEPOSIT' AND sourceId = ?").get(deposit.id)
+          if (je) { jeLines += db.prepare('DELETE FROM JournalEntryLine WHERE journalEntryId = ?').run(je.id).changes; jes += db.prepare('DELETE FROM JournalEntry WHERE id = ?').run(je.id).changes }
+        }
+        pdcs += db.prepare('DELETE FROM PostDatedCheque WHERE chequeNumber = ?').run(depositChequeNumber).changes
+        if (deposit) bankDeposits += db.prepare('DELETE FROM BankDeposit WHERE id = ?').run(deposit.id).changes
+      }
       for (const bankAccountId of createdBankAccountIds) {
         const je = db.prepare("SELECT id FROM JournalEntry WHERE sourceType = 'BANK_ACCOUNT_OPENING' AND sourceId = ?").get(bankAccountId)
         if (je) { jeLines += db.prepare('DELETE FROM JournalEntryLine WHERE journalEntryId = ?').run(je.id).changes; jes += db.prepare('DELETE FROM JournalEntry WHERE id = ?').run(je.id).changes }
@@ -647,7 +715,7 @@ async function run() {
       for (const coaId of createdCoaIds) {
         coas += db.prepare('DELETE FROM ChartOfAccounts WHERE id = ?').run(coaId).changes
       }
-      return { jeLines, jes, deps, assets, pdcs, banks, coas, payments, bills, billItems, invoices, invoiceItems, chequeBooks, customers, suppliers }
+      return { jeLines, jes, deps, assets, pdcs, banks, coas, payments, bills, billItems, invoices, invoiceItems, chequeBooks, customers, suppliers, bankDeposits }
     })
     console.log('extra cleanup (Phase 62 accounting tables):', JSON.stringify(cleanup))
     await h.closeApp(app)
