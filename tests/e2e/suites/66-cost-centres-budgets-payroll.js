@@ -217,6 +217,89 @@ async function run() {
       await h.shot(page, 'budget-vs-actual-standalone-report')
     })
 
+    // ── budgets.update / .delete — ZERO E2E coverage of any kind before
+    // this step (create above was already covered). Nothing later in this
+    // suite depends on this Budget row, so editing then deleting it here
+    // is safe. ───────────────────────────────────────────────────────────
+    await r.step('budget-edited-and-deleted-via-real-ui', async () => {
+      await h.gotoHash(page, '#/budgets')
+      await page.waitForTimeout(700)
+      const row = page.locator('tr', { hasText: uptownName })
+      await row.locator('button', { hasText: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      const amountInput = modal.getByLabel('Amount *')
+      await amountInput.fill('')
+      await amountInput.fill('4500')
+      await modal.locator('button', { hasText: 'Save Changes' }).click()
+      await page.waitForTimeout(800)
+      r.log('budget-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('budget-edit-persisted', () => h.withDb((db) => {
+      const bud = db.prepare('SELECT * FROM Budget WHERE costCentreId = ?').get(uptownId)
+      r.log('budget-amount-updated', bud?.amount === 4500, JSON.stringify(bud?.amount))
+    }))
+
+    await r.step('budget-deleted-via-real-ui', async () => {
+      const row = page.locator('tr', { hasText: uptownName })
+      // BudgetsScreen's delete button has no confirmation dialog — a bare
+      // icon button (title-less, Trash2 svg) that deletes immediately.
+      await row.locator('button:has(svg.lucide-trash2)').click()
+      await page.waitForTimeout(700)
+      r.log('budget-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('budget-actually-deleted', () => h.withDb((db) => {
+      const bud = db.prepare('SELECT * FROM Budget WHERE costCentreId = ?').get(uptownId)
+      r.log('budget-row-gone', !bud, JSON.stringify(bud))
+    }))
+
+    // ── expenses.update / .delete — ZERO E2E coverage of any kind before
+    // this step (create above, tagged to Uptown, was already covered).
+    // Both budget steps above have already finished with it, so editing
+    // then deleting this same expense here is safe. ────────────────────────
+    await r.step('expense-edited-and-deleted-via-real-ui', async () => {
+      if (!expenseId) { r.log('skipped-no-expense-id', false); return }
+      await h.gotoHash(page, '#/expenses')
+      await page.waitForTimeout(700)
+      const row = page.locator('tr', { hasText: `${TEST_PREFIX} Ad Spend ${suffix}` })
+      // lucide-react's `Edit` export is a re-export of `square-pen`, so the
+      // rendered class is "lucide-square-pen" — not "lucide-edit".
+      await row.locator('button:has(svg.lucide-square-pen)').click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      const amountInput = modal.locator('input[type="number"]').first()
+      await amountInput.fill('')
+      await amountInput.fill('4750')
+      await modal.locator('button', { hasText: 'Save' }).last().click()
+      await page.waitForTimeout(800)
+      r.log('expense-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('expense-edit-persisted', () => h.withDb((db) => {
+      if (!expenseId) { r.log('skipped-no-expense-id', false); return }
+      const exp = db.prepare('SELECT * FROM Expense WHERE id = ?').get(expenseId)
+      r.log('expense-amount-updated', exp?.amount === 4750, JSON.stringify(exp?.amount))
+    }))
+
+    await r.step('expense-deleted-via-real-ui', async () => {
+      if (!expenseId) { r.log('skipped-no-expense-id', false); return }
+      const row = page.locator('tr', { hasText: `${TEST_PREFIX} Ad Spend ${suffix}` })
+      await row.locator('button:has(svg.lucide-trash2)').click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(700)
+      r.log('expense-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('expense-actually-deleted', () => h.withDb((db) => {
+      if (!expenseId) { r.log('skipped-no-expense-id', false); return }
+      const exp = db.prepare('SELECT * FROM Expense WHERE id = ?').get(expenseId)
+      r.log('expense-row-gone', !exp, JSON.stringify(exp))
+    }))
+
     // ── Statutory suggestion: configure rates, generate payroll, suggest, verify NO auto-save ──
     await r.step('configure-statutory-rates-via-real-settings-ui', async () => {
       await h.gotoHash(page, '#/settings')
