@@ -325,10 +325,18 @@ export const paymentService = {
           await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: leg.amount })
         }
 
+        // paidAmount credits the invoice for its full actual balanceAmount, not
+        // the entered splitTotal — the PM-007 check above already tolerates up
+        // to 5 paise of mismatch between them as "close enough to call paid".
+        // Crediting splitTotal instead (as this used to) while forcing
+        // balanceAmount to 0 let that tolerated mismatch quietly vanish: no
+        // journal entry, no ledger trail, paidAmount + balanceAmount permanently
+        // short of (or over) totalAmount by a few paise. Using balanceAmount
+        // here keeps the books exact while preserving the same tolerance.
         await tx.invoice.update({
           where: { id: payload.invoiceId },
           data: {
-            paidAmount: roundCurrency(invoice.paidAmount + splitTotal),
+            paidAmount: roundCurrency(invoice.paidAmount + invoice.balanceAmount),
             balanceAmount: 0,
             paymentStatus: 'PAID'
           }

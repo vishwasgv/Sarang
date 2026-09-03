@@ -61,10 +61,11 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
 
   async function handleQuickAdd() {
     if (!quickName.trim()) { setQuickError('Name is required.'); return }
+    if (!quickPhone.trim()) { setQuickError('Phone number is required.'); return }
     setQuickAdding(true)
     setQuickError('')
     try {
-      const res = await api.customers.create({ customerName: quickName.trim(), phone: quickPhone.trim() || undefined })
+      const res = await api.customers.create({ customerName: quickName.trim(), phone: quickPhone.trim() })
       if (res.success) {
         onChange(res.data as CustomerLite)
         setShowQuickAdd(false)
@@ -156,7 +157,7 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
           <input
             value={quickPhone}
             onChange={(e) => setQuickPhone(e.target.value)}
-            placeholder="Phone (optional)"
+            placeholder="Phone *"
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
           />
           {quickError && <p className="text-red-600 text-xs">{quickError}</p>}

@@ -450,7 +450,7 @@ export function BillDetailScreen() {
       {/* Record Payment Modal */}
       {showPaymentModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-5 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-dark dark:text-slate-100">{fxSettlementMode ? t('bills.foreignCurrency.settleTitle') : t('bills.recordPayment')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('bills.billNumber')}: <strong className="dark:text-slate-200">{bill.billNumber}</strong> · {t('bills.outstanding')}: <strong className="text-danger">{formatCurrency(bill.balanceAmount)}</strong>
@@ -559,7 +559,7 @@ export function BillDetailScreen() {
       {/* Reverse payment modal */}
       {reversingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5 max-h-[90vh] overflow-y-auto">
             <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('supplierPayments.reversePayment')}</h2>
             <div>
               <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('supplierPayments.reason')} *</label>

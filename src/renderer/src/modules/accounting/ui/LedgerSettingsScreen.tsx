@@ -125,7 +125,7 @@ export function LedgerSettingsScreen() {
 
       {confirmClose && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center gap-2 text-danger">
               <AlertTriangle size={18} />
               <h2 className="text-base font-bold">{t('accounting.ledgerSettings.closeYearEndingQuestion', { date: closingDate })}</h2>

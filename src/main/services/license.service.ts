@@ -505,7 +505,19 @@ const LICENSE_PING_URL = 'https://aszurex.com/api/sarang-heartbeat'
  * in case the day-335/365 logic ever has a bug — this project has a real
  * history of shipping date-boundary bugs that looked fine until they weren't.
  */
+// getLicenseState() fires this on every call (invoice creation included),
+// with no gap between them shorter than a JS event-loop tick under normal
+// use — but the ~once/day DB throttle below only writes lastVerifiedAt AFTER
+// the network round-trip finishes. A burst of near-simultaneous calls (rapid
+// invoice entry, bulk import) would each read the same stale lastVerifiedAt
+// before any of them had a chance to write the new one, so each fires its
+// own redundant fetch(). This in-process flag is a stronger, immediate gate
+// on top of the DB one: only one ping is ever in flight at a time.
+let pingInFlight = false
+
 export async function pingLicenseStatusIfDue(): Promise<void> {
+  if (pingInFlight) return
+  pingInFlight = true
   try {
     const db = getPrisma()
     const [keyRow, lastPingRow] = await Promise.all([
@@ -559,6 +571,8 @@ export async function pingLicenseStatusIfDue(): Promise<void> {
     // Fully expected when offline, or before the website endpoint exists —
     // never surfaced to the user, never retried outside the normal daily
     // cadence. This is the entire point: this ping is allowed to just fail.
+  } finally {
+    pingInFlight = false
   }
 }
 

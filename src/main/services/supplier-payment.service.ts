@@ -306,6 +306,9 @@ export const supplierPaymentService = {
           if (bill.status === 'VOID') {
             throw new ServiceError('SPM-001', `Cannot record payment for void bill ${bill.billNumber}.`)
           }
+          if (bill.balanceAmount <= 0) {
+            throw new ServiceError('SPM-002', `Bill ${bill.billNumber} is already fully paid.`)
+          }
           if (alloc.amount > bill.balanceAmount + 0.01) {
             throw new ServiceError('SPM-003', `Payment amount (${alloc.amount.toFixed(2)}) exceeds outstanding balance (${bill.balanceAmount.toFixed(2)}) for bill ${bill.billNumber}.`)
           }

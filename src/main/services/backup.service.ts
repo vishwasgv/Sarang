@@ -63,12 +63,19 @@ function defaultBackupDir(): string {
 // because of a disconnected destination; `usedFallback` lets the caller
 // surface that to the owner instead of the backup quietly landing somewhere
 // they don't expect.
-async function getBackupDir(): Promise<{ dir: string; usedFallback: boolean }> {
+// `configuredValue` lets a caller that already fetched the setting (e.g.
+// getBackupDestination below) pass it straight in instead of this function
+// re-querying the same row a second time.
+async function getBackupDir(configuredValue?: string | null): Promise<{ dir: string; usedFallback: boolean }> {
   const fallback = defaultBackupDir()
   try {
-    const db = getPrisma()
-    const s = await db.setting.findUnique({ where: { settingKey: 'backup_destination_dir' } })
-    const configured = s?.settingValue?.trim()
+    let raw = configuredValue
+    if (raw === undefined) {
+      const db = getPrisma()
+      const s = await db.setting.findUnique({ where: { settingKey: 'backup_destination_dir' } })
+      raw = s?.settingValue
+    }
+    const configured = raw?.trim()
     if (configured) {
       try {
         if (!existsSync(configured)) mkdirSync(configured, { recursive: true })
@@ -87,7 +94,7 @@ async function getBackupDir(): Promise<{ dir: string; usedFallback: boolean }> {
 export async function getBackupDestination(): Promise<{ success: boolean; data: { configuredDir: string | null; effectiveDir: string; usedFallback: boolean } }> {
   const db = getPrisma()
   const s = await db.setting.findUnique({ where: { settingKey: 'backup_destination_dir' } })
-  const { dir, usedFallback } = await getBackupDir()
+  const { dir, usedFallback } = await getBackupDir(s?.settingValue)
   return { success: true, data: { configuredDir: s?.settingValue?.trim() || null, effectiveDir: dir, usedFallback } }
 }
 
@@ -310,7 +317,26 @@ export async function checkDatabaseIntegrity(): Promise<{ ok: boolean; message: 
   }
 }
 
+// Serializes createBackup() within this process — the dupe-suffix loop below
+// only checks existsSync() before the real write happens much later (VACUUM
+// INTO, then the zip), so two near-simultaneous calls in the same running
+// app (a manual "Backup Now" click racing the safety-backup step of a
+// restore, or the auto-backup check — see the loop's own comment) could both
+// pass that check and race to write the same tempDbPath/zipPath. Chaining
+// every call onto the same promise makes that impossible: the second call's
+// existsSync() check can only run after the first has already finished
+// writing its file.
+let backupQueue: Promise<unknown> = Promise.resolve()
+
 export async function createBackup(userId?: string): Promise<{
+  success: boolean; data?: BackupRecord; error?: { code: string; message: string }
+}> {
+  const run = backupQueue.then(() => createBackupUnserialized(userId))
+  backupQueue = run.catch(() => {})
+  return run
+}
+
+async function createBackupUnserialized(userId?: string): Promise<{
   success: boolean; data?: BackupRecord; error?: { code: string; message: string }
 }> {
   try {

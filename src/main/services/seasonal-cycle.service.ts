@@ -151,7 +151,7 @@ function resolveCycleWindow(cycle: { startMonth: number; startDay: number; endMo
   const year = today.getFullYear()
   const start = new Date(year, cycle.startMonth - 1, cycle.startDay)
   const wraps = cycle.endMonth < cycle.startMonth || (cycle.endMonth === cycle.startMonth && cycle.endDay < cycle.startDay)
-  let end = new Date(wraps ? year + 1 : year, cycle.endMonth - 1, cycle.endDay)
+  const end = new Date(wraps ? year + 1 : year, cycle.endMonth - 1, cycle.endDay)
   end.setHours(23, 59, 59, 999)
 
   if (today >= start && today <= end) {

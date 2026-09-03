@@ -335,7 +335,16 @@ export function ExpensesScreen() {
       {/* Add/Edit modal */}
       {formOpen && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
-          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4">
+          {/* REAL BUG found live (2026-09-03 E2E audit): this panel had no
+              height cap or scroll container at all — unlike the shared
+              Modal component's own max-h-[90vh] + overflow-y-auto body,
+              which every other screen's modal gets for free. With enough
+              custom fields configured on Expense (a real, supported
+              feature — Settings > Custom Fields) or just a shorter window,
+              the form grows taller than the viewport and the Save/Cancel
+              buttons at the bottom become genuinely unreachable, with no
+              scrollbar to get to them. */}
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-md p-6 space-y-4 max-h-[90vh] overflow-y-auto">
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-dark dark:text-slate-100">{editExpense ? t('expenses.editExpense') : t('expenses.addExpense')}</h2>
               <button onClick={() => setFormOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
