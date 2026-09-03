@@ -63,6 +63,43 @@ async function run() {
       r.log('inventory-quantity-is-2', qty === 2, `quantity=${qty}`)
     })
 
+    // ── serials.bulkCreate — ZERO E2E coverage of any kind before this
+    // step (serials.create above only exercises a single-unit add). Uses
+    // its OWN dedicated product, not `productId` above — the existing
+    // sold/available-count checks further down this suite assume exactly
+    // 2 total units on that product, and bulk-importing 3 more onto it
+    // would silently break those unrelated assertions.
+    const bulkSerialPrefix = `E2EBULK${Date.now()}`
+    let bulkProductId
+    await r.step('bulk-import-3-serials-via-real-ui', async () => {
+      const bulkProdRes = await page.evaluate(async () => window.api.products.create({
+        productName: 'E2E Elec Tablet Y100', unit: 'PCS', sellingPrice: 15000, costPrice: 12000, taxRate: 18, productType: 'STANDARD',
+      }))
+      bulkProductId = bulkProdRes?.data?.id
+      r.log('bulk-import-product-created', !!bulkProductId, JSON.stringify(bulkProdRes?.error || ''))
+
+      await h.gotoHash(page, '#/electronics/serials')
+      await page.waitForTimeout(700)
+      r.log('serial-tracking-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+
+      await page.locator('button', { hasText: 'Bulk Import' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      await modal.getByPlaceholder('Search product by name or SKU…').fill('E2E Elec Tablet Y100')
+      await page.waitForTimeout(600)
+      await modal.getByRole('button', { name: 'E2E Elec Tablet Y100' }).click()
+      await modal.locator('textarea').fill(`${bulkSerialPrefix}A\n${bulkSerialPrefix}B\n${bulkSerialPrefix}C`)
+      await modal.getByRole('button', { name: 'Import', exact: true }).click()
+      await page.waitForTimeout(900)
+      r.log('bulk-import-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('bulk-imported-serials-persisted', () => h.withDb((db) => {
+      const rows = db.prepare("SELECT * FROM ProductSerial WHERE serialNumber LIKE ?").all(`${bulkSerialPrefix}%`)
+      r.log('bulk-created-exactly-3-serials', rows.length === 3, `count=${rows.length}`)
+      r.log('bulk-serials-linked-to-correct-product', rows.every((r2) => r2.productId === bulkProductId), JSON.stringify(rows.map((r2) => r2.productId)))
+    }))
+
     let customerId
 
     await r.step('create-customer', async () => {
@@ -471,6 +508,10 @@ async function run() {
         }
       }
       for (const sid of serialIds) {
+        try { db.prepare('DELETE FROM ProductSerial WHERE id = ?').run(sid) } catch { /* leave it, harmless test row */ }
+      }
+      const bulkSerialIds = db.prepare("SELECT id FROM ProductSerial WHERE serialNumber LIKE 'E2EBULK%'").all().map((r2) => r2.id)
+      for (const sid of bulkSerialIds) {
         try { db.prepare('DELETE FROM ProductSerial WHERE id = ?').run(sid) } catch { /* leave it, harmless test row */ }
       }
       // Phase 67 §9.1 — Electronics: repair turnaround by technician needed
