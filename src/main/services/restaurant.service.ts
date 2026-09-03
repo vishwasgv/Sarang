@@ -83,7 +83,26 @@ export async function deleteTable(tableId: string, userId?: string) {
     const active = await db.kOT.count({ where: { tableId, status: { in: ['PENDING', 'IN_PROGRESS'] } } })
     if (active > 0) return { success: false, error: { code: 'RST-006', message: 'Cannot delete table with active KOTs.' } }
 
-    await db.restaurantTable.delete({ where: { id: tableId } })
+    const pendingOrderRequest = await db.tableOrderRequest.count({ where: { tableId, status: 'PENDING' } })
+    if (pendingOrderRequest > 0) return { success: false, error: { code: 'RST-008', message: 'Cannot delete table with a pending customer order request — accept or reject it first.' } }
+
+    // Real bug found live (2026-09-03): TableOrderRequest.tableId is a
+    // required FK with no onDelete action (defaults to Restrict), unlike
+    // KOT.tableId (nullable, defaults to SetNull) -- a table that ever had
+    // so much as one QR order submitted and resolved (accepted/rejected)
+    // could never be deleted again, failing with an unrelated generic
+    // "Could not delete table" error instead of the intended active-KOT
+    // message above. These are historical records with no use once their
+    // table is gone; clear them explicitly rather than touch the schema's
+    // default referential action.
+    await db.$transaction(async (tx) => {
+      const resolvedRequestIds = (await tx.tableOrderRequest.findMany({ where: { tableId }, select: { id: true } })).map((r) => r.id)
+      if (resolvedRequestIds.length > 0) {
+        await tx.tableOrderRequestItem.deleteMany({ where: { requestId: { in: resolvedRequestIds } } })
+        await tx.tableOrderRequest.deleteMany({ where: { id: { in: resolvedRequestIds } } })
+      }
+      await tx.restaurantTable.delete({ where: { id: tableId } })
+    })
     await logAction(userId, 'TABLE_DELETED', 'RestaurantTable', tableId)
     return { success: true }
   } catch (err) {
