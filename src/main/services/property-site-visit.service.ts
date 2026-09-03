@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart } from '../utils/date.util'
 
 // Phase 58 §2 — Real Estate: structured site-visit scheduling with feedback
@@ -143,7 +143,7 @@ async function scheduleVisitReminder(
   const dateStr = scheduledDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
   const timeStr = scheduledTime ? ` at ${scheduledTime}` : ''
   const message = `Dear ${inquiry.buyer.customerName}, reminder for your site visit to the ${inquiry.property.propertyType.replace(/_/g, ' ').toLowerCase()} at ${inquiry.property.location} on ${dateStr}${timeStr}. Powered by Sarang | www.aszurex.com`
-  const link = await buildWhatsAppLink(phone, message)
+  const link = await buildReminderWhatsAppLink(phone, message)
 
   await db.notificationQueue.create({
     data: {

@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // Engagement.feeAmount is a Prisma Decimal field — Electron's IPC (structured
@@ -68,14 +68,14 @@ async function scheduleEngagementRenewalReminder(engagementId: string, endDate: 
 
     if (thirtyDaysBefore > now) {
       const body30 = `Dear ${engagement.client.customerName}, your engagement "${engagement.title}" is due for renewal on ${dateStr}. Please let us know if you'd like to continue. Powered by Sarang | www.aszurex.com`
-      const link30 = phone ? await buildWhatsAppLink(phone, body30) : null
+      const link30 = phone ? await buildReminderWhatsAppLink(phone, body30) : null
       await db.notificationQueue.create({
         data: { customerId: engagement.client.id, customerName: engagement.client.customerName, customerPhone: phone, notificationType: 'ENGAGEMENT_RENEWAL_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore },
       })
     }
     if (sevenDaysBefore > now) {
       const body7 = `Dear ${engagement.client.customerName}, your engagement "${engagement.title}" ends on ${dateStr} — only a few days away. Please confirm renewal. Powered by Sarang | www.aszurex.com`
-      const link7 = phone ? await buildWhatsAppLink(phone, body7) : null
+      const link7 = phone ? await buildReminderWhatsAppLink(phone, body7) : null
       await db.notificationQueue.create({
         data: { customerId: engagement.client.id, customerName: engagement.client.customerName, customerPhone: phone, notificationType: 'ENGAGEMENT_RENEWAL_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore },
       })

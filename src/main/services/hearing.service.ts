@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink as buildWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export async function listHearings(filters?: {

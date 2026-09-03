@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart } from '../utils/date.util'
 
 export type SerialStatus = 'AVAILABLE' | 'SOLD' | 'RETURNED' | 'DEFECTIVE'
@@ -434,7 +434,7 @@ export async function scheduleEquipmentServiceReminder(
 
     const dueDateStr = serial.nextServiceDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const message = `Dear ${invoice.customer.customerName}, your ${serial.product.productName} (${serial.serialNumber}) is due for its next service around ${dueDateStr}. Please book a service visit. Thank you! Powered by Sarang | www.aszurex.com`
-    const link = await buildWhatsAppLink(invoice.customer.phone, message)
+    const link = await buildReminderWhatsAppLink(invoice.customer.phone, message)
 
     const row = await db.notificationQueue.create({
       data: {

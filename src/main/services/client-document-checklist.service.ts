@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // Phase 58 §2 — CA Firm client-wise document checklist (PAN/Aadhaar/bank
 // statements etc. collected vs. pending). Standalone status tracker, NOT
@@ -153,7 +153,7 @@ export async function sendChecklistChaseReminder(clientId: string) {
 
     const labels = pendingItems.map((i) => i.label?.trim() || i.documentType).join(', ')
     const message = `Dear ${client.customerName}, we're still awaiting the following document(s) from you: ${labels}. Please share them at your earliest convenience so we can proceed. Powered by Sarang | www.aszurex.com`
-    const link = await buildWhatsAppLink(client.phone, message)
+    const link = await buildReminderWhatsAppLink(client.phone, message)
     return { success: true, data: { whatsappLink: link, pendingCount: pendingItems.length } }
   } catch (err) {
     return { success: false, error: { code: 'CDC-011', message: err instanceof Error ? err.message : 'Could not build chase reminder.' } }

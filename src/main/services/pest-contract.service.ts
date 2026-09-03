@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { serializePestJobSheet } from './pest-job-sheet.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
@@ -34,13 +34,13 @@ async function scheduleContractRenewalNotifications(
     const now = new Date()
 
     if (thirtyDaysBefore > now) {
-      const link30 = customerPhone ? await buildWhatsAppLink(customerPhone, body30) : null
+      const link30 = customerPhone ? await buildReminderWhatsAppLink(customerPhone, body30) : null
       await db.notificationQueue.create({
         data: { customerId: clientId, customerName, customerPhone, notificationType: 'CONTRACT_RENEWAL_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore },
       })
     }
     if (sevenDaysBefore > now) {
-      const link7 = customerPhone ? await buildWhatsAppLink(customerPhone, body7) : null
+      const link7 = customerPhone ? await buildReminderWhatsAppLink(customerPhone, body7) : null
       await db.notificationQueue.create({
         data: { customerId: clientId, customerName, customerPhone, notificationType: 'CONTRACT_RENEWAL_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore },
       })

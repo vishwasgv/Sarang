@@ -2,7 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { formatAmount } from './print.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // RetainerAgreement.monthlyAmount/hoursPerMonth are Prisma Decimal fields —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -106,14 +106,14 @@ async function scheduleRetainerLapseReminder(retainerId: string, endDate: Date) 
 
     if (thirtyDaysBefore > now) {
       const body30 = `Dear ${retainer.client.customerName}, your retainer "${retainer.title}" is due for renewal on ${dateStr}. Please let us know if you'd like to continue. Powered by Sarang | www.aszurex.com`
-      const link30 = phone ? await buildWhatsAppLink(phone, body30) : null
+      const link30 = phone ? await buildReminderWhatsAppLink(phone, body30) : null
       await db.notificationQueue.create({
         data: { customerId: retainer.client.id, customerName: retainer.client.customerName, customerPhone: phone, notificationType: 'RETAINER_LAPSE_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore, status: 'PENDING' },
       })
     }
     if (sevenDaysBefore > now) {
       const body7 = `Dear ${retainer.client.customerName}, your retainer "${retainer.title}" ends on ${dateStr} — only a few days away. Please confirm renewal. Powered by Sarang | www.aszurex.com`
-      const link7 = phone ? await buildWhatsAppLink(phone, body7) : null
+      const link7 = phone ? await buildReminderWhatsAppLink(phone, body7) : null
       await db.notificationQueue.create({
         data: { customerId: retainer.client.id, customerName: retainer.client.customerName, customerPhone: phone, notificationType: 'RETAINER_LAPSE_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore, status: 'PENDING' },
       })

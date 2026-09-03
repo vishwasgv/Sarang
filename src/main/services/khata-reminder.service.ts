@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // 2026-09 §12 — Grocery/Kirana item 3: Khata (credit) auto-reminder. Reuses
 // the exact buildWhatsAppLink primitive already proven by
@@ -92,7 +92,7 @@ async function buildKhataReminderLink(customerId: string): Promise<{ success: bo
 
     const sym = profile?.currencySymbol ?? '₹'
     const message = `Dear ${customer.customerName}, a gentle reminder that your outstanding khata balance is ${sym}${outstanding.toFixed(2)}. Please settle at your convenience. Thank you!`
-    const link = await buildWhatsAppLink(customer.phone, message)
+    const link = await buildReminderWhatsAppLink(customer.phone, message)
     await db.customer.update({ where: { id: customerId }, data: { lastKhataReminderSentAt: new Date() } })
     return { success: true, data: link }
   } catch (err) {

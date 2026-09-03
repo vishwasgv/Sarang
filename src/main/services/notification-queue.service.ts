@@ -56,6 +56,30 @@ export async function buildWhatsAppLink(phone: string, message: string): Promise
   return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
 }
 
+// 2026-09-03 — real gap found across a full audit of every reminder message
+// this app sends: ~17 of ~19 reminder-generating services built a message
+// with no indication of WHICH business it's from (only 2 — hearing.service.ts
+// and legal-case.service.ts — separately threaded a `firmName` through by
+// hand). A customer receiving "Dear X, your membership expires..." with no
+// sender identity is confusing and reads as spam, regardless of how good the
+// rest of the message is. Centralized here (not duplicated per-service) so
+// every reminder gets this for free, present and future — one
+// `*BusinessName*` line prepended via WhatsApp's own bold-text markdown,
+// a convention real WhatsApp Business accounts already use for their name.
+//
+// Deliberately NOT folded into buildWhatsAppLink() itself: that function is
+// also share.service.ts's buildShareWhatsAppLink() primitive for the Share
+// Bill/Report feature, whose messages already carry the business name via
+// their own i18n template (see billing.shareWhatsAppMessage) — prepending
+// here too would double it up. Reminder call sites use this wrapper
+// instead; Share stays on the bare buildWhatsAppLink().
+export async function buildReminderWhatsAppLink(phone: string, message: string): Promise<string> {
+  const db = getPrisma()
+  const profile = await db.businessProfile.findFirst({ select: { businessName: true } })
+  const prefix = profile?.businessName ? `*${profile.businessName}*\n` : ''
+  return buildWhatsAppLink(phone, `${prefix}${message}`)
+}
+
 export async function listNotifications(filters?: { status?: string; limit?: number }) {
   try {
     const db = getPrisma()
@@ -157,7 +181,7 @@ export async function createAppointmentReminder(appointmentId: string) {
     const dateStr = appt.scheduledDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
     const message = `Dear ${name}, this is a reminder for your appointment on ${dateStr} at ${appt.scheduledTime} for ${appt.serviceTitle}. Please arrive on time. Thank you! Powered by Sarang | www.aszurex.com`
 
-    const link = await buildWhatsAppLink(phone, message)
+    const link = await buildReminderWhatsAppLink(phone, message)
 
     const schedule24h = new Date(appt.scheduledDate.getTime() - 24 * 60 * 60 * 1000)
     const schedule2h  = new Date(appt.scheduledDate.getTime() - 2  * 60 * 60 * 1000)
@@ -181,7 +205,7 @@ export async function createAppointmentReminder(appointmentId: string) {
 
     if (schedule2h > now) {
       const message2h = `Dear ${name}, your appointment is TODAY at ${appt.scheduledTime} for ${appt.serviceTitle}. See you soon! Powered by Sarang | www.aszurex.com`
-      const link2h = await buildWhatsAppLink(phone, message2h)
+      const link2h = await buildReminderWhatsAppLink(phone, message2h)
       await db.notificationQueue.create({
         data: {
           appointmentId,

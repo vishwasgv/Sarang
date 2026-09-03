@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
-vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
 
 import { getPrisma } from '../../database/db'
 import { updateSerialStatus, updateSerialServiceInfo, listEquipmentDueForService, scheduleEquipmentServiceReminder, transferInstallationWarranty } from '../serial.service'

@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
-vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919999999999?text=hi') }))
 
 import { getPrisma } from '../../database/db'
-import { buildWhatsAppLink } from '../notification-queue.service'
+import { buildReminderWhatsAppLink } from '../notification-queue.service'
 import { getStudentProgressReport, sendProgressReportWhatsApp } from '../coaching-progress.service'
 
 // Phase 58 §2 — Coaching Institute: a real parent-facing progress report.
@@ -194,8 +194,8 @@ describe('coaching-progress.service — sendProgressReportWhatsApp', () => {
 
     expect(res.success).toBe(true)
     expect((res as { data: { link: string } }).data.link).toBe('https://wa.me/919999999999?text=hi')
-    expect(buildWhatsAppLink).toHaveBeenCalledWith('9999999999', expect.stringContaining('Test Student'))
-    const message = vi.mocked(buildWhatsAppLink).mock.calls[0][1]
+    expect(buildReminderWhatsAppLink).toHaveBeenCalledWith('9999999999', expect.stringContaining('Test Student'))
+    const message = vi.mocked(buildReminderWhatsAppLink).mock.calls[0][1]
     expect(message).toContain('Unit Test: 45/50 (A)')
     expect(message).toContain('Fee: ₹2000 due (DUE)')
   })
@@ -208,7 +208,7 @@ describe('coaching-progress.service — sendProgressReportWhatsApp', () => {
 
     await sendProgressReportWhatsApp('enr-1')
 
-    const message = vi.mocked(buildWhatsAppLink).mock.calls[0][1]
+    const message = vi.mocked(buildReminderWhatsAppLink).mock.calls[0][1]
     expect(message).toContain('Fee: up to date (PAID)')
   })
 })

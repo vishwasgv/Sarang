@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export async function getPatientRecall(patientId: string) {
@@ -91,7 +91,7 @@ export async function upsertRecall(payload: {
     reminder30.setDate(reminder30.getDate() - 30)
     if (reminder30 > now) {
       const body30 = `Hi ${patientName}, your dental recall is due on ${recallDateStr}. Please book your appointment soon. Powered by Sarang | www.aszurex.com`
-      const link30 = patientPhone ? await buildWhatsAppLink(patientPhone, body30) : null
+      const link30 = patientPhone ? await buildReminderWhatsAppLink(patientPhone, body30) : null
       await db.notificationQueue.create({
         data: {
           customerId: payload.patientId,
@@ -109,7 +109,7 @@ export async function upsertRecall(payload: {
     reminder7.setDate(reminder7.getDate() - 7)
     if (reminder7 > now) {
       const body7 = `Hi ${patientName}, your dental recall appointment is due in 7 days on ${recallDateStr}. Please call us to schedule. Powered by Sarang | www.aszurex.com`
-      const link7 = patientPhone ? await buildWhatsAppLink(patientPhone, body7) : null
+      const link7 = patientPhone ? await buildReminderWhatsAppLink(patientPhone, body7) : null
       await db.notificationQueue.create({
         data: {
           customerId: payload.patientId,

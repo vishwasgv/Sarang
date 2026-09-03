@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 export async function scheduleShipmentDispatchNotification(
   shipmentId: string,
@@ -23,7 +23,7 @@ export async function scheduleShipmentDispatchNotification(
       : 'TBD'
     const trackPart = trackingNumber ? ` (Tracking: ${trackingNumber})` : ''
     const body = `Dear ${customerName}, your shipment ${shipmentNumber} [${anchor}] has been dispatched${trackPart}. Expected delivery: ${dateStr}. Powered by Sarang | www.aszurex.com`
-    const whatsappLink = customerPhone ? await buildWhatsAppLink(customerPhone, body) : null
+    const whatsappLink = customerPhone ? await buildReminderWhatsAppLink(customerPhone, body) : null
 
     await db.notificationQueue.create({
       data: {
@@ -63,7 +63,7 @@ export async function scheduleShipmentDelayedNotification(
       const cust = await db.customer.findUnique({ where: { id: customerId }, select: { phone: true } })
       customerPhone = cust?.phone ?? null
     }
-    const whatsappLink = customerPhone ? await buildWhatsAppLink(customerPhone, body) : null
+    const whatsappLink = customerPhone ? await buildReminderWhatsAppLink(customerPhone, body) : null
 
     await db.notificationQueue.create({
       data: {

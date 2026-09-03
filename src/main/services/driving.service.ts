@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // DrivingSession.sessionFee and DrivingPackage.price/DrivingPackageEnrollment
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -193,7 +193,7 @@ export async function scheduleTestReminder(testId: string, daysBefore = 1) {
     const testDateStr = test.testDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const testLabel = test.testType === 'LL_TEST' ? 'Learner\'s License test' : 'Driving License test'
     const message = `Dear ${test.learner.customerName}, your ${testLabel} is scheduled at ${test.testCenter} on ${testDateStr}. All the best! Powered by Sarang | www.aszurex.com`
-    const link = await buildWhatsAppLink(test.learner.phone, message)
+    const link = await buildReminderWhatsAppLink(test.learner.phone, message)
 
     const notification = await db.notificationQueue.create({
       data: {

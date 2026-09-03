@@ -1,7 +1,7 @@
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
-vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919876543210?text=reminder') }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/919876543210?text=reminder') }))
 
 import { getPrisma } from '../../database/db'
 import { khataReminderService } from '../khata-reminder.service'

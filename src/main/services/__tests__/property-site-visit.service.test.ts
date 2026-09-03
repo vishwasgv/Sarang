@@ -1,10 +1,10 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
-vi.mock('../notification-queue.service', () => ({ buildWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/test') }))
+vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.fn().mockResolvedValue('https://wa.me/test') }))
 
 import { getPrisma } from '../../database/db'
-import { buildWhatsAppLink } from '../notification-queue.service'
+import { buildReminderWhatsAppLink } from '../notification-queue.service'
 import {
   listPropertySiteVisits, schedulePropertySiteVisit, updatePropertySiteVisit, deletePropertySiteVisit,
 } from '../property-site-visit.service'
@@ -89,7 +89,7 @@ describe('property-site-visit.service.schedulePropertySiteVisit', () => {
     await schedulePropertySiteVisit({ inquiryId: 'inq-1', scheduledDate: future })
     await new Promise((r) => setTimeout(r, 0)) // let the fire-and-forget reminder promise settle
 
-    expect(buildWhatsAppLink).toHaveBeenCalledWith('9812340000', expect.stringContaining('Baner, Pune'))
+    expect(buildReminderWhatsAppLink).toHaveBeenCalledWith('9812340000', expect.stringContaining('Baner, Pune'))
     expect(db.notificationQueue.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ customerId: 'cust-1', notificationType: 'PROPERTY_SITE_VISIT_REMINDER' }),
     }))

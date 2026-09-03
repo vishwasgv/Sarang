@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 
 // Phase 58 §2 — Coaching Institute: a real parent-facing progress report,
 // aggregating attendance, academic test scores, and fee status per batch a
@@ -118,7 +118,7 @@ export async function sendProgressReportWhatsApp(enrollmentId: string) {
     const feeLine = fee ? (dueAmount > 0 ? `Fee: ₹${dueAmount} due (${fee.status})` : `Fee: up to date (${fee.status})`) : 'Fee: no record yet'
 
     const message = `Dear Parent, progress report for ${enrollment.student.customerName} — ${enrollment.batch.batchName} (${enrollment.batch.subjectOrCourse}):\n${attendanceLine}\nRecent Tests:\n${testLines}\n${feeLine}\nPowered by Sarang | www.aszurex.com`
-    const link = await buildWhatsAppLink(enrollment.student.phone, message)
+    const link = await buildReminderWhatsAppLink(enrollment.student.phone, message)
 
     return { success: true, data: { link } }
   } catch (err) {

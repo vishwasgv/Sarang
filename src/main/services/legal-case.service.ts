@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { serializeTimeEntry } from './time-entry.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink as buildWhatsAppLink } from './notification-queue.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // LegalCase.feeAgreed/feeCollected are Prisma Decimal fields — Electron's

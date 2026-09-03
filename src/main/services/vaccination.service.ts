@@ -1,54 +1,11 @@
 import { getPrisma } from '../database/db'
-
-// Full DIAL_CODES matching notification-queue.service.ts (30 countries)
-const DIAL_CODES: Record<string, string> = {
-  india: '91', in: '91',
-  'united states': '1', usa: '1', us: '1',
-  'united kingdom': '44', uk: '44', gb: '44',
-  australia: '61', au: '61',
-  canada: '1', ca: '1',
-  uae: '971', 'united arab emirates': '971', ae: '971',
-  'saudi arabia': '966', sa: '966',
-  singapore: '65', sg: '65',
-  malaysia: '60', my: '60',
-  bahrain: '973', bh: '973',
-  'new zealand': '64', nz: '64',
-  'south africa': '27', za: '27',
-  bangladesh: '880', bd: '880',
-  pakistan: '92', pk: '92',
-  nepal: '977', np: '977',
-  'sri lanka': '94', lk: '94',
-  germany: '49', de: '49',
-  france: '33', fr: '33',
-  italy: '39', it: '39',
-  spain: '34', es: '34',
-  japan: '81', jp: '81',
-  china: '86', cn: '86',
-  indonesia: '62', id: '62',
-  thailand: '66', th: '66',
-  philippines: '63', ph: '63',
-  kenya: '254', ke: '254',
-  nigeria: '234', ng: '234',
-  ghana: '233', gh: '233',
-}
-
-async function buildWhatsAppLink(phone: string, message: string): Promise<string> {
-  const hasPlus = phone.trim().startsWith('+')
-  const digits = phone.replace(/\D/g, '')
-  let number: string
-  if (hasPlus) {
-    number = digits
-  } else if (digits.startsWith('00')) {
-    number = digits.slice(2)
-  } else {
-    const db = getPrisma()
-    const profile = await db.businessProfile.findFirst({ select: { country: true } })
-    const key = (profile?.country ?? '').toLowerCase().trim()
-    const dialCode = DIAL_CODES[key]
-    number = dialCode ? `${dialCode}${digits.replace(/^0/, '')}` : digits
-  }
-  return `https://wa.me/${number}?text=${encodeURIComponent(message)}`
-}
+// 2026-09-03 — this file used to carry its own duplicate copy of
+// buildWhatsAppLink (DIAL_CODES included), independently drifting from the
+// shared one in notification-queue.service.ts. Consolidated onto the shared
+// buildReminderWhatsAppLink, which also prepends the business's own name to
+// every reminder — a real gap this file (like ~15 other reminder services)
+// had before this pass.
+import { buildReminderWhatsAppLink as buildWhatsAppLink } from './notification-queue.service'
 
 export async function listVaccinationRecords(petId: string) {
   try {

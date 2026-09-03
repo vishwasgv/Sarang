@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { sumCurrency } from './currency.service'
 import { parseLocalDateStart } from '../utils/date.util'
 
@@ -428,7 +428,7 @@ export async function scheduleNextServiceReminder(jobCardId: string, daysBefore 
 
     const dueDateStr = card.nextServiceDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const message = `Dear ${card.client.customerName}, your vehicle ${card.vehicleNumber} (${card.vehicleMake} ${card.vehicleModel}) is due for its next service around ${dueDateStr}. Please book an appointment. Thank you! Powered by Sarang | www.aszurex.com`
-    const link = await buildWhatsAppLink(card.client.phone, message)
+    const link = await buildReminderWhatsAppLink(card.client.phone, message)
 
     await db.notificationQueue.create({
       data: {

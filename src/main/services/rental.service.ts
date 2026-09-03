@@ -2,7 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
-import { buildWhatsAppLink } from './notification-queue.service'
+import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { roundCurrency } from './currency.service'
 import { ServiceError } from '../errors/service-error'
 
@@ -982,7 +982,7 @@ async function scheduleReturnReminder(bookingId: string): Promise<void> {
     const dateStr = booking.endDateTime.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const body = `Dear ${booking.customer.customerName}, your rental booking (${booking.bookingNumber}) is due for return on ${dateStr}. Powered by Sarang | www.aszurex.com`
     const phone = booking.customer.phone ?? ''
-    const link = phone ? await buildWhatsAppLink(phone, body) : null
+    const link = phone ? await buildReminderWhatsAppLink(phone, body) : null
     await db.notificationQueue.create({
       data: { customerId: booking.customerId, customerName: booking.customer.customerName, customerPhone: phone, notificationType: 'RENTAL_RETURN_DUE', templateBody: body, whatsappLink: link, scheduledFor: reminderDate },
     })
