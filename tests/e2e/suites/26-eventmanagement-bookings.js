@@ -88,6 +88,11 @@ async function run() {
       r.log('event-findable-via-api', !!eventId, JSON.stringify({ status: found?.status, venueName: found?.venueName }))
     })
 
+    await r.step('event-date-reminder-queued', () => h.withDb((db) => {
+      const row = db.prepare("SELECT * FROM NotificationQueue WHERE notificationType = 'EVENT_DATE_REMINDER' AND customerPhone = '9876500026'").get()
+      r.log('event-reminder-row-exists', !!row, JSON.stringify(row))
+    }))
+
     await r.step('set-final-amount-and-generate-invoice', async () => {
       if (!eventId) return r.log('set-final-amount-and-generate-invoice', false, 'no eventId captured')
 
@@ -192,6 +197,7 @@ async function run() {
       }
       const supIds = db.prepare("SELECT id FROM Supplier WHERE supplierName LIKE 'E2E Evt%'").all().map((r2) => r2.id)
       for (const sid of supIds) { try { db.prepare('DELETE FROM Supplier WHERE id = ?').run(sid) } catch { db.prepare('UPDATE Supplier SET isActive = 0 WHERE id = ?').run(sid) } }
+      db.prepare("DELETE FROM NotificationQueue WHERE notificationType = 'EVENT_DATE_REMINDER' AND customerPhone = '9876500026'").run()
       console.log('extra cleanup: events', ids.length, 'suppliers', supIds.length)
     })
   }

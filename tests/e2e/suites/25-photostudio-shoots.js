@@ -88,6 +88,11 @@ async function run() {
       r.log('booking-findable-via-api', !!bookingId, JSON.stringify({ status: found?.status, shootType: found?.shootType }))
     })
 
+    await r.step('shoot-date-reminder-queued', () => h.withDb((db) => {
+      const row = db.prepare("SELECT * FROM NotificationQueue WHERE notificationType = 'SHOOT_DATE_REMINDER' AND customerPhone = '9876500025'").get()
+      r.log('shoot-reminder-row-exists', !!row, JSON.stringify(row))
+    }))
+
     await r.step('set-final-amount-via-edit-and-generate-invoice', async () => {
       if (!bookingId) return r.log('set-final-amount-via-edit-and-generate-invoice', false, 'no bookingId captured')
 
@@ -194,6 +199,7 @@ async function run() {
         try { db.prepare('DELETE FROM DeliveryTracker WHERE shootBookingId = ?').run(id) } catch { /* noop */ }
         try { db.prepare('DELETE FROM ShootBooking WHERE id = ?').run(id) } catch { /* noop */ }
       }
+      db.prepare("DELETE FROM NotificationQueue WHERE notificationType = 'SHOOT_DATE_REMINDER' AND customerPhone = '9876500025'").run()
       const assetIds = db.prepare("SELECT id FROM FixedAsset WHERE assetName LIKE 'E2E Photo%'").all().map((r2) => r2.id)
       for (const aid of assetIds) {
         try { db.prepare('DELETE FROM EquipmentCheckout WHERE fixedAssetId = ?').run(aid) } catch { /* noop */ }
