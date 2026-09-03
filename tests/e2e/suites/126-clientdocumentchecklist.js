@@ -1,8 +1,10 @@
 /**
  * Suite 126 — clientDocumentChecklist.* (whole file, zero prior coverage of
- * any kind) — CA Firm vertical, broader-gap-list "Nested sub-feature gaps"
- * under Section A, 2026-09-03. All 7 channels have real UI triggers on
- * ComplianceScreen.tsx's "Clients & Checklists" modal.
+ * any kind) + complianceEvent.setClientAgmDate (also zero coverage) — CA
+ * Firm vertical, broader-gap-list "Nested sub-feature gaps" under Section
+ * A, 2026-09-03. All channels have real UI triggers on ComplianceScreen.tsx's
+ * "Clients & Checklists" modal (the AGM date field sits directly above the
+ * checklist section for the same expanded client).
  */
 const h = require('../harness')
 
@@ -62,6 +64,17 @@ async function run() {
       if (!clientAId) return r.log('client-A-add-toggle-remove-checklist-item-via-ui', false, 'no clientAId')
       const modal = await openClientChecklist(clientAName)
       r.log('checklist-modal-opens-no-crash', !(await h.hasErrorBoundary(page)))
+
+      // compliance-event.handler.ts: setClientAgmDate -- same expanded-
+      // client panel, right above the checklist section.
+      const past = h.toLocalISODate(new Date(Date.now() - 20 * 24 * 3600000))
+      await modal.locator('input[type="date"]').first().fill(past)
+      await modal.locator('button', { hasText: 'Save' }).click()
+      await page.waitForTimeout(1000)
+      r.log('agm-date-save-no-crash', !(await h.hasErrorBoundary(page)))
+      const custRes = await page.evaluate((cid) => window.api.customers.get(cid), clientAId)
+      const savedAgm = custRes?.data?.lastAgmDate ? h.toLocalISODate(new Date(custRes.data.lastAgmDate)) : null
+      r.log('agm-date-actually-saved', savedAgm === past, JSON.stringify({ savedAgm, past }))
 
       // { hasText, exact: true } is silently ignored -- `.locator()`'s
       // filter options don't support `exact`, only getBy* methods do.
