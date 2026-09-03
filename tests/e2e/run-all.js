@@ -71,10 +71,17 @@ async function main() {
     console.log('Dev server ready.')
   }
 
+  // Optional resume point (env var, not a CLI arg — keeps the existing
+  // single filterArg slot free) — skips every suite that sorts before it.
+  // For splitting a full run across multiple shorter background windows
+  // without losing already-verified progress, not part of the normal flow.
+  const resumeAfter = process.env.SARANG_E2E_RESUME_AFTER || null
+
   const files = fs.readdirSync(SUITES_DIR)
     .filter((f) => f.endsWith('.js'))
     .filter((f) => !filterArg || f.includes(filterArg))
     .sort()
+    .filter((f) => !resumeAfter || f >= resumeAfter)
 
   const allResults = []
   for (const file of files) {

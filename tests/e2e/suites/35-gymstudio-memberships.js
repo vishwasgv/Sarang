@@ -100,6 +100,7 @@ async function run() {
         await addNew.click()
         await page.waitForTimeout(300)
         await modal.getByPlaceholder('Customer name *').fill('E2E Gym Member')
+        await modal.getByPlaceholder('Phone *').fill('9876500035')
         await modal.getByRole('button', { name: 'Add & Select' }).click()
         await page.waitForTimeout(500)
       }

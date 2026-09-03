@@ -41,6 +41,7 @@ async function run() {
         await addNew.click()
         await page.waitForTimeout(300)
         await modal.getByPlaceholder('Customer name *').fill('E2E Coach Student')
+        await modal.getByPlaceholder('Phone *').fill('9876500039')
         await modal.getByRole('button', { name: 'Add & Select' }).click()
         await page.waitForTimeout(500)
       }

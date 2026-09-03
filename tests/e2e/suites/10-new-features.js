@@ -159,7 +159,21 @@ async function run() {
 
     await r.step('cleanup-jewellery-metal-rate', async () => {
       // Leave no permanent GOLD/22K rate behind for the founder's real DB.
-      h.withDb((db) => { db.prepare("DELETE FROM MetalRate WHERE metalType = 'GOLD' AND purity = '22K'").run() })
+      // REAL BUG found live (2026-09-03 full-suite run): metalRate.upsert()
+      // always appends to MetalRateHistory too (a real, by-design audit
+      // trail — see metal-rate.service.ts), and this cleanup only ever
+      // deleted from the live MetalRate table, never that history. Every
+      // full E2E run permanently left a GOLD/22K history row behind,
+      // silently skewing suite 74's metal-rate-vs-sales-volume report check
+      // a little more with each run (three leftover rows across this
+      // suite's own two upserts below plus suite 74's own one averaged to
+      // exactly 6033.33 instead of the expected 6000 — reproduced and
+      // confirmed live). Deleting both tables everywhere this suite creates
+      // a rate, not just MetalRate, closes it for good.
+      h.withDb((db) => {
+        db.prepare("DELETE FROM MetalRate WHERE metalType = 'GOLD' AND purity = '22K'").run()
+        db.prepare("DELETE FROM MetalRateHistory WHERE metalType = 'GOLD' AND purity = '22K'").run()
+      })
       r.log('metal-rate-cleanup-done', true)
     })
 
@@ -176,7 +190,10 @@ async function run() {
       }), TEST_PREFIX)
       // netWeight = 9, value = 9 * 80 = 720
       r.log('metal-exchange-value-computed-correctly', createRes?.data?.valueGiven === 720, JSON.stringify(createRes?.data))
-      h.withDb((db) => { db.prepare("DELETE FROM MetalRate WHERE metalType = 'SILVER' AND purity = '925'").run() })
+      h.withDb((db) => {
+        db.prepare("DELETE FROM MetalRate WHERE metalType = 'SILVER' AND purity = '925'").run()
+        db.prepare("DELETE FROM MetalRateHistory WHERE metalType = 'SILVER' AND purity = '925'").run()
+      })
       if (createRes?.data?.id) h.withDb((db) => { db.prepare('DELETE FROM MetalExchange WHERE id = ?').run(createRes.data.id) })
     })
 
@@ -214,7 +231,10 @@ async function run() {
         await h.shot(page, 'jewellery-report')
       }
 
-      h.withDb((db) => { db.prepare("DELETE FROM MetalRate WHERE metalType = 'GOLD' AND purity = '22K'").run() })
+      h.withDb((db) => {
+        db.prepare("DELETE FROM MetalRate WHERE metalType = 'GOLD' AND purity = '22K'").run()
+        db.prepare("DELETE FROM MetalRateHistory WHERE metalType = 'GOLD' AND purity = '22K'").run()
+      })
     })
 
     await r.step('restore-business-type-after-jewellery', async () => {

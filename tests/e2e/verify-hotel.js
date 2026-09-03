@@ -42,7 +42,7 @@ async function main() {
     await bookingModal.getByText('Add new customer').click()
     await page.waitForTimeout(300)
     await bookingModal.getByPlaceholder('Customer name *').fill('E2E Hotel Guest Customer')
-    await bookingModal.getByPlaceholder('Phone (optional)').fill('9123456780')
+    await bookingModal.getByPlaceholder('Phone *').fill('9123456780')
     await bookingModal.getByRole('button', { name: 'Add & Select' }).click()
     await page.waitForTimeout(700)
     console.log('customer quick-added, error boundary:', await h.hasErrorBoundary(page))

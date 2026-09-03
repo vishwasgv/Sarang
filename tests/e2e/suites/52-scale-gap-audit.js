@@ -205,36 +205,30 @@ async function run() {
 
       const successes = results.filter((x) => x.success)
       const noopRejections = results.filter((x) => !x.success && x.code === 'INV-006')
-      const otherFailures = results.filter((x) => !x.success && x.code !== 'INV-006')
+      const busyRejections = results.filter((x) => !x.success && x.code === 'INV-007')
+      const otherFailures = results.filter((x) => !x.success && x.code !== 'INV-006' && x.code !== 'INV-007')
       r.log(
         'every-concurrent-call-resolves-to-a-clear-outcome',
         results.every((x) => typeof x.success === 'boolean'),
-        `success=${successes.length}, noop-rejected=${noopRejections.length}, other(SYS-001)=${otherFailures.length}`
+        `success=${successes.length}, noop-rejected=${noopRejections.length}, busy-rejected=${busyRejections.length}, other=${otherFailures.length}`
       )
-      // FINDING (2026-08-04 scale audit, confirmed via temporary main-process
-      // stderr capture, reverted after diagnosis): unlike billing.service.ts's
-      // createInvoice (extended to timeout:15000/maxWait:10000 specifically
-      // for this class of problem — see 09-stress.js's header comment),
-      // inventory.service.ts's adjustStock still uses Prisma's DEFAULT
-      // $transaction timeout (5s) / maxWait (2s). Under this 20-way real
-      // concurrent burst on the SAME product, most calls queue behind
-      // SQLite's single writer lock and their transaction expires before it
-      // is ever their turn to run, throwing PrismaClientKnownRequestError
-      // P1008 "Socket timeout" — caught by adjustStock's generic catch block
-      // (not `instanceof ServiceError`) and surfaced to the user as an
-      // unhelpful generic "Something unexpected happened. Please try again."
-      // (SYS-001) instead of a specific "system busy, try again" message.
-      // NOT a data-integrity bug — final quantity and movement-log count
-      // (checked below) stay perfectly consistent — but a real UX/robustness
-      // gap for any shop with two people (e.g. manager + cashier) adjusting
-      // the same product's stock at the same moment. Not fixed here per this
-      // audit's measurement-only scope.
+      // FINDING (2026-08-04 scale audit) closed 2026-09-02: adjustStock's
+      // $transaction is now extended to timeout:15000/maxWait:10000, matching
+      // billing.service.ts's createInvoice (see 09-stress.js's header
+      // comment for that precedent), and a Prisma P1008 "Socket timeout" is
+      // now caught and classified as INV-007 ("system is busy... try again"),
+      // not the generic SYS-001 this check originally found. Live-verified
+      // 2026-09-03 via temporary main-process log capture: under this exact
+      // 20-way same-row burst, every non-success outcome's code is
+      // confirmed INV-007, never SYS-001 — this check now only fails if a
+      // GENUINELY unclassified error shows up again (a regression), not on
+      // the expected, honestly-labeled busy-rejections themselves.
       r.log(
-        'known-gap-adjustStock-lacks-extended-transaction-timeout-like-billing-does',
+        'adjustStock-contention-failures-are-cleanly-classified-not-generic-SYS-001',
         otherFailures.length === 0,
         otherFailures.length === 0
-          ? 'no timeout failures this run (contention-dependent — timing-sensitive, can pass on a lighter-loaded run)'
-          : `${otherFailures.length}/${N} calls failed with SYS-001 (root cause confirmed: Prisma P1008 "Socket timeout" from adjustStock's un-extended default $transaction timeout under real write-lock contention — see comment above)`
+          ? `${busyRejections.length}/${N} calls busy-rejected with INV-007 this run (contention-dependent — timing-sensitive, count varies run to run) — none fell through to an unclassified error`
+          : `${otherFailures.length}/${N} calls fell through to an unclassified error: ${JSON.stringify(otherFailures.map((x) => x.code))}`
       )
 
       const finalInv = await page.evaluate(async (id) => window.api.inventory.get(id), adjProductId)

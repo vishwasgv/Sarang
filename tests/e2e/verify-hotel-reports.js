@@ -32,7 +32,7 @@ async function main() {
     await bookingModal.getByText('Add new customer').click()
     await page.waitForTimeout(300)
     await bookingModal.getByPlaceholder('Customer name *').fill('E2E Hotel Report Customer')
-    await bookingModal.getByPlaceholder('Phone (optional)').fill('9111222333')
+    await bookingModal.getByPlaceholder('Phone *').fill('9111222333')
     await bookingModal.getByRole('button', { name: 'Add & Select' }).click()
     // Wait for the picker to actually flip to its "selected" state instead of
     // a blind timeout — confirms the customer really got attached before we

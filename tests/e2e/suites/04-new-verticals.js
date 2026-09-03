@@ -122,7 +122,7 @@ async function run() {
         await modal.locator('button:has-text("Add new customer")').click()
         await page.waitForTimeout(300)
         await modal.getByPlaceholder('Customer name *').fill(`${TEST_PREFIX} Customer`)
-        await modal.getByPlaceholder('Phone (optional)').fill('9876511111')
+        await modal.getByPlaceholder('Phone *').fill('9876511111')
         await modal.locator('button:has-text("Add & Select")').click()
         await page.waitForTimeout(700)
       }

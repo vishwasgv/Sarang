@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from 'vitest'
+import { generateKeyPairSync } from 'crypto'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
@@ -158,7 +159,6 @@ describe('license key signing and verification', () => {
 
 describe('SARANG2 (Ed25519) key signing and verification', () => {
   // Ephemeral test keypair — never the real production private key.
-  const { generateKeyPairSync } = require('crypto') as typeof import('crypto')
   const { publicKey, privateKey } = generateKeyPairSync('ed25519')
   const TEST_PUBLIC_PEM = publicKey.export({ type: 'spki', format: 'pem' }).toString()
   const TEST_PRIVATE_PEM = privateKey.export({ type: 'pkcs8', format: 'pem' }).toString()
@@ -428,7 +428,18 @@ describe('kill-switch token signing and verification', () => {
   it('rejects a tampered signature', async () => {
     const { signKillSwitchToken, parseAndVerifyKillSwitchToken } = await importFresh()
     const token = signKillSwitchToken(true)
-    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A')
+    // Real bug found live (2026-09-03 full-suite run): flipping between
+    // literal 'A'/'B' is a case-SENSITIVE comparison, but every verify
+    // function below normalizes the signature through .toUpperCase() then
+    // .toLowerCase() before comparing — so whenever the real signature's
+    // last hex character already happens to be 'a' (~1-in-16 signatures,
+    // purely by chance), "tampering" it to 'A' round-trips back to 'a'
+    // unchanged, verifies successfully, and this test spuriously fails.
+    // Reproduced live, twice, on two different tests using this exact
+    // pattern. Comparing case-insensitively and choosing a value guaranteed
+    // to differ from the original under that same normalization closes it
+    // for every possible last character, not just the common ones.
+    const tampered = token.slice(0, -1) + (token.slice(-1).toLowerCase() === 'a' ? 'b' : 'a')
     expect(parseAndVerifyKillSwitchToken(tampered)).toBeNull()
   })
 
@@ -469,7 +480,18 @@ describe('per-key revocation — the same-key-on-many-devices countermeasure', (
     await activateLicenseKey(key)
 
     const token = signRevocationToken(hashLicenseKeyForPing(key))
-    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A')
+    // Real bug found live (2026-09-03 full-suite run): flipping between
+    // literal 'A'/'B' is a case-SENSITIVE comparison, but every verify
+    // function below normalizes the signature through .toUpperCase() then
+    // .toLowerCase() before comparing — so whenever the real signature's
+    // last hex character already happens to be 'a' (~1-in-16 signatures,
+    // purely by chance), "tampering" it to 'A' round-trips back to 'a'
+    // unchanged, verifies successfully, and this test spuriously fails.
+    // Reproduced live, twice, on two different tests using this exact
+    // pattern. Comparing case-insensitively and choosing a value guaranteed
+    // to differ from the original under that same normalization closes it
+    // for every possible last character, not just the common ones.
+    const tampered = token.slice(0, -1) + (token.slice(-1).toLowerCase() === 'a' ? 'b' : 'a')
     db.__store.set('license_revocation_token', tampered)
     const state = await getLicenseState()
     expect(state.status).toBe('ACTIVE')
@@ -509,7 +531,18 @@ describe('revocation token signing and verification', () => {
   it('rejects a tampered signature', async () => {
     const { signRevocationToken, parseAndVerifyRevocationToken } = await importFresh()
     const token = signRevocationToken('abc123')
-    const tampered = token.slice(0, -1) + (token.slice(-1) === 'A' ? 'B' : 'A')
+    // Real bug found live (2026-09-03 full-suite run): flipping between
+    // literal 'A'/'B' is a case-SENSITIVE comparison, but every verify
+    // function below normalizes the signature through .toUpperCase() then
+    // .toLowerCase() before comparing — so whenever the real signature's
+    // last hex character already happens to be 'a' (~1-in-16 signatures,
+    // purely by chance), "tampering" it to 'A' round-trips back to 'a'
+    // unchanged, verifies successfully, and this test spuriously fails.
+    // Reproduced live, twice, on two different tests using this exact
+    // pattern. Comparing case-insensitively and choosing a value guaranteed
+    // to differ from the original under that same normalization closes it
+    // for every possible last character, not just the common ones.
+    const tampered = token.slice(0, -1) + (token.slice(-1).toLowerCase() === 'a' ? 'b' : 'a')
     expect(parseAndVerifyRevocationToken(tampered, 'abc123')).toBe(false)
   })
 

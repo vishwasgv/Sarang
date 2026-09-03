@@ -129,7 +129,7 @@ async function run() {
     await h.login(page)
 
     // ── Setup: products, customers (with/without phone), invoices ───────
-    let productId, customerPhoneId, customerNoPhoneId, invoicePhoneId, invoiceNoPhoneId
+    let productId, customerPhoneId, invoicePhoneId, invoiceNoPhoneId
     const custPhone = `9${String(Date.now()).slice(-9)}`
 
     await r.step('setup-invoice-fixtures', async () => {
@@ -146,21 +146,20 @@ async function run() {
       customerPhoneId = custPhoneRes?.data?.id
       r.log('customer-with-phone-created', !!customerPhoneId, JSON.stringify(custPhoneRes?.error || ''))
 
-      const custNoPhoneRes = await page.evaluate(async (prefix) => window.api.customers.create({
-        customerName: `${prefix} CustNoPhone`, email: 'sharecust2@example.com',
-      }), TEST_PREFIX)
-      customerNoPhoneId = custNoPhoneRes?.data?.id
-      r.log('customer-no-phone-created', !!customerNoPhoneId, JSON.stringify(custNoPhoneRes?.error || ''))
-
       const invPhoneRes = await page.evaluate(async ({ customerId, prodId }) => window.api.billing.createInvoice({
         customerId, paymentMethod: 'CASH', items: [{ productId: prodId, quantity: 1, unitPrice: 100, taxRate: 18 }],
       }), { customerId: customerPhoneId, prodId: productId })
       invoicePhoneId = invPhoneRes?.data?.id
       r.log('invoice-for-phone-customer-created', !!invoicePhoneId, JSON.stringify(invPhoneRes?.error || ''))
 
-      const invNoPhoneRes = await page.evaluate(async ({ customerId, prodId }) => window.api.billing.createInvoice({
-        customerId, paymentMethod: 'CASH', items: [{ productId: prodId, quantity: 1, unitPrice: 100, taxRate: 18 }],
-      }), { customerId: customerNoPhoneId, prodId: productId })
+      // A Customer can no longer be created without a phone (phone is a
+      // required field as of 2026-09-02 — see customer.validation.ts). The
+      // "no phone on file" scenario the rest of this suite tests for is
+      // therefore a genuine walk-in invoice (no customer attached at all),
+      // not a phone-less Customer row, which can no longer exist.
+      const invNoPhoneRes = await page.evaluate(async (prodId) => window.api.billing.createInvoice({
+        paymentMethod: 'CASH', items: [{ productId: prodId, quantity: 1, unitPrice: 100, taxRate: 18 }],
+      }), productId)
       invoiceNoPhoneId = invNoPhoneRes?.data?.id
       r.log('invoice-for-no-phone-customer-created', !!invoiceNoPhoneId, JSON.stringify(invNoPhoneRes?.error || ''))
     })

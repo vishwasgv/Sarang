@@ -217,4 +217,20 @@ async function main() {
   process.exit(fail === 0 ? 0 : 1)
 }
 
-main()
+// Real bug found live (2026-09-03, full-suite run): with no guard here,
+// merely `require()`-ing this file — which is exactly what run-all.js does
+// for every suite, including this "standalone-only, run-all.js skips it"
+// one — was enough to kick off this whole main() in the background
+// regardless. run-all.js's own SKIPPED message (see its comment on
+// `typeof suite.run !== 'function'`) only stops it from WAITING for or
+// recording this suite; it does nothing to stop the suite from actually
+// running. The result: this suite's machine-wide `taskkill /F /IM
+// electron.exe /T` calls fired while suites 61+ were still using their own
+// electron.exe windows (killing them out from under those suites), and this
+// suite's own process.exit() eventually tore down the entire run-all.js
+// process outright, mid-suite, with none of the later suites' results ever
+// recorded. Guarding on require.main is the same convention every other
+// suite file in this directory already uses, for exactly this reason.
+if (require.main === module) {
+  main()
+}

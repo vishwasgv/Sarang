@@ -474,6 +474,18 @@ async function run() {
     // document.dir="rtl", then switch back to English so the app isn't left
     // in a non-default state for other tests/manual use.
     await r.step('live-language-switch-renders-unicode-and-sets-rtl-direction', async () => {
+      // This suite never switches business type itself, so it inherits
+      // whatever vertical the app was last left on — which could be a
+      // service-vertical with languageLock:'en' (every service template has
+      // this, per industry-template.service.ts), making the language list
+      // below show only the "locked to English" state with zero rows and
+      // failing this whole check for a reason that has nothing to do with
+      // the language switcher itself. Explicitly on a known-unlocked
+      // (PRODUCT-category) vertical first, same as every other suite that
+      // depends on a specific business type already does.
+      const langSwitchOriginalBusinessType = h.getBusinessType()
+      await h.switchBusinessType(page, 'General Business')
+
       await h.gotoHash(page, '#/settings')
       await page.waitForTimeout(700)
       const langTab = page.locator('button, [role="tab"]', { hasText: /Language/i }).first()
@@ -515,6 +527,10 @@ async function run() {
         await page.waitForTimeout(500)
         const dirAfter = await page.evaluate(() => document.documentElement.getAttribute('dir'))
         r.log('restored-to-english-ltr', dirAfter === 'ltr', `dir=${dirAfter}`)
+      }
+
+      if (langSwitchOriginalBusinessType) {
+        await page.evaluate(async (bt) => window.api.industry.changeBusinessType({ businessType: bt }), langSwitchOriginalBusinessType)
       }
     })
 

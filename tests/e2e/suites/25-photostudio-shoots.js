@@ -62,6 +62,7 @@ async function run() {
         await addNew.click()
         await page.waitForTimeout(300)
         await modal.getByPlaceholder('Customer name *').fill('E2E Photo Client')
+        await modal.getByPlaceholder('Phone *').fill('9876500025')
         await modal.getByRole('button', { name: 'Add & Select' }).click()
         await page.waitForTimeout(500)
       }

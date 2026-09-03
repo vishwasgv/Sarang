@@ -123,6 +123,7 @@ async function login(page, username = 'admin', password = UAT_PASSWORD) {
       await dismissTutorialPrompt(page)
       return
     }
+    await dismissDisclaimer(page)
     const userInput = page.locator('input[name="username"]')
     if (await userInput.count()) {
       await userInput.fill(username)
@@ -162,6 +163,27 @@ async function dismissTutorialPrompt(page) {
   const laterBtn = page.locator('button', { hasText: 'Maybe later' })
   if (await laterBtn.count().catch(() => 0)) {
     await laterBtn.click().catch(() => {})
+    await page.waitForTimeout(400)
+  }
+}
+
+// Same gotcha class as dismissBackupPrompt/dismissTutorialPrompt above, one
+// step earlier in the boot sequence: the one-time full-screen legal
+// disclaimer (gated on the `disclaimer_accepted` Setting row), shown BEFORE
+// the login screen even renders — see router.tsx's disclaimerAccepted check.
+// Found live 2026-09-02: a shared dev DB missing this row (however that
+// happens — a fresh machine, a restored backup, a wiped Settings table)
+// makes every suite fail with a misleading AUTH-003 "session expired" a
+// dozen calls later, instead of the real cause (login() waited on a
+// `input[name="username"]` that could never appear, then just gave up
+// silently after 5 attempts) — the exact same trap the other two prompts
+// were already hardened against. Checking the box then clicking "Start
+// Using Sarang" is the real, supported first-run action a human takes.
+async function dismissDisclaimer(page) {
+  const acceptBtn = page.locator('button', { hasText: 'Start Using Sarang' })
+  if (await acceptBtn.count().catch(() => 0)) {
+    await page.locator('input[type="checkbox"]').first().check().catch(() => {})
+    await acceptBtn.click().catch(() => {})
     await page.waitForTimeout(400)
   }
 }

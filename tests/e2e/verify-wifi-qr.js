@@ -81,7 +81,7 @@ async function main() {
 
     // ── Confirm the WiFi QR image is a real decodable PNG data URL with the
     //    correct WIFI: payload, not just a placeholder/broken image ─────────
-    const genRes = await page.evaluate(async (tableId) => window.api.restaurant.generateTableQr({ tableId }), tableId = tableRes?.data?.id)
+    const genRes = await page.evaluate(async (tableId) => window.api.restaurant.generateTableQr({ tableId }), tableRes?.data?.id)
     const wifiQrDataUrl = genRes?.data?.wifiQrDataUrl
     console.log('wifiQrDataUrl is a data:image/png URL:', typeof wifiQrDataUrl === 'string' && wifiQrDataUrl.startsWith('data:image/png;base64,'))
     if (typeof wifiQrDataUrl !== 'string' || !wifiQrDataUrl.startsWith('data:image/png;base64,')) ok = false
