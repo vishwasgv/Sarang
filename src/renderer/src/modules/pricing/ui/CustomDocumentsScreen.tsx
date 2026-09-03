@@ -171,7 +171,7 @@ export function CustomDocumentsScreen() {
   }
   function openEditEntry(entry: Entry) {
     setEntryEditTarget(entry)
-    setEntryDate(entry.entryDate.slice(0, 10))
+    setEntryDate(new Date(entry.entryDate).toISOString().slice(0, 10))
     setEntryNotes(entry.notes ?? '')
     setEntryFieldValues(entry.customFields ?? {})
     setShowEntryModal(true)
