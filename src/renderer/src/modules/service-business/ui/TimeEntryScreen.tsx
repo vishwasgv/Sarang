@@ -187,7 +187,9 @@ export default function TimeEntryScreen(): React.JSX.Element {
 
   function openEditForm(e: TimeEntry): void {
     setEditEntry(e)
-    setFormDate(e.date.slice(0, 10))
+    // date crosses the contextBridge as a real Date object (structuredClone
+    // preserves it), not an ISO string -- a bare .slice(0,10) throws.
+    setFormDate(new Date(e.date).toISOString().slice(0, 10))
     setFormStaffId(e.employeeId ?? '')
     setFormProjectId(e.projectId ?? '')
     setFormRetainerId(e.retainerId ?? '')
