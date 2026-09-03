@@ -128,8 +128,8 @@ export function BatchClassesScreen() {
       maxCapacity: cls.maxCapacity,
       scheduleDays: JSON.parse(cls.scheduleDays || '[]'),
       scheduleTime: cls.scheduleTime,
-      startDate: cls.startDate.slice(0, 10),
-      endDate: cls.endDate ? cls.endDate.slice(0, 10) : '',
+      startDate: toLocalISODate(new Date(cls.startDate)),
+      endDate: cls.endDate ? toLocalISODate(new Date(cls.endDate)) : '',
       roomOrLocation: cls.roomOrLocation ?? '',
     } : {
       className: '', instructorId: '', maxCapacity: 20, scheduleDays: [], scheduleTime: '07:00',
