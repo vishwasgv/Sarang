@@ -251,6 +251,32 @@ async function run() {
       if (row) r.log('price-list-tier-price-correct', row.unitPrice === 80, `unitPrice=${row.unitPrice}`)
     }))
 
+    // ── priceLists.update — ZERO E2E coverage of any kind before this step
+    // (create and setItems, via "Manage Tiers" above, were already
+    // covered). Renamed via the real UI then reset directly via DB (not a
+    // second UI round-trip) so the "assign to customer" step below, which
+    // searches by the original `priceListName`, keeps working unchanged.
+    await r.step('price-list-edited-via-real-ui', async () => {
+      if (!priceListId) { r.log('skipped-no-price-list-id', false); return }
+      const row = page.locator('tr', { hasText: priceListName })
+      await row.locator('button', { hasText: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      const nameInput = modal.getByLabel('Name')
+      await nameInput.fill('')
+      await nameInput.fill(`${priceListName} EDITED`)
+      await modal.locator('button', { hasText: 'Save' }).click()
+      await page.waitForTimeout(800)
+      r.log('price-list-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('price-list-edit-persisted-then-reset-for-downstream-steps', () => h.withDb((db) => {
+      if (!priceListId) { r.log('skipped-no-price-list-id', false); return }
+      const row = db.prepare('SELECT * FROM PriceList WHERE id = ?').get(priceListId)
+      r.log('price-list-renamed', row?.name === `${priceListName} EDITED`, JSON.stringify(row?.name))
+      db.prepare('UPDATE PriceList SET name = ? WHERE id = ?').run(priceListName, priceListId)
+    }))
+
     // Real gap regression guard: assign the price list to the customer via
     // the Customer edit form (the fix built this session) and verify it
     // actually persists — this is the one screen that had zero UI for this
@@ -343,6 +369,44 @@ async function run() {
         r.log('free-line-added-to-cart', /free/i.test(afterText))
       }
     })
+
+    // ── pricingSchemes.update (deactivate toggle) / .delete — ZERO E2E
+    // coverage of any kind before this step (create was already covered).
+    // schemeId isn't needed by anything further below, so it's safe to
+    // deactivate then delete here. ──────────────────────────────────────────
+    await r.step('pricing-scheme-deactivated-then-deleted-via-real-ui', async () => {
+      if (!schemeId) { r.log('skipped-no-scheme-id', false); return }
+      await h.gotoHash(page, '#/pricing/schemes')
+      await page.waitForTimeout(600)
+      const row = page.locator('tr', { hasText: schemeName })
+      await row.locator('button', { hasText: 'Deactivate' }).click()
+      await page.waitForTimeout(600)
+      r.log('scheme-deactivate-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const afterToggle = h.withDb((db) => db.prepare('SELECT isActive FROM PricingScheme WHERE id = ?').get(schemeId))
+      r.log('pricing-scheme-marked-inactive', afterToggle?.isActive === 0, JSON.stringify(afterToggle))
+
+      await row.locator('button', { hasText: 'Delete' }).click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(700)
+      r.log('scheme-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('pricing-scheme-actually-deleted', () => h.withDb((db) => {
+      if (!schemeId) { r.log('skipped-no-scheme-id', false); return }
+      const row = db.prepare('SELECT * FROM PricingScheme WHERE id = ?').get(schemeId)
+      r.log('pricing-scheme-row-gone', !row, JSON.stringify(row))
+    }))
+
+    // The happy-hour section below seeds new products directly via DB, then
+    // re-navigates to this same '#/pricing/schemes' route — gotoHash() to an
+    // unchanged hash doesn't remount, so PricingSchemesScreen's own product
+    // list (fetched once on mount) would stay stale and miss them. Bounce
+    // through a different route first so the next gotoHash is a real mount.
+    await h.gotoHash(page, '#/dashboard')
+    await page.waitForTimeout(400)
 
     // ── Pricing Schemes: FLAT_PERCENT_OFF happy-hour window, live against ──
     // the real wall clock (evaluateCart's `now` is server-side only, not
@@ -460,6 +524,25 @@ async function run() {
       r.log('recurring-profile-resumed', resumedNow?.active === 1, `active=${resumedNow?.active}`)
     })
 
+    // ── recurringProfiles.delete — ZERO E2E coverage of any kind before this
+    // step (create and the pause/resume update above were already covered).
+    await r.step('recurring-profile-deleted-via-real-ui', async () => {
+      if (!profileId) { r.log('skipped-no-profile-id', false); return }
+      const row = page.locator('table tbody tr').first()
+      await row.locator('button', { hasText: 'Delete' }).click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(700)
+      r.log('recurring-profile-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('recurring-profile-actually-deleted', () => h.withDb((db) => {
+      if (!profileId) { r.log('skipped-no-profile-id', false); return }
+      const row = db.prepare('SELECT * FROM RecurringProfile WHERE id = ?').get(profileId)
+      r.log('recurring-profile-row-gone', !row, JSON.stringify(row))
+    }))
+
     // ── Approval Workflows: create with admin as a USER-approver step, ─────
     // low threshold, then verify a NEW Sales Order actually pauses for
     // approval and the ApprovalPanel's own Approve button completes it.
@@ -571,6 +654,49 @@ async function run() {
       r.log('second-sales-order-confirmed-after-approval', row?.status === 'CONFIRMED', `status=${row?.status}`)
     })
 
+    // ── approvalWorkflows.update (deactivate toggle) / .delete — ZERO E2E
+    // coverage of any kind before this step (create and actOnStep, via the
+    // approve flow above, were already covered). workflowId isn't needed by
+    // anything further below.
+    //
+    // This workflow now has real approval history (the instance + action
+    // from the approve flow above) — deleteWorkflow's own guard (see its
+    // comment in approval-workflow.service.ts) deliberately refuses to
+    // delete a workflow with history, telling the user to deactivate
+    // instead. So the deactivate half tests the real toggle, and the
+    // delete half tests that this guard is actually wired up through the
+    // UI, not just the service layer.
+    await r.step('approval-workflow-deactivated-via-real-ui', async () => {
+      if (!workflowId) { r.log('skipped-no-workflow-id', false); return }
+      await h.gotoHash(page, '#/approval-workflows')
+      await page.waitForTimeout(600)
+      const nameP = page.locator('p', { hasText: workflowName }).first()
+      const row = nameP.locator('xpath=ancestor::div[contains(@class, "rounded-xl")][1]')
+      await row.locator('button', { hasText: 'Deactivate' }).click()
+      await page.waitForTimeout(600)
+      r.log('workflow-deactivate-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const afterToggle = h.withDb((db) => db.prepare('SELECT isActive FROM ApprovalWorkflow WHERE id = ?').get(workflowId))
+      r.log('approval-workflow-marked-inactive', afterToggle?.isActive === 0, JSON.stringify(afterToggle))
+    })
+
+    await r.step('deleting-a-workflow-with-approval-history-is-blocked-via-real-ui', async () => {
+      if (!workflowId) { r.log('skipped-no-workflow-id', false); return }
+      const nameP = page.locator('p', { hasText: workflowName }).first()
+      const row = nameP.locator('xpath=ancestor::div[contains(@class, "rounded-xl")][1]')
+      await row.locator('button', { hasText: 'Delete' }).click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(700)
+      r.log('workflow-delete-attempt-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const row2 = h.withDb((db) => db.prepare('SELECT * FROM ApprovalWorkflow WHERE id = ?').get(workflowId))
+      r.log('workflow-with-history-not-deleted', !!row2, JSON.stringify(row2))
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('delete-blocked-error-message-shown', /approval history|deactivate it instead/i.test(bodyText), bodyText.slice(0, 300))
+    })
+
     // ── Invoice Templates: create, set as business default, then restore
     // the original default -- never leave the shared dev DB printing every
     // future invoice with this test's throwaway accent color. ─────────────
@@ -608,6 +734,48 @@ async function run() {
         await page.evaluate((id) => window.api.invoiceTemplates.setBusinessDefault({ id }), originalBusinessDefaultTemplateId)
       }
     })
+
+    // ── invoiceTemplates.update / .delete — ZERO E2E coverage of any kind
+    // before this step (create/setBusinessDefault/list were already covered
+    // by the step above). ───────────────────────────────────────────────────
+    await r.step('invoice-template-edited-and-deleted-via-real-ui', async () => {
+      if (!invoiceTemplateId) return r.log('skipped-no-invoice-template-id', false)
+      const nameP = page.locator('p', { hasText: `${TEST_PREFIX} Template ${suffix}` }).first()
+      const card = nameP.locator('xpath=ancestor::div[contains(@class, "space-y-3")][1]')
+      await card.locator('button', { hasText: 'Edit' }).click()
+      await page.waitForTimeout(400)
+      const modal = h.topModal(page)
+      const nameInput = modal.locator('label:text-is("Template Name") + input')
+      await nameInput.fill('')
+      await nameInput.fill(`${TEST_PREFIX} Template EDITED ${suffix}`)
+      await modal.locator('button', { hasText: 'Update Template' }).click()
+      await page.waitForTimeout(800)
+      r.log('invoice-template-edit-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('invoice-template-edit-persisted', () => h.withDb((db) => {
+      if (!invoiceTemplateId) return r.log('skipped-no-invoice-template-id', false)
+      const row = db.prepare('SELECT * FROM InvoiceTemplate WHERE id = ?').get(invoiceTemplateId)
+      r.log('invoice-template-renamed', row?.name === `${TEST_PREFIX} Template EDITED ${suffix}`, JSON.stringify(row?.name))
+    }))
+
+    await r.step('invoice-template-deleted-via-real-ui', async () => {
+      if (!invoiceTemplateId) return r.log('skipped-no-invoice-template-id', false)
+      const nameP = page.locator('p', { hasText: `${TEST_PREFIX} Template EDITED ${suffix}` }).first()
+      const card = nameP.locator('xpath=ancestor::div[contains(@class, "space-y-3")][1]')
+      await card.locator('button', { hasText: 'Delete' }).click()
+      await page.waitForTimeout(400)
+      const confirmModal = h.topModal(page)
+      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
+      await page.waitForTimeout(800)
+      r.log('invoice-template-delete-no-crash', !(await h.hasErrorBoundary(page)))
+    })
+
+    await r.step('invoice-template-actually-deleted', () => h.withDb((db) => {
+      if (!invoiceTemplateId) return r.log('skipped-no-invoice-template-id', false)
+      const row = db.prepare('SELECT * FROM InvoiceTemplate WHERE id = ?').get(invoiceTemplateId)
+      r.log('invoice-template-row-gone', !row, JSON.stringify(row))
+    }))
 
     // ── Estimate -> Retainer conversion (Phase 63) ──────────────────────────
     await r.step('estimate-to-retainer-conversion', async () => {
