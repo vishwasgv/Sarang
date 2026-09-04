@@ -374,6 +374,7 @@
     "confirmSale": "Konfirmasi Penjualan",
     "sendToKitchen": "Kirim ke Dapur",
     "orderSentToKitchen": "Pesanan Dikirim ke Dapur",
+    "orderChannel": "Saluran Pesanan",
     "clearCart": "Hapus Semua",
     "customerRequired": "Pelanggan diperlukan untuk penjualan kredit",
     "paymentHistory": "Riwayat Pembayaran",
@@ -1673,6 +1674,10 @@
         "label": "Perputaran Meja per Jam",
         "description": "Peta panas hari-dalam-minggu x jam-dalam-hari pesanan makan di tempat — kapan restoran Anda sebenarnya paling sibuk"
       },
+      "orderChannelBreakdown": {
+        "label": "Pesanan berdasarkan Saluran",
+        "description": "Berapa banyak pesanan — dan berapa pendapatan — berasal dari Makan di Tempat vs Bawa Pulang vs Zomato vs Swiggy vs Aplikasi Lain"
+      },
       "recipeWasteVariance": {
         "label": "Varians Pemborosan: Resep vs. Aktual",
         "description": "Membandingkan berapa banyak bahan yang seharusnya digunakan menurut resep Anda dengan apa yang sebenarnya diambil — mengungkap penyimpangan porsi, tumpahan, atau resep yang sudah usang"
@@ -2719,6 +2724,7 @@
       "foodCost": "Tidak ada pengurangan bahan ditemukan dalam rentang tanggal ini. KOT harus ditandai Selesai untuk mencatat biaya makanan.",
       "dishContributionMargin": "Tidak ada hidangan terjual dalam rentang tanggal ini.",
       "tableTurnoverByHour": "Tidak ada pesanan makan di tempat ditemukan dalam rentang tanggal ini.",
+      "orderChannelBreakdown": "Tidak ada pesanan ditemukan dalam rentang tanggal ini.",
       "recipeWasteVariance": "Tidak ada aktivitas bahan terkait resep ditemukan dalam rentang tanggal ini.",
       "deadStockClearance": "Tidak ada stok mati ditemukan — setiap produk dalam stok telah terjual baru-baru ini.",
       "categorySellThrough": "Tidak ditemukan penjualan produk berkategori dalam rentang tanggal ini.",
@@ -2834,6 +2840,8 @@
       "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
+      "channel": "Saluran",
+      "orderCount": "Pesanan",
       "invoiceNumber": "Nomor Faktur",
       "date": "Tanggal",
       "metalValue": "Nilai Logam",

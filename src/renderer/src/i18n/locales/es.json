@@ -377,6 +377,7 @@
     "confirmSale": "Confirmar Venta",
     "sendToKitchen": "Enviar a Cocina",
     "orderSentToKitchen": "Pedido Enviado a Cocina",
+    "orderChannel": "Canal de Pedido",
     "clearCart": "Limpiar Todo",
     "customerRequired": "Se requiere cliente para ventas a crédito",
     "paymentHistory": "Historial de Pagos",
@@ -1685,6 +1686,10 @@
         "label": "Rotación de Mesas por Hora",
         "description": "Un mapa de calor de día de la semana x hora del día de pedidos en mesa — cuándo su restaurante está realmente más ocupado"
       },
+      "orderChannelBreakdown": {
+        "label": "Pedidos por Canal",
+        "description": "Cuántos pedidos — y cuántos ingresos — vinieron de Comer en el Local vs Para Llevar vs Zomato vs Swiggy vs Otra App"
+      },
       "recipeWasteVariance": {
         "label": "Variación de Desperdicio: Receta vs. Real",
         "description": "Compara cuánto deberían haberse usado los ingredientes según sus recetas frente a lo que realmente se consumió — revela desviación real de porciones, derrames o una receta desactualizada"
@@ -2720,6 +2725,7 @@
       "foodCost": "No se encontraron deducciones de ingredientes en este rango de fechas. Los KOT deben marcarse como completados para registrar el costo de alimentos.",
       "dishContributionMargin": "No se vendieron platos en este rango de fechas.",
       "tableTurnoverByHour": "No se encontraron pedidos en mesa en este rango de fechas.",
+      "orderChannelBreakdown": "No se encontraron pedidos en este rango de fechas.",
       "recipeWasteVariance": "No se encontró actividad de ingredientes vinculada a recetas en este rango de fechas.",
       "deadStockClearance": "No se encontró stock muerto — todos los productos en stock se han vendido recientemente.",
       "categorySellThrough": "No se encontraron ventas de productos categorizados en este rango de fechas.",
@@ -2834,6 +2840,8 @@
       "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
+      "channel": "Canal",
+      "orderCount": "Pedidos",
       "invoiceNumber": "Número de Factura",
       "date": "Fecha",
       "metalValue": "Valor del Metal",

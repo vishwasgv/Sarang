@@ -374,6 +374,7 @@
     "confirmSale": "Confirmar Venda",
     "sendToKitchen": "Enviar para a Cozinha",
     "orderSentToKitchen": "Pedido Enviado à Cozinha",
+    "orderChannel": "Canal do Pedido",
     "clearCart": "Limpar Tudo",
     "customerRequired": "Cliente necessário para vendas a crédito",
     "paymentHistory": "Histórico de Pagamentos",
@@ -1673,6 +1674,10 @@
         "label": "Rotatividade de Mesas por Hora",
         "description": "Um mapa de calor dia da semana x hora do dia de pedidos no salão — quando seu restaurante está realmente mais movimentado"
       },
+      "orderChannelBreakdown": {
+        "label": "Pedidos por Canal",
+        "description": "Quantos pedidos — e quanta receita — vieram do Salão vs Para Viagem vs Zomato vs Swiggy vs Outro App"
+      },
       "recipeWasteVariance": {
         "label": "Variação de Desperdício: Receita vs. Real",
         "description": "Compara quanto de ingredientes suas receitas dizem que deveria ter sido usado com o que foi realmente retirado — revela desvio real de porções, derramamento ou uma receita desatualizada"
@@ -2719,6 +2724,7 @@
       "foodCost": "Nenhuma dedução de ingredientes encontrada neste intervalo de datas. Os KOTs devem ser marcados como concluídos para registrar o custo de alimentos.",
       "dishContributionMargin": "Nenhum prato vendido neste intervalo de datas.",
       "tableTurnoverByHour": "Nenhum pedido no salão encontrado neste intervalo de datas.",
+      "orderChannelBreakdown": "Nenhum pedido encontrado neste intervalo de datas.",
       "recipeWasteVariance": "Nenhuma atividade de ingredientes vinculada a receitas encontrada neste intervalo de datas.",
       "deadStockClearance": "Nenhum estoque parado encontrado — todos os produtos em estoque foram vendidos recentemente.",
       "categorySellThrough": "Nenhuma venda de produto categorizado encontrada neste intervalo de datas.",
@@ -2834,6 +2840,8 @@
       "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
+      "channel": "Canal",
+      "orderCount": "Pedidos",
       "invoiceNumber": "Número da Fatura",
       "date": "Data",
       "metalValue": "Valor do Metal",

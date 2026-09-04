@@ -374,6 +374,7 @@
     "confirmSale": "Confirmer la Vente",
     "sendToKitchen": "Envoyer en Cuisine",
     "orderSentToKitchen": "Commande Envoyée en Cuisine",
+    "orderChannel": "Canal de Commande",
     "clearCart": "Tout effacer",
     "customerRequired": "Client requis pour les ventes à crédit",
     "paymentHistory": "Historique des paiements",
@@ -1673,6 +1674,10 @@
         "label": "Rotation des Tables par Heure",
         "description": "Une carte thermique jour de la semaine x heure de la journée des commandes en salle — quand votre restaurant est vraiment le plus occupé"
       },
+      "orderChannelBreakdown": {
+        "label": "Commandes par Canal",
+        "description": "Combien de commandes — et quel chiffre d'affaires — proviennent de Sur Place vs À Emporter vs Zomato vs Swiggy vs Autre App"
+      },
       "recipeWasteVariance": {
         "label": "Écart Gaspillage : Recette vs. Réel",
         "description": "Compare la quantité d'ingrédients que vos recettes indiquent comme nécessaire à ce qui a réellement été prélevé — révèle une vraie dérive des portions, un gaspillage ou une recette obsolète"
@@ -2719,6 +2724,7 @@
       "foodCost": "Aucune déduction d'ingrédients trouvée dans cette plage de dates. Les KOT doivent être marqués comme terminés pour enregistrer le coût alimentaire.",
       "dishContributionMargin": "Aucun plat vendu dans cette plage de dates.",
       "tableTurnoverByHour": "Aucune commande en salle trouvée dans cette plage de dates.",
+      "orderChannelBreakdown": "Aucune commande trouvée dans cette plage de dates.",
       "recipeWasteVariance": "Aucune activité d'ingrédients liée à une recette trouvée dans cette plage de dates.",
       "deadStockClearance": "Aucun stock dormant trouvé — tous les produits en stock ont été vendus récemment.",
       "categorySellThrough": "Aucune vente de produit catégorisé trouvée dans cette plage de dates.",
@@ -2834,6 +2840,8 @@
       "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
+      "channel": "Canal",
+      "orderCount": "Commandes",
       "invoiceNumber": "Numéro de Facture",
       "date": "Date",
       "metalValue": "Valeur du Métal",
