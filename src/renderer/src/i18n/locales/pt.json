@@ -5806,7 +5806,11 @@
     "couldNotCheckout": "Não foi possível fechar a conta desta mesa.",
     "tableCheckedOut": "Conta Fechada",
     "billGenerated": "Conta gerada para {{name}}.",
-    "billRequested": "Conta solicitada"
+    "billRequested": "Conta solicitada",
+    "waiterView": "Visão do Garçom",
+    "waiterViewDesc": "Dê a cada garçom seu próprio código QR — ao escaneá-lo, abre-se em seu celular uma visão ao vivo das mesas atribuídas a ele: o que está sendo preparado, o que está pronto para servir, e uma forma de enviar um novo pedido diretamente para a cozinha. Funciona no mesmo servidor do Painel da Cozinha acima.",
+    "couldNotGenerateWaiterQr": "Não foi possível gerar o código QR deste garçom.",
+    "scanToOpenTableView": "Escaneie para abrir sua visão de mesas"
   },
   "costCentres": {
     "title": "Centros de Custo",

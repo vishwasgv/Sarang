@@ -3603,7 +3603,11 @@
     "couldNotCheckout": "No se pudo cobrar esta mesa.",
     "tableCheckedOut": "Mesa Cobrada",
     "billGenerated": "Cuenta generada para {{name}}.",
-    "billRequested": "Cuenta solicitada"
+    "billRequested": "Cuenta solicitada",
+    "waiterView": "Vista del Mesero",
+    "waiterViewDesc": "Dale a cada mesero su propio código QR — al escanearlo se abre en su teléfono una vista en vivo de sus mesas asignadas: qué se está cocinando, qué está listo para servir, y una forma de enviar un nuevo pedido directamente a la cocina. Funciona en el mismo servidor de Pantalla de Cocina de arriba.",
+    "couldNotGenerateWaiterQr": "No se pudo generar el código QR de este mesero.",
+    "scanToOpenTableView": "Escanea para abrir tu vista de mesas"
   },
   "backup": {
     "title": "Copia de Seguridad y Restauración",

@@ -3991,7 +3991,11 @@
     "couldNotCheckout": "Could not check out this table.",
     "tableCheckedOut": "Table Checked Out",
     "billGenerated": "Bill generated for {{name}}.",
-    "billRequested": "Bill requested"
+    "billRequested": "Bill requested",
+    "waiterView": "Waiter View",
+    "waiterViewDesc": "Give each waiter their own QR code — scanning it opens a live view of their assigned tables on their own phone: what's cooking, what's ready to serve, and a way to take a new order straight to the kitchen. Runs on the Kitchen Display server above.",
+    "couldNotGenerateWaiterQr": "Could not generate this waiter's QR code.",
+    "scanToOpenTableView": "Scan to open your table view"
   },
   "backup": {
     "title": "Backup & Restore",

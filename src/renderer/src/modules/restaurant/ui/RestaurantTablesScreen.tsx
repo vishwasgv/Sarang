@@ -282,9 +282,9 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.restaurant.generateWaiterQr({ employeeId: employee.id })
       if (res.success && res.data) setWaiterQrImage(res.data)
-      else setWaiterQrError((res.error as { message?: string })?.message ?? 'Could not generate this waiter’s QR code.')
+      else setWaiterQrError((res.error as { message?: string })?.message ?? t('restaurantTables.couldNotGenerateWaiterQr'))
     } catch {
-      setWaiterQrError('Could not generate this waiter’s QR code.')
+      setWaiterQrError(t('restaurantTables.couldNotGenerateWaiterQr'))
     }
   }
 
@@ -319,7 +319,7 @@ export function RestaurantTablesScreen() {
       h2{font-size:13px;color:#666;font-weight:600;margin:0 0 16px}
       img{width:220px;height:220px}
       footer{margin-top:24px;font-size:10px;color:#888}
-    </style></head><body><h1>${employeeName}</h1><h2>Scan to open your table view</h2><img src="${qrDataUrl}" alt="Waiter QR code" /><footer>${aszurexFooterHtml(10)}</footer></body></html>`
+    </style></head><body><h1>${employeeName}</h1><h2>${t('restaurantTables.scanToOpenTableView')}</h2><img src="${qrDataUrl}" alt="Waiter QR code" /><footer>${aszurexFooterHtml(10)}</footer></body></html>`
     if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
@@ -562,8 +562,8 @@ export function RestaurantTablesScreen() {
       {employees.length > 0 && (
         <Card padding="lg" className="space-y-3">
           <div>
-            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><QrCode size={16} /> Waiter View</h3>
-            <p className="text-xs text-slate-400 mt-1">Give each waiter their own QR code — scanning it opens a live view of their assigned tables on their own phone: what's cooking, what's ready to serve, and a way to take a new order straight to the kitchen. Runs on the Kitchen Display server above.</p>
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><QrCode size={16} /> {t('restaurantTables.waiterView')}</h3>
+            <p className="text-xs text-slate-400 mt-1">{t('restaurantTables.waiterViewDesc')}</p>
           </div>
           <div className="flex flex-wrap gap-2">
             {employees.map((e) => (
@@ -969,7 +969,7 @@ export function RestaurantTablesScreen() {
               <p className="text-sm text-danger">{waiterQrError}</p>
             ) : waiterQrImage ? (
               <>
-                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Scan to open your table view</p>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('restaurantTables.scanToOpenTableView')}</p>
                 <img src={waiterQrImage.qrDataUrl} alt="Waiter QR code" className="w-56 h-56 mx-auto" />
                 <p className="text-xs text-slate-400 break-all">{waiterQrImage.captureUrl}</p>
                 <button onClick={() => printWaiterQr(waiterQrTarget.fullName, waiterQrImage.qrDataUrl)}

@@ -5806,7 +5806,11 @@
     "couldNotCheckout": "Impossible d'encaisser cette table.",
     "tableCheckedOut": "Table Encaissée",
     "billGenerated": "Facture générée pour {{name}}.",
-    "billRequested": "Addition demandée"
+    "billRequested": "Addition demandée",
+    "waiterView": "Vue Serveur",
+    "waiterViewDesc": "Donnez à chaque serveur son propre code QR — le scanner ouvre sur son téléphone une vue en direct de ses tables assignées : ce qui cuit, ce qui est prêt à servir, et un moyen d'envoyer une nouvelle commande directement en cuisine. Fonctionne sur le même serveur d'affichage cuisine ci-dessus.",
+    "couldNotGenerateWaiterQr": "Impossible de générer le code QR de ce serveur.",
+    "scanToOpenTableView": "Scannez pour ouvrir votre vue des tables"
   },
   "costCentres": {
     "title": "Centres de Coûts",

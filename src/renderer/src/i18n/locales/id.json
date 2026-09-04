@@ -5806,7 +5806,11 @@
     "couldNotCheckout": "Tidak dapat checkout meja ini.",
     "tableCheckedOut": "Meja Sudah Checkout",
     "billGenerated": "Tagihan dibuat untuk {{name}}.",
-    "billRequested": "Tagihan diminta"
+    "billRequested": "Tagihan diminta",
+    "waiterView": "Tampilan Pramusaji",
+    "waiterViewDesc": "Berikan setiap pramusaji kode QR mereka sendiri — memindainya akan membuka tampilan langsung di ponsel mereka untuk meja yang ditugaskan: apa yang sedang dimasak, apa yang siap disajikan, dan cara mengirim pesanan baru langsung ke dapur. Berjalan di server Tampilan Dapur yang sama di atas.",
+    "couldNotGenerateWaiterQr": "Tidak dapat membuat kode QR pramusaji ini.",
+    "scanToOpenTableView": "Pindai untuk membuka tampilan meja Anda"
   },
   "costCentres": {
     "title": "Pusat Biaya",
