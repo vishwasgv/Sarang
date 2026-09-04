@@ -358,6 +358,7 @@ const api: IpcChannels = {
     foodCost: (p) => invoke('reports:foodCost', p),
     dishContributionMargin: (p) => invoke('reports:dishContributionMargin', p),
     tableTurnoverByHour: (p) => invoke('reports:tableTurnoverByHour', p),
+    orderChannelBreakdown: (p) => invoke('reports:orderChannelBreakdown', p),
     recipeWasteVariance: (p) => invoke('reports:recipeWasteVariance', p),
     deadStockClearance: (p) => invoke('reports:deadStockClearance', p),
     categorySellThrough: (p) => invoke('reports:categorySellThrough', p),

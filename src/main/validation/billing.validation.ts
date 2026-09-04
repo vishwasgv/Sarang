@@ -87,6 +87,14 @@ export const CreateInvoiceSchema = z.object({
   // a large party actually is (see restaurant.service.ts). Absent/empty for
   // every non-restaurant invoice and for restaurant takeaway/counter sales.
   tableIds: z.array(z.string()).max(20).optional(),
+  // 2026-09-04 — Restaurant order-channel tagging for a table-less
+  // (counter/takeaway) sale, so a report can tell a genuine walk-in
+  // takeaway apart from an order phoned/keyed in from a delivery app.
+  // Free-text-with-suggestions, same convention as Booking.channel
+  // (hotel) — the picker only ever offers these four, but nothing
+  // server-side enforces the enum. Meaningless (ignored for reporting)
+  // once tableId/tableIds is set, since that already implies DINE_IN.
+  orderChannel: z.enum(['TAKEAWAY', 'ZOMATO', 'SWIGGY', 'OTHER']).optional(),
   // Phase 61 — GST e-way bill number (required by law for interstate/
   // above-threshold goods movement), captured as a plain optional string
   // the same way referenceNumber already is — Sarang doesn't generate or

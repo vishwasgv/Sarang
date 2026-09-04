@@ -106,6 +106,14 @@ const PAYMENT_METHODS = [
 ] as const
 type PaymentMethod = typeof PAYMENT_METHODS[number]['value']
 
+// 2026-09-04 — order-channel tagging for a table-less restaurant sale.
+const ORDER_CHANNELS = [
+  { value: 'TAKEAWAY', label: 'Takeaway' },
+  { value: 'ZOMATO', label: 'Zomato' },
+  { value: 'SWIGGY', label: 'Swiggy' },
+  { value: 'OTHER', label: 'Other App' }
+] as const
+
 function computeTotals(items: CartItem[], globalDiscount: number) {
   const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
   const totalLineDiscount = items.reduce((s, i) => s + i.discountAmount, 0)
@@ -134,6 +142,9 @@ export function BillingScreen() {
   const tableLabel = searchParams.get('tableLabel')
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled, businessType } = useIndustryStore()
+  // 2026-09-04 — order-channel tagging, restaurant-only, same module gate
+  // as InvoiceDetailScreen's own "Send to Kitchen" button.
+  const kotEnabled = isModuleEnabled('kot')
   // Phase 67 §9.1 — Footwear item 3: trial-pair counter workflow gate.
   const isFootwear = businessType === 'FOOTWEAR'
   // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms gate.
@@ -233,6 +244,10 @@ export function BillingScreen() {
   const [exchangeSearch, setExchangeSearch] = useState('')
   const [exchangeResults, setExchangeResults] = useState<Array<{ id: string; exchangeNumber: string; valueGiven: number; customerName: string | null; customer?: { customerName: string } | null }>>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
+  // 2026-09-04 — order-channel tagging for a table-less restaurant sale.
+  // Only meaningful/sent when !tableId — a dine-in sale is DINE_IN by
+  // construction (tableId already implies it), never a picker choice.
+  const [orderChannel, setOrderChannel] = useState<'TAKEAWAY' | 'ZOMATO' | 'SWIGGY' | 'OTHER'>('TAKEAWAY')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [notes, setNotes] = useState('')
   // Phase 61 — lives on Invoice directly, independent of the opt-in
@@ -1275,6 +1290,7 @@ export function BillingScreen() {
         // it, overriding whatever's in the manual dueDate field above.
         cropSeasonId: paymentMethod === 'CREDIT' && isAgriInputs && cropSeasonId ? cropSeasonId : undefined,
         tableIds: tableId ? [tableId] : undefined,
+        orderChannel: !tableId && kotEnabled ? orderChannel : undefined,
         jobSiteAccountId: paymentMethod === 'CREDIT' && jobSiteAccountId ? jobSiteAccountId : undefined,
         scheduledDeliveryDate: scheduledDeliveryEnabled && scheduledDeliveryDate ? scheduledDeliveryDate : undefined,
         deliveryAddress: scheduledDeliveryEnabled && scheduledDeliveryDate && deliveryAddress.trim() ? deliveryAddress.trim() : undefined,
@@ -1332,7 +1348,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, navigate, toastSuccess, toastError])
+  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -1948,6 +1964,25 @@ export function BillingScreen() {
               ))}
             </div>
           </div>
+
+          {/* 2026-09-04 — order-channel tagging. Only shown for a genuinely
+              table-less restaurant sale (dine-in already implies DINE_IN via
+              tableId), so the Orders by Channel report can tell a real
+              walk-in takeaway apart from an order phoned/keyed in from a
+              delivery app. */}
+          {!tableId && kotEnabled && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('billing.orderChannel')}</p>
+              <div className="grid grid-cols-4 gap-1.5">
+                {ORDER_CHANNELS.map(c => (
+                  <button key={c.value} onClick={() => setOrderChannel(c.value)}
+                    className={cn('h-9 rounded-lg text-xs font-semibold border transition-colors', orderChannel === c.value ? 'bg-brand text-white border-brand' : 'bg-white text-slate-600 border-slate-200 hover:border-brand hover:text-brand')}>
+                    {c.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          )}
 
           {/* GST type — only meaningful under the GST tax model; determines whether
               tax prints as CGST+SGST (intra-state) or a single IGST line (inter-state) */}

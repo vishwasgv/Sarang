@@ -17,10 +17,13 @@ interface KOT {
   status: string
   createdAt: string
   table?: { tableNumber: string; tableName?: string | null } | null
-  invoice?: { invoiceNumber: string } | null
+  invoice?: { invoiceNumber: string; orderChannel?: string | null } | null
   items: KOTItem[]
   tokenNumber?: number | null
 }
+
+// 2026-09-04 — order-channel tagging, same fallback convention as KOTScreen.
+const CHANNEL_LABEL: Record<string, string> = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', OTHER: 'Delivery App' }
 
 const NEXT_STATUS: Record<string, string | null> = { PENDING: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: null }
 const NEXT_LABEL: Record<string, string> = { PENDING: 'Start Cooking', IN_PROGRESS: 'Mark Done' }
@@ -34,7 +37,9 @@ function TicketCard({ kot, onAdvance, busy }: { kot: KOT; onAdvance: (kot: KOT) 
       <div className="flex items-start justify-between gap-2">
         <div>
           {kot.tokenNumber != null && (
-            <p className="text-sm font-bold uppercase tracking-wide text-warning">Takeaway</p>
+            <p className="text-sm font-bold uppercase tracking-wide text-warning">
+              {CHANNEL_LABEL[kot.invoice?.orderChannel ?? ''] ?? 'Takeaway'}
+            </p>
           )}
           <p className="text-xl font-bold text-dark dark:text-slate-100">{kot.table?.tableName || kot.table?.tableNumber || (kot.tokenNumber != null ? `Token #${kot.tokenNumber}` : null) || kot.invoice?.invoiceNumber || `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
           <p className="text-sm text-slate-400">{new Date(kot.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>

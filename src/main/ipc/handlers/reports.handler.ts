@@ -224,6 +224,13 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
+  handle('reports:orderChannelBreakdown', async (payload) => {
+    const deny = await requirePermission('reports.financial'); if (deny) return deny
+    const p = (payload ?? {}) as { dateFrom?: string; dateTo?: string }
+    const data = await reportService.generateOrderChannelBreakdownReport(p)
+    return { success: true, data }
+  })
+
   handle('reports:recipeWasteVariance', async (payload) => {
     const deny = await requirePermission('reports.financial'); if (deny) return deny
     const p = (payload ?? {}) as { dateFrom?: string; dateTo?: string }

@@ -258,7 +258,7 @@ export function register(handle: HandleFn): void {
         include: {
           table: { select: { tableNumber: true, tableName: true } },
           items: true,
-          invoice: { select: { invoiceNumber: true } }
+          invoice: { select: { invoiceNumber: true, orderChannel: true } }
         }
       }),
       db.setting.findUnique({ where: { settingKey: 'kot_printer_name' } })
@@ -273,6 +273,7 @@ export function register(handle: HandleFn): void {
       tableNumber: kot.table?.tableNumber ?? null,
       tableName: kot.table?.tableName ?? null,
       tokenNumber: kot.tokenNumber ?? null,
+      orderChannel: kot.invoice?.orderChannel ?? null,
       // Not yet billed at print time in the common case — the ticket shows
       // its own short KOT reference instead of an invoice number that may
       // not exist for a while yet.

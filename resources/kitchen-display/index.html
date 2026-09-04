@@ -97,7 +97,9 @@
       ? '<button data-kot="' + escapeHtml(kot.id) + '" data-next="' + escapeHtml(next) + '"' + (busyId === kot.id ? ' disabled' : '') + '>' +
         (busyId === kot.id ? 'Updating…' : escapeHtml(NEXT_LABEL[kot.status])) + '</button>'
       : ''
-    var takeawayBadge = kot.tokenNumber != null ? '<div class="takeaway-badge">Takeaway</div>' : ''
+    var CHANNEL_LABEL = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', OTHER: 'Delivery App' }
+    var channelText = (kot.invoice && CHANNEL_LABEL[kot.invoice.orderChannel]) || 'Takeaway'
+    var takeawayBadge = kot.tokenNumber != null ? '<div class="takeaway-badge">' + channelText + '</div>' : ''
     return '<div class="ticket">' + takeawayBadge + '<div class="title">' + escapeHtml(title) + '</div>' +
       '<div class="time">' + fmtTime(kot.createdAt) + '</div>' +
       '<div class="items">' + items + '</div>' + btn + '</div>'

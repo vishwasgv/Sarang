@@ -440,6 +440,7 @@ export interface IpcChannels {
     foodCost: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     dishContributionMargin: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     tableTurnoverByHour: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
+    orderChannelBreakdown: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     recipeWasteVariance: (payload?: { dateFrom?: string; dateTo?: string }) => Promise<ApiResponse>
     deadStockClearance: (payload?: { days?: number }) => Promise<ApiResponse>
     categorySellThrough: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>

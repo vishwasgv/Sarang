@@ -1801,6 +1801,63 @@ async function generateTableTurnoverByHourReport(params?: { dateFrom?: string; d
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// Orders by Channel Report (Restaurant template) — 2026-09-04
+// ─────────────────────────────────────────────────────────────────────────────
+
+// Dine-in vs takeaway vs delivery-app breakdown. DINE_IN is derived purely
+// from Invoice.tableId (a table order is dine-in by construction — every
+// checkoutTable()'d invoice has one); every other invoice falls back to its
+// tagged orderChannel, defaulting to TAKEAWAY for the common case (untagged,
+// or an invoice from before this feature existed) — a table-less restaurant
+// sale is at minimum a walk-in takeaway even if nobody picked a channel.
+export interface OrderChannelBreakdownRow {
+  channel: string; label: string; orderCount: number; revenue: number
+}
+export interface OrderChannelBreakdownReport {
+  dateFrom?: string; dateTo?: string
+  rows: OrderChannelBreakdownRow[]
+  totalOrders: number; totalRevenue: number
+}
+
+const ORDER_CHANNEL_LABELS: Record<string, string> = {
+  DINE_IN: 'Dine-in', TAKEAWAY: 'Takeaway', ZOMATO: 'Zomato', SWIGGY: 'Swiggy', OTHER: 'Other App',
+}
+
+async function generateOrderChannelBreakdownReport(params?: { dateFrom?: string; dateTo?: string }): Promise<OrderChannelBreakdownReport> {
+  const db = getPrisma()
+  const from = params?.dateFrom ? toDate(params.dateFrom) : undefined
+  const to = params?.dateTo ? toDateEnd(params.dateTo) : undefined
+
+  const invoices = await db.invoice.findMany({
+    where: {
+      status: { not: 'CANCELLED' },
+      invoiceType: { not: 'RETURN' },
+      ...(from || to ? { invoiceDate: { ...(from ? { gte: from } : {}), ...(to ? { lte: to } : {}) } } : {})
+    },
+    select: { tableId: true, orderChannel: true, totalAmount: true }
+  })
+
+  const byChannel = new Map<string, { orderCount: number; revenue: number }>()
+  for (const inv of invoices) {
+    const channel = inv.tableId != null ? 'DINE_IN' : (inv.orderChannel ?? 'TAKEAWAY')
+    const e = byChannel.get(channel) ?? { orderCount: 0, revenue: 0 }
+    e.orderCount += 1
+    e.revenue += inv.totalAmount
+    byChannel.set(channel, e)
+  }
+
+  const rows: OrderChannelBreakdownRow[] = Array.from(byChannel.entries())
+    .map(([channel, e]) => ({ channel, label: ORDER_CHANNEL_LABELS[channel] ?? channel, orderCount: e.orderCount, revenue: e.revenue }))
+    .sort((a, b) => b.revenue - a.revenue)
+
+  return {
+    dateFrom: params?.dateFrom, dateTo: params?.dateTo, rows,
+    totalOrders: invoices.length,
+    totalRevenue: rows.reduce((sum, r) => sum + r.revenue, 0)
+  }
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // Recipe-vs-Actual Waste Variance Report (Restaurant template) — Phase 67 §9.1
 // ─────────────────────────────────────────────────────────────────────────────
 
@@ -10297,6 +10354,7 @@ export const reportService = {
   generateFoodCostReport,
   generateDishContributionMarginReport,
   generateTableTurnoverByHourReport,
+  generateOrderChannelBreakdownReport,
   generateRecipeWasteVarianceReport,
   generateDeadStockClearanceReport,
   generateCategorySellThroughReport,

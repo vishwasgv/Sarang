@@ -24,7 +24,7 @@ interface KOT {
   status: string
   createdAt: string
   table?: { tableNumber: string; tableName?: string | null } | null
-  invoice?: { invoiceNumber: string; totalAmount: number } | null
+  invoice?: { invoiceNumber: string; totalAmount: number; orderChannel?: string | null } | null
   items: KOTItem[]
   servedAt?: string | null
   tokenNumber?: number | null
@@ -36,6 +36,11 @@ const STATUS_CONFIG = {
   DONE:        { label: 'Done',        color: 'bg-success/10 text-success border-success/20',    icon: CheckCircle2 },
   CANCELLED:   { label: 'Cancelled',   color: 'bg-slate-100 dark:bg-slate-800 text-slate-400 border-slate-200 dark:border-slate-700',   icon: XCircle },
 }
+
+// 2026-09-04 — order-channel tagging. Falls back to "Takeaway" for the
+// common case (no channel picked, or an invoice created before this
+// feature existed) — every table-less ticket is at minimum a takeaway.
+const CHANNEL_LABEL: Record<string, string> = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', OTHER: 'Delivery App' }
 
 const NEXT_STATUS: Record<string, string | null> = {
   PENDING: 'IN_PROGRESS',
@@ -305,7 +310,9 @@ export function KOTScreen() {
                 <div className="flex items-start justify-between gap-2">
                   <div>
                     {kot.tokenNumber != null && (
-                      <p className="text-[10px] font-bold uppercase tracking-wide text-warning">Takeaway</p>
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-warning">
+                        {CHANNEL_LABEL[kot.invoice?.orderChannel ?? ''] ?? 'Takeaway'}
+                      </p>
                     )}
                     <p className="text-sm font-bold text-dark dark:text-slate-100">
                       {kot.tokenNumber != null ? `Token #${kot.tokenNumber}` : (kot.invoice?.invoiceNumber ?? `KOT-${kot.id.slice(-6).toUpperCase()}`)}

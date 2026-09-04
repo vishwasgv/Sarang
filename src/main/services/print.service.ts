@@ -1726,6 +1726,7 @@ export const printService = {
     tableNumber?: string | null
     tableName?: string | null
     tokenNumber?: number | null
+    orderChannel?: string | null
     invoiceNumber: string
     items: Array<{ productName: string; quantity: number; remarks?: string | null }>
     createdAt: string | Date
@@ -1737,14 +1738,16 @@ export const printService = {
     const dateStr = dt.toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })
     const tableLabel = params.tableName
       ? `${params.tableNumber} — ${params.tableName}`
-      : (params.tableNumber ?? 'Takeaway')
-    // Counter/takeaway order — a bold, unmissable "TAKEAWAY" banner plus a
+      : (params.tableNumber ?? { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', OTHER: 'Delivery App' }[params.orderChannel ?? ''] ?? 'Takeaway')
+    // Counter/takeaway order — a bold, unmissable channel banner (TAKEAWAY,
+    // or the actual delivery app if the cashier tagged one) plus a
     // customer-facing token number, same spirit as a bakery/deli counter's
     // numbered ticket. Kitchen staff need this at a glance, before reading
-    // any other line, so they know to pack it rather than plate it for a
-    // table.
+    // any other line, so they know to pack it (and for which app) rather
+    // than plate it for a table.
+    const channelBanner = { ZOMATO: 'ZOMATO', SWIGGY: 'SWIGGY', OTHER: 'DELIVERY APP' }[params.orderChannel ?? ''] ?? 'TAKEAWAY'
     const tokenBlock = params.tokenNumber != null
-      ? `<div class="center" style="font-size:14px;font-weight:bold;letter-spacing:2px;margin:4px 0">TAKEAWAY</div><div class="center" style="font-size:22px;font-weight:bold;margin:4px 0">Token #${params.tokenNumber}</div><div class="divider"></div>`
+      ? `<div class="center" style="font-size:14px;font-weight:bold;letter-spacing:2px;margin:4px 0">${channelBanner}</div><div class="center" style="font-size:22px;font-weight:bold;margin:4px 0">Token #${params.tokenNumber}</div><div class="divider"></div>`
       : ''
 
     return `<!DOCTYPE html>

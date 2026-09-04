@@ -141,6 +141,9 @@ interface DishContributionMarginReport { dateFrom?: string; dateTo?: string; row
 interface TableTurnoverCell { dayOfWeek: number; hour: number; count: number }
 interface TableTurnoverByHourReport { dateFrom?: string; dateTo?: string; cells: TableTurnoverCell[]; summary: { totalTurns: number; peakDayOfWeek: number | null; peakHour: number | null; peakCount: number } }
 
+interface OrderChannelBreakdownRow { channel: string; label: string; orderCount: number; revenue: number }
+interface OrderChannelBreakdownReport { dateFrom?: string; dateTo?: string; rows: OrderChannelBreakdownRow[]; totalOrders: number; totalRevenue: number }
+
 interface RecipeWasteVarianceRow { ingredientProductId: string; ingredientName: string; unit: string; impliedQuantity: number; actualQuantity: number; varianceQuantity: number; variancePercent: number | null }
 interface RecipeWasteVarianceReport { dateFrom?: string; dateTo?: string; rows: RecipeWasteVarianceRow[] }
 
@@ -947,7 +950,7 @@ type ReportChart =
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
-  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
+  | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'orderChannelBreakdown' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'donationToIssueCycleTime' | 'jewellery'
   // Phase 67 §9.1 — Jewellery items 2/3/4/5.
@@ -1081,6 +1084,7 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
   { id: 'dishContributionMargin', icon: <TrendingUp size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
   { id: 'tableTurnoverByHour', icon: <Table size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'kot' },
+  { id: 'orderChannelBreakdown', icon: <PieChart size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'kot' },
   { id: 'recipeWasteVariance', icon: <AlertCircle size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
   // Phase 67 §9.1 — Retail: Dead-Stock Clearance List. Snapshot-as-of-today
   // over a fixed 90-day lookback, not a date-range report — same category
@@ -1583,6 +1587,9 @@ export function ReportsScreen() {
           break
         case 'tableTurnoverByHour':
           res = await window.api.reports.tableTurnoverByHour({ dateFrom, dateTo })
+          break
+        case 'orderChannelBreakdown':
+          res = await window.api.reports.orderChannelBreakdown({ dateFrom, dateTo })
           break
         case 'recipeWasteVariance':
           res = await window.api.reports.recipeWasteVariance({ dateFrom, dateTo })
@@ -2237,6 +2244,13 @@ export function ReportsScreen() {
         return {
           headers: [t('reports.col.dayOfWeek'), t('reports.col.hour'), t('reports.col.turns')],
           rows: nonZero.map(c => [weekdayLabel(c.dayOfWeek, i18n.language), c.hour, c.count])
+        }
+      }
+      case 'orderChannelBreakdown': {
+        const d = reportData as OrderChannelBreakdownReport
+        return {
+          headers: [t('reports.col.channel'), t('reports.col.orderCount'), t('reports.col.revenue')],
+          rows: d.rows.map(r => [r.label, r.orderCount, r.revenue])
         }
       }
       case 'recipeWasteVariance': {
@@ -4710,6 +4724,9 @@ export function ReportsScreen() {
       // directly in TableTurnoverHeatmapView below rather than through this
       // generic bar/pie/line summary-chart pathway.
       case 'tableTurnoverByHour': return []
+      // Deliberately no chart here — OrderChannelBreakdownView renders its
+      // own pie chart directly (channels, not a bar/line-shaped series).
+      case 'orderChannelBreakdown': return []
       // Same reasoning — a velocity x margin SCATTER doesn't fit this
       // switch's bar/stackedBar/line/pie shape, rendered directly in
       // FastSlowMoverMatrixView below instead.
@@ -5633,6 +5650,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />
     case 'dishContributionMargin': return <DishContributionMarginView data={data as DishContributionMarginReport} fmt={fmt} />
     case 'tableTurnoverByHour': return <TableTurnoverHeatmapView data={data as TableTurnoverByHourReport} />
+    case 'orderChannelBreakdown': return <OrderChannelBreakdownView data={data as OrderChannelBreakdownReport} fmt={fmt} />
     case 'recipeWasteVariance': return <RecipeWasteVarianceView data={data as RecipeWasteVarianceReport} />
     case 'deadStockClearance': return <DeadStockClearanceView data={data as DeadStockClearanceReport} fmt={fmt} />
     case 'categorySellThrough': return <CategorySellThroughView data={data as CategorySellThroughReport} />
@@ -6280,6 +6298,26 @@ function FoodCostReportView({ data, fmt }: { data: FoodCostReport; fmt: (n: numb
           fmt(r.totalCost)
         ])}
         emptyText={t('reports.empty.foodCost')}
+      />
+    </div>
+  )
+}
+
+// 2026-09-04 — Restaurant: Orders by Channel (Dine-in vs Takeaway vs
+// Zomato vs Swiggy vs Other App), by order count and revenue.
+function OrderChannelBreakdownView({ data, fmt }: { data: OrderChannelBreakdownReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
+  return (
+    <div className="space-y-6">
+      <SummaryCards cards={[
+        { label: t('reports.col.orderCount'), value: String(data.totalOrders) },
+        { label: t('reports.col.revenue'), value: fmt(data.totalRevenue) },
+      ]} />
+      <BreakdownChart title={t(`reports.defs.orderChannelBreakdown.label`)} data={data.rows} labelKey="label" valueKey="orderCount" fmt={fmt} kind="pie" />
+      <DataTable
+        headers={[t('reports.col.channel'), t('reports.col.orderCount'), t('reports.col.revenue')]}
+        rows={data.rows.map(r => [r.label, r.orderCount, fmt(r.revenue)])}
+        emptyText={t('reports.empty.orderChannelBreakdown')}
       />
     </div>
   )

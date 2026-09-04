@@ -377,6 +377,7 @@
     "confirmSale": "Confirm Sale",
     "sendToKitchen": "Send to Kitchen",
     "orderSentToKitchen": "Order Sent to Kitchen",
+    "orderChannel": "Order Channel",
     "clearCart": "Clear All",
     "customerRequired": "Customer required for credit sales",
     "paymentHistory": "Payment History",
@@ -1773,6 +1774,10 @@
         "label": "Table Turnover by Hour",
         "description": "A day-of-week x hour-of-day heatmap of dine-in table orders — when your restaurant is genuinely busiest"
       },
+      "orderChannelBreakdown": {
+        "label": "Orders by Channel",
+        "description": "How many orders — and how much revenue — came from Dine-in vs Takeaway vs Zomato vs Swiggy vs Other App"
+      },
       "recipeWasteVariance": {
         "label": "Recipe-vs-Actual Waste Variance",
         "description": "Compares what your recipes say ingredients should have been used against what was actually drawn down — surfaces real portion drift, spillage, or a stale recipe"
@@ -2790,6 +2795,7 @@
       "foodCost": "No ingredient deductions found in this date range. KOTs need to be marked Done to record food costs.",
       "dishContributionMargin": "No dishes sold in this date range.",
       "tableTurnoverByHour": "No dine-in table orders found in this date range.",
+      "orderChannelBreakdown": "No orders found in this date range.",
       "recipeWasteVariance": "No recipe-linked ingredient activity found in this date range.",
       "deadStockClearance": "No dead stock found — every product in stock has sold recently.",
       "categorySellThrough": "No categorized product sales found in this date range.",
@@ -2903,6 +2909,8 @@
       "vendorPerformanceHistory": "No vendors rated yet."
     },
     "col": {
+      "channel": "Channel",
+      "orderCount": "Orders",
       "invoiceNumber": "Invoice Number",
       "date": "Date",
       "metalValue": "Metal Value",

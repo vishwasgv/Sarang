@@ -220,7 +220,7 @@ export async function listKOTs(filters?: { status?: string; tableId?: string }) 
       include: {
         table: { select: { tableNumber: true, tableName: true } },
         items: true,
-        invoice: { select: { invoiceNumber: true, totalAmount: true } }
+        invoice: { select: { invoiceNumber: true, totalAmount: true, orderChannel: true } }
       },
       orderBy: { createdAt: 'desc' }
     })

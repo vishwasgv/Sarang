@@ -1644,6 +1644,14 @@ model Invoice {
   // tables point at the same invoice — a single scalar here can only ever
   // record the one table the order was opened at.
   tableId               String?
+  // 2026-09-04 — how a table-less (counter/takeaway) restaurant sale
+  // actually came in, so a report can tell a genuine walk-in takeaway
+  // apart from an order phoned/keyed in from a delivery app. Free-text-
+  // with-suggestions, same convention as Booking.channel (hotel) below —
+  // TAKEAWAY | ZOMATO | SWIGGY | OTHER is what the picker offers, but
+  // nothing here enforces it as a hard enum. Always null once tableId is
+  // set (a dine-in order's channel is implicitly DINE_IN for reporting).
+  orderChannel          String?
   // Set only on a new invoice produced by splitInvoice() — real FK back to
   // the original (now status='SPLIT') invoice it was divided from, mirroring
   // originalInvoiceId's return-lineage pattern above.

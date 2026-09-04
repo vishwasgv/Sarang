@@ -647,6 +647,10 @@ export const billingService = {
             cropSeasonId: payload.cropSeasonId ?? null,
             ewayBillNumber: payload.ewayBillNumber?.trim() || null,
             tableId: payload.tableIds?.[0] ?? null,
+            // 2026-09-04 — meaningless once a table is attached (that
+            // already implies DINE_IN for reporting purposes), so only
+            // ever stored for a genuinely table-less sale.
+            orderChannel: payload.tableIds?.[0] ? null : (payload.orderChannel ?? null),
             jobSiteAccountId: payload.jobSiteAccountId ?? null,
             scheduledDeliveryDate: payload.scheduledDeliveryDate ? parseLocalDateStart(payload.scheduledDeliveryDate) : null,
             deliveryAddress: payload.deliveryAddress ?? null,
