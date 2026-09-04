@@ -3664,11 +3664,11 @@
     "items": {
       "restaurantTables": {
         "title": "Tables",
-        "body": "Voyez l'état de chaque table en un coup d'œil — libre, occupée, ou réservée. Touchez une table pour démarrer une commande, ou fusionnez deux tables pour un groupe plus grand. Si vous activez la Commande par QR Code ci-dessus, enregistrez votre réseau WiFi une seule fois et le QR code de chaque table imprimera ensemble un code de connexion WiFi et le code de commande, afin qu'un client puisse rejoindre votre réseau et commencer à commander en deux scans. Essayez : ouvrez une table et regardez-la devenir occupée instantanément."
+        "body": "Voyez l'état de chaque table en un coup d'œil — libre, occupée, ou réservée. Touchez une table pour démarrer une commande, ou fusionnez deux tables pour un groupe plus grand. Si vous activez la Commande par QR Code ci-dessus, enregistrez votre réseau WiFi une seule fois et le QR code de chaque table imprimera ensemble un code de connexion WiFi et le code de commande, afin qu'un client puisse rejoindre votre réseau et commencer à commander en deux scans. La carte Vue Serveur vous permet d'imprimer un code QR personnel pour chaque serveur — le scanner affiche uniquement ses propres tables assignées, en direct, sur son téléphone, avec un bouton pour prendre une nouvelle commande directement. Essayez : ouvrez une table et regardez-la devenir occupée instantanément."
       },
       "restaurantKot": {
         "title": "Bon de commande cuisine (KOT)",
-        "body": "Envoyez une commande directement en cuisine en un seul geste. Essayez — elle apparaîtra immédiatement sur l'écran d'affichage cuisine, exactement comme un vrai bon qu'un cuisinier verrait."
+        "body": "Envoyez une commande directement en cuisine en un seul geste. Essayez — elle apparaîtra immédiatement sur l'écran d'affichage cuisine, exactement comme un vrai bon qu'un cuisinier verrait. Un bon de comptoir ou à emporter sans table associée affiche un numéro de jeton quotidien convivial (Token #) à la place d'un numéro de facture, et une fois un bon Terminé, Marquer servi enregistre que la commande est bien arrivée à table."
       },
       "restaurantRecipes": {
         "title": "Recettes",

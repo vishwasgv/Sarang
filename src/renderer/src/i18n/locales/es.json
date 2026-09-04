@@ -3855,11 +3855,11 @@
     "items": {
       "restaurantTables": {
         "title": "Mesas",
-        "body": "Ve el estado de cada mesa de un vistazo — libre, ocupada, o reservada. Toca una mesa para iniciar un pedido, o combina dos mesas para un grupo más grande. Si activas Pedidos por QR en Mesa arriba, guarda tu red WiFi una sola vez y el código QR de cada mesa imprimirá juntos un código de conexión a WiFi y el código de pedido, para que un cliente pueda unirse a tu red y empezar a pedir en dos escaneos. Pruébalo: abre una mesa y observa cómo se vuelve ocupada al instante."
+        "body": "Ve el estado de cada mesa de un vistazo — libre, ocupada, o reservada. Toca una mesa para iniciar un pedido, o combina dos mesas para un grupo más grande. Si activas Pedidos por QR en Mesa arriba, guarda tu red WiFi una sola vez y el código QR de cada mesa imprimirá juntos un código de conexión a WiFi y el código de pedido, para que un cliente pueda unirse a tu red y empezar a pedir en dos escaneos. La tarjeta Vista del Mesero te permite imprimir un código QR personal para cada mesero — al escanearlo se muestran solo sus propias mesas asignadas, en vivo, en su propio teléfono, con un botón para tomar un nuevo pedido directamente. Pruébalo: abre una mesa y observa cómo se vuelve ocupada al instante."
       },
       "restaurantKot": {
         "title": "Comanda de cocina (KOT)",
-        "body": "Envía un pedido directamente a la cocina con un toque. Pruébalo — aparecerá de inmediato en el Tablero de Cocina, exactamente como una comanda real que vería un cocinero."
+        "body": "Envía un pedido directamente a la cocina con un toque. Pruébalo — aparecerá de inmediato en el Tablero de Cocina, exactamente como una comanda real que vería un cocinero. Una comanda de mostrador o para llevar sin mesa asociada muestra un número de token diario amigable en lugar de un número de factura, y una vez que una comanda está Lista, Marcar Servido registra que la comida realmente llegó a la mesa."
       },
       "restaurantRecipes": {
         "title": "Recetas",

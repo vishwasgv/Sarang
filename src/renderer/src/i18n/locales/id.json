@@ -3664,11 +3664,11 @@
     "items": {
       "restaurantTables": {
         "title": "Meja",
-        "body": "Lihat status setiap meja sekilas — kosong, terisi, atau dipesan. Ketuk meja untuk memulai pesanan, atau gabungkan dua meja untuk rombongan lebih besar. Jika Anda mengaktifkan Pemesanan Meja via QR di atas, simpan jaringan WiFi Anda sekali dan kode QR setiap meja akan mencetak kode gabung-WiFi bersama kode pesanan, sehingga pelanggan dapat bergabung ke jaringan Anda dan mulai memesan dalam dua pemindaian. Coba: buka satu meja dan lihat statusnya langsung berubah menjadi terisi."
+        "body": "Lihat status setiap meja sekilas — kosong, terisi, atau dipesan. Ketuk meja untuk memulai pesanan, atau gabungkan dua meja untuk rombongan lebih besar. Jika Anda mengaktifkan Pemesanan Meja via QR di atas, simpan jaringan WiFi Anda sekali dan kode QR setiap meja akan mencetak kode gabung-WiFi bersama kode pesanan, sehingga pelanggan dapat bergabung ke jaringan Anda dan mulai memesan dalam dua pemindaian. Kartu Tampilan Pelayan memungkinkan Anda mencetak kode QR pribadi untuk setiap pelayan — memindainya hanya menampilkan meja yang ditugaskan kepadanya, secara langsung, di ponselnya sendiri, dengan tombol untuk langsung mengambil pesanan baru. Coba: buka satu meja dan lihat statusnya langsung berubah menjadi terisi."
       },
       "restaurantKot": {
         "title": "Tiket Pesanan Dapur (KOT)",
-        "body": "Kirim pesanan langsung ke dapur dengan satu ketukan. Coba — pesanan akan langsung muncul di Papan Tampilan Dapur, persis seperti tiket asli yang dilihat koki."
+        "body": "Kirim pesanan langsung ke dapur dengan satu ketukan. Coba — pesanan akan langsung muncul di Papan Tampilan Dapur, persis seperti tiket asli yang dilihat koki. Tiket konter atau bawa pulang tanpa meja menampilkan nomor Token harian yang ramah alih-alih nomor faktur, dan setelah tiket Selesai, Tandai Terlayani mencatat bahwa makanan benar-benar sampai ke meja."
       },
       "restaurantRecipes": {
         "title": "Resep",

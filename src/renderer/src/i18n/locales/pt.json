@@ -3664,11 +3664,11 @@
     "items": {
       "restaurantTables": {
         "title": "Mesas",
-        "body": "Veja o status de cada mesa em um relance — livre, ocupada, ou reservada. Toque em uma mesa para iniciar um pedido, ou mescle duas mesas para um grupo maior. Se você ativar o Pedido por QR Code na Mesa acima, salve sua rede WiFi uma única vez e o QR code de cada mesa imprimirá juntos um código de conexão ao WiFi e o código de pedido, para que um cliente possa entrar na sua rede e começar a pedir em dois escaneamentos. Experimente: abra uma mesa e veja-a ficar ocupada instantaneamente."
+        "body": "Veja o status de cada mesa em um relance — livre, ocupada, ou reservada. Toque em uma mesa para iniciar um pedido, ou mescle duas mesas para um grupo maior. Se você ativar o Pedido por QR Code na Mesa acima, salve sua rede WiFi uma única vez e o QR code de cada mesa imprimirá juntos um código de conexão ao WiFi e o código de pedido, para que um cliente possa entrar na sua rede e começar a pedir em dois escaneamentos. O cartão Visão do Garçom permite imprimir um código QR pessoal para cada garçom — ao escaneá-lo mostra apenas as mesas atribuídas a ele, ao vivo, no próprio celular, com um botão para fazer um novo pedido diretamente. Experimente: abra uma mesa e veja-a ficar ocupada instantaneamente."
       },
       "restaurantKot": {
         "title": "Comanda de cozinha (KOT)",
-        "body": "Envie um pedido diretamente para a cozinha com um toque. Experimente — ele aparecerá imediatamente no Painel de Cozinha, exatamente como uma comanda real que um cozinheiro veria."
+        "body": "Envie um pedido diretamente para a cozinha com um toque. Experimente — ele aparecerá imediatamente no Painel de Cozinha, exatamente como uma comanda real que um cozinheiro veria. Uma comanda de balcão ou para viagem sem mesa associada mostra um número de token diário amigável em vez de um número de fatura, e assim que uma comanda está Pronta, Marcar como Servida registra que a comida realmente chegou à mesa."
       },
       "restaurantRecipes": {
         "title": "Receitas",

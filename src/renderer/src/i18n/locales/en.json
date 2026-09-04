@@ -4243,11 +4243,11 @@
     "items": {
       "restaurantTables": {
         "title": "Tables",
-        "body": "See every table at a glance — open, occupied, or reserved. Tap a table to start an order, or merge two tables for a bigger group. If you turn on QR Table Ordering above, save your WiFi network once and every table's QR code prints as a WiFi-join code plus the order code together, so a customer can join your network and start ordering in two scans. Try it: open a table and see it turn occupied instantly."
+        "body": "See every table at a glance — open, occupied, or reserved. Tap a table to start an order, or merge two tables for a bigger group. If you turn on QR Table Ordering above, save your WiFi network once and every table's QR code prints as a WiFi-join code plus the order code together, so a customer can join your network and start ordering in two scans. The Waiter View card lets you print a personal QR code for each waiter — scanning it shows just their own assigned tables, live, on their own phone, with a button to take a new order directly. Try it: open a table and see it turn occupied instantly."
       },
       "restaurantKot": {
         "title": "Kitchen Order Tickets (KOT)",
-        "body": "Send an order straight to the kitchen with one tap. Try sending one — it'll appear immediately on the Kitchen Display Board, exactly like a real ticket a cook would see."
+        "body": "Send an order straight to the kitchen with one tap. Try sending one — it'll appear immediately on the Kitchen Display Board, exactly like a real ticket a cook would see. A counter or takeaway ticket with no table attached shows a friendly daily Token # instead of an invoice number, and once a ticket is Done, Mark Served records that the food actually reached the table."
       },
       "restaurantRecipes": {
         "title": "Recipes",
