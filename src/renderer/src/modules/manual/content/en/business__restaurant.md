@@ -6,9 +6,9 @@ Choosing **Restaurant** as your business type during setup turns on four things 
 
 Open **Restaurant Tables** from the sidebar to see every table you've configured, each shown as a card with its current status: **Free**, **Busy**, or **Rsv** (Reserved). Add a table with a table number (e.g. "T1") and an optional display name. Tap a status button on a table's card to change it manually — or let a table's status follow a real order automatically, see below. A table can't be deleted while it has an active kitchen ticket. Assign a **waiter** to a table from its card so you always know who's serving it; clear the assignment any time.
 
-**Start Order** on a free table's card opens Billing with that table already attached — build the cart as normal and confirm the sale. The table is now genuinely linked to that bill: its card shows **View Bill** (jumps straight to the invoice) and **Merge In** instead of Start Order, and the table frees itself back to Free automatically the moment the bill is fully paid or cancelled — no need to remember to flip its status by hand.
+**Start Order** on a free table's card opens Billing with that table already attached — build the cart as normal and tap **Send to Kitchen**. This does *not* create a bill yet: it sends a kitchen ticket for that round and the table's card switches to **View Order** / **Start Order** (Start Order again for a later round — a second course, extra drinks — sends another ticket to the same table without disturbing the first). **View Order** opens a running summary of everything ordered so far across every round, with an estimated total, and this is also where you actually bill the table: pick **Checkout**, choose a payment method (Credit requires picking a customer, same as Billing), and Sarang turns every open round into one real invoice at once. Only once that invoice exists does the card switch to **View Bill** (jumps straight to the invoice) and **Merge In**, and only then does the table free itself back to Free automatically the moment the bill is fully paid or cancelled. In short: **Start Order** feeds the kitchen, **Checkout** (from View Order) is the actual billing step — a table can carry several kitchen tickets before anyone commits to a bill at all.
 
-**Merge In** joins a second table onto the same running bill — for a large party seated across two or more tables who want one check at the end. Tap it on the table that already has the order running, pick any free table from the list, and that table now shows the same **View Bill**/**Merge In** pair, pointing at the same invoice. Add as many tables as the party actually spans.
+**Merge In** joins a second table onto the same running bill — for a large party seated across two or more tables who want one check at the end. It only offers genuinely free tables (no order running and nothing already invoiced) as candidates, so a table mid-order is never accidentally folded away. Tap it on the table that already has the order running, pick any free table from the list, and that table now shows the same **View Bill**/**Merge In** pair, pointing at the same invoice. Add as many tables as the party actually spans.
 
 **End of Day** is a button on this screen: it marks every occupied table available again and shows a one-line closing summary (KOTs served and today's revenue) so you can close out the dining room at the end of a shift.
 
@@ -28,6 +28,10 @@ On the Billing screen, use **Add Tip / Service Charge** to add a tip line to a b
 
 On the Products screen, toggle any menu item **86** (kitchen slang for "out of stock for today") to instantly hide it from the billing cart and the customer-facing QR menu, without deactivating the product itself — perfect for a dish that's sold out for the day but will be back on the menu tomorrow.
 
+## Diet marking (Veg / Egg / Non-Veg)
+
+On a menu item's product form, set **Diet Type** to Veg, Egg, or Non-Veg (Restaurant and Bakery only) to show a small colored square next to that item everywhere it appears — green for Veg, yellow for Egg, red for Non-Veg — on the Billing cart and product search, Kitchen Order Tickets, the Kitchen Display board, Waiter View, and the customer-facing QR menu (which also gets its own **Veg only** filter toggle). It's entirely optional per item; a product with no Diet Type set simply shows no marker anywhere.
+
 ## Combo / Thali Pricing
 
 Create a combo or thali as a menu item like any other product, then open it for editing and use **Manage Kit Components** to add the individual dishes it's made of and how many of each. Set the combo's own selling price on the product itself — it's completely independent of what the individual dishes would cost separately, so a thali can be priced as a real bundle deal, not the sum of its parts. Selling a combo bills it as one clean line, but under the hood correctly deducts stock for every dish it contains, and marking its kitchen ticket **Mark Done** correctly deducts the ingredients behind each of those dishes too — the same as if each dish had been ordered on its own.
@@ -38,9 +42,15 @@ Running a happy hour — say 20% off drinks from 4–6 PM — doesn't need a spe
 
 ## Kitchen Order Tickets (KOT)
 
-A KOT is the kitchen's copy of an order. After ringing up an order in **Billing**, open the invoice and tap **Send to Kitchen** to create a KOT for it. From **Kitchen Order Tickets** in the sidebar, kitchen staff see every ticket grouped by status — Pending, In Progress, Done, Cancelled — with its items and quantities, and move each one forward with a single tap (**Start Cooking** → **Mark Done**), or **Cancel** it. Each ticket can also be printed directly to your kitchen printer.
+A KOT is the kitchen's copy of an order — created either by **Send to Kitchen** on a dine-in table's order (see Tables, above) or automatically for a counter/takeaway sale. From **Kitchen Order Tickets** in the sidebar, kitchen staff see every ticket grouped by status — Pending, In Progress, Done, Cancelled — with its items and quantities, and move each one forward with a single tap (**Start Cooking** → **Mark Done**), or **Cancel** it. Each ticket can also be printed directly to your kitchen printer.
 
 Marking a KOT **Done** is what triggers ingredient stock deduction (see below) and frees up the table it belonged to, once no other active ticket is using that table.
+
+A dine-in ticket is titled with its table's name or number, so kitchen staff always know where an order is headed. A **counter or takeaway** ticket — no table involved — is titled with a simple daily **Token #** instead (Token #1, #2, and so on, resetting each day), so a customer waiting at the counter has a friendly number to listen for instead of an invoice number or a printed ticket code; it's also shown on the printed kitchen ticket itself, right under the header.
+
+Once a ticket reaches **Done**, tap **Mark Served** on it to record that the food has actually reached the table (or the counter) — this is separate from the kitchen's own Done step and from billing; it exists purely so a Done ticket sitting on the pass doesn't get forgotten, and it's what the Waiter View board (below) uses to know a ticket is no longer "ready to serve."
+
+Every ticket item also shows its **Veg / Egg / Non-Veg** marker (a small green, yellow, or red square) when that's been set on the product — see **Diet marking**, below — so kitchen staff can tell at a glance which items need separate handling.
 
 ## Kitchen hardware options
 
@@ -55,6 +65,14 @@ Beyond the in-app Kitchen Order Tickets screen, Sarang offers three ways to get 
 - If running a cable that far turns out to be impractical, use the phone/tablet/laptop option below instead — it needs no cabling at all.
 
 **Kitchen Display — phone / tablet / laptop.** Lets any phone, tablet, or laptop connected to your shop's WiFi open a live KOT board in its own browser — no app to install, a tablet propped up in the kitchen works exactly the same way as a phone or laptop here. Turn it on under **Kitchen Display — phone / laptop**, then either read out the LAN address(es) shown or tap **Show QR code** and have the device scan it. This works entirely over your own WiFi, no internet required, and is completely separate from the customer-facing QR table ordering feature below (different server, different port, and a random access code that's only ever shown here in Settings — a customer who scans their table's ordering QR code has no way to reach the kitchen board). If access ever needs to be revoked (e.g. a phone with the link is lost), tap **Regenerate access code** — every previously shared link/QR code stops working immediately.
+
+## Waiter View — a live order board on each waiter's own phone
+
+Beyond the shared Kitchen Display board, Sarang can give each individual waiter their own personal, phone-sized view of just the tables assigned to them. From **Restaurant Tables**, find the **Waiter View** card (it appears once you have at least one employee and Kitchen Display — phone/tablet/laptop is turned on, since it runs on that same local server) and tap a waiter's name to generate their QR code; **Print** it and hand it to them, or let them scan it directly off the screen.
+
+Scanning it opens **My Tables** on their own phone — every table currently assigned to that waiter, each order's items grouped with the same diet markers and status you'd see on the Kitchen Display board (what's still cooking, what's ready to serve), and a **Mark Served** button right there so they can clear a ticket the moment they've actually delivered it, without walking back to a shared screen. A floating **+** button lets them pick any table and place a new order directly — useful for a table that's reluctant to scan their own QR code and would rather just tell the waiter what they want; the order goes straight to the kitchen the same way a customer's own QR order would, no separate approval step needed since it's staff placing it.
+
+Each waiter's link only works while they're an active employee — deactivating someone in **Employees** immediately locks their board (and any copy of their printed QR code) out, since that check happens fresh on every request, not just when the QR is first generated. That's the right way to cut off someone who's left. If instead a *current* waiter's phone is lost or their QR code ends up somewhere it shouldn't, deactivating and re-activating them won't help by itself — the link isn't unique to them, it shares the same access code as the Kitchen Display board — so use **Regenerate access code** under Kitchen Display — phone/laptop (Settings → Appearance) to invalidate every waiter and kitchen-display link at once, then reprint fresh QR codes for whoever still needs one.
 
 ## Recipes and ingredient tracking
 
@@ -74,7 +92,7 @@ Open **Reports → Recipe-vs-Actual Waste Variance** to compare, per ingredient,
 
 ## QR-code table ordering (opt-in)
 
-Restaurant Tables also has a **QR Table Ordering** toggle, off by default. Turn it on and Sarang starts a small local server on your own WiFi network (no internet needed) so customers can scan a table's printed QR code, browse the menu, and submit an order request from their phone. Nothing becomes a real bill automatically — every incoming order shows up under **Incoming Orders** on the Kitchen Order Tickets screen, where staff explicitly **Accept** (choosing a payment method, which creates the invoice and KOT together) or **Reject** it. Each table's QR code can be generated and printed from its card on the Restaurant Tables screen.
+Restaurant Tables also has a **QR Table Ordering** toggle, off by default. Turn it on and Sarang starts a small local server on your own WiFi network (no internet needed) so customers can scan a table's printed QR code, browse the menu, and submit an order request from their phone. Nothing becomes a real bill automatically — every incoming order shows up under **Incoming Orders** on the Kitchen Order Tickets screen, where staff explicitly **Accept** (sends it to the kitchen as a KOT, same as any other round on that table — no payment method to pick yet, that only happens later at Checkout, see Tables above) or **Reject** it. Each table's QR code can be generated and printed from its card on the Restaurant Tables screen, and the same menu page has a **Checkout** button of its own that a customer can tap to flag the table as ready to be billed, without it charging anything by itself.
 
 ### WiFi-join QR (combo with the order QR)
 
