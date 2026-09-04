@@ -32,6 +32,15 @@ export const UpdateKOTStatusSchema = z.object({
   status: z.enum(['PENDING', 'IN_PROGRESS', 'DONE', 'CANCELLED']),
 })
 
+// 2026-09-04 — Waiter view.
+export const MarkKOTServedSchema = z.object({
+  kotId: z.string().min(1, 'kotId is required'),
+})
+
+export const ListKOTsForWaiterSchema = z.object({
+  waiterId: z.string().min(1, 'waiterId is required'),
+})
+
 // Phase 58 §2 (2026-07-21) — ad-hoc table merge, mid-service.
 export const MergeTableIntoInvoiceSchema = z.object({
   tableId: z.string().min(1, 'tableId is required'),

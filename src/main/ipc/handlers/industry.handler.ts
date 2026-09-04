@@ -20,7 +20,7 @@ import * as distributorBeatService from '../../services/distributor-beat.service
 import { getCustomerCreditRisk } from '../../services/distributor-credit-risk.service'
 import {
   ChangeBusinessTypeSchema, UpdateModulesSchema, CreateRestaurantTableSchema, UpdateTableStatusSchema,
-  DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, UpsertRecipeSchema, DeleteRecipeSchema, SendTableOrderSchema,
+  DeleteTableSchema, CreateKOTSchema, UpdateKOTStatusSchema, MarkKOTServedSchema, ListKOTsForWaiterSchema, UpsertRecipeSchema, DeleteRecipeSchema, SendTableOrderSchema,
   AcceptOrderRequestSchema, RejectOrderRequestSchema, GenerateTableQrSchema, MergeTableIntoInvoiceSchema,
   SetWifiConfigSchema, CheckoutTableSchema,
 } from '../../validation/industry.validation'
@@ -149,6 +149,21 @@ export function register(handle: HandleFn): void {
     const parsed = UpdateKOTStatusSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return restaurantService.updateKOTStatus(parsed.data.kotId, parsed.data.status, getCurrentSession()?.userId)
+  })
+
+  // 2026-09-04 — Waiter view.
+  handle('restaurant:markKOTServed', async (payload) => {
+    const deny = await requirePermission('restaurant.updateKOT'); if (deny) return deny
+    const parsed = MarkKOTServedSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.markKOTServed(parsed.data.kotId, getCurrentSession()?.userId)
+  })
+
+  handle('restaurant:listKOTsForWaiter', async (payload) => {
+    const deny = await requirePermission('restaurant.viewKOT'); if (deny) return deny
+    const parsed = ListKOTsForWaiterSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return restaurantService.listKOTsForWaiter(parsed.data.waiterId)
   })
 
   handle('restaurant:listRecipes', async () => {
@@ -348,6 +363,28 @@ export function register(handle: HandleFn): void {
     const QRCode = await import('qrcode')
     const qrDataUrl = await QRCode.toDataURL(boardUrl, { margin: 1, width: 320 })
     return { success: true, data: { qrDataUrl, boardUrl } }
+  })
+
+  // 2026-09-04 — Waiter view. Rides the same LAN server + facility-wide
+  // token as Kitchen Display above (same trust model: not a login, a
+  // device merely being on the WiFi can't drive it blind without having
+  // scanned/been given the URL) — the employeeId path segment just scopes
+  // WHICH waiter's tables the page shows, it isn't itself a secret.
+  handle('restaurant:generateWaiterQr', async (payload) => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const { employeeId } = (payload ?? {}) as { employeeId?: string }
+    if (!employeeId) return { success: false, error: { code: 'VAL-001', message: 'employeeId is required.' } }
+    const employee = await getPrisma().employee.findUnique({ where: { id: employeeId }, select: { id: true, isActive: true } })
+    if (!employee || !employee.isActive) return { success: false, error: { code: 'WTR-001', message: 'Employee not found or inactive.' } }
+    const status = getKitchenDisplayServerStatus()
+    if (!status.running || status.lanUrls.length === 0) {
+      return { success: false, error: { code: 'WTR-002', message: 'Waiter view runs on the Kitchen Display server, which is not currently running. Enable Kitchen Display in Settings first.' } }
+    }
+    const token = await getOrCreateKitchenDisplayToken()
+    const captureUrl = `${status.lanUrls[0]}/waiter/${token}/${employeeId}`
+    const QRCode = await import('qrcode')
+    const qrDataUrl = await QRCode.toDataURL(captureUrl, { margin: 1, width: 320 })
+    return { success: true, data: { qrDataUrl, captureUrl } }
   })
 
   // ── Phase 58 §2 — Distributor field-rep order capture (phone/laptop, LAN) ──

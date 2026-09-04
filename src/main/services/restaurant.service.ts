@@ -435,6 +435,133 @@ export async function updateKOTStatus(kotId: string, status: string, userId?: st
   }
 }
 
+// 2026-09-04 — Waiter view. "DONE" only ever meant "ready in the kitchen" —
+// there was no way to know whether a ready ticket had actually reached the
+// table yet. Deliberately requires DONE first (a waiter can't "serve"
+// something that isn't ready) and is itself a one-way transition — no
+// unmarking, matching updateKOTStatus's own DONE/CANCELLED-are-terminal
+// reasoning just above.
+export async function markKOTServed(kotId: string, userId?: string) {
+  try {
+    const db = getPrisma()
+    const kot = await db.kOT.findUnique({ where: { id: kotId }, select: { status: true, servedAt: true } })
+    if (!kot) return { success: false, error: { code: 'RST-060', message: 'KOT not found.' } }
+    if (kot.status !== 'DONE') return { success: false, error: { code: 'RST-061', message: 'Only a ready (DONE) ticket can be marked served.' } }
+    if (kot.servedAt) return { success: true, data: { id: kotId, servedAt: kot.servedAt } }
+    const updated = await db.kOT.update({ where: { id: kotId }, data: { servedAt: new Date() } })
+    await logAction(userId, 'KOT_MARKED_SERVED', 'KOT', kotId)
+    return { success: true, data: updated }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-062', message: err instanceof Error ? err.message : 'Could not mark ticket served.' } }
+  }
+}
+
+// 2026-09-04 — Waiter view. A waiter's own filtered slice of listKOTs():
+// only tickets belonging to a table currently assigned to them
+// (RestaurantTable.waiterId), so scanning their personal QR shows exactly
+// their section, not the whole restaurant's queue. Excludes CANCELLED
+// (nothing for a waiter to act on) and any ticket already served (the
+// point of servedAt is to let a delivered ticket drop off this list).
+export async function listKOTsForWaiter(waiterId: string) {
+  try {
+    const db = getPrisma()
+    const kots = await db.kOT.findMany({
+      where: {
+        status: { in: ['PENDING', 'IN_PROGRESS', 'DONE'] },
+        servedAt: null,
+        table: { waiterId }
+      },
+      include: {
+        table: { select: { tableNumber: true, tableName: true } },
+        items: true
+      },
+      orderBy: { createdAt: 'asc' }
+    })
+    const productIds = [...new Set(kots.flatMap(k => k.items.map(i => i.productId)))]
+    const products = productIds.length > 0 ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, productName: true, foodType: true } }) : []
+    const infoById = new Map(products.map(p => [p.id, p]))
+    const withItemNames = kots.map(k => ({
+      ...k,
+      items: k.items.map(i => ({ ...i, productName: infoById.get(i.productId)?.productName ?? 'Unknown item', foodType: infoById.get(i.productId)?.foodType ?? null }))
+    }))
+    return { success: true, data: withItemNames }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-063', message: err instanceof Error ? err.message : 'Could not load your tables.' } }
+  }
+}
+
+// 2026-09-04 — Waiter view "take order" table picker. Every table currently
+// assigned to this waiter, regardless of whether it has an outstanding KOT
+// right now — a waiter still needs to see (and order for) an OCCUPIED table
+// with nothing currently cooking, not just tables already in listKOTsForWaiter.
+export async function listWaiterTables(waiterId: string) {
+  try {
+    const db = getPrisma()
+    const tables = await db.restaurantTable.findMany({
+      where: { waiterId },
+      select: { id: true, tableNumber: true, tableName: true, status: true },
+      orderBy: { tableNumber: 'asc' }
+    })
+    return { success: true, data: tables }
+  } catch (err) {
+    return { success: false, error: { code: 'RST-064', message: err instanceof Error ? err.message : 'Could not load your tables.' } }
+  }
+}
+
+// 2026-09-04 — Waiter view "take order" direct-to-kitchen flow. Mirrors
+// sendTableOrder's own "staff order, no approval step needed" reasoning
+// (unlike a customer's own QR self-order, which always lands as a
+// TableOrderRequest for staff to accept first) — a waiter physically at the
+// table taking the order down is already the human-in-the-loop, so this
+// goes straight to createKOT. The one thing sendTableOrder does NOT itself
+// check that this needs to: the tableId must actually belong to THIS
+// waiter — never trust the client on that, same reasoning markKOTServed's
+// caller-side ownership check follows.
+export async function createWaiterTableOrder(
+  waiterId: string,
+  tableId: string,
+  items: Array<{ productId: string; quantity: number }>,
+  userId?: string
+) {
+  try {
+    const db = getPrisma()
+    const employee = await db.employee.findUnique({ where: { id: waiterId }, select: { id: true, isActive: true } })
+    if (!employee || !employee.isActive) return { success: false, error: { code: 'RST-065', message: 'Waiter not found or inactive.' } }
+
+    const table = await db.restaurantTable.findUnique({ where: { id: tableId }, select: { id: true, waiterId: true } })
+    if (!table) return { success: false, error: { code: 'RST-066', message: 'Table not found.' } }
+    if (table.waiterId !== waiterId) return { success: false, error: { code: 'RST-067', message: 'This table is not assigned to you.' } }
+
+    if (!Array.isArray(items) || items.length === 0) return { success: false, error: { code: 'RST-068', message: 'Your order is empty.' } }
+    for (const item of items) {
+      if (!item.productId || !Number.isInteger(item.quantity) || item.quantity <= 0) {
+        return { success: false, error: { code: 'RST-069', message: 'Invalid item in order.' } }
+      }
+    }
+
+    // Never trust price/tax from the client — resolve fresh from the real
+    // Product record, same as createOrderRequest's own reasoning for the
+    // customer-facing QR flow.
+    const productIds = items.map(i => i.productId)
+    const validProducts = await db.product.findMany({
+      where: { id: { in: productIds }, isActive: true },
+      select: { id: true, sellingPrice: true, taxRate: true }
+    })
+    const infoById = new Map(validProducts.map(p => [p.id, p]))
+    if (items.some(i => !infoById.has(i.productId))) {
+      return { success: false, error: { code: 'RST-070', message: 'One or more items are no longer available.' } }
+    }
+    const resolvedItems = items.map(i => {
+      const info = infoById.get(i.productId)!
+      return { productId: i.productId, quantity: i.quantity, unitPrice: info.sellingPrice, taxRate: info.taxRate }
+    })
+
+    return createKOT(resolvedItems, tableId, userId)
+  } catch (err) {
+    return { success: false, error: { code: 'RST-071', message: err instanceof Error ? err.message : 'Could not send the order to the kitchen.' } }
+  }
+}
+
 // report.service.ts's generateFoodCostReport() identifies KOT-driven ingredient
 // deductions by matching this exact remarks prefix against InventoryMovement
 // records — exported (rather than duplicated as a literal in both files) so a

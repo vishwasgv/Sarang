@@ -2209,6 +2209,13 @@ model KOT {
   status    String    @default("PENDING")
   createdAt DateTime  @default(now())
   updatedAt DateTime  @updatedAt
+  // 2026-09-04 — waiter-view feature. DONE only means "ready in the
+  // kitchen"; this separately tracks "actually delivered to the table",
+  // set by markKOTServed() once a waiter taps "Mark Served" (in-app or
+  // from their own LAN waiter view). Nullable/unset for every KOT that
+  // hasn't reached DONE yet, same "signal flag" convention as
+  // RestaurantTable.checkoutRequestedAt.
+  servedAt  DateTime?
 
   invoice Invoice?         @relation(fields: [invoiceId], references: [id])
   table   RestaurantTable? @relation(fields: [tableId], references: [id])

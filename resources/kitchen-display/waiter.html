@@ -1,0 +1,344 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>My Tables</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F8FAFC; color: #0F172A;
+  }
+  header { background: #0F172A; color: #fff; padding: 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header p { margin: 0; font-size: 12px; color: #94A3B8; }
+  main { padding: 12px; padding-bottom: 90px; display: flex; flex-direction: column; gap: 14px; max-width: 520px; margin: 0 auto; }
+  .empty { text-align: center; color: #94A3B8; font-size: 13px; padding: 40px 20px; }
+  .table-card { background: #fff; border-radius: 16px; border: 2px solid #E2E8F0; overflow: hidden; }
+  .table-head { padding: 12px 16px; background: #F1F5F9; font-weight: 800; font-size: 17px; display: flex; align-items: center; justify-content: space-between; }
+  .ticket { padding: 12px 16px; border-top: 1px solid #F1F5F9; }
+  .ticket-head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 6px; }
+  .status-pill { font-size: 11px; font-weight: 700; padding: 3px 9px; border-radius: 999px; text-transform: uppercase; letter-spacing: 0.02em; }
+  .status-pill.pending { background: rgba(245,158,11,0.14); color: #B45309; }
+  .status-pill.progress { background: rgba(0,174,239,0.14); color: #0369A1; }
+  .status-pill.done { background: rgba(34,197,94,0.14); color: #15803D; }
+  .item-row { display: flex; justify-content: space-between; font-size: 15px; padding: 3px 0; }
+  .item-row .item-name { display: flex; align-items: center; gap: 6px; }
+  .diet-mark { display: inline-block; width: 12px; height: 12px; border: 1.5px solid; border-radius: 2px; flex-shrink: 0; position: relative; }
+  .diet-mark::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 6px; height: 6px; border-radius: 50%; }
+  .diet-mark.veg { border-color: #16A34A; } .diet-mark.veg::after { background: #16A34A; }
+  .diet-mark.egg { border-color: #CA8A04; } .diet-mark.egg::after { background: #CA8A04; }
+  .diet-mark.non-veg { border-color: #B91C1C; } .diet-mark.non-veg::after { background: #B91C1C; }
+  .serve-btn { width: 100%; margin-top: 8px; padding: 11px; border: none; border-radius: 10px; background: #16A34A; color: #fff; font-weight: 700; font-size: 14px; }
+  .serve-btn:disabled { opacity: 0.5; }
+  .state-screen { padding: 60px 20px; text-align: center; color: #64748B; }
+  .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 20px; }
+
+  .fab { position: fixed; right: 18px; bottom: 18px; width: 58px; height: 58px; border-radius: 50%; background: #00AEEF; color: #fff; border: none; font-size: 28px; font-weight: 700; box-shadow: 0 4px 14px rgba(0,0,0,0.25); z-index: 5; }
+  .sheet-backdrop { position: fixed; inset: 0; background: rgba(15,23,42,0.5); z-index: 10; display: none; }
+  .sheet-backdrop.open { display: block; }
+  .sheet { position: fixed; left: 0; right: 0; bottom: 0; top: 8vh; background: #fff; border-radius: 20px 20px 0 0; z-index: 11; display: flex; flex-direction: column; }
+  .sheet-head { padding: 14px 16px; border-bottom: 1px solid #F1F5F9; display: flex; align-items: center; justify-content: space-between; }
+  .sheet-head h2 { margin: 0; font-size: 16px; }
+  .sheet-close { background: none; border: none; font-size: 22px; color: #94A3B8; padding: 4px 8px; }
+  .sheet-body { flex: 1; overflow-y: auto; padding: 12px 16px; }
+  .table-pick { display: block; width: 100%; text-align: left; padding: 14px; margin-bottom: 8px; border-radius: 12px; border: 2px solid #E2E8F0; background: #fff; font-size: 15px; font-weight: 600; }
+  .table-pick .sub { display: block; font-size: 12px; font-weight: 400; color: #94A3B8; margin-top: 2px; }
+  .menu-search { width: 100%; padding: 11px 14px; border-radius: 12px; border: 2px solid #E2E8F0; font-size: 15px; margin-bottom: 10px; }
+  .menu-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F8FAFC; gap: 10px; }
+  .menu-row .name { display: flex; align-items: center; gap: 6px; font-size: 15px; flex: 1; min-width: 0; }
+  .menu-row .price { font-size: 13px; color: #64748B; white-space: nowrap; }
+  .qty-stepper { display: flex; align-items: center; gap: 8px; }
+  .qty-stepper button { width: 30px; height: 30px; border-radius: 8px; border: 2px solid #E2E8F0; background: #fff; font-size: 16px; font-weight: 700; }
+  .qty-stepper span { min-width: 18px; text-align: center; font-weight: 700; }
+  .sheet-foot { padding: 12px 16px; border-top: 1px solid #F1F5F9; }
+  .send-btn { width: 100%; padding: 13px; border: none; border-radius: 12px; background: #00AEEF; color: #fff; font-weight: 700; font-size: 15px; }
+  .send-btn:disabled { opacity: 0.5; }
+  .back-link { background: none; border: none; color: #00AEEF; font-weight: 600; font-size: 13px; padding: 0 0 10px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>My Tables</h1>
+    <p>What's cooking, what's ready to serve</p>
+  </div>
+  <p id="updated-label">Loading…</p>
+</header>
+<main id="board-root">
+  <div class="state-screen">Loading your tables…</div>
+</main>
+<button class="fab" id="fab" title="Take a new order">+</button>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex · www.aszurex.com</div>
+
+<div class="sheet-backdrop" id="sheet-backdrop"></div>
+<div class="sheet" id="sheet" style="display:none">
+  <div class="sheet-head">
+    <h2 id="sheet-title">Take an Order</h2>
+    <button class="sheet-close" id="sheet-close">×</button>
+  </div>
+  <div class="sheet-body" id="sheet-body"></div>
+  <div class="sheet-foot" id="sheet-foot" style="display:none">
+    <button class="send-btn" id="send-order-btn">Send to Kitchen</button>
+  </div>
+</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean) // ['waiter', '<token>', '<employeeId>']
+  var token = pathParts.length >= 3 ? pathParts[1] : ''
+  var employeeId = pathParts.length >= 3 ? pathParts[2] : ''
+  var POLL_MS = 6000
+  var STATUS_LABEL = { PENDING: 'Cooking', IN_PROGRESS: 'Cooking', DONE: 'Ready to serve' }
+  var STATUS_CLASS = { PENDING: 'pending', IN_PROGRESS: 'progress', DONE: 'done' }
+  var busyId = null
+
+  // Order-taking sheet state
+  var orderTableId = null
+  var orderTableLabel = ''
+  var menuCache = null
+  var cart = {} // productId -> { product, qty }
+  var sendingOrder = false
+
+  function escapeHtml(s) {
+    var div = document.createElement('div'); div.textContent = s == null ? '' : String(s); return div.innerHTML
+  }
+
+  function fmtTime(iso) {
+    try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } catch (e) { return '' }
+  }
+
+  function dietMarkHtml(foodType) {
+    if (foodType === 'VEG') return '<span class="diet-mark veg" title="Veg"></span>'
+    if (foodType === 'EGG') return '<span class="diet-mark egg" title="Contains Egg"></span>'
+    if (foodType === 'NON_VEG') return '<span class="diet-mark non-veg" title="Non-Veg"></span>'
+    return ''
+  }
+
+  // ── My Tables board ──────────────────────────────────────────────────────
+
+  function ticketHtml(kot) {
+    var items = (kot.items || []).map(function (it) {
+      return '<div class="item-row"><span class="item-name">' + dietMarkHtml(it.foodType) + escapeHtml(it.productName) + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
+    }).join('')
+    var pill = '<span class="status-pill ' + STATUS_CLASS[kot.status] + '">' + STATUS_LABEL[kot.status] + '</span>'
+    var btn = kot.status === 'DONE'
+      ? '<button class="serve-btn" data-kot="' + escapeHtml(kot.id) + '"' + (busyId === kot.id ? ' disabled' : '') + '>' +
+        (busyId === kot.id ? 'Marking served…' : 'Mark Served') + '</button>'
+      : ''
+    return '<div class="ticket"><div class="ticket-head"><span>' + fmtTime(kot.createdAt) + '</span>' + pill + '</div>' + items + btn + '</div>'
+  }
+
+  function tableCardHtml(tableLabel, kots) {
+    return '<div class="table-card"><div class="table-head"><span>' + escapeHtml(tableLabel) + '</span><span>' + kots.length + '</span></div>' +
+      kots.map(ticketHtml).join('') + '</div>'
+  }
+
+  function render(kots) {
+    if (kots.length === 0) {
+      document.getElementById('board-root').innerHTML = '<div class="empty">Nothing outstanding on your tables right now. Tap + to take a new order.</div>'
+      return
+    }
+    var byTable = {}
+    var order = []
+    for (var i = 0; i < kots.length; i++) {
+      var k = kots[i]
+      var label = (k.table && (k.table.tableName || k.table.tableNumber)) || 'Other orders'
+      if (!byTable[label]) { byTable[label] = []; order.push(label) }
+      byTable[label].push(k)
+    }
+    var html = ''
+    for (var j = 0; j < order.length; j++) html += tableCardHtml(order[j], byTable[order[j]])
+    document.getElementById('board-root').innerHTML = html
+
+    var buttons = document.querySelectorAll('button[data-kot]')
+    for (var b = 0; b < buttons.length; b++) {
+      buttons[b].onclick = function () { markServed(this.getAttribute('data-kot')) }
+    }
+  }
+
+  function markServed(kotId) {
+    busyId = kotId
+    fetch('/api/waiter/' + token + '/' + employeeId + '/served', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kotId: kotId })
+    }).then(function () { busyId = null; load() }).catch(function () { busyId = null; load() })
+  }
+
+  function load() {
+    if (!token || !employeeId) {
+      document.getElementById('board-root').innerHTML = '<div class="state-screen">This link is invalid. Ask a staff member to re-share your QR code.</div>'
+      return
+    }
+    fetch('/api/waiter/' + token + '/' + employeeId + '/board').then(function (r) { return r.json() }).then(function (res) {
+      if (res.success) {
+        render(res.data)
+        document.getElementById('updated-label').textContent = 'Updated ' + new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      } else {
+        document.getElementById('board-root').innerHTML = '<div class="state-screen">Could not load your tables. Ask a staff member for help.</div>'
+      }
+    }).catch(function () {
+      document.getElementById('updated-label').textContent = 'Connection issue — retrying…'
+    })
+  }
+
+  // ── Take-an-order sheet ──────────────────────────────────────────────────
+
+  function openSheet() {
+    document.getElementById('sheet-backdrop').classList.add('open')
+    document.getElementById('sheet').style.display = 'flex'
+    document.getElementById('sheet-foot').style.display = 'none'
+    orderTableId = null; orderTableLabel = ''; cart = {}
+    showTablePicker()
+  }
+
+  function closeSheet() {
+    document.getElementById('sheet-backdrop').classList.remove('open')
+    document.getElementById('sheet').style.display = 'none'
+  }
+
+  function showTablePicker() {
+    document.getElementById('sheet-title').textContent = 'Take an Order — pick a table'
+    document.getElementById('sheet-foot').style.display = 'none'
+    var body = document.getElementById('sheet-body')
+    body.innerHTML = '<div class="state-screen">Loading your tables…</div>'
+    fetch('/api/waiter/' + token + '/' + employeeId + '/tables').then(function (r) { return r.json() }).then(function (res) {
+      if (!res.success || !res.data || res.data.length === 0) {
+        body.innerHTML = '<div class="empty">No tables are assigned to you yet. Ask a staff member to assign one on the Tables screen.</div>'
+        return
+      }
+      var html = ''
+      for (var i = 0; i < res.data.length; i++) {
+        var t = res.data[i]
+        var label = t.tableName || t.tableNumber
+        html += '<button class="table-pick" data-table="' + escapeHtml(t.id) + '" data-label="' + escapeHtml(label) + '">' +
+          escapeHtml(label) + '<span class="sub">' + escapeHtml(t.status) + '</span></button>'
+      }
+      body.innerHTML = html
+      var buttons = body.querySelectorAll('button[data-table]')
+      for (var b = 0; b < buttons.length; b++) {
+        buttons[b].onclick = function () {
+          orderTableId = this.getAttribute('data-table')
+          orderTableLabel = this.getAttribute('data-label')
+          cart = {}
+          showMenuPicker()
+        }
+      }
+    }).catch(function () {
+      body.innerHTML = '<div class="state-screen">Could not load your tables.</div>'
+    })
+  }
+
+  function loadMenu(cb) {
+    if (menuCache) { cb(menuCache); return }
+    fetch('/api/waiter/' + token + '/' + employeeId + '/menu').then(function (r) { return r.json() }).then(function (res) {
+      menuCache = (res.success && res.data) ? res.data : []
+      cb(menuCache)
+    }).catch(function () { cb([]) })
+  }
+
+  function cartCount() {
+    var n = 0
+    for (var id in cart) n += cart[id].qty
+    return n
+  }
+
+  function renderMenuList(products, query) {
+    var q = (query || '').trim().toLowerCase()
+    var filtered = q ? products.filter(function (p) { return p.productName.toLowerCase().indexOf(q) !== -1 }) : products
+    var list = document.getElementById('menu-list')
+    if (filtered.length === 0) { list.innerHTML = '<div class="empty">No items match.</div>'; return }
+    var html = ''
+    for (var i = 0; i < filtered.length; i++) {
+      var p = filtered[i]
+      var qty = cart[p.id] ? cart[p.id].qty : 0
+      html += '<div class="menu-row">' +
+        '<span class="name">' + dietMarkHtml(p.foodType) + escapeHtml(p.productName) + '</span>' +
+        '<span class="price">₹' + escapeHtml(p.sellingPrice) + '</span>' +
+        '<div class="qty-stepper">' +
+        '<button data-act="dec" data-id="' + escapeHtml(p.id) + '">−</button>' +
+        '<span>' + qty + '</span>' +
+        '<button data-act="inc" data-id="' + escapeHtml(p.id) + '">+</button>' +
+        '</div></div>'
+    }
+    list.innerHTML = html
+    var buttons = list.querySelectorAll('button[data-act]')
+    for (var b = 0; b < buttons.length; b++) {
+      buttons[b].onclick = function () {
+        var id = this.getAttribute('data-id')
+        var act = this.getAttribute('data-act')
+        var product = null
+        for (var k = 0; k < products.length; k++) if (products[k].id === id) product = products[k]
+        if (!product) return
+        if (!cart[id]) cart[id] = { product: product, qty: 0 }
+        cart[id].qty += (act === 'inc' ? 1 : -1)
+        if (cart[id].qty <= 0) delete cart[id]
+        renderMenuList(products, document.getElementById('menu-search').value)
+        updateSendFoot()
+      }
+    }
+  }
+
+  function updateSendFoot() {
+    var n = cartCount()
+    var foot = document.getElementById('sheet-foot')
+    var btn = document.getElementById('send-order-btn')
+    if (n === 0) { foot.style.display = 'none'; return }
+    foot.style.display = 'block'
+    btn.disabled = sendingOrder
+    btn.textContent = sendingOrder ? 'Sending…' : 'Send to Kitchen (' + n + ' item' + (n === 1 ? '' : 's') + ')'
+  }
+
+  function showMenuPicker() {
+    document.getElementById('sheet-title').textContent = orderTableLabel
+    var body = document.getElementById('sheet-body')
+    body.innerHTML = '<button class="back-link" id="back-to-tables">‹ Change table</button>' +
+      '<input class="menu-search" id="menu-search" placeholder="Search menu…">' +
+      '<div id="menu-list"><div class="state-screen">Loading menu…</div></div>'
+    document.getElementById('back-to-tables').onclick = showTablePicker
+    var searchInput = document.getElementById('menu-search')
+    updateSendFoot()
+    loadMenu(function (products) {
+      renderMenuList(products, '')
+      searchInput.oninput = function () { renderMenuList(products, searchInput.value) }
+    })
+  }
+
+  document.getElementById('fab').onclick = openSheet
+  document.getElementById('sheet-close').onclick = closeSheet
+  document.getElementById('sheet-backdrop').onclick = closeSheet
+  document.getElementById('send-order-btn').onclick = function () {
+    if (sendingOrder || cartCount() === 0 || !orderTableId) return
+    sendingOrder = true
+    updateSendFoot()
+    var items = []
+    for (var id in cart) items.push({ productId: id, quantity: cart[id].qty })
+    fetch('/api/waiter/' + token + '/' + employeeId + '/order', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ tableId: orderTableId, items: items })
+    }).then(function (r) { return r.json() }).then(function (res) {
+      sendingOrder = false
+      if (res.success) {
+        closeSheet()
+        load()
+      } else {
+        updateSendFoot()
+        alert((res.error && res.error.message) || 'Could not send the order.')
+      }
+    }).catch(function () {
+      sendingOrder = false
+      updateSendFoot()
+      alert('Connection issue — please try again.')
+    })
+  }
+
+  load()
+  setInterval(load, POLL_MS)
+})()
+</script>
+</body>
+</html>

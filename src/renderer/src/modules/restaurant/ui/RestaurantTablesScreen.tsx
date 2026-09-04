@@ -90,6 +90,14 @@ export function RestaurantTablesScreen() {
   const [qrImage, setQrImage] = useState<{ qrDataUrl: string; orderUrl: string; wifiQrDataUrl: string | null; wifiSsid: string | null } | null>(null)
   const [qrModalError, setQrModalError] = useState<string | null>(null)
 
+  // 2026-09-04 — Waiter view. A waiter's personal QR opens their own
+  // filtered "My Tables" board on their phone, scoped by employeeId — see
+  // restaurant:generateWaiterQr's own comment for the trust-model
+  // reasoning (rides the same Kitchen Display LAN server + token).
+  const [waiterQrTarget, setWaiterQrTarget] = useState<Employee | null>(null)
+  const [waiterQrImage, setWaiterQrImage] = useState<{ qrDataUrl: string; captureUrl: string } | null>(null)
+  const [waiterQrError, setWaiterQrError] = useState<string | null>(null)
+
   // Task 18 — WiFi-join QR, printed alongside the order QR so a customer
   // whose phone isn't already on the restaurant's network can join it with
   // the same scan gesture. Entirely optional — if no SSID is ever saved,
@@ -267,6 +275,19 @@ export function RestaurantTablesScreen() {
     }
   }
 
+  async function openWaiterQrModal(employee: Employee) {
+    setWaiterQrTarget(employee)
+    setWaiterQrImage(null)
+    setWaiterQrError(null)
+    try {
+      const res = await api.restaurant.generateWaiterQr({ employeeId: employee.id })
+      if (res.success && res.data) setWaiterQrImage(res.data)
+      else setWaiterQrError((res.error as { message?: string })?.message ?? 'Could not generate this waiter’s QR code.')
+    } catch {
+      setWaiterQrError('Could not generate this waiter’s QR code.')
+    }
+  }
+
   function printTableQr(table: RestaurantTable, qrDataUrl: string, wifiQrDataUrl?: string | null, wifiSsid?: string | null) {
     const w = window.open('', '_blank')
     // Task 18 — when a WiFi QR is available, print it first with a "join
@@ -287,6 +308,18 @@ export function RestaurantTablesScreen() {
       .ssid{font-size:11px;color:#666;margin-top:6px;word-break:break-word}
       footer{margin-top:24px;font-size:10px;color:#888}
     </style></head><body><h1>${table.tableName || table.tableNumber}</h1><div class="row">${wifiBlock}${orderBlock}</div><footer>${aszurexFooterHtml(10)}</footer></body></html>`
+    if (w) { w.document.write(html); w.document.close(); w.print() }
+  }
+
+  function printWaiterQr(employeeName: string, qrDataUrl: string) {
+    const w = window.open('', '_blank')
+    const html = `<html><head><style>
+      body{font-family:Arial,sans-serif;text-align:center;padding:40px}
+      h1{font-size:20px;margin-bottom:4px}
+      h2{font-size:13px;color:#666;font-weight:600;margin:0 0 16px}
+      img{width:220px;height:220px}
+      footer{margin-top:24px;font-size:10px;color:#888}
+    </style></head><body><h1>${employeeName}</h1><h2>Scan to open your table view</h2><img src="${qrDataUrl}" alt="Waiter QR code" /><footer>${aszurexFooterHtml(10)}</footer></body></html>`
     if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
@@ -523,6 +556,25 @@ export function RestaurantTablesScreen() {
           )
         )}
       </Card>
+
+      {/* 2026-09-04 — Waiter view. Runs on this same Kitchen Display LAN
+          server, so it's only reachable once Kitchen Display is on. */}
+      {employees.length > 0 && (
+        <Card padding="lg" className="space-y-3">
+          <div>
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><QrCode size={16} /> Waiter View</h3>
+            <p className="text-xs text-slate-400 mt-1">Give each waiter their own QR code — scanning it opens a live view of their assigned tables on their own phone: what's cooking, what's ready to serve, and a way to take a new order straight to the kitchen. Runs on the Kitchen Display server above.</p>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            {employees.map((e) => (
+              <button key={e.id} onClick={() => openWaiterQrModal(e)}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-medium text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors">
+                <QrCode size={12} /> {e.fullName}
+              </button>
+            ))}
+          </div>
+        </Card>
+      )}
 
       {/* Task 18 — WiFi Network, printed as a combo QR alongside each
           table's order QR. Only meaningful once QR ordering itself is on. */}
@@ -895,6 +947,32 @@ export function RestaurantTablesScreen() {
                 <img src={qrImage.qrDataUrl} alt="Table QR code" className="w-56 h-56 mx-auto" />
                 <p className="text-xs text-slate-400 break-all">{qrImage.orderUrl}</p>
                 <button onClick={() => printTableQr(qrModalTable, qrImage.qrDataUrl, qrImage.wifiQrDataUrl, qrImage.wifiSsid)}
+                  className="w-full px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
+                  {t('restaurantTables.print')}
+                </button>
+              </>
+            ) : (
+              <div className="flex justify-center py-8"><RefreshCw size={20} className="animate-spin text-brand" /></div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {waiterQrTarget && (
+        <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-sm p-6 space-y-4 text-center">
+            <div className="flex items-center justify-between">
+              <h2 className="text-lg font-bold text-dark dark:text-slate-100">{waiterQrTarget.fullName}</h2>
+              <button onClick={() => setWaiterQrTarget(null)} className="text-slate-400 hover:text-slate-600"><X size={18} /></button>
+            </div>
+            {waiterQrError ? (
+              <p className="text-sm text-danger">{waiterQrError}</p>
+            ) : waiterQrImage ? (
+              <>
+                <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">Scan to open your table view</p>
+                <img src={waiterQrImage.qrDataUrl} alt="Waiter QR code" className="w-56 h-56 mx-auto" />
+                <p className="text-xs text-slate-400 break-all">{waiterQrImage.captureUrl}</p>
+                <button onClick={() => printWaiterQr(waiterQrTarget.fullName, waiterQrImage.qrDataUrl)}
                   className="w-full px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
                   {t('restaurantTables.print')}
                 </button>

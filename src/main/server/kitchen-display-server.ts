@@ -6,7 +6,8 @@ import { join } from 'path'
 import { app } from 'electron'
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from '../services/industry-template.service'
-import { listKOTs, updateKOTStatus } from '../services/restaurant.service'
+import { listKOTs, updateKOTStatus, listKOTsForWaiter, markKOTServed, listWaiterTables, createWaiterTableOrder } from '../services/restaurant.service'
+import { listMenuProducts } from '../services/restaurant-order.service'
 import { logger } from '../utils/logger'
 
 // Kitchen Display (phone/laptop, LAN) — a second small, dependency-free local
@@ -141,6 +142,24 @@ function getBoardPageHtml(): string | null {
   return cachedBoardPageHtml
 }
 
+// 2026-09-04 — Waiter view. Same static-file-served-from-this-same-server
+// pattern as the board page just above, own separate cache slot.
+function getWaiterPagePath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'kitchen-display', 'waiter.html')
+    : join(__dirname, '../../resources/kitchen-display/waiter.html')
+}
+
+let cachedWaiterPageHtml: string | null | undefined = undefined
+
+function getWaiterPageHtml(): string | null {
+  if (cachedWaiterPageHtml !== undefined) return cachedWaiterPageHtml
+  const pagePath = getWaiterPagePath()
+  if (!existsSync(pagePath)) { cachedWaiterPageHtml = null; return null }
+  cachedWaiterPageHtml = readFileSync(pagePath, 'utf-8')
+  return cachedWaiterPageHtml
+}
+
 // Same Origin-must-equal-Host CSRF check as qr-order-server.ts's
 // isOriginAllowed — see that file's comment for the full reasoning. Fails
 // open only when Origin is entirely absent (some non-browser clients don't
@@ -219,6 +238,79 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       return
     }
 
+    // ── Waiter view (2026-09-04) — rides this same server/token, scoped by
+    // an employeeId path segment (see restaurant:generateWaiterQr's own
+    // comment for the trust-model reasoning). parts: ['waiter', token,
+    // employeeId] for the page, ['api','waiter',token,employeeId,action]
+    // for every JSON endpoint below.
+
+    // GET /waiter/:token/:employeeId — serves the static waiter page.
+    if (req.method === 'GET' && parts[0] === 'waiter' && parts.length === 3) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (parts[1] !== expectedToken) { res.writeHead(404); res.end('Not found'); return }
+      const html = getWaiterPageHtml()
+      if (html === null) { res.writeHead(404); res.end('Not found'); return }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      res.end(html)
+      return
+    }
+
+    if (parts[0] === 'api' && parts[1] === 'waiter' && parts.length === 5) {
+      const token = parts[2]
+      const employeeId = parts[3]
+      const action = parts[4]
+
+      if (req.method === 'GET' && action === 'board') {
+        if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        const result = await listKOTsForWaiter(employeeId)
+        sendJson(res, result.success ? 200 : 400, result)
+        return
+      }
+
+      if (req.method === 'GET' && action === 'tables') {
+        if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        const result = await listWaiterTables(employeeId)
+        sendJson(res, result.success ? 200 : 400, result)
+        return
+      }
+
+      if (req.method === 'GET' && action === 'menu') {
+        if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        const products = await listMenuProducts()
+        sendJson(res, 200, { success: true, data: products })
+        return
+      }
+
+      if (req.method === 'POST' && action === 'served') {
+        if (isRateLimited(ip, 'status', STATUS_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+        if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        const body = await readBody(req)
+        let parsed: { kotId?: string }
+        try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
+        if (!parsed.kotId) { sendJson(res, 400, { success: false, error: { message: 'kotId is required.' } }); return }
+        const result = await markKOTServed(parsed.kotId)
+        sendJson(res, result.success ? 200 : 400, result)
+        return
+      }
+
+      if (req.method === 'POST' && action === 'order') {
+        if (isRateLimited(ip, 'status', STATUS_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+        if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        const body = await readBody(req, 20_000)
+        let parsed: { tableId?: string; items?: Array<{ productId: string; quantity: number }> }
+        try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
+        if (!parsed.tableId || !Array.isArray(parsed.items)) { sendJson(res, 400, { success: false, error: { message: 'tableId and items are required.' } }); return }
+        const result = await createWaiterTableOrder(employeeId, parsed.tableId, parsed.items)
+        sendJson(res, result.success ? 200 : 400, result)
+        return
+      }
+    }
+
     res.writeHead(404); res.end('Not found')
   } catch (err) {
     logger.error('[KitchenDisplayServer] Request handling failed:', err)
@@ -265,5 +357,6 @@ export async function stopKitchenDisplayServer(): Promise<void> {
   if (sweepInterval) { clearInterval(sweepInterval); sweepInterval = null }
   requestLog.clear()
   cachedBoardPageHtml = undefined
+  cachedWaiterPageHtml = undefined
   logger.info('[KitchenDisplayServer] Stopped.')
 }

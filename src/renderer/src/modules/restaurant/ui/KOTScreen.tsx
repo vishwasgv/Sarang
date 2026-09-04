@@ -26,6 +26,7 @@ interface KOT {
   table?: { tableNumber: string; tableName?: string | null } | null
   invoice?: { invoiceNumber: string; totalAmount: number } | null
   items: KOTItem[]
+  servedAt?: string | null
 }
 
 const STATUS_CONFIG = {
@@ -192,6 +193,22 @@ export function KOTScreen() {
     }
   }
 
+  // 2026-09-04 — Waiter view. Same markKOTServed() a waiter's own phone
+  // calls from their LAN board — front-desk/counter staff need a way to do
+  // this too without a phone in hand.
+  async function handleMarkServed(kotId: string) {
+    setUpdating(kotId)
+    try {
+      const res = await api.restaurant.markKOTServed({ kotId })
+      if (!res.success) toastError('Error', res.error?.message ?? 'Could not mark this ticket served.')
+    } catch {
+      toastError('Error', 'Could not mark this ticket served.')
+    } finally {
+      setUpdating(null)
+      load()
+    }
+  }
+
   // The backend (print:kot) and the printer bridge already existed — this
   // screen just never had a button wired to call it, so there was no way to
   // actually print a kitchen ticket despite the full pipeline being built.
@@ -331,13 +348,28 @@ export function KOTScreen() {
                       </button>
                     </>
                   )}
+                  {kot.status === 'DONE' && (
+                    kot.servedAt ? (
+                      <span className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-success/10 text-success text-xs font-semibold">
+                        <CheckCircle2 size={11} /> Served
+                      </span>
+                    ) : (
+                      <button
+                        onClick={() => handleMarkServed(kot.id)}
+                        disabled={updating === kot.id}
+                        className="flex-1 flex items-center justify-center gap-1.5 py-1.5 rounded-lg bg-success text-white text-xs font-semibold hover:bg-success/90 transition-colors disabled:opacity-50">
+                        {updating === kot.id ? <RefreshCw size={11} className="animate-spin" /> : null}
+                        Mark Served
+                      </button>
+                    )
+                  )}
                   <button
                     onClick={() => handlePrint(kot.id)}
                     disabled={printing === kot.id}
                     title="Print kitchen ticket"
                     className={cn(
                       'flex items-center justify-center gap-1.5 py-1.5 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-xs text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors disabled:opacity-50',
-                      !nextStatus && 'flex-1'
+                      !nextStatus && kot.status !== 'DONE' && 'flex-1'
                     )}>
                     {printing === kot.id ? <RefreshCw size={11} className="animate-spin" /> : <Printer size={11} />}
                     Print

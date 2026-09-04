@@ -806,6 +806,9 @@ export interface IpcChannels {
     listKOTs: (payload?: { status?: string; tableId?: string }) => Promise<ApiResponse>
     createKOT: (payload: { invoiceId: string; tableId?: string }) => Promise<ApiResponse>
     updateKOTStatus: (payload: { kotId: string; status: string }) => Promise<ApiResponse>
+    markKOTServed: (payload: { kotId: string }) => Promise<ApiResponse>
+    listKOTsForWaiter: (payload: { waiterId: string }) => Promise<ApiResponse>
+    generateWaiterQr: (payload: { employeeId: string }) => Promise<ApiResponse<{ qrDataUrl: string; captureUrl: string }>>
     // 2026-09-02 — a table's running, un-invoiced tab: see everything
     // ordered so far, and the one place billing actually happens.
     getTableOrderSummary: (payload: { tableId: string }) => Promise<ApiResponse>
