@@ -2216,6 +2216,14 @@ model KOT {
   // hasn't reached DONE yet, same "signal flag" convention as
   // RestaurantTable.checkoutRequestedAt.
   servedAt  DateTime?
+  // 2026-09-04 — a counter/takeaway (no tableId) KOT previously had nothing
+  // customer-friendly to identify it by, only the invoice number or a
+  // `KOT-XXXXXX` id snippet. A short daily-reset "Token #N" (same pattern
+  // TokenQueue already uses for clinic waiting-room tokens, computed fresh
+  // per calendar day from createdAt — no separate queueDate field needed,
+  // KOT already has createdAt). Always null for a real table order — table
+  // number/name is already the identifier there, see listKOTs/KOTScreen.
+  tokenNumber Int?
 
   invoice Invoice?         @relation(fields: [invoiceId], references: [id])
   table   RestaurantTable? @relation(fields: [tableId], references: [id])

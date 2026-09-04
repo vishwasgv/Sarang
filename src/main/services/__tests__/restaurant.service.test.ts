@@ -182,7 +182,7 @@ describe('restaurant.service.createKOT', () => {
     expect(res.success).toBe(true)
     expect(createSpy).toHaveBeenCalledWith({
       data: {
-        invoiceId: null, tableId: 'table-1', status: 'PENDING',
+        invoiceId: null, tableId: 'table-1', status: 'PENDING', tokenNumber: null,
         items: { create: [{ productId: 'prod-1', quantity: 2, unitPriceSnapshot: 100, taxRateSnapshot: 5 }] }
       }
     })
@@ -197,7 +197,10 @@ describe('restaurant.service.createKOT', () => {
     const createSpy = vi.fn().mockResolvedValue({ id: 'kot-1' })
     const db: Record<string, any> = {
       invoice: { findUnique: vi.fn().mockResolvedValue({ id: 'inv-1' }) },
-      kOT: { findUnique: vi.fn().mockResolvedValue(null), create: createSpy },
+      // findFirst: no-table path also looks up today's highest tokenNumber
+      // (2026-09-04 — counter/takeaway "Token #N") — none yet, so this is
+      // the first token of the day.
+      kOT: { findUnique: vi.fn().mockResolvedValue(null), findFirst: vi.fn().mockResolvedValue(null), create: createSpy },
       restaurantTable: { update: vi.fn().mockResolvedValue({}) },
       $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(db)),
     }
@@ -207,6 +210,21 @@ describe('restaurant.service.createKOT', () => {
 
     expect(res.success).toBe(true)
     expect(createSpy.mock.calls[0][0].data.invoiceId).toBe('inv-1')
+    expect(createSpy.mock.calls[0][0].data.tokenNumber).toBe(1)
+  })
+
+  it('assigns the next sequential token number for a same-day counter/takeaway order', async () => {
+    const createSpy = vi.fn().mockResolvedValue({ id: 'kot-2' })
+    const db: Record<string, any> = {
+      kOT: { findFirst: vi.fn().mockResolvedValue({ tokenNumber: 4 }), create: createSpy },
+      $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(db)),
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await createKOT([{ productId: 'prod-1', quantity: 1, unitPrice: 50 }])
+
+    expect(res.success).toBe(true)
+    expect(createSpy.mock.calls[0][0].data.tokenNumber).toBe(5)
   })
 })
 

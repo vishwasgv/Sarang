@@ -268,9 +268,26 @@ export async function createKOT(
       if (tableId) {
         await tx.restaurantTable.update({ where: { id: tableId }, data: { status: 'OCCUPIED' } })
       }
+
+      // Counter/takeaway (no table) — assign the next daily "Token #N",
+      // same MAX-within-today + 1 pattern as TokenQueue's own tokenNumber,
+      // computed inside this same transaction so two near-simultaneous
+      // counter sales can't both claim the same number.
+      let tokenNumber: number | undefined
+      if (!tableId) {
+        const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0)
+        const todayEnd = new Date(todayStart.getTime() + 24 * 60 * 60 * 1000)
+        const last = await tx.kOT.findFirst({
+          where: { tableId: null, createdAt: { gte: todayStart, lt: todayEnd }, tokenNumber: { not: null } },
+          orderBy: { tokenNumber: 'desc' },
+          select: { tokenNumber: true },
+        })
+        tokenNumber = (last?.tokenNumber ?? 0) + 1
+      }
+
       return tx.kOT.create({
         data: {
-          invoiceId: invoiceId ?? null, tableId: tableId ?? null, status: 'PENDING',
+          invoiceId: invoiceId ?? null, tableId: tableId ?? null, status: 'PENDING', tokenNumber: tokenNumber ?? null,
           items: { create: items.map(i => ({ productId: i.productId, quantity: i.quantity, unitPriceSnapshot: i.unitPrice, taxRateSnapshot: i.taxRate ?? 0 })) }
         }
       })

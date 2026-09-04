@@ -1725,6 +1725,7 @@ export const printService = {
     kotId: string
     tableNumber?: string | null
     tableName?: string | null
+    tokenNumber?: number | null
     invoiceNumber: string
     items: Array<{ productName: string; quantity: number; remarks?: string | null }>
     createdAt: string | Date
@@ -1737,6 +1738,11 @@ export const printService = {
     const tableLabel = params.tableName
       ? `${params.tableNumber} — ${params.tableName}`
       : (params.tableNumber ?? 'Takeaway')
+    // Counter/takeaway order — a big, unmissable customer-facing token
+    // number, same spirit as a bakery/deli counter's numbered ticket.
+    const tokenBlock = params.tokenNumber != null
+      ? `<div class="center" style="font-size:22px;font-weight:bold;margin:4px 0">Token #${params.tokenNumber}</div><div class="divider"></div>`
+      : ''
 
     return `<!DOCTYPE html>
 <html>
@@ -1760,6 +1766,7 @@ export const printService = {
   <h2>KOT</h2>
   <div class="center meta">${escHtml(params.businessName)}</div>
   <div class="divider"></div>
+  ${tokenBlock}
   <div><span class="bold">Table:</span> ${escHtml(tableLabel)}</div>
   <div><span class="bold">Order:</span> ${escHtml(params.invoiceNumber)}</div>
   <div><span class="bold">Time:</span> ${timeStr} — ${dateStr}</div>

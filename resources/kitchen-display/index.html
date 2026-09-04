@@ -85,7 +85,9 @@
   }
 
   function ticketHtml(kot) {
-    var title = (kot.table && (kot.table.tableName || kot.table.tableNumber)) || (kot.invoice && kot.invoice.invoiceNumber) || ('KOT-' + String(kot.id).slice(-6).toUpperCase())
+    var title = (kot.table && (kot.table.tableName || kot.table.tableNumber)) ||
+      (kot.tokenNumber != null ? ('Token #' + kot.tokenNumber) : null) ||
+      (kot.invoice && kot.invoice.invoiceNumber) || ('KOT-' + String(kot.id).slice(-6).toUpperCase())
     var items = (kot.items || []).map(function (it) {
       return '<div class="item-row"><span class="item-name">' + dietMarkHtml(it.foodType) + escapeHtml(it.productName) + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
     }).join('')

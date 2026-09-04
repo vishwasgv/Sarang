@@ -260,6 +260,17 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       const employeeId = parts[3]
       const action = parts[4]
 
+      // Real gap found in review (2026-09-04): createWaiterTableOrder
+      // already checked the employee was still active before letting them
+      // order, but board/tables/served didn't — a terminated employee's
+      // printed QR would keep showing live orders and letting them mark
+      // tickets served indefinitely. One check here covers all five
+      // actions instead of duplicating it in each service function.
+      if (token === expectedToken) {
+        const employee = await getPrisma().employee.findUnique({ where: { id: employeeId }, select: { isActive: true } })
+        if (!employee || !employee.isActive) { sendJson(res, 403, { success: false, error: { message: 'This waiter link is no longer active.' } }); return }
+      }
+
       if (req.method === 'GET' && action === 'board') {
         if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
         if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }

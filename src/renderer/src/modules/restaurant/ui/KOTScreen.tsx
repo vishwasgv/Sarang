@@ -27,6 +27,7 @@ interface KOT {
   invoice?: { invoiceNumber: string; totalAmount: number } | null
   items: KOTItem[]
   servedAt?: string | null
+  tokenNumber?: number | null
 }
 
 const STATUS_CONFIG = {
@@ -303,7 +304,9 @@ export function KOTScreen() {
                 className={cn('bg-white dark:bg-slate-900 rounded-xl border-2 p-4 space-y-3', config.color)}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
-                    <p className="text-sm font-bold text-dark dark:text-slate-100">{kot.invoice?.invoiceNumber ?? `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
+                    <p className="text-sm font-bold text-dark dark:text-slate-100">
+                      {kot.tokenNumber != null ? `Token #${kot.tokenNumber}` : (kot.invoice?.invoiceNumber ?? `KOT-${kot.id.slice(-6).toUpperCase()}`)}
+                    </p>
                     {kot.table && (
                       <p className="text-xs text-slate-400">
                         {kot.table.tableName || kot.table.tableNumber}
