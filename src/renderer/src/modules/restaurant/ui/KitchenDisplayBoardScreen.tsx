@@ -33,6 +33,9 @@ function TicketCard({ kot, onAdvance, busy }: { kot: KOT; onAdvance: (kot: KOT) 
     <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
+          {kot.tokenNumber != null && (
+            <p className="text-sm font-bold uppercase tracking-wide text-warning">Takeaway</p>
+          )}
           <p className="text-xl font-bold text-dark dark:text-slate-100">{kot.table?.tableName || kot.table?.tableNumber || (kot.tokenNumber != null ? `Token #${kot.tokenNumber}` : null) || kot.invoice?.invoiceNumber || `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
           <p className="text-sm text-slate-400">{new Date(kot.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
         </div>

@@ -304,6 +304,9 @@ export function KOTScreen() {
                 className={cn('bg-white dark:bg-slate-900 rounded-xl border-2 p-4 space-y-3', config.color)}>
                 <div className="flex items-start justify-between gap-2">
                   <div>
+                    {kot.tokenNumber != null && (
+                      <p className="text-[10px] font-bold uppercase tracking-wide text-warning">Takeaway</p>
+                    )}
                     <p className="text-sm font-bold text-dark dark:text-slate-100">
                       {kot.tokenNumber != null ? `Token #${kot.tokenNumber}` : (kot.invoice?.invoiceNumber ?? `KOT-${kot.id.slice(-6).toUpperCase()}`)}
                     </p>

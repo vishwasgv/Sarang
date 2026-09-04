@@ -1738,10 +1738,13 @@ export const printService = {
     const tableLabel = params.tableName
       ? `${params.tableNumber} — ${params.tableName}`
       : (params.tableNumber ?? 'Takeaway')
-    // Counter/takeaway order — a big, unmissable customer-facing token
-    // number, same spirit as a bakery/deli counter's numbered ticket.
+    // Counter/takeaway order — a bold, unmissable "TAKEAWAY" banner plus a
+    // customer-facing token number, same spirit as a bakery/deli counter's
+    // numbered ticket. Kitchen staff need this at a glance, before reading
+    // any other line, so they know to pack it rather than plate it for a
+    // table.
     const tokenBlock = params.tokenNumber != null
-      ? `<div class="center" style="font-size:22px;font-weight:bold;margin:4px 0">Token #${params.tokenNumber}</div><div class="divider"></div>`
+      ? `<div class="center" style="font-size:14px;font-weight:bold;letter-spacing:2px;margin:4px 0">TAKEAWAY</div><div class="center" style="font-size:22px;font-weight:bold;margin:4px 0">Token #${params.tokenNumber}</div><div class="divider"></div>`
       : ''
 
     return `<!DOCTYPE html>

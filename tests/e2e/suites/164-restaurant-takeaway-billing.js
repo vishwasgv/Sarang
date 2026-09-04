@@ -114,6 +114,15 @@ async function run() {
       r.log('kot-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
       const bodyText = await page.locator('body').innerText().catch(() => '')
       r.log('kot-screen-shows-token-text', /Token #\d+/.test(bodyText))
+      r.log('kot-screen-shows-takeaway-badge', /Takeaway/i.test(bodyText))
+    })
+
+    await r.step('kitchen-display-board-shows-takeaway-badge', async () => {
+      await h.gotoHash(page, '#/kitchen-display')
+      await page.waitForTimeout(900)
+      r.log('board-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+      const boardBody = await page.locator('body').innerText().catch(() => '')
+      r.log('board-screen-shows-takeaway-badge', /Takeaway/i.test(boardBody))
     })
 
     await r.step('restore-business-type', async () => {

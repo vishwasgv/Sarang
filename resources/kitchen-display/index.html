@@ -24,6 +24,7 @@
   .empty { text-align: center; color: #94A3B8; font-size: 13px; padding: 24px 0; }
   .ticket { background: #fff; border-radius: 14px; border: 2px solid #E2E8F0; padding: 14px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
   .ticket .title { font-weight: 700; font-size: 17px; }
+  .ticket .takeaway-badge { font-weight: 700; font-size: 11px; text-transform: uppercase; letter-spacing: 0.5px; color: #B45309; }
   .ticket .time { font-size: 12px; color: #94A3B8; margin-top: 2px; }
   .ticket .items { margin: 10px 0; }
   .ticket .item-row { display: flex; justify-content: space-between; font-size: 15px; padding: 2px 0; }
@@ -96,7 +97,8 @@
       ? '<button data-kot="' + escapeHtml(kot.id) + '" data-next="' + escapeHtml(next) + '"' + (busyId === kot.id ? ' disabled' : '') + '>' +
         (busyId === kot.id ? 'Updating…' : escapeHtml(NEXT_LABEL[kot.status])) + '</button>'
       : ''
-    return '<div class="ticket"><div class="title">' + escapeHtml(title) + '</div>' +
+    var takeawayBadge = kot.tokenNumber != null ? '<div class="takeaway-badge">Takeaway</div>' : ''
+    return '<div class="ticket">' + takeawayBadge + '<div class="title">' + escapeHtml(title) + '</div>' +
       '<div class="time">' + fmtTime(kot.createdAt) + '</div>' +
       '<div class="items">' + items + '</div>' + btn + '</div>'
   }
