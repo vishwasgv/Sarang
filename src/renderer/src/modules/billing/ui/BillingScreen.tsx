@@ -13,6 +13,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { splitTaxLines } from '@shared/utils/tax.util'
 import { CustomFieldsEditor } from '@shared/ui/molecules/CustomFieldsEditor'
+import { DietMark } from '@shared/ui/atoms/DietMark'
 
 interface Product {
   id: string; productName: string; sku?: string | null; barcode?: string | null
@@ -26,6 +27,7 @@ interface Product {
   hallmarkNumber?: string | null
   isPrescriptionRequired?: boolean
   category?: { id: string; name: string } | null
+  foodType?: string | null
 }
 interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; priceListId?: string | null }
 interface HeldSaleSummary {
@@ -88,6 +90,7 @@ interface CartItem {
   // this is only ever a client-side suggestion, never trusted as-is.
   isFreeOfCost?: boolean
   schemeId?: string
+  foodType?: string | null
 }
 
 interface SchemeFocSuggestion { productId: string; productName: string; quantity: number; schemeId: string; schemeName: string }
@@ -909,7 +912,8 @@ export function BillingScreen() {
         isJewellery,
         prescriptionPatientName: rxDetail?.patientName,
         prescriptionDoctorName: rxDetail?.doctorName,
-        prescriptionDate: rxDetail?.date
+        prescriptionDate: rxDetail?.date,
+        foodType: product.foodType
       }]
     })
     if (isLoose) {
@@ -1468,7 +1472,7 @@ export function BillingScreen() {
                     onClick={() => addToCart(p)}
                     className="px-3 py-2 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-start"
                   >
-                    <p className="text-xs font-medium text-dark dark:text-slate-100 truncate max-w-[9rem]">{p.productName}</p>
+                    <p className="text-xs font-medium text-dark dark:text-slate-100 truncate max-w-[9rem] flex items-center gap-1"><DietMark foodType={p.foodType} />{p.productName}</p>
                     <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
                   </button>
                 ))}
@@ -1515,7 +1519,7 @@ export function BillingScreen() {
                     disabled={!!(p.unavailableUntil && new Date(p.unavailableUntil) > new Date())}
                     className="px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 hover:border-brand hover:bg-brand/5 transition-colors text-start disabled:opacity-40 disabled:cursor-not-allowed disabled:hover:border-slate-200 disabled:hover:bg-white"
                   >
-                    <p className="text-xs font-medium text-dark dark:text-slate-100 truncate">{p.productName}</p>
+                    <p className="text-xs font-medium text-dark dark:text-slate-100 truncate flex items-center gap-1"><DietMark foodType={p.foodType} />{p.productName}</p>
                     <p className="text-xs text-brand font-semibold">{formatCurrency(p.sellingPrice)}</p>
                   </button>
                 ))}
@@ -1578,6 +1582,7 @@ export function BillingScreen() {
                 >
                   <div>
                     <div className="flex items-center gap-1.5">
+                      <DietMark foodType={p.foodType} />
                       <p className="text-sm font-medium text-dark">{p.productName}</p>
                       {p.unavailableUntil && new Date(p.unavailableUntil) > new Date() && (
                         <span className="text-xs font-medium px-1.5 py-0.5 rounded-full bg-warning/10 text-warning">{t('billing.unavailableToday')}</span>
@@ -1656,7 +1661,7 @@ export function BillingScreen() {
                 return (
                   <div key={ck} className="bg-white rounded-xl border border-slate-100 px-3 py-3 grid grid-cols-[2fr_120px_100px_100px_36px] gap-2 items-center">
                     <div>
-                      <p className="text-sm font-medium text-dark leading-none">{item.productName}</p>
+                      <p className="text-sm font-medium text-dark leading-none flex items-center gap-1.5"><DietMark foodType={item.foodType} />{item.productName}</p>
                       {item.variantInfo && <p className="text-xs text-brand/70 mt-0.5">{item.variantInfo}</p>}
                       {item.serialInfo && <p className="text-xs text-brand/70 mt-0.5">{item.serialInfo}</p>}
                       {item.batchInfo && (

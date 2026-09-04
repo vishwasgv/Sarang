@@ -7,6 +7,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
+import { DietMark } from '@shared/ui/atoms/DietMark'
 
 interface OrderRequestItem { productId: string; quantity: number; productName: string; currentPrice: number }
 interface OrderRequest {
@@ -17,7 +18,7 @@ interface OrderRequest {
   items: OrderRequestItem[]
 }
 
-interface KOTItem { productId: string; productName: string; quantity: number; unitPriceSnapshot: number }
+interface KOTItem { productId: string; productName: string; quantity: number; unitPriceSnapshot: number; foodType?: string | null }
 interface KOT {
   id: string
   status: string
@@ -305,7 +306,7 @@ export function KOTScreen() {
                 <div className="space-y-1">
                   {kot.items.map((item, idx) => (
                     <div key={idx} className="flex justify-between text-xs text-dark dark:text-slate-100">
-                      <span>{item.productName}</span>
+                      <span className="flex items-center gap-1.5"><DietMark foodType={item.foodType} />{item.productName}</span>
                       <span className="font-semibold">× {item.quantity}</span>
                     </div>
                   ))}

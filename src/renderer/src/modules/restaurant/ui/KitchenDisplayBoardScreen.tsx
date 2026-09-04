@@ -2,6 +2,7 @@ import React, { useCallback, useEffect, useRef, useState } from 'react'
 import { RefreshCw, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
+import { DietMark } from '@shared/ui/atoms/DietMark'
 
 // Wall-board rendering of the same KOT queue KOTScreen.tsx shows — used both
 // by the second-monitor window (mouse/keyboard on the billing PC, see
@@ -10,7 +11,7 @@ import { cn } from '@shared/utils/cn'
 // Deliberately no sidebar/filters/print button — this is meant to be glanced
 // at from across a kitchen, not operated like the full KOTScreen.
 
-interface KOTItem { productId: string; productName: string; quantity: number }
+interface KOTItem { productId: string; productName: string; quantity: number; foodType?: string | null }
 interface KOT {
   id: string
   status: string
@@ -38,7 +39,7 @@ function TicketCard({ kot, onAdvance, busy }: { kot: KOT; onAdvance: (kot: KOT) 
       <div className="space-y-1.5">
         {kot.items.map((item, idx) => (
           <div key={idx} className="flex justify-between text-lg text-dark dark:text-slate-100">
-            <span>{item.productName}</span>
+            <span className="flex items-center gap-2"><DietMark foodType={item.foodType} size="md" />{item.productName}</span>
             <span className="font-bold">× {item.quantity}</span>
           </div>
         ))}

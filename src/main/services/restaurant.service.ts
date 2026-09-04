@@ -225,11 +225,11 @@ export async function listKOTs(filters?: { status?: string; tableId?: string }) 
       orderBy: { createdAt: 'desc' }
     })
     const productIds = [...new Set(kots.flatMap(k => k.items.map(i => i.productId)))]
-    const products = productIds.length > 0 ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, productName: true } }) : []
-    const nameById = new Map(products.map(p => [p.id, p.productName]))
+    const products = productIds.length > 0 ? await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, productName: true, foodType: true } }) : []
+    const infoById = new Map(products.map(p => [p.id, p]))
     const withItemNames = kots.map(k => ({
       ...k,
-      items: k.items.map(i => ({ ...i, productName: nameById.get(i.productId) ?? 'Unknown item' }))
+      items: k.items.map(i => ({ ...i, productName: infoById.get(i.productId)?.productName ?? 'Unknown item', foodType: infoById.get(i.productId)?.foodType ?? null }))
     }))
     return { success: true, data: withItemNames }
   } catch (err) {

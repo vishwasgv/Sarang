@@ -28,6 +28,15 @@
   .ticket .items { margin: 10px 0; }
   .ticket .item-row { display: flex; justify-content: space-between; font-size: 15px; padding: 2px 0; }
   .ticket .item-row b { font-weight: 700; }
+  .ticket .item-row .item-name { display: flex; align-items: center; gap: 6px; }
+  .diet-mark { display: inline-block; width: 14px; height: 14px; border: 1.5px solid; border-radius: 2px; flex-shrink: 0; position: relative; }
+  .diet-mark::after { content: ''; position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%); width: 7px; height: 7px; border-radius: 50%; }
+  .diet-mark.veg { border-color: #16A34A; }
+  .diet-mark.veg::after { background: #16A34A; }
+  .diet-mark.egg { border-color: #CA8A04; }
+  .diet-mark.egg::after { background: #CA8A04; }
+  .diet-mark.non-veg { border-color: #B91C1C; }
+  .diet-mark.non-veg::after { background: #B91C1C; }
   .ticket button { width: 100%; padding: 12px; border: none; border-radius: 10px; background: #00AEEF; color: #fff; font-weight: 700; font-size: 15px; }
   .ticket button:disabled { opacity: 0.5; }
   .state-screen { padding: 60px 20px; text-align: center; color: #64748B; }
@@ -65,10 +74,20 @@
     try { return new Date(iso).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) } catch (e) { return '' }
   }
 
+  function dietMarkHtml(foodType) {
+    // Same convention as the customer-facing QR menu's dietMarkHtml()
+    // (resources/qr-menu/index.html) -- renders nothing for a null/
+    // unclassified item, never guesses.
+    if (foodType === 'VEG') return '<span class="diet-mark veg" title="Veg"></span>'
+    if (foodType === 'EGG') return '<span class="diet-mark egg" title="Contains Egg"></span>'
+    if (foodType === 'NON_VEG') return '<span class="diet-mark non-veg" title="Non-Veg"></span>'
+    return ''
+  }
+
   function ticketHtml(kot) {
     var title = (kot.table && (kot.table.tableName || kot.table.tableNumber)) || (kot.invoice && kot.invoice.invoiceNumber) || ('KOT-' + String(kot.id).slice(-6).toUpperCase())
     var items = (kot.items || []).map(function (it) {
-      return '<div class="item-row"><span>' + escapeHtml(it.productName) + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
+      return '<div class="item-row"><span class="item-name">' + dietMarkHtml(it.foodType) + escapeHtml(it.productName) + '</span><b>× ' + escapeHtml(it.quantity) + '</b></div>'
     }).join('')
     var next = NEXT_STATUS[kot.status]
     var btn = next
