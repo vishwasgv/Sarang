@@ -4255,7 +4255,7 @@
       },
       "restaurantKot": {
         "title": "Kitchen Order Tickets (KOT)",
-        "body": "Send an order straight to the kitchen with one tap. Try sending one — it'll appear immediately on the Kitchen Display Board, exactly like a real ticket a cook would see. A counter or takeaway ticket with no table attached shows a friendly daily Token # instead of an invoice number, and once a ticket is Done, Mark Served records that the food actually reached the table."
+        "body": "Send an order straight to the kitchen with one tap. Try sending one — it'll appear immediately on the Kitchen Display Board, exactly like a real ticket a cook would see. A counter or takeaway ticket with no table attached shows a friendly daily Token # instead of an invoice number, and once a ticket is Done, Mark Served records that the food actually reached the table. For a table-less sale, Billing also lets you tag Zomato/Swiggy/Other App — the ticket shows the real channel, and Reports → Orders by Channel breaks down how much of your business comes from each one."
       },
       "restaurantRecipes": {
         "title": "Recipes",

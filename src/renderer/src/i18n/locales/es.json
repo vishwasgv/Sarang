@@ -3867,7 +3867,7 @@
       },
       "restaurantKot": {
         "title": "Comanda de cocina (KOT)",
-        "body": "Envía un pedido directamente a la cocina con un toque. Pruébalo — aparecerá de inmediato en el Tablero de Cocina, exactamente como una comanda real que vería un cocinero. Una comanda de mostrador o para llevar sin mesa asociada muestra un número de token diario amigable en lugar de un número de factura, y una vez que una comanda está Lista, Marcar Servido registra que la comida realmente llegó a la mesa."
+        "body": "Envía un pedido directamente a la cocina con un toque. Pruébalo — aparecerá de inmediato en el Tablero de Cocina, exactamente como una comanda real que vería un cocinero. Una comanda de mostrador o para llevar sin mesa asociada muestra un número de token diario amigable en lugar de un número de factura, y una vez que una comanda está Lista, Marcar Servido registra que la comida realmente llegó a la mesa. Para una venta sin mesa, Facturación también te permite etiquetar Zomato/Swiggy/Otra App — la comanda muestra el canal real, y Informes → Pedidos por Canal muestra cuánto de tu negocio proviene de cada canal."
       },
       "restaurantRecipes": {
         "title": "Recetas",

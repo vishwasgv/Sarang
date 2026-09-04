@@ -3676,7 +3676,7 @@
       },
       "restaurantKot": {
         "title": "Tiket Pesanan Dapur (KOT)",
-        "body": "Kirim pesanan langsung ke dapur dengan satu ketukan. Coba — pesanan akan langsung muncul di Papan Tampilan Dapur, persis seperti tiket asli yang dilihat koki. Tiket konter atau bawa pulang tanpa meja menampilkan nomor Token harian yang ramah alih-alih nomor faktur, dan setelah tiket Selesai, Tandai Terlayani mencatat bahwa makanan benar-benar sampai ke meja."
+        "body": "Kirim pesanan langsung ke dapur dengan satu ketukan. Coba — pesanan akan langsung muncul di Papan Tampilan Dapur, persis seperti tiket asli yang dilihat koki. Tiket konter atau bawa pulang tanpa meja menampilkan nomor Token harian yang ramah alih-alih nomor faktur, dan setelah tiket Selesai, Tandai Terlayani mencatat bahwa makanan benar-benar sampai ke meja. Untuk penjualan tanpa meja, Billing juga memungkinkan Anda menandai Zomato/Swiggy/Aplikasi Lain — tiket menampilkan saluran sebenarnya, dan Laporan → Pesanan berdasarkan Saluran menunjukkan berapa banyak bisnis Anda berasal dari masing-masing saluran."
       },
       "restaurantRecipes": {
         "title": "Resep",

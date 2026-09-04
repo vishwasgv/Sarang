@@ -3676,7 +3676,7 @@
       },
       "restaurantKot": {
         "title": "Bon de commande cuisine (KOT)",
-        "body": "Envoyez une commande directement en cuisine en un seul geste. Essayez — elle apparaîtra immédiatement sur l'écran d'affichage cuisine, exactement comme un vrai bon qu'un cuisinier verrait. Un bon de comptoir ou à emporter sans table associée affiche un numéro de jeton quotidien convivial (Token #) à la place d'un numéro de facture, et une fois un bon Terminé, Marquer servi enregistre que la commande est bien arrivée à table."
+        "body": "Envoyez une commande directement en cuisine en un seul geste. Essayez — elle apparaîtra immédiatement sur l'écran d'affichage cuisine, exactement comme un vrai bon qu'un cuisinier verrait. Un bon de comptoir ou à emporter sans table associée affiche un numéro de jeton quotidien convivial (Token #) à la place d'un numéro de facture, et une fois un bon Terminé, Marquer servi enregistre que la commande est bien arrivée à table. Pour une vente sans table, la Facturation permet aussi de taguer Zomato/Swiggy/Autre App — le bon affiche le vrai canal, et Rapports → Commandes par Canal montre quelle part de votre activité vient de chaque canal."
       },
       "restaurantRecipes": {
         "title": "Recettes",
