@@ -56,7 +56,7 @@
     "manual": "मॅन्युअल",
     "costCentres": "खर्च केंद्रे",
     "budgets": "अंदाजपत्रके",
-    "serviceCombos": "Service Combos",
+    "serviceCombos": "सेवा कॉम्बो",
     "checkIn": "चेक-इन",
     "customOrders": "कस्टम ऑर्डर",
     "cateringEvents": "केटरिंग इव्हेंट्स",
@@ -314,6 +314,7 @@
   },
   "billing": {
     "title": "बिलिंग",
+    "sellingLocation": "विक्री स्थान",
     "newInvoice": "नवीन बिल",
     "invoiceList": "बिल यादी",
     "invoiceNumber": "बिल क्र.",
@@ -1610,6 +1611,10 @@
       "distributor": "वितरक"
     },
     "defs": {
+      "discounts": {
+        "label": "सवलत अहवाल",
+        "description": "प्रत्येक सवलत असलेली इनव्हॉइस लाइन, स्टाफ आणि उत्पादन अनुसार विभाजन, तसेच सवलत वारंवारता आणि सरासरी सवलत %"
+      },
       "sales": {
         "label": "विक्री अहवाल",
         "description": "महसूल, सवलत, कर — दिवस / आठवडा / महिना / वर्षानुसार गटबद्ध"
@@ -2055,212 +2060,212 @@
         "description": "तुम्ही केस प्रकारानुसार किती केस हाताळले — सल्ला, प्रतिबंधात्मक काळजी, लसीकरण, आणि तुमच्या Service Catalog मधील इतर — महिन्या-महिन्याने."
       },
       "stylistRepeatClient": {
-        "label": "Stylist Repeat-Client Rate",
-        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+        "label": "स्टायलिस्ट पुनरावृत्ती-क्लायंट दर",
+        "description": "प्रति स्टायलिस्ट, त्यांचे किती स्वतःचे क्लायंट दुसऱ्यांदा आले — क्लायंट-निष्ठेची खरी लीडरबोर्ड"
       },
       "retailAttachRate": {
-        "label": "Retail Attach Rate",
-        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+        "label": "रिटेल अटॅच दर",
+        "description": "बुक केलेल्या सेवा इनव्हॉइसमध्ये रिटेल उत्पादन अपसेल किती वेळा समाविष्ट होते, प्रति स्टायलिस्ट"
       },
       "membershipRenewalFunnel": {
-        "label": "Membership Renewal Funnel",
-        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+        "label": "सदस्यत्व नूतनीकरण फनेल",
+        "description": "या कालावधीत कालबाह्य झालेल्या सदस्यत्वांपैकी, त्याच क्लायंटने प्रत्यक्षात किती नूतनीकरण केले, प्लानप्रमाणे"
       },
       "classAttendanceHeatmap": {
-        "label": "Class Attendance Heatmap",
-        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+        "label": "क्लास उपस्थिती हीटमॅप",
+        "description": "आठवड्याच्या प्रत्येक दिवशी प्रति क्लास प्रत्यक्ष चेक-इन घनता — कोणते स्लॉट खरोखर व्यस्त आहेत, फक्त नोंदणीकृत नाहीत"
       },
       "learnerProgressFunnel": {
-        "label": "Learner Progress Funnel",
-        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+        "label": "शिकाऊ विद्यार्थी प्रगती फनेल",
+        "description": "आजवर नोंदणीकृत झालेला प्रत्येक शिकाऊ विद्यार्थी, त्याने गाठलेल्या पुढच्या टप्प्यानुसार — पहिल्या सत्रापासून उत्तीर्ण DL चाचणीपर्यंत"
       },
       "caseAging": {
-        "label": "Case Aging",
-        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+        "label": "केस एजिंग",
+        "description": "प्रत्येक खुली केस, ती सध्याच्या दाव्याच्या टप्प्यात किती काळ अडकली आहे यानुसार क्रमवारीत"
       },
       "lawyerBillableHours": {
-        "label": "Billable Hours",
-        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+        "label": "बिल करण्यायोग्य तास",
+        "description": "प्रति वकील बिल करण्यायोग्य विरुद्ध प्रो-बोनो तास, आधीच बिल केलेली आणि अद्याप बिल न केलेली रक्कम यात विभागलेले"
       },
       "feeRealization": {
-        "label": "Fee Realization",
-        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+        "label": "शुल्क रियलायझेशन",
+        "description": "या महिन्यात प्रत्येक सक्रिय एंगेजमेंटकडून अपेक्षित आवर्ती शुल्कापैकी, प्रत्यक्षात किती इनव्हॉइस केले गेले"
       },
       "drawingApprovalCycleTime": {
-        "label": "Drawing Approval Cycle Time",
-        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+        "label": "ड्रॉइंग मंजुरी चक्र वेळ",
+        "description": "प्रत्येक मंजूर ड्रॉइंगला जारी करण्यापासून मंजुरीपर्यंत, विभागानुसार, प्रत्यक्षात किती दिवस लागले"
       },
       "projectStageProgress": {
-        "label": "Project Stage Progress",
-        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+        "label": "प्रकल्प टप्पा प्रगती",
+        "description": "प्रत्येक सक्रिय प्रकल्प, तो सध्याच्या टप्प्यात किती काळ अडकला आहे यानुसार क्रमवारीत"
       },
       "siteVisitBilling": {
-        "label": "Site Visit Billing",
-        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+        "label": "साइट भेट बिलिंग",
+        "description": "प्रत्येक बिल करण्यायोग्य साइट भेट, बिल न केलेली आधी — आज नेमके काय इनव्हॉइस करता येईल"
       },
       "materialTestResults": {
-        "label": "Material Test Results",
-        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+        "label": "साहित्य चाचणी निकाल",
+        "description": "प्रत्येक नोंदवलेली साहित्य चाचणी, अयशस्वी आधी, तसेच एकूण उत्तीर्ण दर"
       },
       "retainerUtilization": {
-        "label": "Retainer Utilization",
-        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+        "label": "रिटेनर वापर",
+        "description": "या कालावधीत प्रति-तास रिटेनरच्या मासिक कोट्याविरुद्ध वापरलेले तास, तसेच ते प्रत्यक्षात बिल केले गेले की नाही"
       },
       "proposalWinRate": {
-        "label": "Proposal Win Rate",
-        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+        "label": "प्रस्ताव विजय दर",
+        "description": "प्रत्यक्षात पाठवलेल्या प्रत्येक प्रस्तावापैकी, किती स्वीकारले गेले विरुद्ध स्वाक्षरीविना कालबाह्य झाले"
       },
       "clientRevenueConcentration": {
-        "label": "Client Revenue Concentration",
-        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+        "label": "क्लायंट महसूल एकाग्रता",
+        "description": "एकूण इनव्हॉइस केलेल्या महसुलात प्रत्येक क्लायंटचा वाटा किती आहे — अवलंबित्व-जोखमीचा एक खरा संकेत"
       },
       "campaignROI": {
-        "label": "Campaign ROI",
-        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+        "label": "कॅम्पेन ROI",
+        "description": "प्रत्येक कॅम्पेनसाठी नियोजित जाहिरात-खर्च अंदाजपत्रक विरुद्ध प्रत्यक्ष खर्च, खर्च-प्रति-कन्व्हर्जनसह — कारण एट्रिब्युटेड महसूल ट्रॅक केला जात नाही, त्यामुळे कोणतीही काल्पनिक ROI रक्कम दाखवली जात नाही"
       },
       "deliverableStatusPipeline": {
-        "label": "Deliverable Status Pipeline",
-        "description": "Every content-calendar deliverable by status, with how many are overdue"
+        "label": "डिलिव्हरेबल स्थिती पाइपलाइन",
+        "description": "कंटेंट-कॅलेंडरमधील प्रत्येक डिलिव्हरेबल त्याच्या स्थितीनुसार, किती मुदतबाह्य आहेत यासह"
       },
       "channelPerformance": {
-        "label": "Channel Performance",
-        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+        "label": "चॅनेल कामगिरी",
+        "description": "एकाच चॅनेलवरील सर्व कॅम्पेनचा एकत्रित जाहिरात खर्च, क्लिक्स आणि कन्व्हर्जन"
       },
       "retainerWorkDelivered": {
-        "label": "Retainer Work Delivered",
-        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+        "label": "रिटेनर काम डिलिव्हर केले",
+        "description": "प्रत्येक मार्केटिंग रिटेनरसाठी, बिल केल्या जाणाऱ्या शुल्काविरुद्ध या महिन्यात प्रत्यक्षात किती डिलिव्हरेबल प्रकाशित झाले"
       },
       "issueAging": {
-        "label": "Issue Aging",
-        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+        "label": "इश्यू एजिंग",
+        "description": "प्रत्येक खुला इश्यू, खुला राहण्याच्या दिवसांनुसार, प्राधान्यानुसार निश्चित SLA मर्यादेविरुद्ध फ्लॅग केलेला"
       },
       "teamUtilization": {
-        "label": "Team Utilization",
-        "description": "Billable vs. non-billable hours logged per team member against a client project"
+        "label": "टीम वापर",
+        "description": "प्रति टीम सदस्य, क्लायंट प्रकल्पाविरुद्ध नोंदवलेले बिल करण्यायोग्य विरुद्ध बिल न करण्यायोग्य तास"
       },
       "sprintBilling": {
-        "label": "Sprint Billing",
-        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+        "label": "स्प्रिंट बिलिंग",
+        "description": "प्रत्येक पूर्ण स्प्रिंट, आणि त्याचे काम प्रत्यक्षात एखाद्या बिलिंग माइलस्टोनशी जोडले गेले आहे की नाही"
       },
       "deliveryPipeline": {
-        "label": "Delivery Pipeline",
-        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+        "label": "डिलिव्हरी पाइपलाइन",
+        "description": "प्रत्येक सक्रिय शूट बुकिंग, तिची पोस्ट-प्रोडक्शन प्रगती किती झाली आहे यानुसार, तसेच मुदतबाह्य डिलिव्हरी आणि जास्त सुधारणा फेऱ्या असलेल्या बुकिंग"
       },
       "shootTypeRevenueMix": {
-        "label": "Shoot-Type Revenue Mix",
-        "description": "Revenue, booking count, and average ticket per shoot type"
+        "label": "शूट-प्रकार महसूल मिश्रण",
+        "description": "प्रति शूट प्रकार महसूल, बुकिंग संख्या, आणि सरासरी तिकीट"
       },
       "equipmentCheckout": {
-        "label": "Equipment Checkout",
-        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+        "label": "उपकरण चेकआउट",
+        "description": "सध्या चेकआउट केलेले आणि अद्याप परत न आलेले स्टुडिओतील प्रत्येक उपकरण, मुदतबाह्य आधी"
       },
       "vendorCostVsBudget": {
-        "label": "Vendor Cost vs. Budget",
-        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+        "label": "वेंडर खर्च विरुद्ध अंदाजपत्रक",
+        "description": "प्रत्येक इव्हेंटचा एकूण वेंडर खर्च क्लायंटच्या अंदाजपत्रकाविरुद्ध आणि एजन्सीच्या स्वतःच्या कोटेशनविरुद्ध — खरी मार्जिन दृश्यता"
       },
       "vendorPerformanceHistory": {
-        "label": "Vendor Performance History",
-        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+        "label": "वेंडर कामगिरी इतिहास",
+        "description": "प्रत्येक रेट केलेल्या वेंडरचे, त्यांनी काम केलेल्या सर्व इव्हेंटमधील सरासरी रेटिंग, सर्वात कमी आधी"
       },
       "occupancyTrend": {
-        "label": "Occupancy Trend",
-        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+        "label": "ऑक्युपन्सी कल",
+        "description": "निवडलेल्या कालावधीत दैनिक खोली ऑक्युपन्सी % — ऑक्युपन्सी वाढत आहे की कमी होत आहे?"
       },
       "roomWiseADR": {
-        "label": "Room-wise ADR",
-        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+        "label": "खोलीनुसार ADR",
+        "description": "सरासरी दैनिक दर (ADR) आणि विकलेल्या रात्री, प्रति खोली विभागणी — कोणत्या खोल्या सर्वाधिक कमावतात?"
       },
       "adrRevPAR": {
-        "label": "ADR & RevPAR",
-        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+        "label": "ADR आणि RevPAR",
+        "description": "सरासरी दैनिक दर (ADR) आणि प्रति उपलब्ध खोली महसूल (RevPAR), महिन्यानुसार कल"
       },
       "carPartsVariance": {
-        "label": "Parts Cost Variance",
-        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+        "label": "पार्ट्स किंमत फरक",
+        "description": "ज्या जॉबसाठी इनटेकच्या वेळी अंदाज दिला होता, त्यांची प्रत्यक्ष पार्ट्स किंमत विरुद्ध अंदाजित किंमत"
       },
       "serviceTypeRevenue": {
-        "label": "Revenue by Service Type",
-        "description": "Which services bring in the most revenue, across every job card"
+        "label": "सेवा प्रकारानुसार महसूल",
+        "description": "प्रत्येक जॉब कार्डमध्ये कोणत्या सेवा सर्वाधिक महसूल आणतात"
       },
       "orderTurnaround": {
-        "label": "Order Turnaround Time",
-        "description": "How many days it actually takes from order to delivery, per order"
+        "label": "ऑर्डर टर्नअराउंड वेळ",
+        "description": "प्रति ऑर्डर, ऑर्डरपासून डिलिव्हरीपर्यंत प्रत्यक्षात किती दिवस लागतात"
       },
       "fittingStageTracker": {
-        "label": "Fitting-Stage Tracker",
-        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+        "label": "फिटिंग-टप्पा ट्रॅकर",
+        "description": "सध्या ट्रायल किंवा अल्टरेशन टप्प्यात असलेले ऑर्डर, आणि ते तिथे किती काळ अडकले आहेत"
       },
       "fabricPopularity": {
-        "label": "Fabric / Design Popularity",
-        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+        "label": "फॅब्रिक / डिझाइन लोकप्रियता",
+        "description": "कोणते फॅब्रिक आणि डिझाइन सर्वाधिक ऑर्डर केले जातात, आणि त्यामागील महसूल"
       },
       "renewalFunnel": {
-        "label": "Renewal Funnel",
-        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+        "label": "नूतनीकरण फनेल",
+        "description": "सक्रिय AMC करार, नूतनीकरणाच्या निकडीनुसार गटबद्ध — मुदतबाह्यपासून अद्याप देय नसलेल्यापर्यंत"
       },
       "chemicalUsageCompliance": {
-        "label": "Chemical Usage / Compliance Log",
-        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+        "label": "रसायन वापर / अनुपालन नोंद",
+        "description": "प्रति भेट वापरलेली कीटकनाशक मात्रा, आणि रसायन नोंद नसलेल्या पूर्ण भेटी"
       },
       "pestRecurringValueTrend": {
-        "label": "Recurring Contract Value Trend",
-        "description": "Actual AMC contract-fee revenue billed, trended by month"
+        "label": "आवर्ती करार मूल्य कल",
+        "description": "प्रत्यक्ष AMC कराराचे शुल्क महसूल जे बिल केले गेले, महिन्यानुसार कल"
       },
       "candidatePipelineFunnel": {
-        "label": "Candidate Pipeline Funnel",
-        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+        "label": "उमेदवार पाइपलाइन फनेल",
+        "description": "प्रत्येक उमेदवाराची प्रगती — जोडण्यापासून मुलाखतीपर्यंत, ऑफरपर्यंत आणि अखेर प्लेसमेंटपर्यंत"
       },
       "jobOrderFunnel": {
-        "label": "Job Order Funnel",
-        "description": "Open client job orders by status — the fill-progress view from the client side"
+        "label": "जॉब ऑर्डर फनेल",
+        "description": "क्लायंटचे खुले जॉब ऑर्डर, स्थितीनुसार — क्लायंट बाजूने भरती-प्रगतीचे दृश्य"
       },
       "feePercentage": {
-        "label": "Client Fee-Percentage Tracking",
-        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+        "label": "क्लायंट शुल्क-टक्केवारी ट्रॅकिंग",
+        "description": "प्रति जॉब ऑर्डर मान्य केलेले शुल्क % विरुद्ध त्याच्या प्लेसमेंटवर प्रत्यक्षात मिळालेले शुल्क"
       },
       "timeToFill": {
-        "label": "Time to Fill",
-        "description": "How many days it actually takes from job order to a candidate joining"
+        "label": "भरती वेळ",
+        "description": "जॉब ऑर्डरपासून उमेदवार जॉइन होईपर्यंत प्रत्यक्षात किती दिवस लागतात"
       },
       "sourceEffectiveness": {
-        "label": "Source Effectiveness",
-        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+        "label": "स्रोत परिणामकारकता",
+        "description": "उमेदवार स्रोत (रेफरल, लिंक्डइन, वेबसाइट...) विरुद्ध प्रत्यक्ष प्लेसमेंट कन्व्हर्जन दर"
       },
       "batchPerformanceTrend": {
-        "label": "Batch Performance Trend",
-        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+        "label": "बॅच कामगिरी कल",
+        "description": "प्रत्येक बॅचचा सरासरी चाचणी स्कोअर, महिन्या-महिन्याने कल — बॅच सुधारत आहे की घसरत आहे?"
       },
       "attendancePerformanceCorrelation": {
-        "label": "Attendance vs. Performance",
-        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+        "label": "उपस्थिती विरुद्ध कामगिरी",
+        "description": "जास्त उपस्थित राहणारे विद्यार्थी खरोखर जास्त गुण मिळवतात का — प्रत्यक्ष उपस्थिती % विरुद्ध सरासरी चाचणी %, तसेच संपूर्ण बॅचसाठी सहसंबंध गुणांक"
       },
       "feeDueUnderperformanceAlert": {
-        "label": "Fee-Due Underperformance Alert",
-        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+        "label": "शुल्क-थकीत कमजोर कामगिरी अलर्ट",
+        "description": "ज्या विद्यार्थ्यांचे शुल्क थकीत आहे आणि ज्यांचे गुण 50% पेक्षा कमी आहेत — संपर्काला प्राधान्य देण्यासाठी वर्कलिस्ट"
       },
       "coilWastageYield": {
-        "label": "Coil Wastage & Yield",
-        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+        "label": "कॉइल वाया आणि यील्ड",
+        "description": "प्राप्त विरुद्ध विकलेली लांबी, यील्ड %, आणि प्रति कॉइल-विक्री उत्पादन अंदाजित वाया"
       },
       "isiBisSafetyRegister": {
-        "label": "ISI/BIS Safety Register",
-        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+        "label": "ISI/BIS सुरक्षा नोंदवही",
+        "description": "प्रत्येक सिरियल-ट्रॅक केलेल्या युनिटची ट्रेसेबिलिटी नोंद — प्राप्ती, वॉरंटी, आणि कुठे विकले गेले"
       },
       "seasonalDemandForecast": {
-        "label": "Seasonal Demand Forecast",
-        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+        "label": "हंगामी मागणी अंदाज",
+        "description": "कॅलेंडर महिन्यानुसार आजवरची एकूण विक्री, पीक हंगाम फ्लॅग करत"
       },
       "institutionalOrderHistory": {
-        "label": "Institutional Order History",
-        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+        "label": "संस्थात्मक ऑर्डर इतिहास",
+        "description": "नूतनीकरण नियोजनासाठी, प्रत्येक मागील बल्क-लिस्ट ऑर्डर स्थिती, वस्तू संख्या आणि एकूण मूल्यासह"
       },
       "locationStockSplit": {
-        "label": "Showroom-vs-Warehouse Stock",
-        "description": "Per-product stock split across every Location"
+        "label": "शोरूम-विरुद्ध-गोदाम स्टॉक",
+        "description": "प्रत्येक लोकेशनमध्ये प्रति-उत्पादन स्टॉक विभागणी"
       },
       "deliveryInstallationSchedule": {
-        "label": "Delivery & Installation Schedule",
-        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+        "label": "डिलिव्हरी आणि इन्स्टॉलेशन वेळापत्रक",
+        "description": "निवडलेल्या कालावधीत डिलिव्हरी तारीख असलेल्या फर्निचर बुकिंग, एक खरे वेळापत्रक म्हणून"
       },
       "specWiseFastMovers": {
         "label": "स्पेक-निहाय फास्ट मूव्हर्स",
@@ -2556,53 +2561,53 @@
       "dosesEvaluated": "मूल्यांकित डोस",
       "totalCases": "एकूण केसेस",
       "distinctCaseTypes": "वेगळे केस प्रकार",
-      "totalEnrolled": "Total Enrolled",
-      "overallCompletionPercent": "DL Completion Rate %",
-      "totalOpenCases": "Open Cases",
-      "avgDaysInCurrentStage": "Avg. Days in Stage",
-      "staleCaseCount": "Stale Cases (90+ days)",
-      "totalApproved": "Drawings Approved",
-      "avgDaysToApprove": "Avg. Days to Approve",
-      "totalActiveProjects": "Active Projects",
-      "avgDaysInStage": "Avg. Days in Stage",
-      "totalBillableAmount": "Total Billable",
-      "totalBilledAmount": "Total Billed",
-      "totalUnbilledAmount": "Total Unbilled",
-      "unbilledCount": "Unbilled Visits",
-      "passCount": "Passed",
-      "failCount": "Failed",
-      "pendingCount": "Pending",
-      "passRatePercent": "Pass Rate %",
-      "totalRetainers": "Retainers",
-      "overUtilizedCount": "Over-Utilized",
-      "wonCount": "Won",
-      "lostCount": "Lost",
-      "winRatePercent": "Win Rate %",
-      "wonValue": "Won Value",
-      "topClientSharePercent": "Top Client Share %",
-      "top3SharePercent": "Top 3 Clients Share %",
-      "totalCampaigns": "Campaigns",
-      "totalBudget": "Total Budget",
-      "totalActualSpend": "Total Actual Spend",
-      "overBudgetCount": "Over Budget",
-      "totalDeliverables": "Deliverables",
-      "zeroDeliveredCount": "Zero Delivered",
-      "totalOpenIssues": "Open Issues",
-      "breachedCount": "SLA Breached",
-      "totalBillableHours": "Total Billable Hours",
-      "totalNonBillableHours": "Total Non-Billable Hours",
-      "totalCompletedSprints": "Completed Sprints",
-      "unlinkedCount": "Unbilled Sprints",
-      "totalActive": "Active Bookings",
-      "deliveredCount": "Delivered",
-      "avgRevisionRounds": "Avg. Revision Rounds",
-      "totalBookings": "Total Bookings",
-      "totalEvents": "Events",
-      "totalVendorCost": "Total Vendor Cost",
-      "totalRatedVendors": "Rated Vendors",
-      "overallAvgRating": "Overall Avg. Rating",
-      "correlationCoefficient": "Attendance–Performance Correlation",
-      "alertCount": "Students Flagged"
+      "totalEnrolled": "एकूण नोंदणीकृत",
+      "overallCompletionPercent": "डीएल पूर्णता दर %",
+      "totalOpenCases": "खुल्या केस",
+      "avgDaysInCurrentStage": "सरासरी दिवस (टप्प्यात)",
+      "staleCaseCount": "निष्क्रिय केस (90+ दिवस)",
+      "totalApproved": "मंजूर ड्रॉइंग",
+      "avgDaysToApprove": "सरासरी मंजुरी दिवस",
+      "totalActiveProjects": "सक्रिय प्रकल्प",
+      "avgDaysInStage": "सरासरी दिवस (टप्प्यात)",
+      "totalBillableAmount": "एकूण बिल करण्यायोग्य रक्कम",
+      "totalBilledAmount": "एकूण बिल केलेली रक्कम",
+      "totalUnbilledAmount": "एकूण बिल न केलेली रक्कम",
+      "unbilledCount": "बिल न केलेल्या भेटी",
+      "passCount": "उत्तीर्ण",
+      "failCount": "अनुत्तीर्ण",
+      "pendingCount": "प्रलंबित",
+      "passRatePercent": "उत्तीर्ण दर %",
+      "totalRetainers": "रिटेनर",
+      "overUtilizedCount": "अति-वापर",
+      "wonCount": "जिंकलेले",
+      "lostCount": "गमावलेले",
+      "winRatePercent": "विजय दर %",
+      "wonValue": "जिंकलेली रक्कम",
+      "topClientSharePercent": "अव्वल क्लायंट वाटा %",
+      "top3SharePercent": "अव्वल 3 क्लायंट वाटा %",
+      "totalCampaigns": "कॅम्पेन",
+      "totalBudget": "एकूण अंदाजपत्रक",
+      "totalActualSpend": "एकूण प्रत्यक्ष खर्च",
+      "overBudgetCount": "अंदाजपत्रकापेक्षा जास्त",
+      "totalDeliverables": "डिलिव्हरेबल",
+      "zeroDeliveredCount": "शून्य डिलिव्हर",
+      "totalOpenIssues": "खुले इश्यू",
+      "breachedCount": "एसएलए उल्लंघन",
+      "totalBillableHours": "एकूण बिल करण्यायोग्य तास",
+      "totalNonBillableHours": "एकूण बिल न करण्यायोग्य तास",
+      "totalCompletedSprints": "पूर्ण स्प्रिंट",
+      "unlinkedCount": "बिल न केलेले स्प्रिंट",
+      "totalActive": "सक्रिय बुकिंग",
+      "deliveredCount": "डिलिव्हर केलेले",
+      "avgRevisionRounds": "सरासरी सुधारणा फेऱ्या",
+      "totalBookings": "एकूण बुकिंग",
+      "totalEvents": "इव्हेंट",
+      "totalVendorCost": "एकूण वेंडर खर्च",
+      "totalRatedVendors": "रेट केलेले वेंडर",
+      "overallAvgRating": "एकूण सरासरी रेटिंग",
+      "correlationCoefficient": "उपस्थिती–कामगिरी सहसंबंध",
+      "alertCount": "फ्लॅग केलेले विद्यार्थी"
     },
     "aging": {
       "current": "सध्याचे",
@@ -2705,8 +2710,8 @@
       "complianceByRecallType": "स्मरण प्रकारानुसार पालन",
       "complianceByVaccine": "लसीनुसार अनुपालन",
       "caseTypeVolumeChart": "केस व्हॉल्यूम ट्रेंड",
-      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
-      "feeDueUnderperformanceDetails": "Flagged Students"
+      "attendancePerformanceDetails": "उपस्थिती विरुद्ध कामगिरी, विद्यार्थ्यानुसार",
+      "feeDueUnderperformanceDetails": "फ्लॅग केलेले विद्यार्थी"
     },
     "empty": {
       "invoices": "या तारीख श्रेणीत कोणतीही बिले नाहीत.",
@@ -2805,39 +2810,39 @@
       "dentalRecallCompliance": "या तारीख श्रेणीत कोणतेही स्मरण बंद केलेले नाही.",
       "vaccinationCompliance": "या तारीख श्रेणीत आधीची देय तारीख असलेला कोणताही फॉलो-अप डोस नाही.",
       "vetCaseTypeVolume": "या तारीख श्रेणीत कोणतेही केस नोंदवलेले नाहीत.",
-      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
-      "serviceTypeRevenue": "No service items billed in this date range.",
-      "orderTurnaround": "No orders delivered in this date range.",
-      "fittingStageTracker": "No orders currently at Trial or Alterations.",
-      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
-      "chemicalUsageCompliance": "No completed visits in this date range.",
-      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
-      "attendancePerformanceCorrelation": "No enrolled students yet.",
-      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
-      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range.",
-      "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
-      "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now.",
-      "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now.",
-      "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet.",
-      "retainerUtilization": "No active hourly retainers right now.",
-      "clientRevenueConcentration": "No invoiced revenue in this date range.",
-      "campaignROI": "No marketing campaigns recorded yet.",
-      "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
-      "issueAging": "No open issues right now.",
-      "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet.",
-      "deliveryPipeline": "No bookings with a revision round logged yet.",
-      "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out.",
-      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
-      "vendorPerformanceHistory": "No vendors rated yet."
+      "carPartsVariance": "अद्याप पार्ट्स अंदाज दिलेला कोणताही जॉब नाही.",
+      "serviceTypeRevenue": "या कालावधीत कोणतीही सेवा वस्तू बिल झाली नाही.",
+      "orderTurnaround": "या कालावधीत कोणताही ऑर्डर डिलिव्हर झाला नाही.",
+      "fittingStageTracker": "सध्या ट्रायल किंवा अल्टरेशन टप्प्यात कोणताही ऑर्डर नाही.",
+      "fabricPopularity": "या कालावधीत फॅब्रिक/डिझाइन नोंदवलेला कोणताही ऑर्डर नाही.",
+      "chemicalUsageCompliance": "या कालावधीत कोणतीही पूर्ण भेट नाही.",
+      "pestRecurringValueTrend": "या कालावधीत कोणतेही आवर्ती करार-शुल्क इनव्हॉइस बिल झाले नाही.",
+      "attendancePerformanceCorrelation": "अद्याप कोणतेही नोंदणीकृत विद्यार्थी नाहीत.",
+      "feeDueUnderperformanceAlert": "सध्या कोणताही विद्यार्थी फ्लॅग केलेला नाही — शुल्क थकीत आणि कमजोर कामगिरी दोन्ही कोणाचेही नाही.",
+      "stylistRepeatClient": "या कालावधीत स्टायलिस्ट नेमलेल्या कोणत्याही पूर्ण अपॉइंटमेंटची नोंद नाही.",
+      "retailAttachRate": "या कालावधीत कोणतीही इनव्हॉइस अपॉइंटमेंट नाही.",
+      "membershipRenewalFunnel": "या कालावधीत कोणतेही सदस्यत्व कालबाह्य झाले नाही.",
+      "classAttendanceHeatmap": "या कालावधीत कोणतेही क्लास चेक-इन नोंदवलेले नाही.",
+      "caseAging": "सध्या कोणतीही खुली केस नाही.",
+      "lawyerBillableHours": "या कालावधीत केसविरुद्ध कोणतीही वेळ नोंद नाही.",
+      "feeRealization": "सध्या कोणतीही सक्रिय, किंमत ठरलेली एंगेजमेंट नाही.",
+      "drawingApprovalCycleTime": "अद्याप कोणतेही मंजूर ड्रॉइंग फाइलमध्ये नाही.",
+      "projectStageProgress": "सध्या टप्पा सेट असलेला कोणताही सक्रिय प्रकल्प नाही.",
+      "siteVisitBilling": "अद्याप कोणतीही बिल करण्यायोग्य साइट भेट नोंदवलेली नाही.",
+      "materialTestResults": "अद्याप कोणतेही साहित्य चाचणी निकाल नोंदवलेले नाही.",
+      "retainerUtilization": "सध्या कोणताही सक्रिय प्रति-तास रिटेनर नाही.",
+      "clientRevenueConcentration": "या कालावधीत कोणताही इनव्हॉइस महसूल नाही.",
+      "campaignROI": "अद्याप कोणतेही मार्केटिंग कॅम्पेन नोंदवलेले नाही.",
+      "channelPerformance": "अद्याप चॅनेल सेट असलेले कोणतेही कॅम्पेन नाही.",
+      "retainerWorkDelivered": "सध्या मार्केटिंग-कॅम्पेन क्लायंटसाठी कोणताही सक्रिय रिटेनर नाही.",
+      "issueAging": "सध्या कोणताही खुला इश्यू नाही.",
+      "teamUtilization": "या कालावधीत प्रकल्पाविरुद्ध कोणतेही तास नोंदवलेले नाहीत.",
+      "sprintBilling": "अद्याप कोणताही पूर्ण स्प्रिंट नाही.",
+      "deliveryPipeline": "अद्याप सुधारणा फेरी नोंदवलेली कोणतीही बुकिंग नाही.",
+      "shootTypeRevenueMix": "या कालावधीत कोणतीही किंमत ठरलेली बुकिंग नाही.",
+      "equipmentCheckout": "सध्या कोणतेही उपकरण चेकआउट नाही.",
+      "vendorCostVsBudget": "अद्याप कोणताही रद्द न झालेला इव्हेंट नोंदवलेला नाही.",
+      "vendorPerformanceHistory": "अद्याप कोणत्याही वेंडरला रेट केलेले नाही."
     },
     "col": {
       "channel": "चॅनेल",
@@ -2944,7 +2949,7 @@
       "actualQuantity": "प्रत्यक्ष वापरलेले प्रमाण",
       "varianceQuantity": "फरक",
       "variancePercent": "फरक %",
-      "gstin": "GSTIN",
+      "gstin": "जीएसटीआयएन",
       "party": "पक्ष",
       "value": "मूल्य",
       "placeOfSupply": "पुरवठ्याचे ठिकाण",
@@ -3136,93 +3141,93 @@
       "recallType": "स्मरण प्रकार",
       "vaccineName": "लस",
       "doses": "डोस",
-      "stylist": "Stylist",
-      "totalClients": "Total Clients",
-      "repeatClients": "Repeat Clients",
-      "totalInvoices": "Total Invoices",
-      "withAttach": "With Retail Attach",
-      "attachRatePercent": "Attach Rate %",
-      "planName": "Plan",
-      "expiredCount": "Expired",
-      "renewedCount": "Renewed",
-      "renewalRatePercent": "Renewal Rate %",
-      "className": "Class",
-      "checkInCount": "Check-Ins",
-      "learnerCount": "Learners",
-      "caseNumber": "Case Number",
-      "caseTitle": "Case Title",
-      "clientName": "Client",
-      "daysInStage": "Days in Stage",
-      "daysSinceFiling": "Days Since Filing",
-      "advocate": "Advocate",
-      "billedAmount": "Billed",
-      "unbilledAmount": "Unbilled",
-      "engagement": "Engagement",
-      "expectedFee": "Expected Fee",
-      "realizedFee": "Realized Fee",
-      "realizationPercent": "Realization %",
-      "invoicedThisPeriod": "Invoiced This Period",
-      "drawingNumber": "Drawing No.",
-      "revisionNumber": "Rev.",
-      "discipline": "Discipline",
-      "issuedDate": "Issued Date",
-      "approvedDate": "Approved Date",
-      "daysToApprove": "Days to Approve",
-      "stageProgress": "Stage Progress %",
-      "attendancePercent": "Attendance %",
-      "avgTestPercentage": "Avg. Test %",
-      "feeDueAmount": "Fee Due",
-      "visitType": "Visit Type",
-      "billableAmount": "Billable Amount",
-      "billedStatus": "Billed Status",
-      "testType": "Test Type",
-      "materialDescription": "Material",
-      "testValue": "Test Value",
-      "requiredMinValue": "Pass Minimum",
-      "result": "Result",
-      "testedDate": "Tested Date",
-      "hoursPerMonth": "Hours/Month",
-      "hoursUsed": "Hours Used",
-      "monthlyAmount": "Monthly Amount",
-      "billedThisPeriod": "Billed This Period",
-      "revenueSharePercent": "Revenue Share %",
-      "cumulativeSharePercent": "Cumulative Share %",
-      "targetChannel": "Channel",
-      "adSpendBudget": "Ad Spend Budget",
-      "actualSpend": "Actual Spend",
-      "budgetVariancePercent": "Budget Variance %",
-      "conversions": "Conversions",
-      "costPerConversion": "Cost/Conversion",
-      "campaignCount": "Campaigns",
-      "totalImpressions": "Impressions",
-      "totalClicks": "Clicks",
-      "totalConversions": "Conversions",
-      "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered",
-      "daysOpen": "Days Open",
-      "slaThresholdDays": "SLA (days)",
-      "slaBreached": "SLA Breached",
-      "employeeName": "Employee",
-      "totalHours": "Total Hours",
-      "sprintNumber": "Sprint #",
-      "sprintName": "Sprint Name",
-      "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount",
-      "shootType": "Shoot Type",
-      "revisionRounds": "Revision Rounds",
-      "avgTicket": "Avg. Ticket",
-      "assetName": "Equipment",
-      "checkedOutToName": "Checked Out To",
-      "checkedOutDate": "Checked Out",
-      "expectedReturnDate": "Expected Return",
-      "daysOut": "Days Out",
-      "isOverdue": "Overdue",
-      "eventName": "Event",
-      "clientBudget": "Client Budget",
-      "totalVendorCost": "Total Vendor Cost",
-      "vendorName": "Vendor",
-      "ratedEventCount": "Rated Events",
-      "avgRating": "Avg. Rating"
+      "stylist": "स्टायलिस्ट",
+      "totalClients": "एकूण क्लायंट",
+      "repeatClients": "पुनरावृत्ती क्लायंट",
+      "totalInvoices": "एकूण इनव्हॉइस",
+      "withAttach": "रिटेल अटॅचसह",
+      "attachRatePercent": "अटॅच रेट %",
+      "planName": "प्लान",
+      "expiredCount": "कालबाह्य",
+      "renewedCount": "नूतनीकृत",
+      "renewalRatePercent": "नूतनीकरण दर %",
+      "className": "क्लास",
+      "checkInCount": "चेक-इन",
+      "learnerCount": "शिकाऊ विद्यार्थी",
+      "caseNumber": "केस क्रमांक",
+      "caseTitle": "केस शीर्षक",
+      "clientName": "क्लायंट",
+      "daysInStage": "टप्प्यातील दिवस",
+      "daysSinceFiling": "फायलिंगनंतरचे दिवस",
+      "advocate": "वकील",
+      "billedAmount": "बिल केलेली रक्कम",
+      "unbilledAmount": "बिल न केलेली रक्कम",
+      "engagement": "एंगेजमेंट",
+      "expectedFee": "अपेक्षित शुल्क",
+      "realizedFee": "मिळालेले शुल्क",
+      "realizationPercent": "रियलायझेशन %",
+      "invoicedThisPeriod": "या कालावधीत इनव्हॉइस केलेली रक्कम",
+      "drawingNumber": "ड्रॉइंग क्र.",
+      "revisionNumber": "सुधारणा क्र.",
+      "discipline": "विभाग (डिसिप्लिन)",
+      "issuedDate": "जारी तारीख",
+      "approvedDate": "मंजुरी तारीख",
+      "daysToApprove": "मंजुरीसाठी लागलेले दिवस",
+      "stageProgress": "टप्पा प्रगती %",
+      "attendancePercent": "उपस्थिती %",
+      "avgTestPercentage": "सरासरी चाचणी %",
+      "feeDueAmount": "थकीत शुल्क",
+      "visitType": "भेट प्रकार",
+      "billableAmount": "बिल करण्यायोग्य रक्कम",
+      "billedStatus": "बिलिंग स्थिती",
+      "testType": "चाचणी प्रकार",
+      "materialDescription": "साहित्य",
+      "testValue": "चाचणी मूल्य",
+      "requiredMinValue": "उत्तीर्ण किमान",
+      "result": "निकाल",
+      "testedDate": "चाचणी तारीख",
+      "hoursPerMonth": "तास/महिना",
+      "hoursUsed": "वापरलेले तास",
+      "monthlyAmount": "मासिक रक्कम",
+      "billedThisPeriod": "या कालावधीत बिल केलेली रक्कम",
+      "revenueSharePercent": "महसूल वाटा %",
+      "cumulativeSharePercent": "एकत्रित वाटा %",
+      "targetChannel": "चॅनेल",
+      "adSpendBudget": "जाहिरात खर्च अंदाजपत्रक",
+      "actualSpend": "प्रत्यक्ष खर्च",
+      "budgetVariancePercent": "अंदाजपत्रक फरक %",
+      "conversions": "कन्व्हर्जन",
+      "costPerConversion": "खर्च/कन्व्हर्जन",
+      "campaignCount": "कॅम्पेन",
+      "totalImpressions": "इंप्रेशन्स",
+      "totalClicks": "क्लिक्स",
+      "totalConversions": "कन्व्हर्जन",
+      "ctrPercent": "सीटीआर %",
+      "deliveredCount": "डिलिव्हर केलेले",
+      "daysOpen": "खुले दिवस",
+      "slaThresholdDays": "एसएलए (दिवस)",
+      "slaBreached": "एसएलए उल्लंघन",
+      "employeeName": "कर्मचारी",
+      "totalHours": "एकूण तास",
+      "sprintNumber": "स्प्रिंट #",
+      "sprintName": "स्प्रिंट नाव",
+      "milestoneStatus": "माइलस्टोन स्थिती",
+      "milestoneAmount": "माइलस्टोन रक्कम",
+      "shootType": "शूट प्रकार",
+      "revisionRounds": "सुधारणा फेऱ्या",
+      "avgTicket": "सरासरी तिकीट",
+      "assetName": "उपकरण",
+      "checkedOutToName": "कोणाला दिले",
+      "checkedOutDate": "चेक-आउट तारीख",
+      "expectedReturnDate": "अपेक्षित परतावा तारीख",
+      "daysOut": "बाहेरचे दिवस",
+      "isOverdue": "मुदतबाह्य",
+      "eventName": "इव्हेंट",
+      "clientBudget": "क्लायंट अंदाजपत्रक",
+      "totalVendorCost": "एकूण वेंडर खर्च",
+      "vendorName": "वेंडर",
+      "ratedEventCount": "रेट केलेले इव्हेंट",
+      "avgRating": "सरासरी रेटिंग"
     },
     "legend": {
       "schemeCost": "स्कीम खर्च",
@@ -3513,10 +3518,10 @@
     "destinationSaveFailed": "बॅकअप फोल्डर अद्ययावत करता आले नाही",
     "destinationReset": "बॅकअप फोल्डर डीफॉल्टवर रीसेट झाले",
     "destinationUnreachable": "\"{{path}}\" सध्या उपलब्ध नाही (अनप्लग्ड आहे का?) — त्याऐवजी डीफॉल्ट स्थान वापरले जात आहे.",
-    "restoreFromFile": "Restore from File",
-    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
-    "restoreFromFileConfirmTitle": "Restore from Backup File",
-    "pickBackupFileFailed": "Could not open file picker."
+    "restoreFromFile": "फाइलमधून पुनर्संचयित करा",
+    "restoreFromFileDesc": "दुसऱ्या डिव्हाइसवरून किंवा USB ड्राइव्हवरून .sarang-backup फाइल आहे का? त्यातून थेट पुनर्संचयित करा.",
+    "restoreFromFileConfirmTitle": "बॅकअप फाइलमधून पुनर्संचयित करा",
+    "pickBackupFileFailed": "फाइल पिकर उघडता आले नाही."
   },
   "audit": {
     "title": "ऑडिट लॉग",
@@ -4892,7 +4897,7 @@
     "docTypePurchaseOrder": "खरेदी ऑर्डर"
   },
   "disclaimer": {
-    "legalNotice": "सारंग बिझनेस ओएस लाइट हे लहान व्यवसायांसाठी एक मोफत संस्थात्मक साधन आहे. ही वैद्यकीय नोंद प्रणाली, लेखा सॉफ्टवेअर, कायदेशीर सल्ला साधन किंवा परवानाधारक आर्थिक उत्पादन नाही. सर्व माहिती वापरकर्त्याचा स्वतःचा डेटा आहे जो त्यांच्या डिव्हाइसवर स्थानिक पातळीवर साठवला जातो. या सॉफ्टवेअरची अचूकता, पूर्णता किंवा कोणत्याही नियमित हेतूसाठी योग्यतेची Aszurex कोणतीही हमी देत नाही. लागू कायदे आणि व्यावसायिक नियमांचे पालन करण्याची संपूर्ण जबाबदारी वापरकर्त्यांची आहे."
+    "legalNotice": "सारंग बिझनेस ओएस लाइट हे लहान व्यवसायांसाठी एक मोफत संस्थात्मक साधन आहे. ही वैद्यकीय नोंद प्रणाली, कायदेशीर सल्ला साधन किंवा परवानाधारक आर्थिक उत्पादन नाही. यात लेखा आणि GST वैशिष्ट्ये समाविष्ट आहेत, परंतु ते परवानाधारक अकाउंटंट किंवा कर सल्लागाराचा पर्याय नाही. सर्व माहिती वापरकर्त्याचा स्वतःचा डेटा आहे जो त्यांच्या डिव्हाइसवर स्थानिक पातळीवर साठवला जातो. या सॉफ्टवेअरची अचूकता, पूर्णता किंवा कोणत्याही नियमित हेतूसाठी योग्यतेची Aszurex कोणतीही हमी देत नाही. लागू कायदे आणि व्यावसायिक नियमांचे पालन करण्याची संपूर्ण जबाबदारी वापरकर्त्यांची आहे."
   },
   "compliance": {
     "disclaimerLabel": "अस्वीकरण:",
@@ -5862,26 +5867,26 @@
     }
   },
   "serviceCombos": {
-    "title": "Service Combos",
-    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
-    "comboName": "Combo Name",
-    "services": "Services",
-    "comboPrice": "Combo Price",
-    "savings": "Savings",
-    "newCombo": "New Combo",
-    "editCombo": "Edit Combo",
-    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
-    "nameRequired": "Combo name is required.",
-    "priceRequired": "Combo price must be greater than zero.",
-    "needTwoServices": "A combo needs at least 2 distinct services.",
-    "selectServices": "Select Services",
-    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
-    "memberTotalHint": "Individual price total: {{amount}}",
-    "couldNotLoad": "Could not load service combos.",
-    "couldNotSave": "Could not save this service combo.",
+    "title": "सेवा कॉम्बो",
+    "subtitle": "{{count}} कॉम्बो — 2+ सेवा एका पॅकेज किमतीत एकत्र करा, अपॉइंटमेंट स्क्रीनवरून थेट बुक करा",
+    "comboName": "कॉम्बोचे नाव",
+    "services": "सेवा",
+    "comboPrice": "कॉम्बो किंमत",
+    "savings": "बचत",
+    "newCombo": "नवीन कॉम्बो",
+    "editCombo": "कॉम्बो संपादित करा",
+    "comboNamePlaceholder": "उदा. वॉश + कट + स्टाइल",
+    "nameRequired": "कॉम्बोचे नाव आवश्यक आहे.",
+    "priceRequired": "कॉम्बो किंमत शून्यापेक्षा जास्त असावी.",
+    "needTwoServices": "कॉम्बोसाठी किमान 2 वेगळ्या सेवा आवश्यक आहेत.",
+    "selectServices": "सेवा निवडा",
+    "selectServicesHint": "या कॉम्बोमध्ये समाविष्ट करण्यासाठी किमान 2 सेवा निवडा.",
+    "memberTotalHint": "वैयक्तिक किंमत एकूण: {{amount}}",
+    "couldNotLoad": "सेवा कॉम्बो लोड करता आले नाहीत.",
+    "couldNotSave": "हा सेवा कॉम्बो जतन करता आला नाही.",
     "empty": {
-      "title": "No service combos yet",
-      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+      "title": "अद्याप कोणतेही सेवा कॉम्बो नाहीत",
+      "body": "2 किंवा अधिक सेवा एका पॅकेज किमतीत एकत्र करा — उदा. वॉश + कट + स्टाइल, स्वतंत्रपणे बुक करण्यापेक्षा सवलतीत."
     }
   },
   "checkin": {
@@ -6065,7 +6070,7 @@
         "IN_SERVICE": "सर्व्हिसमध्ये",
         "INACTIVE": "निष्क्रिय"
       },
-      "changeStatus": "Change vehicle status",
+      "changeStatus": "वाहन स्थिती बदला",
       "statusUpdated": "स्थिती अद्ययावत केली",
       "statusUpdateFailed": "वाहनाची स्थिती अद्ययावत करता आली नाही."
     },
@@ -6111,11 +6116,11 @@
         "ACTIVE": "सक्रिय",
         "INACTIVE": "निष्क्रिय"
       },
-      "activate": "Activate",
-      "deactivate": "Deactivate",
+      "activate": "सक्रिय करा",
+      "deactivate": "निष्क्रिय करा",
       "packageStatusUpdated": "पॅकेज स्थिती अद्ययावत केली",
       "packageStatusUpdateFailed": "पॅकेज स्थिती अद्ययावत करता आली नाही.",
-      "markComplete": "Mark Complete",
+      "markComplete": "पूर्ण चिन्हांकित करा",
       "cancelDeparture": "रद्द करा",
       "departureStatusUpdated": "प्रस्थान स्थिती अद्ययावत केली",
       "departureStatusUpdateFailed": "प्रस्थान स्थिती अद्ययावत करता आली नाही.",
@@ -6193,6 +6198,282 @@
       "cancelBooking": "बुकिंग रद्द करा",
       "bookingCancelled": "बुकिंग रद्द झाले",
       "bookingCancelFailed": "बुकिंग रद्द करता आले नाही."
+    }
+  }
+,
+  "restaurant": {
+    "kot": {
+      "title": "किचन ऑर्डर तिकीट",
+      "ordersCount": "{{count}} ऑर्डर",
+      "incomingOrders": "येणारे ऑर्डर ({{count}})",
+      "accept": "स्वीकारा",
+      "reject": "नाकारा",
+      "noKotsFound": "कोणतेही KOT आढळले नाही",
+      "noKotsHint": "ऑर्डर किचनमध्ये पाठवल्यावर KOT तयार होते",
+      "takeaway": "टेकअवे",
+      "deliveryApp": "डिलिव्हरी अ‍ॅप",
+      "tokenLabel": "टोकन #{{number}}",
+      "statusPending": "प्रलंबित",
+      "statusInProgress": "प्रगतीपथावर",
+      "statusDone": "पूर्ण",
+      "statusCancelled": "रद्द",
+      "startCooking": "शिजवणे सुरू करा",
+      "markDone": "पूर्ण म्हणून चिन्हांकित करा",
+      "served": "वाढले",
+      "markServed": "वाढले म्हणून चिन्हांकित करा",
+      "printTicket": "किचन तिकीट प्रिंट करा",
+      "acceptOrderTitle": "ऑर्डर स्वीकारा — {{table}}",
+      "acceptOrderNote": "यामुळे ऑर्डर किचनमध्ये पाठवली जाते आणि टेबलच्या चालू बिलात जोडली जाते. बिलिंग फक्त चेकआउटच्या वेळी एकदाच होते.",
+      "sending": "पाठवत आहे…",
+      "confirmAndSend": "पुष्टी करा आणि किचनला पाठवा",
+      "couldNotLoadIncomingOrders": "येणारे ऑर्डर लोड होऊ शकले नाहीत.",
+      "couldNotLoadTickets": "किचन तिकीट लोड होऊ शकले नाहीत.",
+      "couldNotRejectOrder": "ऑर्डर नाकारता आले नाही.",
+      "orderAcceptedTitle": "ऑर्डर स्वीकारली",
+      "orderAcceptedDesc": "या टेबलसाठी किचन तिकीट तयार केले गेले.",
+      "couldNotAcceptOrder": "ऑर्डर स्वीकारता आले नाही.",
+      "couldNotUpdateStatus": "KOT स्थिती अद्ययावत होऊ शकली नाही.",
+      "couldNotCancelKot": "KOT रद्द होऊ शकले नाही.",
+      "couldNotMarkServed": "हे तिकीट वाढले म्हणून चिन्हांकित करता आले नाही.",
+      "printedTitle": "प्रिंट झाले",
+      "printedDesc": "KOT प्रिंटरला पाठवले गेले.",
+      "printFailedTitle": "प्रिंट अयशस्वी",
+      "couldNotPrintKot": "KOT प्रिंट होऊ शकले नाही."
+    },
+    "kitchenDisplay": {
+      "title": "किचन डिस्प्ले",
+      "connectionIssue": "कनेक्शन समस्या — पुन्हा प्रयत्न करत आहे…",
+      "updatedAt": "अद्ययावत केले {{time}}",
+      "recentlyDone": "अलीकडे पूर्ण झालेले",
+      "nothingHere": "इथे काहीही नाही",
+      "updating": "अद्ययावत करत आहे…"
+    },
+    "recipes": {
+      "title": "रेसिपी व्यवस्थापन",
+      "recipesCount": "{{count}} रेसिपी कॉन्फिगर केल्या",
+      "addRecipe": "रेसिपी जोडा",
+      "editRecipe": "रेसिपी संपादित करा",
+      "newRecipe": "नवीन रेसिपी",
+      "menuProduct": "मेनू उत्पादन *",
+      "searchProductPlaceholder": "नाव किंवा SKU ने उत्पादन शोधा…",
+      "recipeName": "रेसिपीचे नाव *",
+      "recipeNamePlaceholder": "उदा. मसाला चहा रेसिपी",
+      "ingredients": "साहित्य *",
+      "addIngredient": "साहित्य जोडा",
+      "searchIngredientPlaceholder": "नाव किंवा SKU ने साहित्य शोधा…",
+      "qtyPlaceholder": "प्रमाण",
+      "saveRecipe": "रेसिपी जतन करा",
+      "noRecipesYet": "अजून कोणतीही रेसिपी नाही",
+      "noRecipesHint": "KOT पूर्ण झाल्यावर साहित्याचा वापर ट्रॅक करण्यासाठी रेसिपी जोडा",
+      "forProductIngredientsCount": "{{product}} साठी · {{count}} साहित्य",
+      "selectMenuProductError": "ही रेसिपी ज्यासाठी आहे तो मेनू उत्पादन निवडा.",
+      "recipeNameRequiredError": "रेसिपीचे नाव आवश्यक आहे.",
+      "addIngredientError": "वैध प्रमाणासह किमान एक साहित्य जोडा.",
+      "couldNotLoadRecipes": "रेसिपी लोड होऊ शकल्या नाहीत.",
+      "couldNotSearchProducts": "उत्पादने शोधता आली नाहीत.",
+      "couldNotSaveRecipe": "रेसिपी जतन होऊ शकली नाही.",
+      "couldNotDeleteRecipe": "रेसिपी हटवता आली नाही."
+    }
+  },
+  "bloodBank": {
+    "failed": "अयशस्वी",
+    "saving": "जतन करत आहे…",
+    "sending": "पाठवत आहे…",
+    "clearing": "साफ करत आहे…",
+    "unknown": "अज्ञात",
+    "bloodGroup": "रक्तगट",
+    "expiresLabel": "मुदत संपते {{date}}",
+    "missingBloodGroupTitle": "रक्तगट गहाळ आहे",
+    "componentWholeBlood": "संपूर्ण रक्त",
+    "componentPackedRbc": "पॅक्ड RBC",
+    "componentPlatelets": "प्लेटलेट्स",
+    "componentPlasma": "प्लाझ्मा",
+    "componentCryoprecipitate": "क्रायोप्रेसिपिटेट",
+    "componentAny": "कोणताही घटक",
+    "donors": {
+      "title": "दाता नोंदणी",
+      "registeredCount": "{{count}} नोंदणीकृत दाते",
+      "newDonor": "नवीन दाता",
+      "searchPlaceholder": "नाव, कोड किंवा फोनने शोधा…",
+      "recallDue": "रिकॉल देय ({{count}})",
+      "noneDueForRecall": "सध्या कोणताही दाता रिकॉलसाठी देय नाही",
+      "noDonorsYet": "अजून कोणताही दाता नोंदणीकृत नाही",
+      "deferred": "स्थगित",
+      "eligible": "पात्र",
+      "recovering": "बरे होत आहेत",
+      "noPhoneOnFile": "फाईलमध्ये फोन नाही",
+      "lastLabel": "शेवटचे: {{date}}",
+      "nextEligibleLabel": "पुढील पात्रता: {{date}}",
+      "registerDonor": "दाता नोंदणी करा",
+      "fullName": "पूर्ण नाव",
+      "weightKg": "वजन (किलो)",
+      "weightPlaceholder": "उदा. 60",
+      "weightUnit": "{{value}} किलो",
+      "gender": "लिंग",
+      "unspecified": "अनिर्दिष्ट",
+      "male": "पुरुष",
+      "female": "स्त्री",
+      "other": "इतर",
+      "lastDonation": "शेवटचे दान",
+      "noneYet": "अजून काहीही नाही",
+      "nextEligible": "पुढील पात्रता",
+      "now": "आता",
+      "deferredUntilLabel": "{{date}} पर्यंत स्थगित",
+      "deferredIndefinitely": "— अनिश्चित काळासाठी",
+      "sendRecallReminder": "रिकॉल स्मरणपत्र पाठवा",
+      "markDeferred": "स्थगित चिन्हांकित करा",
+      "clearDeferral": "स्थगन काढा",
+      "markDeferredTitle": "{{name}} ला स्थगित चिन्हांकित करा",
+      "reasonPlaceholder": "उदा. कमी हिमोग्लोबिन, रिअॅक्टिव्ह स्क्रीनिंग चाचणी…",
+      "deferredUntilField": "पर्यंत स्थगित (अनिश्चित/कायमस्वरूपीसाठी रिकामे सोडा)",
+      "missingNameTitle": "नाव गहाळ आहे",
+      "enterDonorName": "दात्याचे नाव प्रविष्ट करा.",
+      "donorRegisteredTitle": "दाता नोंदणीकृत",
+      "donorRegisteredDesc": "दाता यशस्वीरित्या नोंदणीकृत झाला.",
+      "couldNotLoadDonors": "दाते लोड होऊ शकले नाहीत.",
+      "couldNotRegisterDonor": "दाता नोंदणीकृत होऊ शकला नाही.",
+      "reminderReadyTitle": "स्मरणपत्र तयार",
+      "reminderReadyDesc": "व्हॉट्सअॅप स्मरणपत्र लिंक तयार केली गेली आहे.",
+      "couldNotSendRecall": "रिकॉल स्मरणपत्र पाठवता आले नाही.",
+      "couldNotRefreshDetails": "दात्याचा तपशील रिफ्रेश होऊ शकला नाही.",
+      "donorDeferredTitle": "दाता स्थगित",
+      "donorDeferredDesc": "दाता स्थगित म्हणून चिन्हांकित केला गेला.",
+      "couldNotUpdateDonor": "दाता अद्ययावत होऊ शकला नाही.",
+      "deferralClearedTitle": "स्थगन काढले",
+      "deferralClearedDesc": "दाता पुन्हा दान करण्यास पात्र आहे."
+    },
+    "donations": {
+      "title": "दान आणि स्क्रीनिंग",
+      "awaitingScreening": "{{count}} स्क्रीनिंगच्या प्रतीक्षेत",
+      "recordDonation": "दान नोंदवा",
+      "allTab": "सर्व ({{count}})",
+      "statusTab": "{{status}} ({{count}})",
+      "statusPending": "प्रलंबित",
+      "statusPassed": "पास",
+      "statusFailed": "फेल",
+      "noRecordsFound": "कोणतीही दान नोंद आढळली नाही",
+      "recordScreening": "स्क्रीनिंग नोंदवा",
+      "volumeCollectedNoCamp": "{{ml}}मिली · {{date}} रोजी संकलित",
+      "volumeCollectedWithCamp": "{{ml}}मिली · {{date}} रोजी संकलित · {{camp}}",
+      "donor": "दाता",
+      "selectDonor": "दाता निवडा…",
+      "componentType": "घटक प्रकार",
+      "donationCampLabel": "दान शिबिर (ऐच्छिक)",
+      "walkInNotFromCamp": "वॉक-इन / शिबिरातून नाही",
+      "volumeMl": "प्रमाण (मिली)",
+      "donorMissingTitle": "दाता गहाळ आहे",
+      "selectDonorMsg": "एक दाता निवडा.",
+      "selectBloodGroupCollected": "संकलित रक्तगट निवडा.",
+      "donationRecordedTitle": "दान नोंदवले",
+      "donationRecordedDesc": "दान नोंदवले गेले — स्क्रीनिंग प्रलंबित.",
+      "couldNotRecordDonation": "दान नोंदवता आले नाही.",
+      "couldNotLoadDonationRecords": "दान नोंदी लोड होऊ शकल्या नाहीत.",
+      "couldNotLoadDonationsData": "दान डेटा लोड होऊ शकला नाही.",
+      "screeningResultTitle": "स्क्रीनिंग निकाल",
+      "notesOptionalPlaceholder": "टिपा (ऐच्छिक)",
+      "passed": "पास",
+      "unitAddedToStockTitle": "युनिट स्टॉकमध्ये जोडले",
+      "markedFailedTitle": "फेल चिन्हांकित",
+      "screeningPassedDesc": "स्क्रीनिंग पास झाले — युनिट आता स्टॉकमध्ये आहे.",
+      "screeningFailedDesc": "स्क्रीनिंग फेल झाले — युनिट टाकून दिले, स्टॉकमध्ये जोडले नाही.",
+      "couldNotRecordScreening": "स्क्रीनिंग निकाल नोंदवता आला नाही."
+    },
+    "camps": {
+      "title": "दान शिबिरे",
+      "summary": "{{count}} शिबिर(े) · सर्व शिबिरांत एकूण {{total}} दान",
+      "scheduleCamp": "शिबिर वेळापत्रक करा",
+      "noCampsYet": "अजून कोणतेही दान शिबिर वेळापत्रकबद्ध नाही",
+      "organizedByLabel": "आयोजक: {{organizer}}",
+      "donorsLabel": "दाते",
+      "campNameLabel": "शिबिर / मोहीम नाव",
+      "campNamePlaceholder": "उदा. कम्युनिटी सेंटर मोहीम",
+      "location": "स्थान",
+      "organizer": "आयोजक",
+      "scheduleCampModalTitle": "दान शिबिर वेळापत्रक करा",
+      "missingNameTitle": "नाव गहाळ आहे",
+      "enterCampName": "शिबिर/मोहिमेचे नाव प्रविष्ट करा.",
+      "missingDateTitle": "तारीख गहाळ आहे",
+      "selectCampDate": "शिबिराची तारीख निवडा.",
+      "campScheduledTitle": "शिबिर वेळापत्रकबद्ध केले",
+      "campScheduledDesc": "दान शिबिर यशस्वीरित्या वेळापत्रकबद्ध झाले.",
+      "couldNotScheduleCamp": "शिबिर वेळापत्रकबद्ध करता आले नाही.",
+      "couldNotLoadCamps": "दान शिबिरे लोड होऊ शकली नाहीत."
+    },
+    "stock": {
+      "title": "रक्त साठा",
+      "summaryNoExpiring": "{{count}} युनिट उपलब्ध",
+      "summaryWithExpiring": "{{count}} युनिट उपलब्ध · {{expiring}} लवकरच कालबाह्य",
+      "allUnits": "सर्व युनिट",
+      "expiringSoon": "लवकरच कालबाह्य",
+      "noUnitsToShow": "दाखवण्यासाठी कोणतेही युनिट नाही",
+      "unitsAvailableLabel": "युनिट उपलब्ध",
+      "expiringSoonCount": "{{count}} लवकरच कालबाह्य",
+      "unitCol": "युनिट",
+      "groupCol": "गट",
+      "componentCol": "घटक",
+      "collectedCol": "संकलित",
+      "expiresCol": "मुदत संपते",
+      "couldNotLoadStock": "रक्त साठा लोड होऊ शकला नाही."
+    },
+    "issue": {
+      "title": "रक्त वितरण",
+      "activeIssuesCount": "{{count}} सक्रिय वितरणे",
+      "issueUnits": "युनिट वितरित करा",
+      "noIssuesYet": "अजून कोणतेही रक्त वितरित केले नाही",
+      "unitsCount": "{{count}} युनिट · {{groups}}",
+      "issueUnitsModalTitle": "रक्त युनिट वितरित करा",
+      "recipientName": "प्राप्तकर्त्याचे नाव",
+      "recipientBloodGroup": "प्राप्तकर्त्याचा रक्तगट",
+      "customerOptional": "ग्राहक (ऐच्छिक — इनव्हॉइससाठी आवश्यक)",
+      "customerSearchPlaceholder": "नाव किंवा फोनने शोधा...",
+      "purpose": "उद्देश",
+      "purposePlaceholder": "उदा. शस्त्रक्रिया रक्तसंक्रमण",
+      "pricePerUnit": "प्रति युनिट किंमत",
+      "fastMatchTitle": "फास्ट मॅच — गट/घटक/प्रमाणानुसार सुसंगत युनिट शोधा",
+      "qtyPlaceholder": "प्रमाण",
+      "findAndSelect": "शोधा आणि निवडा",
+      "matching": "जुळवत आहे…",
+      "matchedAllDesc": "विनंती केलेली सर्व {{count}} युनिट जुळली.",
+      "matchedShortDesc": "विनंती केलेल्या {{requested}} पैकी फक्त {{matched}} सुसंगत युनिट उपलब्ध — {{shortfall}} कमी.",
+      "selectAvailableUnits": "उपलब्ध युनिट निवडा ({{count}} निवडले)",
+      "noUnitsInStock": "सध्या स्टॉकमध्ये कोणतेही युनिट नाही.",
+      "statusIssued": "वितरित",
+      "statusCancelled": "रद्द",
+      "incompatibleWarningTitle": "असुसंगत युनिट — वितरण रोखले.",
+      "incompatibleWarningDesc": "हे खऱ्या क्रॉसमॅच चाचणीचा पर्याय नाही:",
+      "overrideEmergencyRelease": "ओव्हरराईड — आपत्कालीन प्रकाशन (दस्तऐवजीकृत कारण आवश्यक)",
+      "overrideReasonPlaceholder": "हे असुसंगत युनिट तरीही का वितरित केले जात आहे (उदा. जीवघेणी आणीबाणी, स्टॉकमध्ये सुसंगत युनिट नाही, डॉक्टरांचा आदेश)...",
+      "issuing": "वितरित करत आहे…",
+      "generateInvoice": "इनव्हॉइस तयार करा",
+      "generating": "तयार करत आहे…",
+      "cancelIssue": "वितरण रद्द करा",
+      "overrideReasonLabel": "ओव्हरराईड कारण:",
+      "cancelIssueConfirmMsg": "हे वितरण रद्द करून सर्व युनिट स्टॉकमध्ये परत करायचे?",
+      "missingRecipientTitle": "प्राप्तकर्ता गहाळ आहे",
+      "enterRecipientName": "प्राप्तकर्त्याचे नाव प्रविष्ट करा.",
+      "noUnitsSelectedTitle": "कोणतेही युनिट निवडलेले नाही",
+      "selectAtLeastOneUnit": "वितरित करण्यासाठी किमान एक युनिट निवडा.",
+      "incompatibleSelectedTitle": "असुसंगत युनिट निवडले",
+      "checkOverrideMsg": "पुढे जाण्यासाठी \"ओव्हरराईड — आपत्कालीन प्रकाशन\" तपासा आणि कारण नोंदवा.",
+      "reasonRequiredTitle": "कारण आवश्यक आहे",
+      "enterOverrideReason": "आपत्कालीन-प्रकाशन ओव्हरराईडसाठी दस्तऐवजीकृत कारण प्रविष्ट करा.",
+      "selectRecipientBloodGroupFirst": "प्रथम प्राप्तकर्त्याचा रक्तगट निवडा.",
+      "invalidQuantityTitle": "अवैध प्रमाण",
+      "enterUnitsNeeded": "किती युनिट हवीत ते नमूद करा.",
+      "unitsIssuedTitle": "युनिट वितरित केले",
+      "unitsIssuedDesc": "रक्त युनिट यशस्वीरित्या वितरित केले.",
+      "couldNotIssueUnits": "युनिट वितरित करता आले नाहीत.",
+      "couldNotLoadIssues": "रक्त वितरणे लोड होऊ शकली नाहीत.",
+      "couldNotLoadIssueData": "रक्त वितरण डेटा लोड होऊ शकला नाही.",
+      "couldNotVerifyCompatibility": "रक्त सुसंगतता सत्यापित होऊ शकली नाही.",
+      "couldNotRunFastMatch": "फास्ट-मॅच शोध चालवता आला नाही.",
+      "couldNotRefreshIssueDetails": "वितरण तपशील रिफ्रेश होऊ शकला नाही.",
+      "issueCancelledTitle": "वितरण रद्द केले",
+      "issueCancelledDesc": "युनिट स्टॉकमध्ये परत केले.",
+      "couldNotCancelIssue": "वितरण रद्द करता आले नाही.",
+      "invoiceGeneratedTitle": "इनव्हॉइस तयार केले",
+      "invoiceGeneratedDesc": "या वितरणासाठी इनव्हॉइस तयार केले.",
+      "couldNotGenerateInvoice": "इनव्हॉइस तयार करता आले नाही."
     }
   }
 }

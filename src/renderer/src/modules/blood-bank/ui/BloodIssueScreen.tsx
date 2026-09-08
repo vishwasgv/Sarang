@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Send, Plus, RefreshCw, X, AlertTriangle } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
@@ -10,6 +11,14 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 
 const BLOOD_GROUPS = ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'] as const
+
+const COMPONENT_LABEL_KEY: Record<string, string> = {
+  WHOLE_BLOOD: 'componentWholeBlood',
+  PACKED_RBC: 'componentPackedRbc',
+  PLATELETS: 'componentPlatelets',
+  PLASMA: 'componentPlasma',
+  CRYOPRECIPITATE: 'componentCryoprecipitate',
+}
 
 interface Customer { id: string; customerName: string; phone: string | null }
 interface StockUnit { donationRecordId: string; donationNumber: string; bloodGroup: string; componentType: string; expiryDate: string; isExpired: boolean }
@@ -31,10 +40,16 @@ interface BloodIssue {
 const BLANK_FORM = { recipientName: '', recipientBloodGroup: '', purpose: '', price: '' }
 
 export function BloodIssueScreen() {
+  const { t } = useTranslation()
   const { hasPermission } = useAuthStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canCreate = hasPermission('bloodBank.create')
   const canManage = hasPermission('bloodBank.manage')
+
+  function componentLabel(type: string): string {
+    const key = COMPONENT_LABEL_KEY[type]
+    return key ? t(`bloodBank.${key}`) : type.replace('_', ' ')
+  }
 
   const [issues, setIssues] = useState<BloodIssue[]>([])
   const [stockUnits, setStockUnits] = useState<StockUnit[]>([])
@@ -76,20 +91,20 @@ export function BloodIssueScreen() {
         const d = iRes.data as { issues: BloodIssue[]; total: number }
         setIssues(d.issues ?? [])
       } else {
-        toastError('Failed', iRes.error?.message ?? 'Could not load blood issues.')
+        toastError(t('bloodBank.failed'), iRes.error?.message ?? t('bloodBank.issue.couldNotLoadIssues'))
       }
       if (sRes.success && sRes.data) {
         const d = sRes.data as { units: StockUnit[] }
         setStockUnits((d.units ?? []).filter((u) => !u.isExpired))
       } else {
-        toastError('Failed', sRes.error?.message ?? 'Could not load blood stock.')
+        toastError(t('bloodBank.failed'), sRes.error?.message ?? t('bloodBank.stock.couldNotLoadStock'))
       }
     } catch {
-      toastError('Failed', 'Could not load blood issue data.')
+      toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotLoadIssueData'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { load() }, [load])
 
@@ -112,7 +127,7 @@ export function BloodIssueScreen() {
       .then((res) => {
         if (cancelled) return
         if (!res.success || !res.data) {
-          toastError('Failed', res.error?.message ?? 'Could not verify blood compatibility.')
+          toastError(t('bloodBank.failed'), res.error?.message ?? t('bloodBank.issue.couldNotVerifyCompatibility'))
           return
         }
         const results = res.data as Array<{ donationRecordId: string; compatible: boolean; note: string }>
@@ -121,15 +136,15 @@ export function BloodIssueScreen() {
         setOverrideReason('')
       })
       .catch(() => {
-        if (!cancelled) toastError('Failed', 'Could not verify blood compatibility.')
+        if (!cancelled) toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotVerifyCompatibility'))
       })
     return () => { cancelled = true }
-  }, [form.recipientBloodGroup, selectedUnitIds, stockUnits, toastError])
+  }, [form.recipientBloodGroup, selectedUnitIds, stockUnits, toastError, t])
 
   async function handleFastMatch() {
-    if (!form.recipientBloodGroup) { toastError('Missing Blood Group', 'Select the recipient blood group first.'); return }
+    if (!form.recipientBloodGroup) { toastError(t('bloodBank.missingBloodGroupTitle'), t('bloodBank.issue.selectRecipientBloodGroupFirst')); return }
     const quantity = Number(fastMatchQty)
-    if (!quantity || quantity < 1) { toastError('Invalid Quantity', 'Enter how many units are needed.'); return }
+    if (!quantity || quantity < 1) { toastError(t('bloodBank.issue.invalidQuantityTitle'), t('bloodBank.issue.enterUnitsNeeded')); return }
     setFastMatching(true)
     try {
       const res = await api.bloodBank.fastMatchSearch({
@@ -142,28 +157,28 @@ export function BloodIssueScreen() {
         setSelectedUnitIds(d.matched.map((u) => u.donationRecordId))
         setFastMatchResult({ matchedCount: d.matchedCount, requestedQuantity: d.requestedQuantity, fulfilled: d.fulfilled, shortfall: d.shortfall })
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not run fast-match search.')
+        toastError(t('bloodBank.failed'), res.error?.message ?? t('bloodBank.issue.couldNotRunFastMatch'))
       }
     } catch {
-      toastError('Failed', 'Could not run fast-match search.')
+      toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotRunFastMatch'))
     } finally {
       setFastMatching(false)
     }
   }
 
   async function handleCreate() {
-    if (!form.recipientName.trim()) { toastError('Missing Recipient', "Enter the recipient's name."); return }
-    if (selectedUnitIds.length === 0) { toastError('No Units Selected', 'Select at least one unit to issue.'); return }
+    if (!form.recipientName.trim()) { toastError(t('bloodBank.issue.missingRecipientTitle'), t('bloodBank.issue.enterRecipientName')); return }
+    if (selectedUnitIds.length === 0) { toastError(t('bloodBank.issue.noUnitsSelectedTitle'), t('bloodBank.issue.selectAtLeastOneUnit')); return }
     // Phase 58 §2 — client-side mirror of the server-side block, so the
     // cashier gets an immediate, specific message instead of a generic
     // "Could not issue units." after a round-trip. The server enforces this
     // regardless — this is a UX improvement, not the actual safety gate.
     if (incompatibleUnits.length > 0 && !overrideIncompatibility) {
-      toastError('Incompatible Units Selected', 'Check "Override — emergency release" and document a reason to proceed.')
+      toastError(t('bloodBank.issue.incompatibleSelectedTitle'), t('bloodBank.issue.checkOverrideMsg'))
       return
     }
     if (incompatibleUnits.length > 0 && overrideIncompatibility && !overrideReason.trim()) {
-      toastError('Reason Required', 'Enter a documented reason for the emergency-release override.')
+      toastError(t('bloodBank.issue.reasonRequiredTitle'), t('bloodBank.issue.enterOverrideReason'))
       return
     }
     setSaving(true)
@@ -179,7 +194,7 @@ export function BloodIssueScreen() {
         overrideReason: incompatibleUnits.length > 0 ? overrideReason.trim() || undefined : undefined,
       })
       if (res.success) {
-        toastSuccess('Units Issued', 'Blood units issued successfully.')
+        toastSuccess(t('bloodBank.issue.unitsIssuedTitle'), t('bloodBank.issue.unitsIssuedDesc'))
         setShowCreate(false)
         setForm({ ...BLANK_FORM })
         setPickedCustomer(null)
@@ -191,10 +206,10 @@ export function BloodIssueScreen() {
         setFastMatchQty('1')
         load()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not issue units.')
+        toastError(t('bloodBank.failed'), (res.error as { message: string })?.message ?? t('bloodBank.issue.couldNotIssueUnits'))
       }
     } catch {
-      toastError('Failed', 'Could not issue units.')
+      toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotIssueUnits'))
     } finally {
       setSaving(false)
     }
@@ -206,10 +221,10 @@ export function BloodIssueScreen() {
       if (res.success && res.data) {
         setDetail(res.data as BloodIssue)
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not refresh issue details.')
+        toastError(t('bloodBank.failed'), res.error?.message ?? t('bloodBank.issue.couldNotRefreshIssueDetails'))
       }
     } catch {
-      toastError('Failed', 'Could not refresh issue details.')
+      toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotRefreshIssueDetails'))
     }
   }
 
@@ -219,11 +234,11 @@ export function BloodIssueScreen() {
     try {
       const res = await api.bloodBank.cancelIssue({ id: detail.id })
       setConfirmCancel(false)
-      if (res.success) { toastSuccess('Issue Cancelled', 'Units returned to stock.'); setDetail(null); load() }
-      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not cancel issue.')
+      if (res.success) { toastSuccess(t('bloodBank.issue.issueCancelledTitle'), t('bloodBank.issue.issueCancelledDesc')); setDetail(null); load() }
+      else toastError(t('bloodBank.failed'), (res.error as { message: string })?.message ?? t('bloodBank.issue.couldNotCancelIssue'))
     } catch {
       setConfirmCancel(false)
-      toastError('Failed', 'Could not cancel issue.')
+      toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotCancelIssue'))
     } finally {
       setCancelling(false)
     }
@@ -233,10 +248,10 @@ export function BloodIssueScreen() {
     setGeneratingInvoice(true)
     try {
       const res = await api.bloodBank.generateIssueInvoice({ id })
-      if (res.success) { toastSuccess('Invoice Generated', 'Invoice generated for this issue.'); refreshDetail(id); load() }
-      else toastError('Failed', (res.error as { message: string })?.message ?? 'Could not generate invoice.')
+      if (res.success) { toastSuccess(t('bloodBank.issue.invoiceGeneratedTitle'), t('bloodBank.issue.invoiceGeneratedDesc')); refreshDetail(id); load() }
+      else toastError(t('bloodBank.failed'), (res.error as { message: string })?.message ?? t('bloodBank.issue.couldNotGenerateInvoice'))
     } catch {
-      toastError('Failed', 'Could not generate invoice.')
+      toastError(t('bloodBank.failed'), t('bloodBank.issue.couldNotGenerateInvoice'))
     } finally {
       setGeneratingInvoice(false)
     }
@@ -249,9 +264,9 @@ export function BloodIssueScreen() {
           <div>
             <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
               <Send size={24} className="text-brand" />
-              Blood Issue
+              {t('bloodBank.issue.title')}
             </h1>
-            <p className="text-sm text-text-secondary mt-0.5">{issues.filter((i) => i.status === 'ISSUED').length} active issues</p>
+            <p className="text-sm text-text-secondary mt-0.5">{t('bloodBank.issue.activeIssuesCount', { count: issues.filter((i) => i.status === 'ISSUED').length })}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={load} className="h-11 w-11 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-surface-hover transition-colors">
@@ -259,7 +274,7 @@ export function BloodIssueScreen() {
             </button>
             {canManage && (
               <button onClick={() => setShowCreate(true)} className="h-11 px-4 flex items-center gap-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors">
-                <Plus size={16} /> Issue Units
+                <Plus size={16} /> {t('bloodBank.issue.issueUnits')}
               </button>
             )}
           </div>
@@ -272,7 +287,7 @@ export function BloodIssueScreen() {
         ) : issues.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
             <Send size={40} className="mb-3 opacity-30" />
-            <p className="text-base font-medium">No blood issued yet</p>
+            <p className="text-base font-medium">{t('bloodBank.issue.noIssuesYet')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -283,10 +298,10 @@ export function BloodIssueScreen() {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 flex-wrap">
                       <span className="font-mono text-xs text-text-secondary">{i.issueNumber}</span>
-                      <Badge variant={i.status === 'ISSUED' ? 'success' : 'danger'} size="sm">{i.status}</Badge>
+                      <Badge variant={i.status === 'ISSUED' ? 'success' : 'danger'} size="sm">{i.status === 'ISSUED' ? t('bloodBank.issue.statusIssued') : t('bloodBank.issue.statusCancelled')}</Badge>
                     </div>
                     <p className="mt-1 font-semibold text-text-primary">{i.recipientName}</p>
-                    <p className="text-sm text-text-secondary">{i.items.length} unit(s) · {i.items.map((it) => it.bloodGroup).join(', ')}</p>
+                    <p className="text-sm text-text-secondary">{t('bloodBank.issue.unitsCount', { count: i.items.length, groups: i.items.map((it) => it.bloodGroup).join(', ') })}</p>
                   </div>
                   <div className="text-end shrink-0">
                     <p className="text-sm font-bold text-text-primary">{formatCurrency(i.totalAmount)}</p>
@@ -304,41 +319,41 @@ export function BloodIssueScreen() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] overflow-auto">
             <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-bold text-text-primary">Issue Blood Units</h2>
+              <h2 className="text-xl font-bold text-text-primary">{t('bloodBank.issue.issueUnitsModalTitle')}</h2>
               <button onClick={() => setShowCreate(false)} className="text-text-secondary hover:text-text-primary"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-text-primary mb-1">Recipient Name</label>
+                <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.issue.recipientName')}</label>
                 <input value={form.recipientName} onChange={(e) => setForm((f) => ({ ...f, recipientName: e.target.value }))}
                   className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-text-primary mb-1">Recipient Blood Group</label>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.issue.recipientBloodGroup')}</label>
                   <select value={form.recipientBloodGroup} onChange={(e) => { setForm((f) => ({ ...f, recipientBloodGroup: e.target.value })); setFastMatchResult(null) }}
                     className="w-full h-12 px-4 rounded-xl border border-border text-base bg-white dark:bg-slate-900">
-                    <option value="">Unknown</option>
+                    <option value="">{t('bloodBank.unknown')}</option>
                     {BLOOD_GROUPS.map((g) => <option key={g} value={g}>{g}</option>)}
                   </select>
                 </div>
                 <div>
                   <CustomerPicker
-                    label="Customer (optional — needed to invoice)"
+                    label={t('bloodBank.issue.customerOptional')}
                     value={pickedCustomer}
                     onChange={setPickedCustomer}
-                    placeholder="Search by name or phone..."
+                    placeholder={t('bloodBank.issue.customerSearchPlaceholder')}
                   />
                 </div>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-text-primary mb-1">Purpose</label>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.issue.purpose')}</label>
                   <input value={form.purpose} onChange={(e) => setForm((f) => ({ ...f, purpose: e.target.value }))}
-                    placeholder="e.g. Surgery transfusion" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
+                    placeholder={t('bloodBank.issue.purposePlaceholder')} className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-text-primary mb-1">Price per Unit</label>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.issue.pricePerUnit')}</label>
                   <input type="number" value={form.price} onChange={(e) => setForm((f) => ({ ...f, price: e.target.value }))}
                     placeholder="0" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
@@ -346,45 +361,45 @@ export function BloodIssueScreen() {
 
               {/* Phase 67 §9.1 — Blood Bank item 5: emergency fast-match search. */}
               <div className="bg-brand/5 border border-brand/20 rounded-xl p-3 space-y-2">
-                <p className="text-xs font-semibold text-brand">Fast Match — find compatible units by group/component/quantity</p>
+                <p className="text-xs font-semibold text-brand">{t('bloodBank.issue.fastMatchTitle')}</p>
                 <div className="flex items-center gap-2 flex-wrap">
                   <select value={fastMatchComponent} onChange={(e) => setFastMatchComponent(e.target.value)}
                     className="h-9 px-3 rounded-lg border border-border text-xs bg-white dark:bg-slate-900">
-                    <option value="">Any component</option>
-                    <option value="WHOLE_BLOOD">Whole Blood</option>
-                    <option value="PACKED_RBC">Packed RBC</option>
-                    <option value="PLATELETS">Platelets</option>
-                    <option value="PLASMA">Plasma</option>
-                    <option value="CRYOPRECIPITATE">Cryoprecipitate</option>
+                    <option value="">{t('bloodBank.componentAny')}</option>
+                    <option value="WHOLE_BLOOD">{t('bloodBank.componentWholeBlood')}</option>
+                    <option value="PACKED_RBC">{t('bloodBank.componentPackedRbc')}</option>
+                    <option value="PLATELETS">{t('bloodBank.componentPlatelets')}</option>
+                    <option value="PLASMA">{t('bloodBank.componentPlasma')}</option>
+                    <option value="CRYOPRECIPITATE">{t('bloodBank.componentCryoprecipitate')}</option>
                   </select>
                   <input type="number" min="1" value={fastMatchQty} onChange={(e) => setFastMatchQty(e.target.value)}
-                    className="w-20 h-9 px-3 rounded-lg border border-border text-xs" placeholder="Qty" />
+                    className="w-20 h-9 px-3 rounded-lg border border-border text-xs" placeholder={t('bloodBank.issue.qtyPlaceholder')} />
                   <button onClick={handleFastMatch} disabled={fastMatching}
                     className="h-9 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark disabled:opacity-50">
-                    {fastMatching ? 'Matching…' : 'Find & Select'}
+                    {fastMatching ? t('bloodBank.issue.matching') : t('bloodBank.issue.findAndSelect')}
                   </button>
                 </div>
                 {fastMatchResult && (
                   <p className={`text-xs ${fastMatchResult.fulfilled ? 'text-success' : 'text-danger'}`}>
                     {fastMatchResult.fulfilled
-                      ? `Matched all ${fastMatchResult.matchedCount} unit(s) requested.`
-                      : `Only ${fastMatchResult.matchedCount} of ${fastMatchResult.requestedQuantity} compatible unit(s) available — short by ${fastMatchResult.shortfall}.`}
+                      ? t('bloodBank.issue.matchedAllDesc', { count: fastMatchResult.matchedCount })
+                      : t('bloodBank.issue.matchedShortDesc', { matched: fastMatchResult.matchedCount, requested: fastMatchResult.requestedQuantity, shortfall: fastMatchResult.shortfall })}
                   </p>
                 )}
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-text-primary mb-2">Select Available Units ({selectedUnitIds.length} selected)</label>
+                <label className="block text-sm font-semibold text-text-primary mb-2">{t('bloodBank.issue.selectAvailableUnits', { count: selectedUnitIds.length })}</label>
                 <div className="max-h-56 overflow-y-auto border border-border rounded-xl divide-y divide-border">
                   {stockUnits.length === 0 ? (
-                    <p className="p-4 text-sm text-text-secondary">No units currently in stock.</p>
+                    <p className="p-4 text-sm text-text-secondary">{t('bloodBank.issue.noUnitsInStock')}</p>
                   ) : stockUnits.map((u) => (
                     <label key={u.donationRecordId} className="flex items-center gap-3 p-3 cursor-pointer hover:bg-surface-hover">
                       <input type="checkbox" checked={selectedUnitIds.includes(u.donationRecordId)} onChange={() => toggleUnit(u.donationRecordId)} />
                       <span className="font-mono text-xs text-text-secondary">{u.donationNumber}</span>
                       <Badge variant="brand" size="sm">{u.bloodGroup}</Badge>
-                      <span className="text-xs text-text-secondary">{u.componentType.replace('_', ' ')}</span>
-                      <span className="text-xs text-text-secondary ms-auto">Expires {formatDate(u.expiryDate)}</span>
+                      <span className="text-xs text-text-secondary">{componentLabel(u.componentType)}</span>
+                      <span className="text-xs text-text-secondary ms-auto">{t('bloodBank.expiresLabel', { date: formatDate(u.expiryDate) })}</span>
                     </label>
                   ))}
                 </div>
@@ -400,28 +415,28 @@ export function BloodIssueScreen() {
                   <div className="flex items-start gap-2">
                     <AlertTriangle size={16} className="text-danger shrink-0 mt-0.5" />
                     <div className="text-xs text-text-secondary space-y-1">
-                      <p><strong className="text-danger">Incompatible unit(s) — issuance blocked.</strong> Not a substitute for a real crossmatch test:</p>
+                      <p><strong className="text-danger">{t('bloodBank.issue.incompatibleWarningTitle')}</strong> {t('bloodBank.issue.incompatibleWarningDesc')}</p>
                       {incompatibleUnits.map((u) => <p key={u.donationRecordId}>{u.note}</p>)}
                     </div>
                   </div>
                   <label className="flex items-center gap-2 text-xs font-medium text-text-primary ps-6">
                     <input type="checkbox" checked={overrideIncompatibility} onChange={(e) => setOverrideIncompatibility(e.target.checked)} />
-                    Override — emergency release (documented reason required)
+                    {t('bloodBank.issue.overrideEmergencyRelease')}
                   </label>
                   {overrideIncompatibility && (
                     <textarea value={overrideReason} onChange={(e) => setOverrideReason(e.target.value)} rows={2}
-                      placeholder="Why this incompatible unit is being issued anyway (e.g. life-threatening emergency, no compatible unit in stock, physician's order)..."
+                      placeholder={t('bloodBank.issue.overrideReasonPlaceholder')}
                       className="w-full px-3 py-2 ms-6 rounded-lg border border-border text-xs resize-none" style={{ width: 'calc(100% - 1.5rem)' }} />
                   )}
                 </div>
               )}
             </div>
             <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setShowCreate(false)} className="flex-1 h-12 rounded-xl border border-border text-text-secondary font-semibold hover:bg-surface-hover transition-colors">Cancel</button>
+              <button onClick={() => setShowCreate(false)} className="flex-1 h-12 rounded-xl border border-border text-text-secondary font-semibold hover:bg-surface-hover transition-colors">{t('common.cancel')}</button>
               <button onClick={handleCreate}
                 disabled={saving || selectedUnitIds.length === 0 || (incompatibleUnits.length > 0 && (!overrideIncompatibility || !overrideReason.trim()))}
                 className="flex-1 h-12 rounded-xl bg-brand text-white font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
-                {saving ? 'Issuing…' : 'Issue Units'}
+                {saving ? t('bloodBank.issue.issuing') : t('bloodBank.issue.issueUnits')}
               </button>
             </div>
           </div>
@@ -440,24 +455,24 @@ export function BloodIssueScreen() {
               <button onClick={() => setDetail(null)} className="text-text-secondary hover:text-text-primary text-2xl leading-none shrink-0">×</button>
             </div>
             <div className="p-6 space-y-3 text-sm">
-              <Badge variant={detail.status === 'ISSUED' ? 'success' : 'danger'} size="sm">{detail.status}</Badge>
-              {detail.purpose && <div className="flex justify-between"><span className="text-text-secondary">Purpose</span><span className="text-text-primary">{detail.purpose}</span></div>}
+              <Badge variant={detail.status === 'ISSUED' ? 'success' : 'danger'} size="sm">{detail.status === 'ISSUED' ? t('bloodBank.issue.statusIssued') : t('bloodBank.issue.statusCancelled')}</Badge>
+              {detail.purpose && <div className="flex justify-between"><span className="text-text-secondary">{t('bloodBank.issue.purpose')}</span><span className="text-text-primary">{detail.purpose}</span></div>}
               <div className="space-y-2">
                 {detail.items.map((it) => (
                   <div key={it.id} className="border border-border rounded-lg p-3">
-                    <div className="flex items-center gap-2"><Badge variant="brand" size="sm">{it.bloodGroup}</Badge><span className="text-xs text-text-secondary">{it.componentType.replace('_', ' ')}</span><span className="ms-auto text-xs font-semibold">{formatCurrency(it.price)}</span></div>
+                    <div className="flex items-center gap-2"><Badge variant="brand" size="sm">{it.bloodGroup}</Badge><span className="text-xs text-text-secondary">{componentLabel(it.componentType)}</span><span className="ms-auto text-xs font-semibold">{formatCurrency(it.price)}</span></div>
                     {it.compatibilityNote && <p className={`text-xs mt-1 ${it.overrideReason ? 'text-danger' : 'text-text-secondary'}`}>{it.compatibilityNote}</p>}
-                    {it.overrideReason && <p className="text-xs text-text-secondary mt-0.5"><strong>Override reason:</strong> {it.overrideReason}</p>}
+                    {it.overrideReason && <p className="text-xs text-text-secondary mt-0.5"><strong>{t('bloodBank.issue.overrideReasonLabel')}</strong> {it.overrideReason}</p>}
                   </div>
                 ))}
               </div>
-              <div className="flex justify-between pt-2 border-t border-border"><span className="text-text-secondary">Total</span><span className="font-semibold text-text-primary">{formatCurrency(detail.totalAmount)}</span></div>
+              <div className="flex justify-between pt-2 border-t border-border"><span className="text-text-secondary">{t('common.total')}</span><span className="font-semibold text-text-primary">{formatCurrency(detail.totalAmount)}</span></div>
 
               {canCreate && detail.customerId && !detail.invoiceId && detail.status === 'ISSUED' && (
-                <button onClick={() => handleGenerateInvoice(detail.id)} disabled={generatingInvoice} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors disabled:opacity-50">{generatingInvoice ? 'Generating…' : 'Generate Invoice'}</button>
+                <button onClick={() => handleGenerateInvoice(detail.id)} disabled={generatingInvoice} className="w-full h-11 rounded-xl border border-brand text-brand text-sm font-semibold hover:bg-brand/5 transition-colors disabled:opacity-50">{generatingInvoice ? t('bloodBank.issue.generating') : t('bloodBank.issue.generateInvoice')}</button>
               )}
               {canManage && detail.status === 'ISSUED' && !detail.invoiceId && (
-                <button onClick={() => setConfirmCancel(true)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">Cancel Issue</button>
+                <button onClick={() => setConfirmCancel(true)} className="w-full h-11 rounded-xl border border-red-200 text-red-600 text-sm font-semibold hover:bg-red-50 transition-colors">{t('bloodBank.issue.cancelIssue')}</button>
               )}
             </div>
           </div>
@@ -469,9 +484,9 @@ export function BloodIssueScreen() {
         onClose={() => setConfirmCancel(false)}
         onConfirm={handleCancel}
         loading={cancelling}
-        title="Cancel Issue"
-        message="Cancel this issue and return all units to stock?"
-        confirmLabel="Cancel Issue"
+        title={t('bloodBank.issue.cancelIssue')}
+        message={t('bloodBank.issue.cancelIssueConfirmMsg')}
+        confirmLabel={t('bloodBank.issue.cancelIssue')}
       />
     </div>
   )

@@ -56,7 +56,7 @@
     "manual": "الدليل",
     "costCentres": "مراكز التكلفة",
     "budgets": "الميزانيات",
-    "serviceCombos": "Service Combos",
+    "serviceCombos": "باقات الخدمات",
     "checkIn": "تسجيل الدخول",
     "customOrders": "الطلبات المخصصة",
     "cateringEvents": "فعاليات التموين",
@@ -314,6 +314,7 @@
   },
   "billing": {
     "title": "الفواتير",
+    "sellingLocation": "موقع البيع",
     "newInvoice": "فاتورة جديدة",
     "invoiceList": "قائمة الفواتير",
     "invoiceNumber": "رقم الفاتورة",
@@ -1610,6 +1611,10 @@
       "distributor": "الموزع"
     },
     "defs": {
+      "discounts": {
+        "label": "تقرير الخصومات",
+        "description": "كل سطر فاتورة عليه خصم، مع تفصيل حسب الموظف والمنتج، بالإضافة إلى معدل تكرار الخصم ومتوسط نسبة الخصم %"
+      },
       "sales": {
         "label": "تقرير المبيعات",
         "description": "الإيرادات، الخصومات، الضرائب — مجمّعة حسب اليوم / الأسبوع / الشهر / السنة"
@@ -2055,212 +2060,212 @@
         "description": "عدد الحالات التي عالجتها حسب نوع الحالة — استشارات، رعاية وقائية، تطعيمات، وأخرى في كتالوج الخدمات الخاص بك — شهرًا بشهر."
       },
       "stylistRepeatClient": {
-        "label": "Stylist Repeat-Client Rate",
-        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+        "label": "معدل عودة عملاء خبير التصفيف",
+        "description": "لكل خبير تصفيف، كم عدد عملائه الخاصين الذين عادوا مرة ثانية — لوحة صدارة حقيقية لولاء العملاء"
       },
       "retailAttachRate": {
-        "label": "Retail Attach Rate",
-        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+        "label": "معدل إرفاق التجزئة",
+        "description": "عدد المرات التي تضمّنت فيها فاتورة خدمة محجوزة أيضاً بيع منتج تجزئة إضافي، لكل خبير تصفيف"
       },
       "membershipRenewalFunnel": {
-        "label": "Membership Renewal Funnel",
-        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+        "label": "قمع تجديد العضويات",
+        "description": "من العضويات التي انتهت في هذه الفترة، كم منها جدَّده نفس العميل فعلياً، حسب الخطة"
       },
       "classAttendanceHeatmap": {
-        "label": "Class Attendance Heatmap",
-        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+        "label": "خريطة حرارة حضور الفصول",
+        "description": "كثافة تسجيل الدخول الفعلية لكل فصل حسب يوم الأسبوع — أي الأوقات مزدحمة فعلاً، وليس فقط المسجَّلة"
       },
       "learnerProgressFunnel": {
-        "label": "Learner Progress Funnel",
-        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+        "label": "قمع تقدم المتعلمين",
+        "description": "كل متعلم سُجِّل حتى الآن، حسب أبعد مرحلة وصل إليها — من أول جلسة إلى اجتياز اختبار القيادة"
       },
       "caseAging": {
-        "label": "Case Aging",
-        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+        "label": "تقادم القضايا",
+        "description": "كل قضية مفتوحة، مرتبة حسب المدة التي ظلت عالقة فيها في مرحلتها القضائية الحالية"
       },
       "lawyerBillableHours": {
-        "label": "Billable Hours",
-        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+        "label": "الساعات القابلة للفوترة",
+        "description": "الساعات القابلة للفوترة مقابل ساعات العمل التطوعي لكل محامٍ، مقسّمة إلى مبالغ مفوترة بالفعل وأخرى غير مفوترة بعد"
       },
       "feeRealization": {
-        "label": "Fee Realization",
-        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+        "label": "تحقيق الرسوم",
+        "description": "من الرسوم المتكررة المتوقعة من كل تعامل نشط هذا الشهر، كم تم فوترته فعلياً"
       },
       "drawingApprovalCycleTime": {
-        "label": "Drawing Approval Cycle Time",
-        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+        "label": "زمن دورة اعتماد المخططات",
+        "description": "عدد الأيام التي استغرقها فعلياً اعتماد كل مخطط، من الإصدار إلى الموافقة، حسب التخصص"
       },
       "projectStageProgress": {
-        "label": "Project Stage Progress",
-        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+        "label": "تقدم مرحلة المشروع",
+        "description": "كل مشروع نشط، مرتب حسب المدة التي ظل عالقاً فيها في مرحلته الحالية"
       },
       "siteVisitBilling": {
-        "label": "Site Visit Billing",
-        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+        "label": "فوترة زيارات الموقع",
+        "description": "كل زيارة موقع قابلة للفوترة، غير المفوترة أولاً — ما يمكن فوترته اليوم بالضبط"
       },
       "materialTestResults": {
-        "label": "Material Test Results",
-        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+        "label": "نتائج اختبار المواد",
+        "description": "كل اختبار مادة مسجَّل، الفاشلة أولاً، مع معدل النجاح الإجمالي"
       },
       "retainerUtilization": {
-        "label": "Retainer Utilization",
-        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+        "label": "استخدام العقد الثابت",
+        "description": "الساعات المستخدمة هذه الفترة مقابل الحصة الشهرية لكل عقد ساعي، إلى جانب ما إذا كانت قد فوترت فعلياً"
       },
       "proposalWinRate": {
-        "label": "Proposal Win Rate",
-        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+        "label": "معدل الفوز بالعروض",
+        "description": "من كل عرض أُرسل فعلياً، كم منها قُبل مقابل انتهت صلاحيته دون توقيع"
       },
       "clientRevenueConcentration": {
-        "label": "Client Revenue Concentration",
-        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+        "label": "تركّز إيرادات العملاء",
+        "description": "ما هي حصة كل عميل من إجمالي الإيرادات المفوترة — مؤشر حقيقي لمخاطر الاعتماد"
       },
       "campaignROI": {
-        "label": "Campaign ROI",
-        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+        "label": "عائد استثمار الحملة",
+        "description": "ميزانية الإنفاق الإعلاني المخططة مقابل الإنفاق الفعلي لكل حملة، مع التكلفة لكل تحويل — دون عائد استثمار وهمي لأن الإيرادات المنسوبة غير متتبَّعة"
       },
       "deliverableStatusPipeline": {
-        "label": "Deliverable Status Pipeline",
-        "description": "Every content-calendar deliverable by status, with how many are overdue"
+        "label": "مسار حالة المُخرَجات",
+        "description": "كل مُخرَج في تقويم المحتوى حسب الحالة، مع عدد المتأخرة"
       },
       "channelPerformance": {
-        "label": "Channel Performance",
-        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+        "label": "أداء القناة",
+        "description": "إجمالي الإنفاق الإعلاني والنقرات والتحويلات لجميع الحملات على نفس القناة"
       },
       "retainerWorkDelivered": {
-        "label": "Retainer Work Delivered",
-        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+        "label": "أعمال العقد الثابت المسلَّمة",
+        "description": "لكل عقد تسويق ثابت، عدد المُخرَجات التي نُشرت فعلياً هذا الشهر مقابل الرسوم التي تُفوتر"
       },
       "issueAging": {
-        "label": "Issue Aging",
-        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+        "label": "تقادم المشكلات",
+        "description": "كل مشكلة مفتوحة حسب عدد أيام بقائها مفتوحة، مع تمييزها مقابل حد اتفاقية مستوى الخدمة الثابت حسب الأولوية"
       },
       "teamUtilization": {
-        "label": "Team Utilization",
-        "description": "Billable vs. non-billable hours logged per team member against a client project"
+        "label": "استخدام الفريق",
+        "description": "الساعات القابلة للفوترة مقابل غير القابلة للفوترة المسجَّلة لكل عضو فريق مقابل مشروع عميل"
       },
       "sprintBilling": {
-        "label": "Sprint Billing",
-        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+        "label": "فوترة السبرينت",
+        "description": "كل سبرينت مكتمل وما إذا كان عمله مرتبطاً فعلياً بمرحلة فوترة رئيسية بعد"
       },
       "deliveryPipeline": {
-        "label": "Delivery Pipeline",
-        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+        "label": "مسار التسليم",
+        "description": "كل حجز تصوير نشط حسب مدى تقدم إنتاجه اللاحق فعلياً، بالإضافة إلى التسليمات المتأخرة والحجوزات ذات المراجعات الكثيرة"
       },
       "shootTypeRevenueMix": {
-        "label": "Shoot-Type Revenue Mix",
-        "description": "Revenue, booking count, and average ticket per shoot type"
+        "label": "مزيج الإيرادات حسب نوع التصوير",
+        "description": "الإيرادات وعدد الحجوزات ومتوسط التذكرة لكل نوع تصوير"
       },
       "equipmentCheckout": {
-        "label": "Equipment Checkout",
-        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+        "label": "تسليم المعدات",
+        "description": "كل معدات الاستوديو المسلَّمة حالياً ولم تُعَد بعد، المتأخرة أولاً"
       },
       "vendorCostVsBudget": {
-        "label": "Vendor Cost vs. Budget",
-        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+        "label": "تكلفة المورد مقابل الميزانية",
+        "description": "إجمالي تكلفة المورد لكل فعالية مقابل ميزانية العميل وعرض الوكالة الخاص — رؤية حقيقية للهامش"
       },
       "vendorPerformanceHistory": {
-        "label": "Vendor Performance History",
-        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+        "label": "سجل أداء الموردين",
+        "description": "متوسط تقييم كل مورد مقيَّم عبر جميع الفعاليات التي عمل بها، الأدنى أولاً"
       },
       "occupancyTrend": {
-        "label": "Occupancy Trend",
-        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+        "label": "اتجاه الإشغال",
+        "description": "نسبة إشغال الغرف اليومية % خلال الفترة المحددة — هل الإشغال في اتجاه صاعد أم هابط؟"
       },
       "roomWiseADR": {
-        "label": "Room-wise ADR",
-        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+        "label": "ADR حسب الغرفة",
+        "description": "متوسط السعر اليومي (ADR) والليالي المباعة، مقسمة لكل غرفة — أي الغرف تحقق أعلى دخل؟"
       },
       "adrRevPAR": {
-        "label": "ADR & RevPAR",
-        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+        "label": "ADR و RevPAR",
+        "description": "متوسط السعر اليومي (ADR) والإيراد لكل غرفة متاحة (RevPAR)، بالاتجاه الشهري"
       },
       "carPartsVariance": {
-        "label": "Parts Cost Variance",
-        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+        "label": "انحراف تكلفة القطع",
+        "description": "تكلفة القطع الفعلية مقابل التقدير المُعطى عند الاستلام، للأعمال التي أُعطي لها تقدير"
       },
       "serviceTypeRevenue": {
-        "label": "Revenue by Service Type",
-        "description": "Which services bring in the most revenue, across every job card"
+        "label": "الإيرادات حسب نوع الخدمة",
+        "description": "أي الخدمات تحقق أعلى إيرادات، عبر كل بطاقة عمل"
       },
       "orderTurnaround": {
-        "label": "Order Turnaround Time",
-        "description": "How many days it actually takes from order to delivery, per order"
+        "label": "زمن دوران الطلب",
+        "description": "عدد الأيام التي تستغرقها فعلياً من الطلب إلى التسليم، لكل طلب"
       },
       "fittingStageTracker": {
-        "label": "Fitting-Stage Tracker",
-        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+        "label": "متتبع مرحلة القياس",
+        "description": "الطلبات الحالية في مرحلة التجربة أو التعديل، والمدة التي ظلت عالقة فيها هناك"
       },
       "fabricPopularity": {
-        "label": "Fabric / Design Popularity",
-        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+        "label": "شعبية القماش / التصميم",
+        "description": "أي الأقمشة والتصاميم الأكثر طلباً، والإيرادات وراءها"
       },
       "renewalFunnel": {
-        "label": "Renewal Funnel",
-        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+        "label": "قمع التجديد",
+        "description": "عقود الصيانة النشطة، مصنّفة حسب إلحاحية التجديد — من المتأخرة إلى غير المستحقة بعد"
       },
       "chemicalUsageCompliance": {
-        "label": "Chemical Usage / Compliance Log",
-        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+        "label": "سجل استخدام المواد الكيميائية / الامتثال",
+        "description": "كمية المبيدات المستخدمة لكل زيارة، وأي زيارة مكتملة لم يُسجَّل فيها استخدام مادة كيميائية"
       },
       "pestRecurringValueTrend": {
-        "label": "Recurring Contract Value Trend",
-        "description": "Actual AMC contract-fee revenue billed, trended by month"
+        "label": "اتجاه قيمة العقد المتكرر",
+        "description": "إيرادات رسوم عقد الصيانة الفعلية المفوترة، بالاتجاه الشهري"
       },
       "candidatePipelineFunnel": {
-        "label": "Candidate Pipeline Funnel",
-        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+        "label": "قمع مسار المرشحين",
+        "description": "تقدم كل مرشح — من الإضافة إلى المقابلة، إلى العرض، وأخيراً التوظيف"
       },
       "jobOrderFunnel": {
-        "label": "Job Order Funnel",
-        "description": "Open client job orders by status — the fill-progress view from the client side"
+        "label": "قمع طلبات التوظيف",
+        "description": "طلبات التوظيف المفتوحة للعميل حسب الحالة — عرض تقدم الشغل من جانب العميل"
       },
       "feePercentage": {
-        "label": "Client Fee-Percentage Tracking",
-        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+        "label": "تتبع نسبة رسوم العميل",
+        "description": "نسبة الرسوم المتفق عليها لكل طلب توظيف مقابل ما تحقق فعلياً في تعييناته"
       },
       "timeToFill": {
-        "label": "Time to Fill",
-        "description": "How many days it actually takes from job order to a candidate joining"
+        "label": "زمن التوظيف",
+        "description": "عدد الأيام التي تستغرقها فعلياً من طلب التوظيف إلى انضمام المرشح"
       },
       "sourceEffectiveness": {
-        "label": "Source Effectiveness",
-        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+        "label": "فعالية المصدر",
+        "description": "مصدر المرشح (إحالة، لينكد إن، موقع إلكتروني...) مقابل معدل تحويل التوظيف الفعلي"
       },
       "batchPerformanceTrend": {
-        "label": "Batch Performance Trend",
-        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+        "label": "اتجاه أداء الدفعة",
+        "description": "متوسط درجة الاختبار لكل دفعة، بالاتجاه شهراً بعد شهر — هل تتحسن الدفعة أم تتراجع؟"
       },
       "attendancePerformanceCorrelation": {
-        "label": "Attendance vs. Performance",
-        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+        "label": "الحضور مقابل الأداء",
+        "description": "هل الطلاب الأكثر حضوراً يحققون فعلاً درجات أعلى — نسبة الحضور الفعلية % مقابل متوسط الاختبار %، بالإضافة إلى معامل الارتباط لكامل الدفعة"
       },
       "feeDueUnderperformanceAlert": {
-        "label": "Fee-Due Underperformance Alert",
-        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+        "label": "تنبيه ضعف الأداء مع الرسوم المستحقة",
+        "description": "الطلاب الذين عليهم رسوم مستحقة ودرجاتهم أقل من 50% — قائمة عمل لترتيب أولويات التواصل"
       },
       "coilWastageYield": {
-        "label": "Coil Wastage & Yield",
-        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+        "label": "هدر الفتلة والعائد",
+        "description": "الطول المستلم مقابل المباع، ونسبة العائد %، والهدر المقدر لكل منتج يُباع بالفتلة"
       },
       "isiBisSafetyRegister": {
-        "label": "ISI/BIS Safety Register",
-        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+        "label": "سجل سلامة ISI/BIS",
+        "description": "سجل تتبع كل وحدة مُتتبَّعة بالرقم التسلسلي — الاستلام والضمان ومكان البيع"
       },
       "seasonalDemandForecast": {
-        "label": "Seasonal Demand Forecast",
-        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+        "label": "توقع الطلب الموسمي",
+        "description": "إجمالي المبيعات منذ البداية مجمّعة حسب الشهر التقويمي، مع تمييز موسم الذروة"
       },
       "institutionalOrderHistory": {
-        "label": "Institutional Order History",
-        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+        "label": "سجل الطلبات المؤسسية",
+        "description": "كل طلب جماعي سابق مع الحالة وعدد الأصناف والقيمة الإجمالية، للتخطيط للتجديد"
       },
       "locationStockSplit": {
-        "label": "Showroom-vs-Warehouse Stock",
-        "description": "Per-product stock split across every Location"
+        "label": "مخزون المعرض مقابل المستودع",
+        "description": "توزيع المخزون لكل منتج عبر كل موقع"
       },
       "deliveryInstallationSchedule": {
-        "label": "Delivery & Installation Schedule",
-        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+        "label": "جدول التسليم والتركيب",
+        "description": "حجوزات الأثاث التي لها تاريخ تسليم ضمن النطاق، كجدول زمني حقيقي"
       },
       "specWiseFastMovers": {
         "label": "الأصناف الأكثر مبيعًا حسب المواصفات",
@@ -2556,53 +2561,53 @@
       "dosesEvaluated": "الجرعات المُقيَّمة",
       "totalCases": "إجمالي الحالات",
       "distinctCaseTypes": "أنواع الحالات المميزة",
-      "totalEnrolled": "Total Enrolled",
-      "overallCompletionPercent": "DL Completion Rate %",
-      "totalOpenCases": "Open Cases",
-      "avgDaysInCurrentStage": "Avg. Days in Stage",
-      "staleCaseCount": "Stale Cases (90+ days)",
-      "totalApproved": "Drawings Approved",
-      "avgDaysToApprove": "Avg. Days to Approve",
-      "totalActiveProjects": "Active Projects",
-      "avgDaysInStage": "Avg. Days in Stage",
-      "totalBillableAmount": "Total Billable",
-      "totalBilledAmount": "Total Billed",
-      "totalUnbilledAmount": "Total Unbilled",
-      "unbilledCount": "Unbilled Visits",
-      "passCount": "Passed",
-      "failCount": "Failed",
-      "pendingCount": "Pending",
-      "passRatePercent": "Pass Rate %",
-      "totalRetainers": "Retainers",
-      "overUtilizedCount": "Over-Utilized",
-      "wonCount": "Won",
-      "lostCount": "Lost",
-      "winRatePercent": "Win Rate %",
-      "wonValue": "Won Value",
-      "topClientSharePercent": "Top Client Share %",
-      "top3SharePercent": "Top 3 Clients Share %",
-      "totalCampaigns": "Campaigns",
-      "totalBudget": "Total Budget",
-      "totalActualSpend": "Total Actual Spend",
-      "overBudgetCount": "Over Budget",
-      "totalDeliverables": "Deliverables",
-      "zeroDeliveredCount": "Zero Delivered",
-      "totalOpenIssues": "Open Issues",
-      "breachedCount": "SLA Breached",
-      "totalBillableHours": "Total Billable Hours",
-      "totalNonBillableHours": "Total Non-Billable Hours",
-      "totalCompletedSprints": "Completed Sprints",
-      "unlinkedCount": "Unbilled Sprints",
-      "totalActive": "Active Bookings",
-      "deliveredCount": "Delivered",
-      "avgRevisionRounds": "Avg. Revision Rounds",
-      "totalBookings": "Total Bookings",
-      "totalEvents": "Events",
-      "totalVendorCost": "Total Vendor Cost",
-      "totalRatedVendors": "Rated Vendors",
-      "overallAvgRating": "Overall Avg. Rating",
-      "correlationCoefficient": "Attendance–Performance Correlation",
-      "alertCount": "Students Flagged"
+      "totalEnrolled": "إجمالي المسجَّلين",
+      "overallCompletionPercent": "معدل إتمام رخصة القيادة %",
+      "totalOpenCases": "القضايا المفتوحة",
+      "avgDaysInCurrentStage": "متوسط الأيام (في المرحلة)",
+      "staleCaseCount": "قضايا راكدة (90+ يوماً)",
+      "totalApproved": "المخططات المعتمدة",
+      "avgDaysToApprove": "متوسط أيام الموافقة",
+      "totalActiveProjects": "المشاريع النشطة",
+      "avgDaysInStage": "متوسط الأيام (في المرحلة)",
+      "totalBillableAmount": "إجمالي المبلغ القابل للفوترة",
+      "totalBilledAmount": "إجمالي المبلغ المفوتر",
+      "totalUnbilledAmount": "إجمالي المبلغ غير المفوتر",
+      "unbilledCount": "الزيارات غير المفوترة",
+      "passCount": "ناجح",
+      "failCount": "راسب",
+      "pendingCount": "معلَّق",
+      "passRatePercent": "معدل النجاح %",
+      "totalRetainers": "العقود الثابتة",
+      "overUtilizedCount": "استخدام مفرط",
+      "wonCount": "فائز",
+      "lostCount": "خاسر",
+      "winRatePercent": "معدل الفوز %",
+      "wonValue": "قيمة الفوز",
+      "topClientSharePercent": "حصة أفضل عميل %",
+      "top3SharePercent": "حصة أفضل 3 عملاء %",
+      "totalCampaigns": "الحملات",
+      "totalBudget": "إجمالي الميزانية",
+      "totalActualSpend": "إجمالي الإنفاق الفعلي",
+      "overBudgetCount": "تجاوز الميزانية",
+      "totalDeliverables": "المُخرَجات",
+      "zeroDeliveredCount": "صفر تسليم",
+      "totalOpenIssues": "المشكلات المفتوحة",
+      "breachedCount": "خرق اتفاقية مستوى الخدمة",
+      "totalBillableHours": "إجمالي الساعات القابلة للفوترة",
+      "totalNonBillableHours": "إجمالي الساعات غير القابلة للفوترة",
+      "totalCompletedSprints": "السبرينتات المكتملة",
+      "unlinkedCount": "السبرينتات غير المفوترة",
+      "totalActive": "الحجوزات النشطة",
+      "deliveredCount": "تم التسليم",
+      "avgRevisionRounds": "متوسط جولات المراجعة",
+      "totalBookings": "إجمالي الحجوزات",
+      "totalEvents": "الفعاليات",
+      "totalVendorCost": "إجمالي تكلفة المورد",
+      "totalRatedVendors": "الموردون المقيَّمون",
+      "overallAvgRating": "متوسط التقييم الإجمالي",
+      "correlationCoefficient": "ارتباط الحضور–الأداء",
+      "alertCount": "الطلاب المميَّزون"
     },
     "aging": {
       "current": "حالي",
@@ -2705,8 +2710,8 @@
       "complianceByRecallType": "الالتزام حسب نوع الاستدعاء",
       "complianceByVaccine": "الالتزام حسب اللقاح",
       "caseTypeVolumeChart": "اتجاه حجم الحالات",
-      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
-      "feeDueUnderperformanceDetails": "Flagged Students"
+      "attendancePerformanceDetails": "الحضور مقابل الأداء، حسب الطالب",
+      "feeDueUnderperformanceDetails": "الطلاب المميَّزون"
     },
     "empty": {
       "invoices": "لا توجد فواتير في هذا النطاق الزمني.",
@@ -2805,39 +2810,39 @@
       "dentalRecallCompliance": "لا توجد فترات استدعاء مغلقة في هذا النطاق الزمني.",
       "vaccinationCompliance": "لا توجد جرعات متابعة بتاريخ استحقاق سابق في هذا النطاق الزمني.",
       "vetCaseTypeVolume": "لا توجد حالات مسجلة في هذا النطاق الزمني.",
-      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
-      "serviceTypeRevenue": "No service items billed in this date range.",
-      "orderTurnaround": "No orders delivered in this date range.",
-      "fittingStageTracker": "No orders currently at Trial or Alterations.",
-      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
-      "chemicalUsageCompliance": "No completed visits in this date range.",
-      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
-      "attendancePerformanceCorrelation": "No enrolled students yet.",
-      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
-      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range.",
-      "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
-      "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now.",
-      "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now.",
-      "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet.",
-      "retainerUtilization": "No active hourly retainers right now.",
-      "clientRevenueConcentration": "No invoiced revenue in this date range.",
-      "campaignROI": "No marketing campaigns recorded yet.",
-      "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
-      "issueAging": "No open issues right now.",
-      "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet.",
-      "deliveryPipeline": "No bookings with a revision round logged yet.",
-      "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out.",
-      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
-      "vendorPerformanceHistory": "No vendors rated yet."
+      "carPartsVariance": "لا توجد أعمال بتقدير قطع بعد.",
+      "serviceTypeRevenue": "لم تُفوتر أصناف خدمة في هذه الفترة.",
+      "orderTurnaround": "لم يتم تسليم أي طلبات في هذه الفترة.",
+      "fittingStageTracker": "لا توجد طلبات حالياً في مرحلة التجربة أو التعديل.",
+      "fabricPopularity": "لا توجد طلبات مسجَّل فيها قماش/تصميم في هذه الفترة.",
+      "chemicalUsageCompliance": "لا توجد زيارات مكتملة في هذه الفترة.",
+      "pestRecurringValueTrend": "لم تُفوتر فواتير رسوم عقد متكررة في هذه الفترة.",
+      "attendancePerformanceCorrelation": "لا يوجد طلاب مسجَّلون بعد.",
+      "feeDueUnderperformanceAlert": "لا يوجد طلاب مميَّزون حالياً — لا أحد عليه رسوم مستحقة وضعف أداء معاً.",
+      "stylistRepeatClient": "لا يوجد سجل لمواعيد مكتملة مع خبير تصفيف معيَّن في هذه الفترة.",
+      "retailAttachRate": "لا توجد مواعيد مفوترة في هذه الفترة.",
+      "membershipRenewalFunnel": "لم تنتهِ أي عضويات في هذه الفترة.",
+      "classAttendanceHeatmap": "لم تُسجَّل تسجيلات دخول للفصول في هذه الفترة.",
+      "caseAging": "لا توجد قضايا مفتوحة حالياً.",
+      "lawyerBillableHours": "لا توجد إدخالات وقت مسجَّلة مقابل قضية في هذه الفترة.",
+      "feeRealization": "لا توجد تعاملات نشطة ومُسعَّرة حالياً.",
+      "drawingApprovalCycleTime": "لا توجد مخططات معتمدة في الملف بعد.",
+      "projectStageProgress": "لا توجد مشاريع نشطة محدَّدة المرحلة حالياً.",
+      "siteVisitBilling": "لم تُسجَّل زيارات موقع قابلة للفوترة بعد.",
+      "materialTestResults": "لم تُسجَّل نتائج اختبار مواد بعد.",
+      "retainerUtilization": "لا توجد عقود ساعية نشطة حالياً.",
+      "clientRevenueConcentration": "لا توجد إيرادات مفوترة في هذه الفترة.",
+      "campaignROI": "لم تُسجَّل أي حملات تسويقية بعد.",
+      "channelPerformance": "لا توجد حملات محدَّدة القناة بعد.",
+      "retainerWorkDelivered": "لا توجد عقود ثابتة نشطة لعميل حملة تسويقية بعد.",
+      "issueAging": "لا توجد مشكلات مفتوحة حالياً.",
+      "teamUtilization": "لم تُسجَّل ساعات مقابل مشروع في هذه الفترة.",
+      "sprintBilling": "لا توجد سبرينتات مكتملة بعد.",
+      "deliveryPipeline": "لا توجد حجوزات مسجَّل لها جولة مراجعة بعد.",
+      "shootTypeRevenueMix": "لا توجد حجوزات مُسعَّرة في هذه الفترة.",
+      "equipmentCheckout": "لا توجد معدات مسلَّمة حالياً.",
+      "vendorCostVsBudget": "لم تُسجَّل فعاليات غير ملغاة بعد.",
+      "vendorPerformanceHistory": "لم يُقيَّم أي مورد بعد."
     },
     "col": {
       "channel": "القناة",
@@ -3136,93 +3141,93 @@
       "recallType": "نوع الاستدعاء",
       "vaccineName": "اللقاح",
       "doses": "الجرعات",
-      "stylist": "Stylist",
-      "totalClients": "Total Clients",
-      "repeatClients": "Repeat Clients",
-      "totalInvoices": "Total Invoices",
-      "withAttach": "With Retail Attach",
-      "attachRatePercent": "Attach Rate %",
-      "planName": "Plan",
-      "expiredCount": "Expired",
-      "renewedCount": "Renewed",
-      "renewalRatePercent": "Renewal Rate %",
-      "className": "Class",
-      "checkInCount": "Check-Ins",
-      "learnerCount": "Learners",
-      "caseNumber": "Case Number",
-      "caseTitle": "Case Title",
-      "clientName": "Client",
-      "daysInStage": "Days in Stage",
-      "daysSinceFiling": "Days Since Filing",
-      "advocate": "Advocate",
-      "billedAmount": "Billed",
-      "unbilledAmount": "Unbilled",
-      "engagement": "Engagement",
-      "expectedFee": "Expected Fee",
-      "realizedFee": "Realized Fee",
-      "realizationPercent": "Realization %",
-      "invoicedThisPeriod": "Invoiced This Period",
-      "drawingNumber": "Drawing No.",
-      "revisionNumber": "Rev.",
-      "discipline": "Discipline",
-      "issuedDate": "Issued Date",
-      "approvedDate": "Approved Date",
-      "daysToApprove": "Days to Approve",
-      "stageProgress": "Stage Progress %",
-      "attendancePercent": "Attendance %",
-      "avgTestPercentage": "Avg. Test %",
-      "feeDueAmount": "Fee Due",
-      "visitType": "Visit Type",
-      "billableAmount": "Billable Amount",
-      "billedStatus": "Billed Status",
-      "testType": "Test Type",
-      "materialDescription": "Material",
-      "testValue": "Test Value",
-      "requiredMinValue": "Pass Minimum",
-      "result": "Result",
-      "testedDate": "Tested Date",
-      "hoursPerMonth": "Hours/Month",
-      "hoursUsed": "Hours Used",
-      "monthlyAmount": "Monthly Amount",
-      "billedThisPeriod": "Billed This Period",
-      "revenueSharePercent": "Revenue Share %",
-      "cumulativeSharePercent": "Cumulative Share %",
-      "targetChannel": "Channel",
-      "adSpendBudget": "Ad Spend Budget",
-      "actualSpend": "Actual Spend",
-      "budgetVariancePercent": "Budget Variance %",
-      "conversions": "Conversions",
-      "costPerConversion": "Cost/Conversion",
-      "campaignCount": "Campaigns",
-      "totalImpressions": "Impressions",
-      "totalClicks": "Clicks",
-      "totalConversions": "Conversions",
-      "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered",
-      "daysOpen": "Days Open",
-      "slaThresholdDays": "SLA (days)",
-      "slaBreached": "SLA Breached",
-      "employeeName": "Employee",
-      "totalHours": "Total Hours",
-      "sprintNumber": "Sprint #",
-      "sprintName": "Sprint Name",
-      "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount",
-      "shootType": "Shoot Type",
-      "revisionRounds": "Revision Rounds",
-      "avgTicket": "Avg. Ticket",
-      "assetName": "Equipment",
-      "checkedOutToName": "Checked Out To",
-      "checkedOutDate": "Checked Out",
-      "expectedReturnDate": "Expected Return",
-      "daysOut": "Days Out",
-      "isOverdue": "Overdue",
-      "eventName": "Event",
-      "clientBudget": "Client Budget",
-      "totalVendorCost": "Total Vendor Cost",
-      "vendorName": "Vendor",
-      "ratedEventCount": "Rated Events",
-      "avgRating": "Avg. Rating"
+      "stylist": "خبير التصفيف",
+      "totalClients": "إجمالي العملاء",
+      "repeatClients": "العملاء المتكررون",
+      "totalInvoices": "إجمالي الفواتير",
+      "withAttach": "مع بيع تجزئة مرفق",
+      "attachRatePercent": "نسبة الإرفاق %",
+      "planName": "الخطة",
+      "expiredCount": "منتهي الصلاحية",
+      "renewedCount": "تم التجديد",
+      "renewalRatePercent": "معدل التجديد %",
+      "className": "الفصل",
+      "checkInCount": "تسجيلات الدخول",
+      "learnerCount": "المتعلمون",
+      "caseNumber": "رقم القضية",
+      "caseTitle": "عنوان القضية",
+      "clientName": "العميل",
+      "daysInStage": "الأيام في المرحلة",
+      "daysSinceFiling": "الأيام منذ التقديم",
+      "advocate": "المحامي",
+      "billedAmount": "المبلغ المفوتر",
+      "unbilledAmount": "المبلغ غير المفوتر",
+      "engagement": "التفاعل",
+      "expectedFee": "الرسوم المتوقعة",
+      "realizedFee": "الرسوم المحققة",
+      "realizationPercent": "نسبة التحقيق %",
+      "invoicedThisPeriod": "المفوتر في هذه الفترة",
+      "drawingNumber": "رقم المخطط",
+      "revisionNumber": "رقم المراجعة",
+      "discipline": "التخصص",
+      "issuedDate": "تاريخ الإصدار",
+      "approvedDate": "تاريخ الموافقة",
+      "daysToApprove": "أيام الموافقة",
+      "stageProgress": "تقدم المرحلة %",
+      "attendancePercent": "نسبة الحضور %",
+      "avgTestPercentage": "متوسط الاختبار %",
+      "feeDueAmount": "الرسوم المستحقة",
+      "visitType": "نوع الزيارة",
+      "billableAmount": "المبلغ القابل للفوترة",
+      "billedStatus": "حالة الفوترة",
+      "testType": "نوع الاختبار",
+      "materialDescription": "المادة",
+      "testValue": "قيمة الاختبار",
+      "requiredMinValue": "الحد الأدنى للنجاح",
+      "result": "النتيجة",
+      "testedDate": "تاريخ الاختبار",
+      "hoursPerMonth": "ساعات/شهر",
+      "hoursUsed": "الساعات المستخدمة",
+      "monthlyAmount": "المبلغ الشهري",
+      "billedThisPeriod": "المفوتر في هذه الفترة",
+      "revenueSharePercent": "حصة الإيرادات %",
+      "cumulativeSharePercent": "الحصة التراكمية %",
+      "targetChannel": "القناة",
+      "adSpendBudget": "ميزانية الإنفاق الإعلاني",
+      "actualSpend": "الإنفاق الفعلي",
+      "budgetVariancePercent": "نسبة انحراف الميزانية %",
+      "conversions": "التحويلات",
+      "costPerConversion": "التكلفة/التحويل",
+      "campaignCount": "الحملات",
+      "totalImpressions": "مرات الظهور",
+      "totalClicks": "النقرات",
+      "totalConversions": "التحويلات",
+      "ctrPercent": "نسبة النقر إلى الظهور %",
+      "deliveredCount": "تم التسليم",
+      "daysOpen": "الأيام المفتوحة",
+      "slaThresholdDays": "حد اتفاقية مستوى الخدمة (أيام)",
+      "slaBreached": "خرق اتفاقية مستوى الخدمة",
+      "employeeName": "الموظف",
+      "totalHours": "إجمالي الساعات",
+      "sprintNumber": "رقم السبرينت",
+      "sprintName": "اسم السبرينت",
+      "milestoneStatus": "حالة المرحلة الرئيسية",
+      "milestoneAmount": "مبلغ المرحلة الرئيسية",
+      "shootType": "نوع التصوير",
+      "revisionRounds": "جولات المراجعة",
+      "avgTicket": "متوسط التذكرة",
+      "assetName": "المعدات",
+      "checkedOutToName": "سُلِّم إلى",
+      "checkedOutDate": "تاريخ التسليم",
+      "expectedReturnDate": "تاريخ الإرجاع المتوقع",
+      "daysOut": "أيام الخروج",
+      "isOverdue": "متأخر",
+      "eventName": "الفعالية",
+      "clientBudget": "ميزانية العميل",
+      "totalVendorCost": "إجمالي تكلفة المورد",
+      "vendorName": "المورد",
+      "ratedEventCount": "الفعاليات المقيَّمة",
+      "avgRating": "متوسط التقييم"
     },
     "legend": {
       "schemeCost": "تكلفة الخطة",
@@ -3513,10 +3518,10 @@
     "destinationSaveFailed": "تعذر تحديث مجلد النسخ الاحتياطي",
     "destinationReset": "تمت إعادة تعيين مجلد النسخ الاحتياطي إلى الافتراضي",
     "destinationUnreachable": "تعذر الوصول إلى \"{{path}}\" حاليًا (هل تم فصله؟) — سيتم استخدام الموقع الافتراضي بدلاً من ذلك.",
-    "restoreFromFile": "Restore from File",
-    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
-    "restoreFromFileConfirmTitle": "Restore from Backup File",
-    "pickBackupFileFailed": "Could not open file picker."
+    "restoreFromFile": "استعادة من ملف",
+    "restoreFromFileDesc": "هل لديك ملف .sarang-backup من جهاز آخر أو محرك USB؟ استعد منه مباشرة.",
+    "restoreFromFileConfirmTitle": "استعادة من ملف نسخة احتياطية",
+    "pickBackupFileFailed": "تعذر فتح منتقي الملفات."
   },
   "audit": {
     "title": "سجل التدقيق",
@@ -4892,7 +4897,7 @@
     "docTypePurchaseOrder": "أمر شراء"
   },
   "disclaimer": {
-    "legalNotice": "سارانج بيزنس أو إس لايت هي أداة تنظيمية مجانية للشركات الصغيرة. إنها ليست نظام سجلات طبية، أو برنامج محاسبة، أو أداة استشارة قانونية، أو منتجًا ماليًا مرخصًا. جميع المعلومات هي بيانات المستخدم الخاصة المخزنة محليًا على جهازه. لا تقدم Aszurex أي ضمانات بشأن دقة هذا البرنامج أو اكتماله أو ملاءمته لأي غرض خاضع للتنظيم. يتحمل المستخدمون وحدهم مسؤولية الامتثال للقوانين واللوائح المهنية المعمول بها."
+    "legalNotice": "سارانج بيزنس أو إس لايت هي أداة تنظيمية مجانية للشركات الصغيرة. إنها ليست نظام سجلات طبية، أو أداة استشارة قانونية، أو منتجًا ماليًا مرخصًا. يتضمن ميزات محاسبة وضريبة السلع والخدمات (GST)، لكنه ليس بديلاً عن محاسب مرخص أو مستشار ضرائب. جميع المعلومات هي بيانات المستخدم الخاصة المخزنة محليًا على جهازه. لا تقدم Aszurex أي ضمانات بشأن دقة هذا البرنامج أو اكتماله أو ملاءمته لأي غرض خاضع للتنظيم. يتحمل المستخدمون وحدهم مسؤولية الامتثال للقوانين واللوائح المهنية المعمول بها."
   },
   "compliance": {
     "disclaimerLabel": "إخلاء مسؤولية:",
@@ -5862,26 +5867,26 @@
     }
   },
   "serviceCombos": {
-    "title": "Service Combos",
-    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
-    "comboName": "Combo Name",
-    "services": "Services",
-    "comboPrice": "Combo Price",
-    "savings": "Savings",
-    "newCombo": "New Combo",
-    "editCombo": "Edit Combo",
-    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
-    "nameRequired": "Combo name is required.",
-    "priceRequired": "Combo price must be greater than zero.",
-    "needTwoServices": "A combo needs at least 2 distinct services.",
-    "selectServices": "Select Services",
-    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
-    "memberTotalHint": "Individual price total: {{amount}}",
-    "couldNotLoad": "Could not load service combos.",
-    "couldNotSave": "Could not save this service combo.",
+    "title": "باقات الخدمات",
+    "subtitle": "{{count}} باقة — اجمع خدمتين أو أكثر بسعر باقة واحد، يُحجز مباشرة من شاشة المواعيد",
+    "comboName": "اسم الباقة",
+    "services": "الخدمات",
+    "comboPrice": "سعر الباقة",
+    "savings": "التوفير",
+    "newCombo": "باقة جديدة",
+    "editCombo": "تعديل الباقة",
+    "comboNamePlaceholder": "مثال: غسيل + قص + تصفيف",
+    "nameRequired": "اسم الباقة مطلوب.",
+    "priceRequired": "يجب أن يكون سعر الباقة أكبر من صفر.",
+    "needTwoServices": "تحتاج الباقة إلى خدمتين مختلفتين على الأقل.",
+    "selectServices": "اختر الخدمات",
+    "selectServicesHint": "اختر خدمتين على الأقل لتضمينهما في هذه الباقة.",
+    "memberTotalHint": "إجمالي الأسعار الفردية: {{amount}}",
+    "couldNotLoad": "تعذر تحميل باقات الخدمات.",
+    "couldNotSave": "تعذر حفظ باقة الخدمة هذه.",
     "empty": {
-      "title": "No service combos yet",
-      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+      "title": "لا توجد باقات خدمات بعد",
+      "body": "اجمع خدمتين أو أكثر بسعر باقة واحد — مثل غسيل + قص + تصفيف بخصم مقارنة بالحجز المنفصل."
     }
   },
   "checkin": {
@@ -6065,7 +6070,7 @@
         "IN_SERVICE": "قيد الصيانة",
         "INACTIVE": "غير نشط"
       },
-      "changeStatus": "Change vehicle status",
+      "changeStatus": "تغيير حالة المركبة",
       "statusUpdated": "تم تحديث الحالة",
       "statusUpdateFailed": "تعذّر تحديث حالة المركبة."
     },
@@ -6111,11 +6116,11 @@
         "ACTIVE": "نشط",
         "INACTIVE": "غير نشط"
       },
-      "activate": "Activate",
-      "deactivate": "Deactivate",
+      "activate": "تفعيل",
+      "deactivate": "إلغاء التفعيل",
       "packageStatusUpdated": "تم تحديث حالة الباقة",
       "packageStatusUpdateFailed": "تعذّر تحديث حالة الباقة.",
-      "markComplete": "Mark Complete",
+      "markComplete": "وضع علامة مكتمل",
       "cancelDeparture": "إلغاء",
       "departureStatusUpdated": "تم تحديث حالة المغادرة",
       "departureStatusUpdateFailed": "تعذّر تحديث حالة المغادرة.",
@@ -6193,6 +6198,282 @@
       "cancelBooking": "إلغاء الحجز",
       "bookingCancelled": "تم إلغاء الحجز",
       "bookingCancelFailed": "تعذّر إلغاء الحجز."
+    }
+  }
+,
+  "restaurant": {
+    "kot": {
+      "title": "تذاكر طلبات المطبخ",
+      "ordersCount": "{{count}} طلب",
+      "incomingOrders": "الطلبات الواردة ({{count}})",
+      "accept": "قبول",
+      "reject": "رفض",
+      "noKotsFound": "لم يتم العثور على أي تذاكر مطبخ",
+      "noKotsHint": "يتم إنشاء تذاكر المطبخ عند إرسال الطلب إلى المطبخ",
+      "takeaway": "طلبات خارجية",
+      "deliveryApp": "تطبيق توصيل",
+      "tokenLabel": "الرقم #{{number}}",
+      "statusPending": "قيد الانتظار",
+      "statusInProgress": "قيد التنفيذ",
+      "statusDone": "مكتمل",
+      "statusCancelled": "ملغى",
+      "startCooking": "ابدأ الطهي",
+      "markDone": "تحديد كمكتمل",
+      "served": "تم التقديم",
+      "markServed": "تحديد كمُقدَّم",
+      "printTicket": "طباعة تذكرة المطبخ",
+      "acceptOrderTitle": "قبول الطلب — {{table}}",
+      "acceptOrderNote": "هذا يرسل الطلب إلى المطبخ ويضيفه إلى فاتورة الطاولة الجارية. تتم الفوترة مرة واحدة فقط عند الدفع.",
+      "sending": "جارٍ الإرسال…",
+      "confirmAndSend": "تأكيد وإرسال إلى المطبخ",
+      "couldNotLoadIncomingOrders": "تعذّر تحميل الطلبات الواردة.",
+      "couldNotLoadTickets": "تعذّر تحميل تذاكر المطبخ.",
+      "couldNotRejectOrder": "تعذّر رفض الطلب.",
+      "orderAcceptedTitle": "تم قبول الطلب",
+      "orderAcceptedDesc": "تم إنشاء تذكرة مطبخ لهذه الطاولة.",
+      "couldNotAcceptOrder": "تعذّر قبول الطلب.",
+      "couldNotUpdateStatus": "تعذّر تحديث حالة تذكرة المطبخ.",
+      "couldNotCancelKot": "تعذّر إلغاء تذكرة المطبخ.",
+      "couldNotMarkServed": "تعذّر تحديد هذه التذكرة كمُقدَّمة.",
+      "printedTitle": "تمت الطباعة",
+      "printedDesc": "تم إرسال تذكرة المطبخ إلى الطابعة.",
+      "printFailedTitle": "فشلت الطباعة",
+      "couldNotPrintKot": "تعذّر طباعة تذكرة المطبخ."
+    },
+    "kitchenDisplay": {
+      "title": "شاشة المطبخ",
+      "connectionIssue": "مشكلة في الاتصال — تتم إعادة المحاولة…",
+      "updatedAt": "آخر تحديث {{time}}",
+      "recentlyDone": "اكتملت مؤخرًا",
+      "nothingHere": "لا يوجد شيء هنا",
+      "updating": "جارٍ التحديث…"
+    },
+    "recipes": {
+      "title": "إدارة الوصفات",
+      "recipesCount": "تم إعداد {{count}} وصفة",
+      "addRecipe": "إضافة وصفة",
+      "editRecipe": "تعديل الوصفة",
+      "newRecipe": "وصفة جديدة",
+      "menuProduct": "منتج القائمة *",
+      "searchProductPlaceholder": "ابحث عن منتج بالاسم أو رمز SKU…",
+      "recipeName": "اسم الوصفة *",
+      "recipeNamePlaceholder": "مثال: وصفة شاي المسالا",
+      "ingredients": "المكونات *",
+      "addIngredient": "إضافة مكوّن",
+      "searchIngredientPlaceholder": "ابحث عن مكوّن بالاسم أو رمز SKU…",
+      "qtyPlaceholder": "الكمية",
+      "saveRecipe": "حفظ الوصفة",
+      "noRecipesYet": "لا توجد وصفات حتى الآن",
+      "noRecipesHint": "أضف وصفات لتتبّع استخدام المكونات عند إتمام تذاكر المطبخ",
+      "forProductIngredientsCount": "لـ {{product}} · {{count}} مكوّن",
+      "selectMenuProductError": "اختر منتج القائمة الذي تخص هذه الوصفة.",
+      "recipeNameRequiredError": "اسم الوصفة مطلوب.",
+      "addIngredientError": "أضف مكوّنًا واحدًا على الأقل بكمية صحيحة.",
+      "couldNotLoadRecipes": "تعذّر تحميل الوصفات.",
+      "couldNotSearchProducts": "تعذّر البحث عن المنتجات.",
+      "couldNotSaveRecipe": "تعذّر حفظ الوصفة.",
+      "couldNotDeleteRecipe": "تعذّر حذف الوصفة."
+    }
+  },
+  "bloodBank": {
+    "failed": "فشل",
+    "saving": "جارٍ الحفظ…",
+    "sending": "جارٍ الإرسال…",
+    "clearing": "جارٍ المسح…",
+    "unknown": "غير معروف",
+    "bloodGroup": "فصيلة الدم",
+    "expiresLabel": "تنتهي الصلاحية {{date}}",
+    "missingBloodGroupTitle": "فصيلة الدم مفقودة",
+    "componentWholeBlood": "دم كامل",
+    "componentPackedRbc": "كريات دم حمراء مركزة",
+    "componentPlatelets": "صفائح دموية",
+    "componentPlasma": "بلازما",
+    "componentCryoprecipitate": "راسب بردي",
+    "componentAny": "أي مكوّن",
+    "donors": {
+      "title": "سجل المتبرعين",
+      "registeredCount": "{{count}} متبرع مسجّل",
+      "newDonor": "متبرع جديد",
+      "searchPlaceholder": "ابحث بالاسم أو الرمز أو الهاتف…",
+      "recallDue": "استدعاء مستحق ({{count}})",
+      "noneDueForRecall": "لا يوجد حاليًا أي متبرع مستحق للاستدعاء",
+      "noDonorsYet": "لم يتم تسجيل أي متبرعين بعد",
+      "deferred": "مؤجَّل",
+      "eligible": "مؤهَّل",
+      "recovering": "في مرحلة التعافي",
+      "noPhoneOnFile": "لا يوجد رقم هاتف مسجَّل",
+      "lastLabel": "الأخير: {{date}}",
+      "nextEligibleLabel": "الأهلية التالية: {{date}}",
+      "registerDonor": "تسجيل متبرع",
+      "fullName": "الاسم الكامل",
+      "weightKg": "الوزن (كجم)",
+      "weightPlaceholder": "مثال: 60",
+      "weightUnit": "{{value}} كجم",
+      "gender": "الجنس",
+      "unspecified": "غير محدد",
+      "male": "ذكر",
+      "female": "أنثى",
+      "other": "آخر",
+      "lastDonation": "آخر تبرع",
+      "noneYet": "لا شيء بعد",
+      "nextEligible": "الأهلية التالية",
+      "now": "الآن",
+      "deferredUntilLabel": "مؤجَّل حتى {{date}}",
+      "deferredIndefinitely": "— إلى أجل غير مسمى",
+      "sendRecallReminder": "إرسال تذكير استدعاء",
+      "markDeferred": "تحديد كمؤجَّل",
+      "clearDeferral": "إلغاء التأجيل",
+      "markDeferredTitle": "تحديد {{name}} كمؤجَّل",
+      "reasonPlaceholder": "مثال: انخفاض الهيموغلوبين، اختبار فحص تفاعلي…",
+      "deferredUntilField": "مؤجَّل حتى (اتركه فارغًا لتأجيل غير محدد/دائم)",
+      "missingNameTitle": "الاسم مفقود",
+      "enterDonorName": "أدخل اسم المتبرع.",
+      "donorRegisteredTitle": "تم تسجيل المتبرع",
+      "donorRegisteredDesc": "تم تسجيل المتبرع بنجاح.",
+      "couldNotLoadDonors": "تعذّر تحميل المتبرعين.",
+      "couldNotRegisterDonor": "تعذّر تسجيل المتبرع.",
+      "reminderReadyTitle": "التذكير جاهز",
+      "reminderReadyDesc": "تم إنشاء رابط تذكير عبر واتساب.",
+      "couldNotSendRecall": "تعذّر إرسال تذكير الاستدعاء.",
+      "couldNotRefreshDetails": "تعذّر تحديث تفاصيل المتبرع.",
+      "donorDeferredTitle": "تم تأجيل المتبرع",
+      "donorDeferredDesc": "تم تحديد المتبرع كمؤجَّل.",
+      "couldNotUpdateDonor": "تعذّر تحديث المتبرع.",
+      "deferralClearedTitle": "تم إلغاء التأجيل",
+      "deferralClearedDesc": "المتبرع مؤهَّل للتبرع مرة أخرى."
+    },
+    "donations": {
+      "title": "التبرعات والفحص",
+      "awaitingScreening": "{{count}} بانتظار الفحص",
+      "recordDonation": "تسجيل تبرع",
+      "allTab": "الكل ({{count}})",
+      "statusTab": "{{status}} ({{count}})",
+      "statusPending": "قيد الانتظار",
+      "statusPassed": "ناجح",
+      "statusFailed": "فاشل",
+      "noRecordsFound": "لا توجد سجلات تبرع",
+      "recordScreening": "تسجيل نتيجة الفحص",
+      "volumeCollectedNoCamp": "{{ml}} مل · تم الجمع في {{date}}",
+      "volumeCollectedWithCamp": "{{ml}} مل · تم الجمع في {{date}} · {{camp}}",
+      "donor": "المتبرع",
+      "selectDonor": "اختر متبرعًا…",
+      "componentType": "نوع المكوّن",
+      "donationCampLabel": "مخيم التبرع (اختياري)",
+      "walkInNotFromCamp": "حضور مباشر / ليس من مخيم",
+      "volumeMl": "الحجم (مل)",
+      "donorMissingTitle": "المتبرع مفقود",
+      "selectDonorMsg": "اختر متبرعًا.",
+      "selectBloodGroupCollected": "اختر فصيلة الدم التي تم جمعها.",
+      "donationRecordedTitle": "تم تسجيل التبرع",
+      "donationRecordedDesc": "تم تسجيل التبرع — الفحص قيد الانتظار.",
+      "couldNotRecordDonation": "تعذّر تسجيل التبرع.",
+      "couldNotLoadDonationRecords": "تعذّر تحميل سجلات التبرع.",
+      "couldNotLoadDonationsData": "تعذّر تحميل بيانات التبرعات.",
+      "screeningResultTitle": "نتيجة الفحص",
+      "notesOptionalPlaceholder": "ملاحظات (اختياري)",
+      "passed": "ناجح",
+      "unitAddedToStockTitle": "تمت إضافة الوحدة إلى المخزون",
+      "markedFailedTitle": "تم تحديدها كفاشلة",
+      "screeningPassedDesc": "اجتاز الفحص — الوحدة الآن في المخزون.",
+      "screeningFailedDesc": "فشل الفحص — تم التخلص من الوحدة ولم تُضَف إلى المخزون.",
+      "couldNotRecordScreening": "تعذّر تسجيل نتيجة الفحص."
+    },
+    "camps": {
+      "title": "مخيمات التبرع",
+      "summary": "{{count}} مخيم · إجمالي {{total}} تبرع في جميع المخيمات",
+      "scheduleCamp": "جدولة مخيم",
+      "noCampsYet": "لم يتم جدولة أي مخيمات تبرع بعد",
+      "organizedByLabel": "المنظِّم: {{organizer}}",
+      "donorsLabel": "متبرع",
+      "campNameLabel": "اسم المخيم / الحملة",
+      "campNamePlaceholder": "مثال: حملة المركز المجتمعي",
+      "location": "الموقع",
+      "organizer": "المنظِّم",
+      "scheduleCampModalTitle": "جدولة مخيم تبرع",
+      "missingNameTitle": "الاسم مفقود",
+      "enterCampName": "أدخل اسم المخيم/الحملة.",
+      "missingDateTitle": "التاريخ مفقود",
+      "selectCampDate": "اختر تاريخ المخيم.",
+      "campScheduledTitle": "تمت جدولة المخيم",
+      "campScheduledDesc": "تمت جدولة مخيم التبرع بنجاح.",
+      "couldNotScheduleCamp": "تعذّر جدولة المخيم.",
+      "couldNotLoadCamps": "تعذّر تحميل مخيمات التبرع."
+    },
+    "stock": {
+      "title": "مخزون الدم",
+      "summaryNoExpiring": "{{count}} وحدة متاحة",
+      "summaryWithExpiring": "{{count}} وحدة متاحة · {{expiring}} على وشك الانتهاء",
+      "allUnits": "جميع الوحدات",
+      "expiringSoon": "على وشك الانتهاء",
+      "noUnitsToShow": "لا توجد وحدات لعرضها",
+      "unitsAvailableLabel": "وحدة متاحة",
+      "expiringSoonCount": "{{count}} على وشك الانتهاء",
+      "unitCol": "الوحدة",
+      "groupCol": "الفصيلة",
+      "componentCol": "المكوّن",
+      "collectedCol": "تاريخ الجمع",
+      "expiresCol": "تاريخ الانتهاء",
+      "couldNotLoadStock": "تعذّر تحميل مخزون الدم."
+    },
+    "issue": {
+      "title": "صرف الدم",
+      "activeIssuesCount": "{{count}} عملية صرف نشطة",
+      "issueUnits": "صرف وحدات",
+      "noIssuesYet": "لم يتم صرف أي دم بعد",
+      "unitsCount": "{{count}} وحدة · {{groups}}",
+      "issueUnitsModalTitle": "صرف وحدات دم",
+      "recipientName": "اسم المستلم",
+      "recipientBloodGroup": "فصيلة دم المستلم",
+      "customerOptional": "العميل (اختياري — مطلوب لإصدار فاتورة)",
+      "customerSearchPlaceholder": "ابحث بالاسم أو الهاتف...",
+      "purpose": "الغرض",
+      "purposePlaceholder": "مثال: نقل دم لعملية جراحية",
+      "pricePerUnit": "السعر لكل وحدة",
+      "fastMatchTitle": "المطابقة السريعة — ابحث عن وحدات متوافقة حسب الفصيلة/المكوّن/الكمية",
+      "qtyPlaceholder": "الكمية",
+      "findAndSelect": "بحث واختيار",
+      "matching": "جارٍ المطابقة…",
+      "matchedAllDesc": "تمت مطابقة جميع الوحدات المطلوبة وعددها {{count}}.",
+      "matchedShortDesc": "من أصل {{requested}} المطلوبة، توجد {{matched}} وحدة متوافقة فقط متاحة — نقص قدره {{shortfall}}.",
+      "selectAvailableUnits": "اختر الوحدات المتاحة (تم اختيار {{count}})",
+      "noUnitsInStock": "لا توجد وحدات في المخزون حاليًا.",
+      "statusIssued": "تم الصرف",
+      "statusCancelled": "ملغى",
+      "incompatibleWarningTitle": "وحدة (وحدات) غير متوافقة — تم حظر الصرف.",
+      "incompatibleWarningDesc": "هذا ليس بديلاً عن اختبار التوافق التقاطعي الحقيقي:",
+      "overrideEmergencyRelease": "تجاوز — إصدار طارئ (يتطلب سببًا موثقًا)",
+      "overrideReasonPlaceholder": "لماذا يتم صرف هذه الوحدة غير المتوافقة على أي حال (مثال: حالة طارئة تهدد الحياة، لا توجد وحدة متوافقة في المخزون، أمر الطبيب)...",
+      "issuing": "جارٍ الصرف…",
+      "generateInvoice": "إنشاء فاتورة",
+      "generating": "جارٍ الإنشاء…",
+      "cancelIssue": "إلغاء عملية الصرف",
+      "overrideReasonLabel": "سبب التجاوز:",
+      "cancelIssueConfirmMsg": "هل تريد إلغاء عملية الصرف هذه وإعادة جميع الوحدات إلى المخزون؟",
+      "missingRecipientTitle": "المستلم مفقود",
+      "enterRecipientName": "أدخل اسم المستلم.",
+      "noUnitsSelectedTitle": "لم يتم اختيار أي وحدة",
+      "selectAtLeastOneUnit": "اختر وحدة واحدة على الأقل للصرف.",
+      "incompatibleSelectedTitle": "تم اختيار وحدات غير متوافقة",
+      "checkOverrideMsg": "للمتابعة، فعّل \"تجاوز — إصدار طارئ\" ودوّن سببًا.",
+      "reasonRequiredTitle": "السبب مطلوب",
+      "enterOverrideReason": "أدخل سببًا موثقًا لتجاوز الإصدار الطارئ.",
+      "selectRecipientBloodGroupFirst": "اختر فصيلة دم المستلم أولًا.",
+      "invalidQuantityTitle": "كمية غير صالحة",
+      "enterUnitsNeeded": "أدخل عدد الوحدات المطلوبة.",
+      "unitsIssuedTitle": "تم صرف الوحدات",
+      "unitsIssuedDesc": "تم صرف وحدات الدم بنجاح.",
+      "couldNotIssueUnits": "تعذّر صرف الوحدات.",
+      "couldNotLoadIssues": "تعذّر تحميل عمليات صرف الدم.",
+      "couldNotLoadIssueData": "تعذّر تحميل بيانات صرف الدم.",
+      "couldNotVerifyCompatibility": "تعذّر التحقق من توافق الدم.",
+      "couldNotRunFastMatch": "تعذّر تشغيل بحث المطابقة السريعة.",
+      "couldNotRefreshIssueDetails": "تعذّر تحديث تفاصيل عملية الصرف.",
+      "issueCancelledTitle": "تم إلغاء عملية الصرف",
+      "issueCancelledDesc": "تمت إعادة الوحدات إلى المخزون.",
+      "couldNotCancelIssue": "تعذّر إلغاء عملية الصرف.",
+      "invoiceGeneratedTitle": "تم إنشاء الفاتورة",
+      "invoiceGeneratedDesc": "تم إنشاء فاتورة لعملية الصرف هذه.",
+      "couldNotGenerateInvoice": "تعذّر إنشاء الفاتورة."
     }
   }
 }

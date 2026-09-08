@@ -78,8 +78,8 @@ export function DisclaimerScreen({ onAccepted }: DisclaimerScreenProps) {
             />
             <InfoRow
               icon={<AlertCircle size={22} className="text-warning" />}
-              title="This is not accounting software"
-              body="Sarang helps manage your business. Please consult a CA or accountant for tax and legal matters."
+              title="Always verify statutory filings with a professional"
+              body="Sarang includes full accounting and GST tools, but Aszurex is not a licensed accounting or tax firm. Please have a CA or accountant review your filings and compliance."
             />
           </div>
 

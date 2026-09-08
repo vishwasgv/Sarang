@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion, AnimatePresence } from 'framer-motion'
 import { BookOpen, Plus, Trash2, RefreshCw, ChevronDown, XCircle, Edit2, Search } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
@@ -35,6 +36,7 @@ function emptyIngredientRow(): IngredientRow {
 }
 
 export function RecipesScreen() {
+  const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [recipes, setRecipes] = useState<Recipe[]>([])
   const [loading, setLoading] = useState(true)
@@ -59,14 +61,14 @@ export function RecipesScreen() {
       if (recipesRes.success && recipesRes.data) {
         setRecipes(recipesRes.data as Recipe[])
       } else {
-        toastError('Error', recipesRes.error?.message ?? 'Could not load recipes.')
+        toastError(t('common.error'), recipesRes.error?.message ?? t('restaurant.recipes.couldNotLoadRecipes'))
       }
     } catch {
-      toastError('Error', 'Could not load recipes.')
+      toastError(t('common.error'), t('restaurant.recipes.couldNotLoadRecipes'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { load() }, [load])
 
@@ -80,19 +82,19 @@ export function RecipesScreen() {
       try {
         const res = await api.products.search(productQuery.trim())
         if (res.success && res.data) setProductResults(res.data as Product[])
-        else toastError('Error', res.error?.message ?? 'Could not search products.')
+        else toastError(t('common.error'), res.error?.message ?? t('restaurant.recipes.couldNotSearchProducts'))
       } catch {
-        toastError('Error', 'Could not search products.')
+        toastError(t('common.error'), t('restaurant.recipes.couldNotSearchProducts'))
       }
     }, 250)
     return () => clearTimeout(timer)
-  }, [productQuery, toastError])
+  }, [productQuery, toastError, t])
 
   async function handleSave() {
-    if (!productId) { setError('Select the menu product this recipe is for.'); return }
-    if (!recipeName.trim()) { setError('Recipe name is required.'); return }
+    if (!productId) { setError(t('restaurant.recipes.selectMenuProductError')); return }
+    if (!recipeName.trim()) { setError(t('restaurant.recipes.recipeNameRequiredError')); return }
     const validIngredients = ingredients.filter(i => i.ingredientProductId && parseFloat(i.quantity) > 0)
-    if (!validIngredients.length) { setError('Add at least one ingredient with a valid quantity.'); return }
+    if (!validIngredients.length) { setError(t('restaurant.recipes.addIngredientError')); return }
 
     setSubmitting(true)
     setError(null)
@@ -105,10 +107,10 @@ export function RecipesScreen() {
       if (res.success) {
         setShowForm(false); resetForm(); load()
       } else {
-        setError((res.error as { message?: string })?.message ?? 'Could not save recipe.')
+        setError((res.error as { message?: string })?.message ?? t('restaurant.recipes.couldNotSaveRecipe'))
       }
     } catch {
-      setError('Could not save recipe.')
+      setError(t('restaurant.recipes.couldNotSaveRecipe'))
     } finally {
       setSubmitting(false)
     }
@@ -117,10 +119,10 @@ export function RecipesScreen() {
   async function handleDelete(recipeId: string) {
     try {
       const res = await api.restaurant.deleteRecipe({ recipeId })
-      if (!res.success) setError((res.error as { message?: string })?.message ?? 'Could not delete recipe.')
+      if (!res.success) setError((res.error as { message?: string })?.message ?? t('restaurant.recipes.couldNotDeleteRecipe'))
       else load()
     } catch {
-      setError('Could not delete recipe.')
+      setError(t('restaurant.recipes.couldNotDeleteRecipe'))
     }
   }
 
@@ -177,9 +179,9 @@ export function RecipesScreen() {
         try {
           const res = await api.products.search(row.query.trim())
           if (res.success && res.data) setIngredientResults(idx, res.data as Product[])
-          else toastError('Error', res.error?.message ?? 'Could not search products.')
+          else toastError(t('common.error'), res.error?.message ?? t('restaurant.recipes.couldNotSearchProducts'))
         } catch {
-          toastError('Error', 'Could not search products.')
+          toastError(t('common.error'), t('restaurant.recipes.couldNotSearchProducts'))
         }
       }, 250)
     })
@@ -191,12 +193,12 @@ export function RecipesScreen() {
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark dark:text-slate-100">Recipe Management</h2>
-          <p className="text-sm text-slate-400">{recipes.length} recipe{recipes.length !== 1 ? 's' : ''} configured</p>
+          <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('restaurant.recipes.title')}</h2>
+          <p className="text-sm text-slate-400">{t('restaurant.recipes.recipesCount', { count: recipes.length })}</p>
         </div>
         <button onClick={() => { setShowForm(true); resetForm() }}
           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
-          <Plus size={14} /> Add Recipe
+          <Plus size={14} /> {t('restaurant.recipes.addRecipe')}
         </button>
       </div>
 
@@ -211,11 +213,11 @@ export function RecipesScreen() {
         {showForm && (
           <motion.div key="form" initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -8 }}>
           <Card padding="lg" className="space-y-4">
-            <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{editingRecipeId ? 'Edit Recipe' : 'New Recipe'}</h3>
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{editingRecipeId ? t('restaurant.recipes.editRecipe') : t('restaurant.recipes.newRecipe')}</h3>
 
             <div className="grid grid-cols-2 gap-3">
               <div>
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Menu Product *</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">{t('restaurant.recipes.menuProduct')}</label>
                 {editingRecipeId ? (
                   <div className="w-full bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-slate-500 dark:text-slate-400">
                     {productName}
@@ -226,7 +228,7 @@ export function RecipesScreen() {
                     <input
                       value={productId ? productName : productQuery}
                       onChange={e => { setProductId(''); setProductName(''); setProductQuery(e.target.value) }}
-                      placeholder="Search product by name or SKU…"
+                      placeholder={t('restaurant.recipes.searchProductPlaceholder')}
                       className="w-full ps-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
                     {productResults.length > 0 && !productId && (
                       <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
@@ -244,19 +246,19 @@ export function RecipesScreen() {
                 )}
               </div>
               <div>
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Recipe Name *</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">{t('restaurant.recipes.recipeName')}</label>
                 <input value={recipeName} onChange={e => setRecipeName(e.target.value)}
-                  placeholder="e.g. Masala Chai Recipe"
+                  placeholder={t('restaurant.recipes.recipeNamePlaceholder')}
                   className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand" />
               </div>
             </div>
 
             <div className="space-y-2">
               <div className="flex items-center justify-between">
-                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">Ingredients *</label>
+                <label className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('restaurant.recipes.ingredients')}</label>
                 <button onClick={addIngredient}
                   className="text-xs text-brand hover:underline flex items-center gap-1">
-                  <Plus size={11} /> Add ingredient
+                  <Plus size={11} /> {t('restaurant.recipes.addIngredient')}
                 </button>
               </div>
               {ingredients.map((ing, idx) => {
@@ -279,7 +281,7 @@ export function RecipesScreen() {
                             ? { ...item, ingredientProductId: '', ingredientName: '', query: e.target.value }
                             : item))
                         }}
-                        placeholder="Search ingredient by name or SKU…"
+                        placeholder={t('restaurant.recipes.searchIngredientPlaceholder')}
                         className="w-full ps-8 bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-lg px-3 py-2 text-sm text-dark dark:text-slate-100 focus:outline-none focus:border-brand" />
                       {visibleResults.length > 0 && !ing.ingredientProductId && (
                         <div className="absolute z-10 mt-1 w-full border border-slate-100 dark:border-slate-700 rounded-lg overflow-hidden divide-y divide-slate-50 dark:divide-slate-800 bg-white dark:bg-slate-900 shadow-lg max-h-56 overflow-y-auto">
@@ -295,7 +297,7 @@ export function RecipesScreen() {
                     </div>
                     <input type="number" min="0.01" step="0.01" value={ing.quantity}
                       onChange={e => setIngredientQuantity(idx, e.target.value)}
-                      placeholder="Qty"
+                      placeholder={t('restaurant.recipes.qtyPlaceholder')}
                       className="w-24 px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:border-brand" />
                     {ingredients.length > 1 && (
                       <button onClick={() => removeIngredient(idx)} className="text-slate-300 hover:text-danger transition-colors mt-2">
@@ -310,11 +312,11 @@ export function RecipesScreen() {
             <div className="flex gap-2 justify-end">
               <button onClick={() => { setShowForm(false); resetForm() }}
                 className="px-4 py-2 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-slate-300 transition-colors">
-                Cancel
+                {t('common.cancel')}
               </button>
               <button onClick={handleSave} disabled={submitting}
                 className="flex items-center gap-2 px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
-                {submitting && <RefreshCw size={12} className="animate-spin" />} Save Recipe
+                {submitting && <RefreshCw size={12} className="animate-spin" />} {t('restaurant.recipes.saveRecipe')}
               </button>
             </div>
           </Card>
@@ -330,8 +332,8 @@ export function RecipesScreen() {
       ) : recipes.length === 0 ? (
         <Card padding="none" className="p-12 text-center">
           <BookOpen size={32} className="text-slate-300 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No recipes yet</p>
-          <p className="text-xs text-slate-400 mt-1">Add recipes to track ingredient usage when KOTs are fulfilled</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('restaurant.recipes.noRecipesYet')}</p>
+          <p className="text-xs text-slate-400 mt-1">{t('restaurant.recipes.noRecipesHint')}</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -342,7 +344,7 @@ export function RecipesScreen() {
                 className="w-full flex items-center justify-between px-5 py-4 text-start hover:bg-slate-50 dark:hover:bg-slate-700 transition-colors">
                 <div>
                   <p className="text-sm font-semibold text-dark dark:text-slate-100">{recipe.recipeName}</p>
-                  <p className="text-xs text-slate-400">For {recipe.product.productName} · {recipe.items.length} ingredient{recipe.items.length !== 1 ? 's' : ''}</p>
+                  <p className="text-xs text-slate-400">{t('restaurant.recipes.forProductIngredientsCount', { product: recipe.product.productName, count: recipe.items.length })}</p>
                 </div>
                 <div className="flex items-center gap-2">
                   <button onClick={e => { e.stopPropagation(); openEdit(recipe) }}

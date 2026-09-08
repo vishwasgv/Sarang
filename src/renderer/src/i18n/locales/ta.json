@@ -56,7 +56,7 @@
     "manual": "கையேடு",
     "costCentres": "செலவு மையங்கள்",
     "budgets": "பட்ஜெட்டுகள்",
-    "serviceCombos": "Service Combos",
+    "serviceCombos": "சேவை காம்போக்கள்",
     "checkIn": "செக்-இன்",
     "customOrders": "தனிப்பயன் ஆர்டர்கள்",
     "cateringEvents": "கேட்டரிங் நிகழ்வுகள்",
@@ -314,6 +314,7 @@
   },
   "billing": {
     "title": "கட்டணம்",
+    "sellingLocation": "விற்பனை இடம்",
     "newInvoice": "புதிய விலைப்பட்டியல்",
     "invoiceList": "விலைப்பட்டியல்",
     "invoiceNumber": "வி.எண்.",
@@ -1610,6 +1611,10 @@
       "distributor": "விநியோகஸ்தர்"
     },
     "defs": {
+      "discounts": {
+        "label": "தள்ளுபடி அறிக்கை",
+        "description": "தள்ளுபடி செய்யப்பட்ட ஒவ்வொரு விலைப்பட்டியல் வரியும், பணியாளர் மற்றும் பொருள் வாரியான பிரிவுகள், மேலும் தள்ளுபடி நிகழ்வு விகிதம் மற்றும் சராசரி தள்ளுபடி %"
+      },
       "sales": {
         "label": "விற்பனை அறிக்கை",
         "description": "வருவாய், தள்ளுபடி, வரி — நாள் / வாரம் / மாதம் / ஆண்டு வாரியாக தொகுக்கப்பட்டது"
@@ -2055,212 +2060,212 @@
         "description": "நீங்கள் வழக்கு வகையின்படி எத்தனை வழக்குகளை கையாண்டீர்கள் — ஆலோசனைகள், தடுப்பு பராமரிப்பு, தடுப்பூசிகள், மற்றும் உங்கள் Service Catalog இல் உள்ள மற்றவை — மாதம் மாதமாக."
       },
       "stylistRepeatClient": {
-        "label": "Stylist Repeat-Client Rate",
-        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+        "label": "ஸ்டைலிஸ்ட் மீண்டும்-வாடிக்கையாளர் விகிதம்",
+        "description": "ஸ்டைலிஸ்ட் வாரியாக, அவர்களின் எத்தனை சொந்த வாடிக்கையாளர்கள் இரண்டாவது முறையாக திரும்பி வந்தனர் — வாடிக்கையாளர்-நம்பகத்தன்மையின் உண்மையான தலைமைப் பலகை"
       },
       "retailAttachRate": {
-        "label": "Retail Attach Rate",
-        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+        "label": "சில்லறை இணைப்பு விகிதம்",
+        "description": "முன்பதிவு செய்யப்பட்ட சேவை விலைப்பட்டியலில் சில்லறை பொருள் அப்செல் எத்தனை முறை சேர்க்கப்பட்டது, ஸ்டைலிஸ்ட் வாரியாக"
       },
       "membershipRenewalFunnel": {
-        "label": "Membership Renewal Funnel",
-        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+        "label": "உறுப்பினர் புதுப்பித்தல் புனல்",
+        "description": "இந்த காலகட்டத்தில் காலாவதியான உறுப்பினர் பதிவுகளில், அதே வாடிக்கையாளர் உண்மையில் எத்தனை புதுப்பித்தார், திட்டம் வாரியாக"
       },
       "classAttendanceHeatmap": {
-        "label": "Class Attendance Heatmap",
-        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+        "label": "வகுப்பு வருகை ஹீட்மேப்",
+        "description": "வாரத்தின் ஒவ்வொரு நாளும் வகுப்பிற்கான உண்மையான செக்-இன் அடர்த்தி — எந்த நேரங்கள் உண்மையிலேயே பரபரப்பானவை, வெறும் பதிவு மட்டுமல்ல"
       },
       "learnerProgressFunnel": {
-        "label": "Learner Progress Funnel",
-        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+        "label": "பயிற்சியாளர் முன்னேற்ற புனல்",
+        "description": "இதுவரை பதிவு செய்யப்பட்ட ஒவ்வொரு பயிற்சியாளரும், அவர்கள் அடைந்த மிக தொலைவான நிலையின்படி — முதல் அமர்விலிருந்து தேர்ச்சி பெற்ற DL தேர்வு வரை"
       },
       "caseAging": {
-        "label": "Case Aging",
-        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+        "label": "வழக்கு காலம்",
+        "description": "ஒவ்வொரு திறந்த வழக்கும், அது தற்போதைய வழக்கு நிலையில் எவ்வளவு காலம் சிக்கியுள்ளது என்பதன்படி வரிசைப்படுத்தப்பட்டது"
       },
       "lawyerBillableHours": {
-        "label": "Billable Hours",
-        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+        "label": "பில் செய்யக்கூடிய மணிநேரங்கள்",
+        "description": "ஒரு வழக்கறிஞருக்கு பில் செய்யக்கூடிய எதிராக இலவச மணிநேரங்கள், ஏற்கனவே பில் செய்யப்பட்டவை மற்றும் இன்னும் பில் செய்யப்படாத தொகைகளாக பிரிக்கப்பட்டது"
       },
       "feeRealization": {
-        "label": "Fee Realization",
-        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+        "label": "கட்டணம் பெறப்படுதல்",
+        "description": "இந்த மாதம் ஒவ்வொரு செயலில் உள்ள ஈடுபாட்டிலிருந்தும் எதிர்பார்க்கப்படும் மீண்டும் வரும் கட்டணத்தில், உண்மையில் எவ்வளவு விலைப்பட்டியலிடப்பட்டது"
       },
       "drawingApprovalCycleTime": {
-        "label": "Drawing Approval Cycle Time",
-        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+        "label": "வரைபட ஒப்புதல் சுழற்சி நேரம்",
+        "description": "ஒவ்வொரு ஒப்புதல் பெற்ற வரைபடத்தையும் வழங்கியதில் இருந்து ஒப்புதல் வரை, பிரிவு வாரியாக, உண்மையில் எத்தனை நாட்கள் ஆனது"
       },
       "projectStageProgress": {
-        "label": "Project Stage Progress",
-        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+        "label": "திட்ட நிலை முன்னேற்றம்",
+        "description": "ஒவ்வொரு செயலில் உள்ள திட்டமும், அது தற்போதைய நிலையில் எவ்வளவு காலம் சிக்கியுள்ளது என்பதன்படி வரிசைப்படுத்தப்பட்டது"
       },
       "siteVisitBilling": {
-        "label": "Site Visit Billing",
-        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+        "label": "தள வருகை பில்லிங்",
+        "description": "ஒவ்வொரு பில் செய்யக்கூடிய தள வருகையும், பில் செய்யப்படாதவை முதலில் — இன்று சரியாக என்ன விலைப்பட்டியலிடலாம்"
       },
       "materialTestResults": {
-        "label": "Material Test Results",
-        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+        "label": "பொருள் தேர்வு முடிவுகள்",
+        "description": "ஒவ்வொரு பதிவு செய்யப்பட்ட பொருள் தேர்வும், தோல்வியடைந்தவை முதலில், மொத்த தேர்ச்சி விகிதத்துடன்"
       },
       "retainerUtilization": {
-        "label": "Retainer Utilization",
-        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+        "label": "ரிடெய்னர் பயன்பாடு",
+        "description": "இந்த காலகட்டத்தில் ஒவ்வொரு மணிநேர ரிடெய்னரின் மாத ஒதுக்கீட்டிற்கு எதிராக பயன்படுத்தப்பட்ட மணிநேரங்கள், அது உண்மையில் பில் செய்யப்பட்டதா என்பதுடன்"
       },
       "proposalWinRate": {
-        "label": "Proposal Win Rate",
-        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+        "label": "முன்மொழிவு வெற்றி விகிதம்",
+        "description": "உண்மையில் அனுப்பப்பட்ட ஒவ்வொரு முன்மொழிவிலும், எத்தனை ஏற்கப்பட்டன எதிராக கையொப்பமிடாமல் காலாவதியானது"
       },
       "clientRevenueConcentration": {
-        "label": "Client Revenue Concentration",
-        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+        "label": "வாடிக்கையாளர் வருவாய் செறிவு",
+        "description": "மொத்த விலைப்பட்டியலிடப்பட்ட வருவாயில் ஒவ்வொரு வாடிக்கையாளரின் பங்கு எவ்வளவு — சார்பு-ஆபத்தின் உண்மையான குறிகாட்டி"
       },
       "campaignROI": {
-        "label": "Campaign ROI",
-        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+        "label": "பிரச்சார ROI",
+        "description": "ஒவ்வொரு பிரச்சாரத்திற்கும் திட்டமிடப்பட்ட விளம்பர-செலவு பட்ஜெட் எதிராக உண்மையான செலவு, மாற்றத்திற்கான செலவுடன் — வருவாய் இணைக்கப்படாததால் கற்பனை ROI தொகை காட்டப்படவில்லை"
       },
       "deliverableStatusPipeline": {
-        "label": "Deliverable Status Pipeline",
-        "description": "Every content-calendar deliverable by status, with how many are overdue"
+        "label": "டெலிவரபிள் நிலை பைப்லைன்",
+        "description": "உள்ளடக்க-நாள்காட்டியின் ஒவ்வொரு டெலிவரபிளும் நிலை வாரியாக, எத்தனை தாமதமாகியுள்ளன என்பதுடன்"
       },
       "channelPerformance": {
-        "label": "Channel Performance",
-        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+        "label": "சேனல் செயல்திறன்",
+        "description": "ஒரே சேனலில் உள்ள அனைத்து பிரச்சாரங்களின் மொத்த விளம்பர செலவு, கிளிக்குகள் மற்றும் மாற்றங்கள்"
       },
       "retainerWorkDelivered": {
-        "label": "Retainer Work Delivered",
-        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+        "label": "ரிடெய்னர் பணி வழங்கப்பட்டது",
+        "description": "ஒவ்வொரு மார்க்கெட்டிங் ரிடெய்னருக்கும், பில் செய்யப்படும் கட்டணத்திற்கு எதிராக இந்த மாதம் உண்மையில் எத்தனை டெலிவரபிள்கள் வெளியிடப்பட்டன"
       },
       "issueAging": {
-        "label": "Issue Aging",
-        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+        "label": "சிக்கல் காலம்",
+        "description": "ஒவ்வொரு திறந்த சிக்கலும், திறந்திருக்கும் நாட்களின்படி, முன்னுரிமையின்படி நிர்ணயிக்கப்பட்ட SLA வரம்புக்கு எதிராக கொடியிடப்பட்டது"
       },
       "teamUtilization": {
-        "label": "Team Utilization",
-        "description": "Billable vs. non-billable hours logged per team member against a client project"
+        "label": "அணி பயன்பாடு",
+        "description": "ஒரு அணி உறுப்பினருக்கு, வாடிக்கையாளர் திட்டத்திற்கு எதிராக பதிவு செய்யப்பட்ட பில் செய்யக்கூடிய எதிராக பில் செய்ய முடியாத மணிநேரங்கள்"
       },
       "sprintBilling": {
-        "label": "Sprint Billing",
-        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+        "label": "ஸ்பிரிண்ட் பில்லிங்",
+        "description": "ஒவ்வொரு முடிக்கப்பட்ட ஸ்பிரிண்டும், அதன் பணி உண்மையில் ஒரு பில்லிங் மைல்கல்லுடன் இணைக்கப்பட்டுள்ளதா என்பதுடன்"
       },
       "deliveryPipeline": {
-        "label": "Delivery Pipeline",
-        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+        "label": "டெலிவரி பைப்லைன்",
+        "description": "ஒவ்வொரு செயலில் உள்ள ஷூட் முன்பதிவும், அதன் தயாரிப்புக்குப் பிந்தைய முன்னேற்றம் எவ்வளவு ஏற்பட்டுள்ளது என்பதன்படி, மேலும் தாமதமான டெலிவரிகள் மற்றும் அதிக திருத்தங்களுடன் கூடிய முன்பதிவுகள்"
       },
       "shootTypeRevenueMix": {
-        "label": "Shoot-Type Revenue Mix",
-        "description": "Revenue, booking count, and average ticket per shoot type"
+        "label": "ஷூட்-வகை வருவாய் கலவை",
+        "description": "ஒரு ஷூட் வகைக்கு வருவாய், முன்பதிவு எண்ணிக்கை, மற்றும் சராசரி டிக்கெட்"
       },
       "equipmentCheckout": {
-        "label": "Equipment Checkout",
-        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+        "label": "உபகரண செக்-அவுட்",
+        "description": "தற்போது செக்-அவுட் செய்யப்பட்டு இன்னும் திரும்பப் பெறப்படாத ஸ்டுடியோவின் ஒவ்வொரு உபகரணமும், தாமதமானவை முதலில்"
       },
       "vendorCostVsBudget": {
-        "label": "Vendor Cost vs. Budget",
-        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+        "label": "விற்பனையாளர் செலவு எதிராக பட்ஜெட்",
+        "description": "ஒவ்வொரு நிகழ்வின் மொத்த விற்பனையாளர் செலவும் வாடிக்கையாளரின் பட்ஜெட் மற்றும் ஏஜென்சியின் சொந்த மேற்கோள் எதிராக — உண்மையான மார்ஜின் தெரிவுநிலை"
       },
       "vendorPerformanceHistory": {
-        "label": "Vendor Performance History",
-        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+        "label": "விற்பனையாளர் செயல்திறன் வரலாறு",
+        "description": "ஒவ்வொரு மதிப்பீடு செய்யப்பட்ட விற்பனையாளரின் சராசரி மதிப்பீடு, அவர்கள் பணியாற்றிய அனைத்து நிகழ்வுகளிலும், மிகக் குறைவானது முதலில்"
       },
       "occupancyTrend": {
-        "label": "Occupancy Trend",
-        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+        "label": "ஆக்கிரமிப்பு போக்கு",
+        "description": "தேர்ந்தெடுக்கப்பட்ட காலகட்டத்தில் தினசரி அறை ஆக்கிரமிப்பு % — ஆக்கிரமிப்பு அதிகரிக்கிறதா அல்லது குறைகிறதா?"
       },
       "roomWiseADR": {
-        "label": "Room-wise ADR",
-        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+        "label": "அறை வாரியாக ADR",
+        "description": "சராசரி தினசரி விகிதம் (ADR) மற்றும் விற்கப்பட்ட இரவுகள், ஒரு அறைக்கு பிரிக்கப்பட்டது — எந்த அறைகள் அதிகம் சம்பாதிக்கின்றன?"
       },
       "adrRevPAR": {
-        "label": "ADR & RevPAR",
-        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+        "label": "ADR மற்றும் RevPAR",
+        "description": "சராசரி தினசரி விகிதம் (ADR) மற்றும் கிடைக்கும் அறைக்கான வருவாய் (RevPAR), மாதம் வாரியாக போக்கு"
       },
       "carPartsVariance": {
-        "label": "Parts Cost Variance",
-        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+        "label": "உதிரிபாகங்கள் செலவு வேறுபாடு",
+        "description": "உள்வாங்கலின் போது மதிப்பீடு வழங்கப்பட்ட பணிகளுக்கு, உண்மையான உதிரிபாகங்கள் செலவு எதிராக மதிப்பிடப்பட்ட செலவு"
       },
       "serviceTypeRevenue": {
-        "label": "Revenue by Service Type",
-        "description": "Which services bring in the most revenue, across every job card"
+        "label": "சேவை வகை வாரியாக வருவாய்",
+        "description": "ஒவ்வொரு பணி அட்டையிலும் எந்த சேவைகள் அதிக வருவாய் தருகின்றன"
       },
       "orderTurnaround": {
-        "label": "Order Turnaround Time",
-        "description": "How many days it actually takes from order to delivery, per order"
+        "label": "ஆர்டர் திருப்பம் நேரம்",
+        "description": "ஒரு ஆர்டருக்கு, ஆர்டரிலிருந்து டெலிவரி வரை உண்மையில் எத்தனை நாட்கள் ஆகும்"
       },
       "fittingStageTracker": {
-        "label": "Fitting-Stage Tracker",
-        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+        "label": "பொருத்த-நிலை கண்காணிப்பான்",
+        "description": "தற்போது டிரையல் அல்லது மாற்றியமைத்தல் நிலையில் உள்ள ஆர்டர்கள், மற்றும் அவை எவ்வளவு காலம் அங்கு சிக்கியுள்ளன"
       },
       "fabricPopularity": {
-        "label": "Fabric / Design Popularity",
-        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+        "label": "துணி / வடிவமைப்பு பிரபலம்",
+        "description": "எந்த துணி மற்றும் வடிவமைப்புகள் அதிகம் ஆர்டர் செய்யப்படுகின்றன, மற்றும் அவற்றுக்குப் பின்னால் உள்ள வருவாய்"
       },
       "renewalFunnel": {
-        "label": "Renewal Funnel",
-        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+        "label": "புதுப்பித்தல் புனல்",
+        "description": "செயலில் உள்ள AMC ஒப்பந்தங்கள், புதுப்பித்தல் அவசரத்தின்படி குழுவாக்கப்பட்டது — தாமதமானதிலிருந்து இன்னும் நிலுவையில் இல்லாதவை வரை"
       },
       "chemicalUsageCompliance": {
-        "label": "Chemical Usage / Compliance Log",
-        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+        "label": "இரசாயன பயன்பாடு / இணக்க பதிவு",
+        "description": "ஒரு வருகைக்கு பயன்படுத்தப்பட்ட பூச்சிக்கொல்லி அளவு, மற்றும் இரசாயனம் பதிவு செய்யப்படாத முடிக்கப்பட்ட வருகைகள்"
       },
       "pestRecurringValueTrend": {
-        "label": "Recurring Contract Value Trend",
-        "description": "Actual AMC contract-fee revenue billed, trended by month"
+        "label": "மீண்டும் வரும் ஒப்பந்த மதிப்பு போக்கு",
+        "description": "பில் செய்யப்பட்ட உண்மையான AMC ஒப்பந்த-கட்டண வருவாய், மாதம் வாரியாக போக்கு"
       },
       "candidatePipelineFunnel": {
-        "label": "Candidate Pipeline Funnel",
-        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+        "label": "விண்ணப்பதாரர் பைப்லைன் புனல்",
+        "description": "ஒவ்வொரு விண்ணப்பதாரரின் முன்னேற்றம் — சேர்க்கப்பட்டதில் இருந்து நேர்காணல், சலுகை மற்றும் இறுதியாக பணி நியமனம் வரை"
       },
       "jobOrderFunnel": {
-        "label": "Job Order Funnel",
-        "description": "Open client job orders by status — the fill-progress view from the client side"
+        "label": "பணி ஆர்டர் புனல்",
+        "description": "வாடிக்கையாளரின் திறந்த பணி ஆர்டர்கள், நிலை வாரியாக — வாடிக்கையாளர் பக்கத்திலிருந்து நிரப்பு-முன்னேற்ற காட்சி"
       },
       "feePercentage": {
-        "label": "Client Fee-Percentage Tracking",
-        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+        "label": "வாடிக்கையாளர் கட்டணம்-சதவீதம் கண்காணிப்பு",
+        "description": "ஒரு பணி ஆர்டருக்கு ஒப்புக்கொள்ளப்பட்ட கட்டணம் % எதிராக அதன் பணி நியமனங்களில் உண்மையில் பெறப்பட்டது"
       },
       "timeToFill": {
-        "label": "Time to Fill",
-        "description": "How many days it actually takes from job order to a candidate joining"
+        "label": "நியமன நேரம்",
+        "description": "பணி ஆர்டரிலிருந்து விண்ணப்பதாரர் சேரும் வரை உண்மையில் எத்தனை நாட்கள் ஆகும்"
       },
       "sourceEffectiveness": {
-        "label": "Source Effectiveness",
-        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+        "label": "மூல செயல்திறன்",
+        "description": "விண்ணப்பதாரர் மூலம் (பரிந்துரை, லிங்க்டு இன், இணையதளம்...) எதிராக உண்மையான பணி நியமன மாற்ற விகிதம்"
       },
       "batchPerformanceTrend": {
-        "label": "Batch Performance Trend",
-        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+        "label": "தொகுதி செயல்திறன் போக்கு",
+        "description": "ஒவ்வொரு தொகுதியின் சராசரி தேர்வு மதிப்பெண், மாதம் வாரியாக போக்கு — தொகுதி மேம்படுகிறதா அல்லது சரிகிறதா?"
       },
       "attendancePerformanceCorrelation": {
-        "label": "Attendance vs. Performance",
-        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+        "label": "வருகை எதிராக செயல்திறன்",
+        "description": "அதிகம் வருகை தரும் மாணவர்கள் உண்மையிலேயே அதிக மதிப்பெண் பெறுகிறார்களா — உண்மையான வருகை % எதிராக சராசரி தேர்வு %, மேலும் தொகுதி முழுவதற்குமான தொடர்பு குணகம்"
       },
       "feeDueUnderperformanceAlert": {
-        "label": "Fee-Due Underperformance Alert",
-        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+        "label": "கட்டணம்-நிலுவை குறைந்த செயல்திறன் எச்சரிக்கை",
+        "description": "கட்டணம் நிலுவையில் உள்ள மற்றும் 50% க்கும் குறைவாக மதிப்பெண் பெறும் மாணவர்கள் — தொடர்புக்கு முன்னுரிமை அளிக்க ஒரு பணிப்பட்டியல்"
       },
       "coilWastageYield": {
-        "label": "Coil Wastage & Yield",
-        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+        "label": "கோயில் வீணாதல் மற்றும் விளைச்சல்",
+        "description": "பெறப்பட்ட எதிராக விற்கப்பட்ட நீளம், விளைச்சல் %, மற்றும் ஒரு கோயில்-விற்பனை பொருளுக்கான மதிப்பிடப்பட்ட வீணாதல்"
       },
       "isiBisSafetyRegister": {
-        "label": "ISI/BIS Safety Register",
-        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+        "label": "ISI/BIS பாதுகாப்பு பதிவேடு",
+        "description": "ஒவ்வொரு தொடர் எண்-கண்காணிக்கப்பட்ட பொருளின் கண்டுபிடிப்புத்திறன் பதிவேடு — பெறப்பட்டது, உத்தரவாதம், மற்றும் எங்கு விற்கப்பட்டது"
       },
       "seasonalDemandForecast": {
-        "label": "Seasonal Demand Forecast",
-        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+        "label": "பருவகால தேவை முன்னறிவிப்பு",
+        "description": "நாள்காட்டி மாதத்தின்படி இதுவரையிலான மொத்த விற்பனை, உச்ச பருவத்தை கொடியிடுகிறது"
       },
       "institutionalOrderHistory": {
-        "label": "Institutional Order History",
-        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+        "label": "நிறுவன ஆர்டர் வரலாறு",
+        "description": "புதுப்பித்தல் திட்டமிடலுக்காக, ஒவ்வொரு கடந்தகால மொத்த-பட்டியல் ஆர்டரும் நிலை, பொருள் எண்ணிக்கை மற்றும் மொத்த மதிப்புடன்"
       },
       "locationStockSplit": {
-        "label": "Showroom-vs-Warehouse Stock",
-        "description": "Per-product stock split across every Location"
+        "label": "காட்சியகம்-எதிராக-கிடங்கு இருப்பு",
+        "description": "ஒவ்வொரு இருப்பிடத்திலும் ஒரு பொருளுக்கான இருப்பு பிரிவு"
       },
       "deliveryInstallationSchedule": {
-        "label": "Delivery & Installation Schedule",
-        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+        "label": "டெலிவரி மற்றும் நிறுவல் அட்டவணை",
+        "description": "தேர்ந்தெடுக்கப்பட்ட காலகட்டத்தில் டெலிவரி தேதி கொண்ட மரச்சாமான் முன்பதிவுகள், ஒரு உண்மையான அட்டவணையாக"
       },
       "specWiseFastMovers": {
         "label": "விவரக்குறிப்பு வாரியான வேகமான விற்பனையாளர்கள்",
@@ -2556,53 +2561,53 @@
       "dosesEvaluated": "மதிப்பீடு செய்யப்பட்ட டோஸ்கள்",
       "totalCases": "மொத்த வழக்குகள்",
       "distinctCaseTypes": "தனித்துவமான வழக்கு வகைகள்",
-      "totalEnrolled": "Total Enrolled",
-      "overallCompletionPercent": "DL Completion Rate %",
-      "totalOpenCases": "Open Cases",
-      "avgDaysInCurrentStage": "Avg. Days in Stage",
-      "staleCaseCount": "Stale Cases (90+ days)",
-      "totalApproved": "Drawings Approved",
-      "avgDaysToApprove": "Avg. Days to Approve",
-      "totalActiveProjects": "Active Projects",
-      "avgDaysInStage": "Avg. Days in Stage",
-      "totalBillableAmount": "Total Billable",
-      "totalBilledAmount": "Total Billed",
-      "totalUnbilledAmount": "Total Unbilled",
-      "unbilledCount": "Unbilled Visits",
-      "passCount": "Passed",
-      "failCount": "Failed",
-      "pendingCount": "Pending",
-      "passRatePercent": "Pass Rate %",
-      "totalRetainers": "Retainers",
-      "overUtilizedCount": "Over-Utilized",
-      "wonCount": "Won",
-      "lostCount": "Lost",
-      "winRatePercent": "Win Rate %",
-      "wonValue": "Won Value",
-      "topClientSharePercent": "Top Client Share %",
-      "top3SharePercent": "Top 3 Clients Share %",
-      "totalCampaigns": "Campaigns",
-      "totalBudget": "Total Budget",
-      "totalActualSpend": "Total Actual Spend",
-      "overBudgetCount": "Over Budget",
-      "totalDeliverables": "Deliverables",
-      "zeroDeliveredCount": "Zero Delivered",
-      "totalOpenIssues": "Open Issues",
-      "breachedCount": "SLA Breached",
-      "totalBillableHours": "Total Billable Hours",
-      "totalNonBillableHours": "Total Non-Billable Hours",
-      "totalCompletedSprints": "Completed Sprints",
-      "unlinkedCount": "Unbilled Sprints",
-      "totalActive": "Active Bookings",
-      "deliveredCount": "Delivered",
-      "avgRevisionRounds": "Avg. Revision Rounds",
-      "totalBookings": "Total Bookings",
-      "totalEvents": "Events",
-      "totalVendorCost": "Total Vendor Cost",
-      "totalRatedVendors": "Rated Vendors",
-      "overallAvgRating": "Overall Avg. Rating",
-      "correlationCoefficient": "Attendance–Performance Correlation",
-      "alertCount": "Students Flagged"
+      "totalEnrolled": "மொத்த பதிவுகள்",
+      "overallCompletionPercent": "DL நிறைவு விகிதம் %",
+      "totalOpenCases": "திறந்த வழக்குகள்",
+      "avgDaysInCurrentStage": "சராசரி நாட்கள் (நிலையில்)",
+      "staleCaseCount": "செயலற்ற வழக்குகள் (90+ நாட்கள்)",
+      "totalApproved": "ஒப்புதல் பெற்ற வரைபடங்கள்",
+      "avgDaysToApprove": "சராசரி ஒப்புதல் நாட்கள்",
+      "totalActiveProjects": "செயலில் உள்ள திட்டங்கள்",
+      "avgDaysInStage": "சராசரி நாட்கள் (நிலையில்)",
+      "totalBillableAmount": "மொத்த பில் செய்யக்கூடிய தொகை",
+      "totalBilledAmount": "மொத்த பில் செய்யப்பட்ட தொகை",
+      "totalUnbilledAmount": "மொத்த பில் செய்யப்படாத தொகை",
+      "unbilledCount": "பில் செய்யப்படாத வருகைகள்",
+      "passCount": "தேர்ச்சி",
+      "failCount": "தோல்வி",
+      "pendingCount": "நிலுவையில்",
+      "passRatePercent": "தேர்ச்சி விகிதம் %",
+      "totalRetainers": "ரிடெய்னர்கள்",
+      "overUtilizedCount": "அதிக பயன்பாடு",
+      "wonCount": "வென்றவை",
+      "lostCount": "இழந்தவை",
+      "winRatePercent": "வெற்றி விகிதம் %",
+      "wonValue": "வென்ற மதிப்பு",
+      "topClientSharePercent": "முதன்மை வாடிக்கையாளர் பங்கு %",
+      "top3SharePercent": "முதல் 3 வாடிக்கையாளர்கள் பங்கு %",
+      "totalCampaigns": "பிரச்சாரங்கள்",
+      "totalBudget": "மொத்த பட்ஜெட்",
+      "totalActualSpend": "மொத்த உண்மையான செலவு",
+      "overBudgetCount": "பட்ஜெட்டை மீறியது",
+      "totalDeliverables": "டெலிவரபிள்கள்",
+      "zeroDeliveredCount": "பூஜ்ஜிய டெலிவரி",
+      "totalOpenIssues": "திறந்த சிக்கல்கள்",
+      "breachedCount": "SLA மீறல்",
+      "totalBillableHours": "மொத்த பில் செய்யக்கூடிய மணிநேரங்கள்",
+      "totalNonBillableHours": "மொத்த பில் செய்ய முடியாத மணிநேரங்கள்",
+      "totalCompletedSprints": "முடிக்கப்பட்ட ஸ்பிரிண்ட்கள்",
+      "unlinkedCount": "பில் செய்யப்படாத ஸ்பிரிண்ட்கள்",
+      "totalActive": "செயலில் உள்ள முன்பதிவுகள்",
+      "deliveredCount": "வழங்கப்பட்டவை",
+      "avgRevisionRounds": "சராசரி திருத்த சுற்றுகள்",
+      "totalBookings": "மொத்த முன்பதிவுகள்",
+      "totalEvents": "நிகழ்வுகள்",
+      "totalVendorCost": "மொத்த விற்பனையாளர் செலவு",
+      "totalRatedVendors": "மதிப்பீடு செய்யப்பட்ட விற்பனையாளர்கள்",
+      "overallAvgRating": "ஒட்டுமொத்த சராசரி மதிப்பீடு",
+      "correlationCoefficient": "வருகை–செயல்திறன் தொடர்பு",
+      "alertCount": "கொடியிடப்பட்ட மாணவர்கள்"
     },
     "aging": {
       "current": "தற்போதைய",
@@ -2705,8 +2710,8 @@
       "complianceByRecallType": "நினைவூட்டல் வகை வாரியான இணக்கம்",
       "complianceByVaccine": "தடுப்பூசி வாரியான இணக்கம்",
       "caseTypeVolumeChart": "வழக்கு அளவு போக்கு",
-      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
-      "feeDueUnderperformanceDetails": "Flagged Students"
+      "attendancePerformanceDetails": "வருகை எதிராக செயல்திறன், மாணவர் வாரியாக",
+      "feeDueUnderperformanceDetails": "கொடியிடப்பட்ட மாணவர்கள்"
     },
     "empty": {
       "invoices": "இந்த தேதி வரம்பில் பில்கள் இல்லை.",
@@ -2805,39 +2810,39 @@
       "dentalRecallCompliance": "இந்த தேதி வரம்பில் எந்த நினைவூட்டலும் மூடப்படவில்லை.",
       "vaccinationCompliance": "இந்த தேதி வரம்பில் முந்தைய நிலுவை தேதியுடன் பின்தொடர் டோஸ் இல்லை.",
       "vetCaseTypeVolume": "இந்த தேதி வரம்பில் வழக்குகள் பதிவு செய்யப்படவில்லை.",
-      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
-      "serviceTypeRevenue": "No service items billed in this date range.",
-      "orderTurnaround": "No orders delivered in this date range.",
-      "fittingStageTracker": "No orders currently at Trial or Alterations.",
-      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
-      "chemicalUsageCompliance": "No completed visits in this date range.",
-      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
-      "attendancePerformanceCorrelation": "No enrolled students yet.",
-      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
-      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range.",
-      "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
-      "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now.",
-      "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now.",
-      "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet.",
-      "retainerUtilization": "No active hourly retainers right now.",
-      "clientRevenueConcentration": "No invoiced revenue in this date range.",
-      "campaignROI": "No marketing campaigns recorded yet.",
-      "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
-      "issueAging": "No open issues right now.",
-      "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet.",
-      "deliveryPipeline": "No bookings with a revision round logged yet.",
-      "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out.",
-      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
-      "vendorPerformanceHistory": "No vendors rated yet."
+      "carPartsVariance": "இதுவரை மதிப்பீடு வழங்கப்பட்ட பணிகள் எதுவும் இல்லை.",
+      "serviceTypeRevenue": "இந்த காலகட்டத்தில் சேவை பொருட்கள் எதுவும் பில் செய்யப்படவில்லை.",
+      "orderTurnaround": "இந்த காலகட்டத்தில் ஆர்டர்கள் எதுவும் டெலிவரி செய்யப்படவில்லை.",
+      "fittingStageTracker": "தற்போது டிரையல் அல்லது மாற்றியமைத்தல் நிலையில் ஆர்டர்கள் இல்லை.",
+      "fabricPopularity": "இந்த காலகட்டத்தில் துணி/வடிவமைப்பு குறிப்பிடப்பட்ட ஆர்டர்கள் இல்லை.",
+      "chemicalUsageCompliance": "இந்த காலகட்டத்தில் முடிக்கப்பட்ட வருகைகள் இல்லை.",
+      "pestRecurringValueTrend": "இந்த காலகட்டத்தில் மீண்டும் வரும் ஒப்பந்த-கட்டண விலைப்பட்டியல்கள் பில் செய்யப்படவில்லை.",
+      "attendancePerformanceCorrelation": "இதுவரை பதிவு செய்யப்பட்ட மாணவர்கள் இல்லை.",
+      "feeDueUnderperformanceAlert": "தற்போது கொடியிடப்பட்ட மாணவர்கள் இல்லை — கட்டணம் நிலுவை மற்றும் குறைந்த செயல்திறன் இரண்டும் யாருக்கும் இல்லை.",
+      "stylistRepeatClient": "இந்த காலகட்டத்தில் ஸ்டைலிஸ்ட் நியமிக்கப்பட்ட முடிக்கப்பட்ட சந்திப்புகள் பதிவு இல்லை.",
+      "retailAttachRate": "இந்த காலகட்டத்தில் விலைப்பட்டியலிடப்பட்ட சந்திப்புகள் இல்லை.",
+      "membershipRenewalFunnel": "இந்த காலகட்டத்தில் உறுப்பினர் பதிவுகள் காலாவதியாகவில்லை.",
+      "classAttendanceHeatmap": "இந்த காலகட்டத்தில் வகுப்பு செக்-இன்கள் பதிவு செய்யப்படவில்லை.",
+      "caseAging": "தற்போது திறந்த வழக்குகள் எதுவும் இல்லை.",
+      "lawyerBillableHours": "இந்த காலகட்டத்தில் ஒரு வழக்கிற்கு எதிராக நேர பதிவுகள் இல்லை.",
+      "feeRealization": "தற்போது செயலில் உள்ள, விலை நிர்ணயிக்கப்பட்ட ஈடுபாடுகள் இல்லை.",
+      "drawingApprovalCycleTime": "இதுவரை கோப்பில் ஒப்புதல் பெற்ற வரைபடங்கள் இல்லை.",
+      "projectStageProgress": "தற்போது நிலை அமைக்கப்பட்ட செயலில் உள்ள திட்டங்கள் இல்லை.",
+      "siteVisitBilling": "இதுவரை பில் செய்யக்கூடிய தள வருகைகள் பதிவு செய்யப்படவில்லை.",
+      "materialTestResults": "இதுவரை பொருள் தேர்வு முடிவுகள் பதிவு செய்யப்படவில்லை.",
+      "retainerUtilization": "தற்போது செயலில் உள்ள மணிநேர ரிடெய்னர்கள் இல்லை.",
+      "clientRevenueConcentration": "இந்த காலகட்டத்தில் விலைப்பட்டியலிடப்பட்ட வருவாய் இல்லை.",
+      "campaignROI": "இதுவரை மார்க்கெட்டிங் பிரச்சாரங்கள் எதுவும் பதிவு செய்யப்படவில்லை.",
+      "channelPerformance": "இதுவரை சேனல் அமைக்கப்பட்ட பிரச்சாரங்கள் எதுவும் இல்லை.",
+      "retainerWorkDelivered": "தற்போது மார்க்கெட்டிங்-பிரச்சார வாடிக்கையாளருக்கு செயலில் உள்ள ரிடெய்னர்கள் இல்லை.",
+      "issueAging": "தற்போது திறந்த சிக்கல்கள் இல்லை.",
+      "teamUtilization": "இந்த காலகட்டத்தில் ஒரு திட்டத்திற்கு எதிராக மணிநேரங்கள் பதிவு செய்யப்படவில்லை.",
+      "sprintBilling": "இதுவரை முடிக்கப்பட்ட ஸ்பிரிண்ட்கள் இல்லை.",
+      "deliveryPipeline": "இதுவரை திருத்த சுற்று பதிவு செய்யப்பட்ட முன்பதிவுகள் இல்லை.",
+      "shootTypeRevenueMix": "இந்த காலகட்டத்தில் விலை நிர்ணயிக்கப்பட்ட முன்பதிவுகள் இல்லை.",
+      "equipmentCheckout": "தற்போது செக்-அவுட் செய்யப்பட்ட உபகரணங்கள் இல்லை.",
+      "vendorCostVsBudget": "இதுவரை ரத்து செய்யப்படாத நிகழ்வுகள் பதிவு செய்யப்படவில்லை.",
+      "vendorPerformanceHistory": "இதுவரை எந்த விற்பனையாளரும் மதிப்பீடு செய்யப்படவில்லை."
     },
     "col": {
       "channel": "சேனல்",
@@ -2944,7 +2949,7 @@
       "actualQuantity": "உண்மையில் பயன்படுத்திய அளவு",
       "varianceQuantity": "வேறுபாடு",
       "variancePercent": "வேறுபாடு %",
-      "gstin": "GSTIN",
+      "gstin": "ஜிஎஸ்டிஐஎன்",
       "party": "தரப்பு",
       "value": "மதிப்பு",
       "placeOfSupply": "வழங்கல் இடம்",
@@ -3136,93 +3141,93 @@
       "recallType": "நினைவூட்டல் வகை",
       "vaccineName": "தடுப்பூசி",
       "doses": "டோஸ்கள்",
-      "stylist": "Stylist",
-      "totalClients": "Total Clients",
-      "repeatClients": "Repeat Clients",
-      "totalInvoices": "Total Invoices",
-      "withAttach": "With Retail Attach",
-      "attachRatePercent": "Attach Rate %",
-      "planName": "Plan",
-      "expiredCount": "Expired",
-      "renewedCount": "Renewed",
-      "renewalRatePercent": "Renewal Rate %",
-      "className": "Class",
-      "checkInCount": "Check-Ins",
-      "learnerCount": "Learners",
-      "caseNumber": "Case Number",
-      "caseTitle": "Case Title",
-      "clientName": "Client",
-      "daysInStage": "Days in Stage",
-      "daysSinceFiling": "Days Since Filing",
-      "advocate": "Advocate",
-      "billedAmount": "Billed",
-      "unbilledAmount": "Unbilled",
-      "engagement": "Engagement",
-      "expectedFee": "Expected Fee",
-      "realizedFee": "Realized Fee",
-      "realizationPercent": "Realization %",
-      "invoicedThisPeriod": "Invoiced This Period",
-      "drawingNumber": "Drawing No.",
-      "revisionNumber": "Rev.",
-      "discipline": "Discipline",
-      "issuedDate": "Issued Date",
-      "approvedDate": "Approved Date",
-      "daysToApprove": "Days to Approve",
-      "stageProgress": "Stage Progress %",
-      "attendancePercent": "Attendance %",
-      "avgTestPercentage": "Avg. Test %",
-      "feeDueAmount": "Fee Due",
-      "visitType": "Visit Type",
-      "billableAmount": "Billable Amount",
-      "billedStatus": "Billed Status",
-      "testType": "Test Type",
-      "materialDescription": "Material",
-      "testValue": "Test Value",
-      "requiredMinValue": "Pass Minimum",
-      "result": "Result",
-      "testedDate": "Tested Date",
-      "hoursPerMonth": "Hours/Month",
-      "hoursUsed": "Hours Used",
-      "monthlyAmount": "Monthly Amount",
-      "billedThisPeriod": "Billed This Period",
-      "revenueSharePercent": "Revenue Share %",
-      "cumulativeSharePercent": "Cumulative Share %",
-      "targetChannel": "Channel",
-      "adSpendBudget": "Ad Spend Budget",
-      "actualSpend": "Actual Spend",
-      "budgetVariancePercent": "Budget Variance %",
-      "conversions": "Conversions",
-      "costPerConversion": "Cost/Conversion",
-      "campaignCount": "Campaigns",
-      "totalImpressions": "Impressions",
-      "totalClicks": "Clicks",
-      "totalConversions": "Conversions",
-      "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered",
-      "daysOpen": "Days Open",
-      "slaThresholdDays": "SLA (days)",
-      "slaBreached": "SLA Breached",
-      "employeeName": "Employee",
-      "totalHours": "Total Hours",
-      "sprintNumber": "Sprint #",
-      "sprintName": "Sprint Name",
-      "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount",
-      "shootType": "Shoot Type",
-      "revisionRounds": "Revision Rounds",
-      "avgTicket": "Avg. Ticket",
-      "assetName": "Equipment",
-      "checkedOutToName": "Checked Out To",
-      "checkedOutDate": "Checked Out",
-      "expectedReturnDate": "Expected Return",
-      "daysOut": "Days Out",
-      "isOverdue": "Overdue",
-      "eventName": "Event",
-      "clientBudget": "Client Budget",
-      "totalVendorCost": "Total Vendor Cost",
-      "vendorName": "Vendor",
-      "ratedEventCount": "Rated Events",
-      "avgRating": "Avg. Rating"
+      "stylist": "ஸ்டைலிஸ்ட்",
+      "totalClients": "மொத்த வாடிக்கையாளர்கள்",
+      "repeatClients": "மீண்டும் வரும் வாடிக்கையாளர்கள்",
+      "totalInvoices": "மொத்த விலைப்பட்டியல்கள்",
+      "withAttach": "சில்லறை இணைப்புடன்",
+      "attachRatePercent": "இணைப்பு விகிதம் %",
+      "planName": "திட்டம்",
+      "expiredCount": "காலாவதியானது",
+      "renewedCount": "புதுப்பிக்கப்பட்டது",
+      "renewalRatePercent": "புதுப்பித்தல் விகிதம் %",
+      "className": "வகுப்பு",
+      "checkInCount": "செக்-இன்கள்",
+      "learnerCount": "பயிற்சியாளர்கள்",
+      "caseNumber": "வழக்கு எண்",
+      "caseTitle": "வழக்கு தலைப்பு",
+      "clientName": "வாடிக்கையாளர்",
+      "daysInStage": "நிலையில் நாட்கள்",
+      "daysSinceFiling": "தாக்கல் செய்ததில் இருந்து நாட்கள்",
+      "advocate": "வழக்கறிஞர்",
+      "billedAmount": "பில் செய்யப்பட்ட தொகை",
+      "unbilledAmount": "பில் செய்யப்படாத தொகை",
+      "engagement": "ஈடுபாடு",
+      "expectedFee": "எதிர்பார்க்கப்படும் கட்டணம்",
+      "realizedFee": "பெறப்பட்ட கட்டணம்",
+      "realizationPercent": "பெறப்பட்ட விகிதம் %",
+      "invoicedThisPeriod": "இந்த காலகட்டத்தில் விலைப்பட்டியலிடப்பட்டது",
+      "drawingNumber": "வரைபட எண்.",
+      "revisionNumber": "திருத்தம் எண்.",
+      "discipline": "பிரிவு",
+      "issuedDate": "வழங்கிய தேதி",
+      "approvedDate": "ஒப்புதல் தேதி",
+      "daysToApprove": "ஒப்புதலுக்கு எடுத்த நாட்கள்",
+      "stageProgress": "நிலை முன்னேற்றம் %",
+      "attendancePercent": "வருகை %",
+      "avgTestPercentage": "சராசரி தேர்வு %",
+      "feeDueAmount": "நிலுவை கட்டணம்",
+      "visitType": "வருகை வகை",
+      "billableAmount": "பில் செய்யக்கூடிய தொகை",
+      "billedStatus": "பில்லிங் நிலை",
+      "testType": "தேர்வு வகை",
+      "materialDescription": "பொருள்",
+      "testValue": "தேர்வு மதிப்பு",
+      "requiredMinValue": "தேர்ச்சி குறைந்தபட்சம்",
+      "result": "முடிவு",
+      "testedDate": "தேர்வு தேதி",
+      "hoursPerMonth": "மணிநேரம்/மாதம்",
+      "hoursUsed": "பயன்படுத்திய மணிநேரங்கள்",
+      "monthlyAmount": "மாத தொகை",
+      "billedThisPeriod": "இந்த காலகட்டத்தில் பில் செய்யப்பட்டது",
+      "revenueSharePercent": "வருவாய் பங்கு %",
+      "cumulativeSharePercent": "குவிந்த பங்கு %",
+      "targetChannel": "சேனல்",
+      "adSpendBudget": "விளம்பர செலவு பட்ஜெட்",
+      "actualSpend": "உண்மையான செலவு",
+      "budgetVariancePercent": "பட்ஜெட் வேறுபாடு %",
+      "conversions": "மாற்றங்கள்",
+      "costPerConversion": "செலவு/மாற்றம்",
+      "campaignCount": "பிரச்சாரங்கள்",
+      "totalImpressions": "இம்ப்ரெஷன்கள்",
+      "totalClicks": "கிளிக்குகள்",
+      "totalConversions": "மாற்றங்கள்",
+      "ctrPercent": "சிடிஆர் %",
+      "deliveredCount": "வழங்கப்பட்டவை",
+      "daysOpen": "திறந்த நாட்கள்",
+      "slaThresholdDays": "SLA (நாட்கள்)",
+      "slaBreached": "SLA மீறல்",
+      "employeeName": "பணியாளர்",
+      "totalHours": "மொத்த மணிநேரம்",
+      "sprintNumber": "ஸ்பிரிண்ட் #",
+      "sprintName": "ஸ்பிரிண்ட் பெயர்",
+      "milestoneStatus": "மைல்கல் நிலை",
+      "milestoneAmount": "மைல்கல் தொகை",
+      "shootType": "ஷூட் வகை",
+      "revisionRounds": "திருத்த சுற்றுகள்",
+      "avgTicket": "சராசரி டிக்கெட்",
+      "assetName": "உபகரணம்",
+      "checkedOutToName": "யாருக்கு வழங்கப்பட்டது",
+      "checkedOutDate": "செக்-அவுட் தேதி",
+      "expectedReturnDate": "எதிர்பார்க்கப்படும் திருப்பம்",
+      "daysOut": "வெளியே இருந்த நாட்கள்",
+      "isOverdue": "தாமதமானது",
+      "eventName": "நிகழ்வு",
+      "clientBudget": "வாடிக்கையாளர் பட்ஜெட்",
+      "totalVendorCost": "மொத்த விற்பனையாளர் செலவு",
+      "vendorName": "விற்பனையாளர்",
+      "ratedEventCount": "மதிப்பீடு செய்யப்பட்ட நிகழ்வுகள்",
+      "avgRating": "சராசரி மதிப்பீடு"
     },
     "legend": {
       "schemeCost": "திட்ட செலவு",
@@ -3513,10 +3518,10 @@
     "destinationSaveFailed": "காப்புப் பிரதி கோப்புறையைப் புதுப்பிக்க முடியவில்லை",
     "destinationReset": "காப்புப் பிரதி கோப்புறை இயல்புநிலைக்கு மீட்டமைக்கப்பட்டது",
     "destinationUnreachable": "\"{{path}}\" தற்போது அணுக முடியவில்லை (துண்டிக்கப்பட்டதா?) — அதற்குப் பதிலாக இயல்புநிலை இடம் பயன்படுத்தப்படுகிறது.",
-    "restoreFromFile": "Restore from File",
-    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
-    "restoreFromFileConfirmTitle": "Restore from Backup File",
-    "pickBackupFileFailed": "Could not open file picker."
+    "restoreFromFile": "கோப்பிலிருந்து மீட்டமை",
+    "restoreFromFileDesc": "வேறொரு சாதனத்திலிருந்து அல்லது USB டிரைவிலிருந்து .sarang-backup கோப்பு உள்ளதா? அதிலிருந்து நேரடியாக மீட்டமைக்கவும்.",
+    "restoreFromFileConfirmTitle": "காப்புப் பிரதி கோப்பிலிருந்து மீட்டமை",
+    "pickBackupFileFailed": "கோப்பு தேர்வியைத் திறக்க முடியவில்லை."
   },
   "audit": {
     "title": "தணிக்கை பதிவு",
@@ -4892,7 +4897,7 @@
     "docTypePurchaseOrder": "கொள்முதல் ஆர்டர்"
   },
   "disclaimer": {
-    "legalNotice": "சாரங் பிசினஸ் ஓஎஸ் லைட் என்பது சிறு தொழில்களுக்கான இலவச நிறுவன கருவியாகும். இது ஒரு மருத்துவ பதிவு அமைப்போ, கணக்கியல் மென்பொருளோ, சட்ட ஆலோசனை கருவியோ அல்லது உரிமம் பெற்ற நிதி தயாரிப்போ அல்ல. அனைத்து தகவல்களும் பயனரின் சொந்த தரவாகும், அவை அவர்களின் சாதனத்தில் உள்நாட்டில் சேமிக்கப்படுகின்றன. இந்த மென்பொருளின் துல்லியம், முழுமை அல்லது ஏதேனும் ஒழுங்குபடுத்தப்பட்ட நோக்கத்திற்கான பொருத்தத்திற்கு Aszurex எந்த உத்தரவாதமும் அளிக்கவில்லை. பொருந்தும் சட்டங்கள் மற்றும் தொழில்முறை விதிமுறைகளுக்கு இணங்குவதற்கு பயனர்களே முழுப் பொறுப்பாவார்கள்."
+    "legalNotice": "சாரங் பிசினஸ் ஓஎஸ் லைட் என்பது சிறு தொழில்களுக்கான இலவச நிறுவன கருவியாகும். இது ஒரு மருத்துவ பதிவு அமைப்போ, சட்ட ஆலோசனை கருவியோ அல்லது உரிமம் பெற்ற நிதி தயாரிப்போ அல்ல. இதில் கணக்கியல் மற்றும் GST அம்சங்கள் அடங்கியுள்ளன, ஆனால் இது உரிமம் பெற்ற கணக்காளர் அல்லது வரி ஆலோசகருக்கு மாற்றாக இல்லை. அனைத்து தகவல்களும் பயனரின் சொந்த தரவாகும், அவை அவர்களின் சாதனத்தில் உள்நாட்டில் சேமிக்கப்படுகின்றன. இந்த மென்பொருளின் துல்லியம், முழுமை அல்லது ஏதேனும் ஒழுங்குபடுத்தப்பட்ட நோக்கத்திற்கான பொருத்தத்திற்கு Aszurex எந்த உத்தரவாதமும் அளிக்கவில்லை. பொருந்தும் சட்டங்கள் மற்றும் தொழில்முறை விதிமுறைகளுக்கு இணங்குவதற்கு பயனர்களே முழுப் பொறுப்பாவார்கள்."
   },
   "compliance": {
     "disclaimerLabel": "பொறுப்புத் துறப்பு:",
@@ -5862,26 +5867,26 @@
     }
   },
   "serviceCombos": {
-    "title": "Service Combos",
-    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
-    "comboName": "Combo Name",
-    "services": "Services",
-    "comboPrice": "Combo Price",
-    "savings": "Savings",
-    "newCombo": "New Combo",
-    "editCombo": "Edit Combo",
-    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
-    "nameRequired": "Combo name is required.",
-    "priceRequired": "Combo price must be greater than zero.",
-    "needTwoServices": "A combo needs at least 2 distinct services.",
-    "selectServices": "Select Services",
-    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
-    "memberTotalHint": "Individual price total: {{amount}}",
-    "couldNotLoad": "Could not load service combos.",
-    "couldNotSave": "Could not save this service combo.",
+    "title": "சேவை காம்போக்கள்",
+    "subtitle": "{{count}} காம்போக்கள் — 2+ சேவைகளை ஒரே பேக்கேஜ் விலையில் இணைக்கவும், அப்பாயின்ட்மென்ட் திரையில் இருந்து நேரடியாக பதிவு செய்யவும்",
+    "comboName": "காம்போ பெயர்",
+    "services": "சேவைகள்",
+    "comboPrice": "காம்போ விலை",
+    "savings": "சேமிப்பு",
+    "newCombo": "புதிய காம்போ",
+    "editCombo": "காம்போவைத் திருத்து",
+    "comboNamePlaceholder": "எ.கா. வாஷ் + கட் + ஸ்டைல்",
+    "nameRequired": "காம்போ பெயர் தேவை.",
+    "priceRequired": "காம்போ விலை பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
+    "needTwoServices": "ஒரு காம்போவிற்கு குறைந்தது 2 வெவ்வேறு சேவைகள் தேவை.",
+    "selectServices": "சேவைகளைத் தேர்ந்தெடுக்கவும்",
+    "selectServicesHint": "இந்த காம்போவில் சேர்க்க குறைந்தது 2 சேவைகளைத் தேர்ந்தெடுக்கவும்.",
+    "memberTotalHint": "தனிப்பட்ட விலை மொத்தம்: {{amount}}",
+    "couldNotLoad": "சேவை காம்போக்களை ஏற்ற முடியவில்லை.",
+    "couldNotSave": "இந்த சேவை காம்போவை சேமிக்க முடியவில்லை.",
     "empty": {
-      "title": "No service combos yet",
-      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+      "title": "இதுவரை சேவை காம்போக்கள் இல்லை",
+      "body": "2 அல்லது அதற்கு மேற்பட்ட சேவைகளை ஒரே பேக்கேஜ் விலையில் இணைக்கவும் — எ.கா. தனித்தனியாக பதிவு செய்வதை விட தள்ளுபடியில் வாஷ் + கட் + ஸ்டைல்."
     }
   },
   "checkin": {
@@ -6065,7 +6070,7 @@
         "IN_SERVICE": "சேவையில்",
         "INACTIVE": "செயலற்ற"
       },
-      "changeStatus": "Change vehicle status",
+      "changeStatus": "வாகன நிலையை மாற்று",
       "statusUpdated": "நிலை புதுப்பிக்கப்பட்டது",
       "statusUpdateFailed": "வாகன நிலையை புதுப்பிக்க முடியவில்லை."
     },
@@ -6111,11 +6116,11 @@
         "ACTIVE": "செயலில்",
         "INACTIVE": "செயலற்ற"
       },
-      "activate": "Activate",
-      "deactivate": "Deactivate",
+      "activate": "செயல்படுத்து",
+      "deactivate": "செயலிழக்கச் செய்",
       "packageStatusUpdated": "தொகுப்பு நிலை புதுப்பிக்கப்பட்டது",
       "packageStatusUpdateFailed": "தொகுப்பு நிலையை புதுப்பிக்க முடியவில்லை.",
-      "markComplete": "Mark Complete",
+      "markComplete": "முடிந்தது எனக் குறி",
       "cancelDeparture": "ரத்துசெய்",
       "departureStatusUpdated": "புறப்பாடு நிலை புதுப்பிக்கப்பட்டது",
       "departureStatusUpdateFailed": "புறப்பாடு நிலையை புதுப்பிக்க முடியவில்லை.",
@@ -6193,6 +6198,282 @@
       "cancelBooking": "முன்பதிவை ரத்துசெய்",
       "bookingCancelled": "முன்பதிவு ரத்துசெய்யப்பட்டது",
       "bookingCancelFailed": "முன்பதிவை ரத்துசெய்ய முடியவில்லை."
+    }
+  }
+,
+  "restaurant": {
+    "kot": {
+      "title": "சமையலறை ஆர்டர் டிக்கெட்கள்",
+      "ordersCount": "{{count}} ஆர்டர்கள்",
+      "incomingOrders": "வரும் ஆர்டர்கள் ({{count}})",
+      "accept": "ஏற்கவும்",
+      "reject": "நிராகரிக்கவும்",
+      "noKotsFound": "எந்த KOT-ம் இல்லை",
+      "noKotsHint": "ஆர்டர் சமையலறைக்கு அனுப்பப்படும்போது KOT உருவாகும்",
+      "takeaway": "டேக்அவே",
+      "deliveryApp": "டெலிவரி ஆப்",
+      "tokenLabel": "டோக்கன் #{{number}}",
+      "statusPending": "நிலுவையில்",
+      "statusInProgress": "செயலில் உள்ளது",
+      "statusDone": "முடிந்தது",
+      "statusCancelled": "ரத்து செய்யப்பட்டது",
+      "startCooking": "சமைக்கத் தொடங்கு",
+      "markDone": "முடிந்ததாகக் குறி",
+      "served": "பரிமாறப்பட்டது",
+      "markServed": "பரிமாறப்பட்டதாகக் குறி",
+      "printTicket": "சமையலறை டிக்கெட்டை அச்சிடு",
+      "acceptOrderTitle": "ஆர்டரை ஏற்கவும் — {{table}}",
+      "acceptOrderNote": "இது ஆர்டரை சமையலறைக்கு அனுப்பி, மேசையின் நடப்பு பில்லில் சேர்க்கும். பில்லிங் செக்அவுட்டின்போது ஒரே முறை மட்டுமே நடக்கும்.",
+      "sending": "அனுப்பப்படுகிறது…",
+      "confirmAndSend": "உறுதிசெய்து சமையலறைக்கு அனுப்பு",
+      "couldNotLoadIncomingOrders": "வரும் ஆர்டர்களை ஏற்ற முடியவில்லை.",
+      "couldNotLoadTickets": "சமையலறை டிக்கெட்டுகளை ஏற்ற முடியவில்லை.",
+      "couldNotRejectOrder": "ஆர்டரை நிராகரிக்க முடியவில்லை.",
+      "orderAcceptedTitle": "ஆர்டர் ஏற்கப்பட்டது",
+      "orderAcceptedDesc": "இந்த மேசைக்கான சமையலறை டிக்கெட் உருவாக்கப்பட்டது.",
+      "couldNotAcceptOrder": "ஆர்டரை ஏற்க முடியவில்லை.",
+      "couldNotUpdateStatus": "KOT நிலையைப் புதுப்பிக்க முடியவில்லை.",
+      "couldNotCancelKot": "KOT-ஐ ரத்து செய்ய முடியவில்லை.",
+      "couldNotMarkServed": "இந்த டிக்கெட்டை பரிமாறப்பட்டதாகக் குறிக்க முடியவில்லை.",
+      "printedTitle": "அச்சிடப்பட்டது",
+      "printedDesc": "KOT அச்சுப்பொறிக்கு அனுப்பப்பட்டது.",
+      "printFailedTitle": "அச்சிடல் தோல்வி",
+      "couldNotPrintKot": "KOT-ஐ அச்சிட முடியவில்லை."
+    },
+    "kitchenDisplay": {
+      "title": "சமையலறை காட்சி",
+      "connectionIssue": "இணைப்புச் சிக்கல் — மீண்டும் முயற்சிக்கிறது…",
+      "updatedAt": "புதுப்பிக்கப்பட்டது {{time}}",
+      "recentlyDone": "சமீபத்தில் முடிந்தவை",
+      "nothingHere": "இங்கு எதுவும் இல்லை",
+      "updating": "புதுப்பிக்கிறது…"
+    },
+    "recipes": {
+      "title": "செய்முறை மேலாண்மை",
+      "recipesCount": "{{count}} செய்முறைகள் கட்டமைக்கப்பட்டுள்ளன",
+      "addRecipe": "செய்முறை சேர்",
+      "editRecipe": "செய்முறையைத் திருத்து",
+      "newRecipe": "புதிய செய்முறை",
+      "menuProduct": "மெனு பொருள் *",
+      "searchProductPlaceholder": "பெயர் அல்லது SKU மூலம் பொருளைத் தேடு…",
+      "recipeName": "செய்முறையின் பெயர் *",
+      "recipeNamePlaceholder": "எ.கா. மசாலா டீ செய்முறை",
+      "ingredients": "பொருட்கள் *",
+      "addIngredient": "பொருள் சேர்",
+      "searchIngredientPlaceholder": "பெயர் அல்லது SKU மூலம் பொருளைத் தேடு…",
+      "qtyPlaceholder": "அளவு",
+      "saveRecipe": "செய்முறையைச் சேமி",
+      "noRecipesYet": "இன்னும் செய்முறைகள் இல்லை",
+      "noRecipesHint": "KOT முடிக்கப்படும்போது பொருள் பயன்பாட்டைக் கண்காணிக்க செய்முறைகளைச் சேர்க்கவும்",
+      "forProductIngredientsCount": "{{product}}-க்காக · {{count}} பொருட்கள்",
+      "selectMenuProductError": "இந்த செய்முறை எதற்கானது என்ற மெனு பொருளைத் தேர்ந்தெடுக்கவும்.",
+      "recipeNameRequiredError": "செய்முறையின் பெயர் தேவை.",
+      "addIngredientError": "செல்லுபடியாகும் அளவுடன் குறைந்தது ஒரு பொருளையாவது சேர்க்கவும்.",
+      "couldNotLoadRecipes": "செய்முறைகளை ஏற்ற முடியவில்லை.",
+      "couldNotSearchProducts": "பொருட்களைத் தேட முடியவில்லை.",
+      "couldNotSaveRecipe": "செய்முறையைச் சேமிக்க முடியவில்லை.",
+      "couldNotDeleteRecipe": "செய்முறையை நீக்க முடியவில்லை."
+    }
+  },
+  "bloodBank": {
+    "failed": "தோல்வி",
+    "saving": "சேமிக்கிறது…",
+    "sending": "அனுப்புகிறது…",
+    "clearing": "அழிக்கிறது…",
+    "unknown": "தெரியாதது",
+    "bloodGroup": "இரத்த வகை",
+    "expiresLabel": "காலாவதி {{date}}",
+    "missingBloodGroupTitle": "இரத்த வகை காணவில்லை",
+    "componentWholeBlood": "முழு இரத்தம்",
+    "componentPackedRbc": "பேக்டு RBC",
+    "componentPlatelets": "பிளேட்லெட்கள்",
+    "componentPlasma": "பிளாஸ்மா",
+    "componentCryoprecipitate": "கிரையோப்ரெசிபிடேட்",
+    "componentAny": "எந்த கூறும்",
+    "donors": {
+      "title": "நன்கொடையாளர் பதிவேடு",
+      "registeredCount": "{{count}} பதிவுசெய்யப்பட்ட நன்கொடையாளர்கள்",
+      "newDonor": "புதிய நன்கொடையாளர்",
+      "searchPlaceholder": "பெயர், குறியீடு அல்லது தொலைபேசி மூலம் தேடு…",
+      "recallDue": "நினைவூட்டல் நிலுவை ({{count}})",
+      "noneDueForRecall": "தற்போது எந்த நன்கொடையாளரும் நினைவூட்டலுக்கு நிலுவையில் இல்லை",
+      "noDonorsYet": "இன்னும் நன்கொடையாளர்கள் பதிவு செய்யப்படவில்லை",
+      "deferred": "ஒத்திவைக்கப்பட்டது",
+      "eligible": "தகுதியானவர்",
+      "recovering": "குணமடைந்து வருகிறார்",
+      "noPhoneOnFile": "கோப்பில் தொலைபேசி இல்லை",
+      "lastLabel": "கடைசி: {{date}}",
+      "nextEligibleLabel": "அடுத்த தகுதி: {{date}}",
+      "registerDonor": "நன்கொடையாளரைப் பதிவு செய்",
+      "fullName": "முழுப் பெயர்",
+      "weightKg": "எடை (கிலோ)",
+      "weightPlaceholder": "எ.கா. 60",
+      "weightUnit": "{{value}} கிலோ",
+      "gender": "பாலினம்",
+      "unspecified": "குறிப்பிடப்படவில்லை",
+      "male": "ஆண்",
+      "female": "பெண்",
+      "other": "மற்றவை",
+      "lastDonation": "கடைசி நன்கொடை",
+      "noneYet": "இன்னும் இல்லை",
+      "nextEligible": "அடுத்த தகுதி",
+      "now": "இப்போது",
+      "deferredUntilLabel": "{{date}} வரை ஒத்திவைக்கப்பட்டது",
+      "deferredIndefinitely": "— காலவரையின்றி",
+      "sendRecallReminder": "நினைவூட்டலை அனுப்பு",
+      "markDeferred": "ஒத்திவைக்கப்பட்டதாகக் குறி",
+      "clearDeferral": "ஒத்திவைப்பை அகற்று",
+      "markDeferredTitle": "{{name}}-ஐ ஒத்திவைக்கப்பட்டதாகக் குறி",
+      "reasonPlaceholder": "எ.கா. குறைந்த ஹீமோகுளோபின், ரியாக்டிவ் ஸ்கிரீனிங் சோதனை…",
+      "deferredUntilField": "எந்த தேதி வரை ஒத்திவைக்கப்பட்டது (காலவரையற்ற/நிரந்தரத்திற்கு காலியாக விடவும்)",
+      "missingNameTitle": "பெயர் காணவில்லை",
+      "enterDonorName": "நன்கொடையாளரின் பெயரை உள்ளிடவும்.",
+      "donorRegisteredTitle": "நன்கொடையாளர் பதிவு செய்யப்பட்டார்",
+      "donorRegisteredDesc": "நன்கொடையாளர் வெற்றிகரமாகப் பதிவு செய்யப்பட்டார்.",
+      "couldNotLoadDonors": "நன்கொடையாளர்களை ஏற்ற முடியவில்லை.",
+      "couldNotRegisterDonor": "நன்கொடையாளரைப் பதிவு செய்ய முடியவில்லை.",
+      "reminderReadyTitle": "நினைவூட்டல் தயார்",
+      "reminderReadyDesc": "வாட்ஸ்அப் நினைவூட்டல் இணைப்பு உருவாக்கப்பட்டது.",
+      "couldNotSendRecall": "நினைவூட்டலை அனுப்ப முடியவில்லை.",
+      "couldNotRefreshDetails": "நன்கொடையாளர் விவரங்களைப் புதுப்பிக்க முடியவில்லை.",
+      "donorDeferredTitle": "நன்கொடையாளர் ஒத்திவைக்கப்பட்டார்",
+      "donorDeferredDesc": "நன்கொடையாளர் ஒத்திவைக்கப்பட்டதாகக் குறிக்கப்பட்டார்.",
+      "couldNotUpdateDonor": "நன்கொடையாளரைப் புதுப்பிக்க முடியவில்லை.",
+      "deferralClearedTitle": "ஒத்திவைப்பு அகற்றப்பட்டது",
+      "deferralClearedDesc": "நன்கொடையாளர் மீண்டும் நன்கொடை அளிக்கத் தகுதியானவர்."
+    },
+    "donations": {
+      "title": "நன்கொடைகள் & ஸ்கிரீனிங்",
+      "awaitingScreening": "{{count}} ஸ்கிரீனிங் காத்திருக்கிறது",
+      "recordDonation": "நன்கொடையை பதிவு செய்",
+      "allTab": "அனைத்தும் ({{count}})",
+      "statusTab": "{{status}} ({{count}})",
+      "statusPending": "நிலுவையில்",
+      "statusPassed": "தேர்ச்சி",
+      "statusFailed": "தோல்வி",
+      "noRecordsFound": "நன்கொடை பதிவுகள் இல்லை",
+      "recordScreening": "ஸ்கிரீனிங் பதிவு செய்",
+      "volumeCollectedNoCamp": "{{ml}}மிலி · {{date}} அன்று சேகரிக்கப்பட்டது",
+      "volumeCollectedWithCamp": "{{ml}}மிலி · {{date}} அன்று சேகரிக்கப்பட்டது · {{camp}}",
+      "donor": "நன்கொடையாளர்",
+      "selectDonor": "நன்கொடையாளரைத் தேர்ந்தெடு…",
+      "componentType": "கூறு வகை",
+      "donationCampLabel": "நன்கொடை முகாம் (விருப்பம்)",
+      "walkInNotFromCamp": "வாக்-இன் / முகாமில் இருந்து அல்ல",
+      "volumeMl": "அளவு (மிலி)",
+      "donorMissingTitle": "நன்கொடையாளர் காணவில்லை",
+      "selectDonorMsg": "ஒரு நன்கொடையாளரைத் தேர்ந்தெடுக்கவும்.",
+      "selectBloodGroupCollected": "சேகரிக்கப்பட்ட இரத்த வகையைத் தேர்ந்தெடுக்கவும்.",
+      "donationRecordedTitle": "நன்கொடை பதிவு செய்யப்பட்டது",
+      "donationRecordedDesc": "நன்கொடை பதிவு செய்யப்பட்டது — ஸ்கிரீனிங் நிலுவையில்.",
+      "couldNotRecordDonation": "நன்கொடையை பதிவு செய்ய முடியவில்லை.",
+      "couldNotLoadDonationRecords": "நன்கொடை பதிவுகளை ஏற்ற முடியவில்லை.",
+      "couldNotLoadDonationsData": "நன்கொடை தரவை ஏற்ற முடியவில்லை.",
+      "screeningResultTitle": "ஸ்கிரீனிங் முடிவு",
+      "notesOptionalPlaceholder": "குறிப்புகள் (விருப்பம்)",
+      "passed": "தேர்ச்சி",
+      "unitAddedToStockTitle": "யூனிட் இருப்பில் சேர்க்கப்பட்டது",
+      "markedFailedTitle": "தோல்வி எனக் குறிக்கப்பட்டது",
+      "screeningPassedDesc": "ஸ்கிரீனிங் தேர்ச்சி பெற்றது — யூனிட் இப்போது இருப்பில் உள்ளது.",
+      "screeningFailedDesc": "ஸ்கிரீனிங் தோல்வியடைந்தது — யூனிட் அகற்றப்பட்டது, இருப்பில் சேர்க்கப்படவில்லை.",
+      "couldNotRecordScreening": "ஸ்கிரீனிங் முடிவை பதிவு செய்ய முடியவில்லை."
+    },
+    "camps": {
+      "title": "நன்கொடை முகாம்கள்",
+      "summary": "{{count}} முகாம்(கள்) · அனைத்து முகாம்களிலும் மொத்தம் {{total}} நன்கொடைகள்",
+      "scheduleCamp": "முகாமை திட்டமிடு",
+      "noCampsYet": "இன்னும் நன்கொடை முகாம்கள் திட்டமிடப்படவில்லை",
+      "organizedByLabel": "ஏற்பாட்டாளர்: {{organizer}}",
+      "donorsLabel": "நன்கொடையாளர்கள்",
+      "campNameLabel": "முகாம் / இயக்கத்தின் பெயர்",
+      "campNamePlaceholder": "எ.கா. கம்யூனிட்டி சென்டர் இயக்கம்",
+      "location": "இடம்",
+      "organizer": "ஏற்பாட்டாளர்",
+      "scheduleCampModalTitle": "நன்கொடை முகாமை திட்டமிடு",
+      "missingNameTitle": "பெயர் காணவில்லை",
+      "enterCampName": "முகாம்/இயக்கத்தின் பெயரை உள்ளிடவும்.",
+      "missingDateTitle": "தேதி காணவில்லை",
+      "selectCampDate": "முகாமின் தேதியைத் தேர்ந்தெடுக்கவும்.",
+      "campScheduledTitle": "முகாம் திட்டமிடப்பட்டது",
+      "campScheduledDesc": "நன்கொடை முகாம் வெற்றிகரமாக திட்டமிடப்பட்டது.",
+      "couldNotScheduleCamp": "முகாமை திட்டமிட முடியவில்லை.",
+      "couldNotLoadCamps": "நன்கொடை முகாம்களை ஏற்ற முடியவில்லை."
+    },
+    "stock": {
+      "title": "இரத்த இருப்பு",
+      "summaryNoExpiring": "{{count}} யூனிட்கள் கிடைக்கின்றன",
+      "summaryWithExpiring": "{{count}} யூனிட்கள் கிடைக்கின்றன · {{expiring}} விரைவில் காலாவதியாகும்",
+      "allUnits": "அனைத்து யூனிட்கள்",
+      "expiringSoon": "விரைவில் காலாவதியாகும்",
+      "noUnitsToShow": "காட்ட யூனிட்கள் இல்லை",
+      "unitsAvailableLabel": "யூனிட்கள் கிடைக்கின்றன",
+      "expiringSoonCount": "{{count}} விரைவில் காலாவதியாகும்",
+      "unitCol": "யூனிட்",
+      "groupCol": "வகை",
+      "componentCol": "கூறு",
+      "collectedCol": "சேகரிக்கப்பட்டது",
+      "expiresCol": "காலாவதி",
+      "couldNotLoadStock": "இரத்த இருப்பை ஏற்ற முடியவில்லை."
+    },
+    "issue": {
+      "title": "இரத்த வழங்கல்",
+      "activeIssuesCount": "{{count}} செயலில் உள்ள வழங்கல்கள்",
+      "issueUnits": "யூனிட்களை வழங்கு",
+      "noIssuesYet": "இன்னும் இரத்தம் வழங்கப்படவில்லை",
+      "unitsCount": "{{count}} யூனிட்(கள்) · {{groups}}",
+      "issueUnitsModalTitle": "இரத்த யூனிட்களை வழங்கு",
+      "recipientName": "பெறுநரின் பெயர்",
+      "recipientBloodGroup": "பெறுநரின் இரத்த வகை",
+      "customerOptional": "வாடிக்கையாளர் (விருப்பம் — விலைப்பட்டியலுக்கு தேவை)",
+      "customerSearchPlaceholder": "பெயர் அல்லது தொலைபேசி மூலம் தேடு...",
+      "purpose": "நோக்கம்",
+      "purposePlaceholder": "எ.கா. அறுவை சிகிச்சை இரத்தமாற்றம்",
+      "pricePerUnit": "ஒரு யூனிட்டிற்கான விலை",
+      "fastMatchTitle": "விரைவு பொருத்தம் — வகை/கூறு/அளவு மூலம் பொருந்தும் யூனிட்களைக் கண்டறி",
+      "qtyPlaceholder": "அளவு",
+      "findAndSelect": "கண்டறிந்து தேர்ந்தெடு",
+      "matching": "பொருத்துகிறது…",
+      "matchedAllDesc": "கோரப்பட்ட அனைத்து {{count}} யூனிட்களும் கிடைத்தன.",
+      "matchedShortDesc": "கோரப்பட்ட {{requested}}-ல் {{matched}} பொருந்தும் யூனிட்கள் மட்டுமே கிடைக்கின்றன — {{shortfall}} குறைவு.",
+      "selectAvailableUnits": "கிடைக்கும் யூனிட்களைத் தேர்ந்தெடு ({{count}} தேர்ந்தெடுக்கப்பட்டது)",
+      "noUnitsInStock": "தற்போது இருப்பில் யூனிட்கள் இல்லை.",
+      "statusIssued": "வழங்கப்பட்டது",
+      "statusCancelled": "ரத்து செய்யப்பட்டது",
+      "incompatibleWarningTitle": "பொருந்தாத யூனிட்(கள்) — வழங்கல் தடுக்கப்பட்டது.",
+      "incompatibleWarningDesc": "இது உண்மையான குறுக்கு-பொருத்தச் சோதனைக்கு மாற்றாக இல்லை:",
+      "overrideEmergencyRelease": "மேலெழுத — அவசர வெளியீடு (ஆவணப்படுத்தப்பட்ட காரணம் தேவை)",
+      "overrideReasonPlaceholder": "இந்த பொருந்தாத யூனிட் ஏன் இருந்தும் வழங்கப்படுகிறது (எ.கா. உயிருக்கு ஆபத்தான அவசரநிலை, இருப்பில் பொருந்தும் யூனிட் இல்லை, மருத்துவரின் உத்தரவு)...",
+      "issuing": "வழங்குகிறது…",
+      "generateInvoice": "விலைப்பட்டியல் உருவாக்கு",
+      "generating": "உருவாக்குகிறது…",
+      "cancelIssue": "வழங்கலை ரத்து செய்",
+      "overrideReasonLabel": "மேலெழுதும் காரணம்:",
+      "cancelIssueConfirmMsg": "இந்த வழங்கலை ரத்து செய்து அனைத்து யூனிட்களையும் இருப்புக்குத் திருப்பியனுப்பவா?",
+      "missingRecipientTitle": "பெறுநர் காணவில்லை",
+      "enterRecipientName": "பெறுநரின் பெயரை உள்ளிடவும்.",
+      "noUnitsSelectedTitle": "யூனிட்கள் தேர்ந்தெடுக்கப்படவில்லை",
+      "selectAtLeastOneUnit": "வழங்க குறைந்தது ஒரு யூனிட்டையாவது தேர்ந்தெடுக்கவும்.",
+      "incompatibleSelectedTitle": "பொருந்தாத யூனிட்கள் தேர்ந்தெடுக்கப்பட்டன",
+      "checkOverrideMsg": "தொடர \"மேலெழுத — அவசர வெளியீடு\" என்பதைத் தேர்ந்தெடுத்து காரணத்தை பதிவு செய்யவும்.",
+      "reasonRequiredTitle": "காரணம் தேவை",
+      "enterOverrideReason": "அவசர-வெளியீடு மேலெழுதலுக்கான ஆவணப்படுத்தப்பட்ட காரணத்தை உள்ளிடவும்.",
+      "selectRecipientBloodGroupFirst": "முதலில் பெறுநரின் இரத்த வகையைத் தேர்ந்தெடுக்கவும்.",
+      "invalidQuantityTitle": "செல்லாத அளவு",
+      "enterUnitsNeeded": "எத்தனை யூனிட்கள் தேவை என உள்ளிடவும்.",
+      "unitsIssuedTitle": "யூனிட்கள் வழங்கப்பட்டன",
+      "unitsIssuedDesc": "இரத்த யூனிட்கள் வெற்றிகரமாக வழங்கப்பட்டன.",
+      "couldNotIssueUnits": "யூனிட்களை வழங்க முடியவில்லை.",
+      "couldNotLoadIssues": "இரத்த வழங்கல்களை ஏற்ற முடியவில்லை.",
+      "couldNotLoadIssueData": "இரத்த வழங்கல் தரவை ஏற்ற முடியவில்லை.",
+      "couldNotVerifyCompatibility": "இரத்த பொருத்தத்தை சரிபார்க்க முடியவில்லை.",
+      "couldNotRunFastMatch": "விரைவு-பொருத்தத் தேடலை இயக்க முடியவில்லை.",
+      "couldNotRefreshIssueDetails": "வழங்கல் விவரங்களைப் புதுப்பிக்க முடியவில்லை.",
+      "issueCancelledTitle": "வழங்கல் ரத்து செய்யப்பட்டது",
+      "issueCancelledDesc": "யூனிட்கள் இருப்புக்குத் திருப்பப்பட்டன.",
+      "couldNotCancelIssue": "வழங்கலை ரத்து செய்ய முடியவில்லை.",
+      "invoiceGeneratedTitle": "விலைப்பட்டியல் உருவாக்கப்பட்டது",
+      "invoiceGeneratedDesc": "இந்த வழங்கலுக்கான விலைப்பட்டியல் உருவாக்கப்பட்டது.",
+      "couldNotGenerateInvoice": "விலைப்பட்டியலை உருவாக்க முடியவில்லை."
     }
   }
 }

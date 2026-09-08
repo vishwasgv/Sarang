@@ -56,7 +56,7 @@
     "manual": "మాన్యువల్",
     "costCentres": "వ్యయ కేంద్రాలు",
     "budgets": "బడ్జెట్‌లు",
-    "serviceCombos": "Service Combos",
+    "serviceCombos": "సేవా కాంబోలు",
     "checkIn": "చెక్-ఇన్",
     "customOrders": "కస్టమ్ ఆర్డర్‌లు",
     "cateringEvents": "కేటరింగ్ ఈవెంట్‌లు",
@@ -314,6 +314,7 @@
   },
   "billing": {
     "title": "బిల్లింగ్",
+    "sellingLocation": "అమ్మకం స్థానం",
     "newInvoice": "కొత్త ఇన్వాయిస్",
     "invoiceList": "ఇన్వాయిస్‌లు",
     "invoiceNumber": "ఇన్‌వాయిస్ #",
@@ -1610,6 +1611,10 @@
       "distributor": "డిస్ట్రిబ్యూటర్"
     },
     "defs": {
+      "discounts": {
+        "label": "డిస్కౌంట్ నివేదిక",
+        "description": "ప్రతి డిస్కౌంట్ ఇచ్చిన ఇన్వాయిస్ లైన్, సిబ్బంది మరియు ఉత్పత్తి వారీగా విభజన, అలాగే డిస్కౌంట్ సంభవం మరియు సగటు డిస్కౌంట్ %"
+      },
       "sales": {
         "label": "అమ్మకాల నివేదిక",
         "description": "ఆదాయం, తగ్గింపు, పన్ను — రోజు / వారం / నెల / సంవత్సరం ప్రకారం వర్గీకరించబడింది"
@@ -2055,212 +2060,212 @@
         "description": "మీరు కేస్ టైప్ ప్రకారం ఎన్ని కేసులను నిర్వహించారు — కన్సల్టేషన్‌లు, ప్రివెంటివ్ కేర్, వ్యాక్సినేషన్‌లు, మరియు మీ Service Catalog లోని ఇతరులు — నెల వారీగా."
       },
       "stylistRepeatClient": {
-        "label": "Stylist Repeat-Client Rate",
-        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+        "label": "స్టైలిస్ట్ పునరావృత-క్లయింట్ రేటు",
+        "description": "ఒక్కో స్టైలిస్ట్‌కు, వారి సొంత క్లయింట్లలో ఎంతమంది రెండవసారి తిరిగి వచ్చారు — క్లయింట్-విధేయత యొక్క నిజమైన లీడర్‌బోర్డ్"
       },
       "retailAttachRate": {
-        "label": "Retail Attach Rate",
-        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+        "label": "రిటైల్ అటాచ్ రేటు",
+        "description": "బుక్ చేసిన సేవా ఇన్వాయిస్‌లో రిటైల్ ఉత్పత్తి అప్‌సెల్ ఎన్నిసార్లు చేర్చబడింది, ఒక్కో స్టైలిస్ట్‌కు"
       },
       "membershipRenewalFunnel": {
-        "label": "Membership Renewal Funnel",
-        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+        "label": "మెంబర్‌షిప్ పునరుద్ధరణ ఫన్నెల్",
+        "description": "ఈ కాలంలో గడువు ముగిసిన మెంబర్‌షిప్‌లలో, అదే క్లయింట్ వాస్తవానికి ఎన్ని పునరుద్ధరించారు, ప్లాన్ ప్రకారం"
       },
       "classAttendanceHeatmap": {
-        "label": "Class Attendance Heatmap",
-        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+        "label": "తరగతి హాజరు హీట్‌మ్యాప్",
+        "description": "వారంలోని ప్రతి రోజు ఒక్కో తరగతికి వాస్తవ చెక్-ఇన్ సాంద్రత — ఏ స్లాట్‌లు నిజంగా బిజీగా ఉన్నాయి, కేవలం నమోదైనవి కాదు"
       },
       "learnerProgressFunnel": {
-        "label": "Learner Progress Funnel",
-        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+        "label": "అభ్యాసకుడి పురోగతి ఫన్నెల్",
+        "description": "ఇప్పటివరకు నమోదైన ప్రతి అభ్యాసకుడు, వారు చేరుకున్న అత్యంత దూర దశ ప్రకారం — మొదటి సెషన్ నుండి ఉత్తీర్ణమైన DL పరీక్ష వరకు"
       },
       "caseAging": {
-        "label": "Case Aging",
-        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+        "label": "కేసు ఏజింగ్",
+        "description": "ప్రతి తెరిచిన కేసు, అది ప్రస్తుత వ్యాజ్యం దశలో ఎంతకాలం ఉందో దాని ప్రకారం క్రమంలో"
       },
       "lawyerBillableHours": {
-        "label": "Billable Hours",
-        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+        "label": "బిల్లబుల్ గంటలు",
+        "description": "ప్రతి న్యాయవాదికి బిల్లబుల్ vs ప్రో-బోనో గంటలు, ఇప్పటికే బిల్ చేసిన మరియు ఇంకా బిల్ చేయని మొత్తాలుగా విభజించబడింది"
       },
       "feeRealization": {
-        "label": "Fee Realization",
-        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+        "label": "ఫీజు రియలైజేషన్",
+        "description": "ఈ నెలలో ప్రతి యాక్టివ్ ఎంగేజ్‌మెంట్ నుండి ఆశించిన పునరావృత ఫీజులో, వాస్తవానికి ఎంత ఇన్వాయిస్ చేయబడింది"
       },
       "drawingApprovalCycleTime": {
-        "label": "Drawing Approval Cycle Time",
-        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+        "label": "డ్రాయింగ్ ఆమోద చక్ర సమయం",
+        "description": "ప్రతి ఆమోదించిన డ్రాయింగ్‌కు జారీ నుండి ఆమోదం వరకు, విభాగం ప్రకారం, వాస్తవానికి ఎన్ని రోజులు పట్టింది"
       },
       "projectStageProgress": {
-        "label": "Project Stage Progress",
-        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+        "label": "ప్రాజెక్ట్ దశ పురోగతి",
+        "description": "ప్రతి యాక్టివ్ ప్రాజెక్ట్, అది ప్రస్తుత దశలో ఎంతకాలం ఉందో దాని ప్రకారం క్రమంలో"
       },
       "siteVisitBilling": {
-        "label": "Site Visit Billing",
-        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+        "label": "సైట్ సందర్శన బిల్లింగ్",
+        "description": "ప్రతి బిల్లబుల్ సైట్ సందర్శన, బిల్ చేయనివి ముందుగా — ఈరోజు సరిగ్గా ఏమి ఇన్వాయిస్ చేయవచ్చు"
       },
       "materialTestResults": {
-        "label": "Material Test Results",
-        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+        "label": "మెటీరియల్ పరీక్ష ఫలితాలు",
+        "description": "ప్రతి నమోదైన మెటీరియల్ పరీక్ష, విఫలమైనవి ముందుగా, మొత్తం ఉత్తీర్ణత రేటుతో సహా"
       },
       "retainerUtilization": {
-        "label": "Retainer Utilization",
-        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+        "label": "రిటైనర్ వినియోగం",
+        "description": "ఈ కాలంలో ప్రతి గంట రిటైనర్ నెలవారీ కోటాకు వ్యతిరేకంగా వినియోగించిన గంటలు, అది వాస్తవానికి బిల్ చేయబడిందో లేదో దానితో సహా"
       },
       "proposalWinRate": {
-        "label": "Proposal Win Rate",
-        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+        "label": "ప్రతిపాదన విజయ రేటు",
+        "description": "వాస్తవానికి పంపిన ప్రతి ప్రతిపాదనలో, ఎన్ని అంగీకరించబడ్డాయి vs సంతకం లేకుండా గడువు ముగిశాయి"
       },
       "clientRevenueConcentration": {
-        "label": "Client Revenue Concentration",
-        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+        "label": "క్లయింట్ ఆదాయ కేంద్రీకరణ",
+        "description": "మొత్తం ఇన్వాయిస్ చేసిన ఆదాయంలో ప్రతి క్లయింట్ వాటా ఎంత — ఆధారపడటం-రిస్క్‌కు నిజమైన సంకేతం"
       },
       "campaignROI": {
-        "label": "Campaign ROI",
-        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+        "label": "క్యాంపెయిన్ ROI",
+        "description": "ప్రతి క్యాంపెయిన్‌కు ప్రణాళికాబద్ధమైన ప్రకటన-ఖర్చు బడ్జెట్ vs వాస్తవ ఖర్చు, ఖర్చు-ప్రతి-కన్వర్షన్‌తో సహా — ఆపాదించబడిన ఆదాయం ట్రాక్ చేయబడనందున, కల్పిత ROI మొత్తం చూపబడదు"
       },
       "deliverableStatusPipeline": {
-        "label": "Deliverable Status Pipeline",
-        "description": "Every content-calendar deliverable by status, with how many are overdue"
+        "label": "డెలివరబుల్ స్థితి పైప్‌లైన్",
+        "description": "కంటెంట్-క్యాలెండర్‌లోని ప్రతి డెలివరబుల్ స్థితి ప్రకారం, ఎన్ని గడువు మీరాయో దానితో సహా"
       },
       "channelPerformance": {
-        "label": "Channel Performance",
-        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+        "label": "ఛానల్ పనితీరు",
+        "description": "ఒకే ఛానల్‌లోని అన్ని క్యాంపెయిన్‌ల మొత్తం ప్రకటన ఖర్చు, క్లిక్‌లు మరియు కన్వర్షన్‌లు"
       },
       "retainerWorkDelivered": {
-        "label": "Retainer Work Delivered",
-        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+        "label": "రిటైనర్ పని అందించబడింది",
+        "description": "ప్రతి మార్కెటింగ్ రిటైనర్‌కు, బిల్ చేయబడుతున్న ఫీజుకు వ్యతిరేకంగా ఈ నెలలో వాస్తవానికి ఎన్ని డెలివరబుల్స్ ప్రచురించబడ్డాయి"
       },
       "issueAging": {
-        "label": "Issue Aging",
-        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+        "label": "సమస్య ఏజింగ్",
+        "description": "ప్రతి తెరిచిన సమస్య, తెరిచి ఉన్న రోజుల ప్రకారం, ప్రాధాన్యత ప్రకారం నిర్ణీత SLA పరిమితికి వ్యతిరేకంగా ఫ్లాగ్ చేయబడింది"
       },
       "teamUtilization": {
-        "label": "Team Utilization",
-        "description": "Billable vs. non-billable hours logged per team member against a client project"
+        "label": "టీమ్ వినియోగం",
+        "description": "ఒక్కో టీమ్ సభ్యుడికి, క్లయింట్ ప్రాజెక్ట్‌కు వ్యతిరేకంగా నమోదైన బిల్లబుల్ vs నాన్-బిల్లబుల్ గంటలు"
       },
       "sprintBilling": {
-        "label": "Sprint Billing",
-        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+        "label": "స్ప్రింట్ బిల్లింగ్",
+        "description": "ప్రతి పూర్తయిన స్ప్రింట్, మరియు దాని పని వాస్తవానికి బిల్లింగ్ మైల్‌స్టోన్‌తో లింక్ చేయబడిందో లేదో దానితో సహా"
       },
       "deliveryPipeline": {
-        "label": "Delivery Pipeline",
-        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+        "label": "డెలివరీ పైప్‌లైన్",
+        "description": "ప్రతి యాక్టివ్ షూట్ బుకింగ్, దాని పోస్ట్-ప్రొడక్షన్ ఎంతవరకు పురోగతి చెందిందో దాని ప్రకారం, గడువు మీరిన డెలివరీలు మరియు ఎక్కువ సవరణలు ఉన్న బుకింగ్‌లతో సహా"
       },
       "shootTypeRevenueMix": {
-        "label": "Shoot-Type Revenue Mix",
-        "description": "Revenue, booking count, and average ticket per shoot type"
+        "label": "షూట్-రకం ఆదాయ మిశ్రమం",
+        "description": "ఒక్కో షూట్ రకానికి ఆదాయం, బుకింగ్ సంఖ్య, మరియు సగటు టికెట్"
       },
       "equipmentCheckout": {
-        "label": "Equipment Checkout",
-        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+        "label": "పరికర చెక్-అవుట్",
+        "description": "ప్రస్తుతం చెక్-అవుట్ చేసి ఇంకా తిరిగి రాని స్టూడియో పరికరాలు ప్రతి ఒక్కటి, గడువు మీరినవి ముందుగా"
       },
       "vendorCostVsBudget": {
-        "label": "Vendor Cost vs. Budget",
-        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+        "label": "వెండర్ ఖర్చు vs బడ్జెట్",
+        "description": "ప్రతి ఈవెంట్ యొక్క మొత్తం వెండర్ ఖర్చు క్లయింట్ బడ్జెట్ మరియు ఏజెన్సీ సొంత కోట్‌కు వ్యతిరేకంగా — నిజమైన మార్జిన్ దృశ్యమానత"
       },
       "vendorPerformanceHistory": {
-        "label": "Vendor Performance History",
-        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+        "label": "వెండర్ పనితీరు చరిత్ర",
+        "description": "ప్రతి రేట్ చేసిన వెండర్ యొక్క సగటు రేటింగ్, వారు పనిచేసిన అన్ని ఈవెంట్లలో, అత్యల్పమైనవి ముందుగా"
       },
       "occupancyTrend": {
-        "label": "Occupancy Trend",
-        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+        "label": "ఆక్యుపెన్సీ ధోరణి",
+        "description": "ఎంచుకున్న కాలంలో రోజువారీ గది ఆక్యుపెన్సీ % — ఆక్యుపెన్సీ పెరుగుతోందా లేదా తగ్గుతోందా?"
       },
       "roomWiseADR": {
-        "label": "Room-wise ADR",
-        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+        "label": "గది-వారీగా ADR",
+        "description": "సగటు రోజువారీ రేటు (ADR) మరియు అమ్మిన రాత్రులు, ఒక్కో గదికి విభజించబడింది — ఏ గదులు ఎక్కువ సంపాదిస్తాయి?"
       },
       "adrRevPAR": {
-        "label": "ADR & RevPAR",
-        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+        "label": "ADR మరియు RevPAR",
+        "description": "సగటు రోజువారీ రేటు (ADR) మరియు అందుబాటులో ఉన్న గది ఒక్కంటికి ఆదాయం (RevPAR), నెలవారీగా ధోరణి"
       },
       "carPartsVariance": {
-        "label": "Parts Cost Variance",
-        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+        "label": "పార్ట్స్ ఖర్చు వ్యత్యాసం",
+        "description": "ఇన్‌టేక్ వద్ద అంచనా ఇచ్చిన జాబ్‌లకు, వాస్తవ పార్ట్స్ ఖర్చు vs అంచనా ఖర్చు"
       },
       "serviceTypeRevenue": {
-        "label": "Revenue by Service Type",
-        "description": "Which services bring in the most revenue, across every job card"
+        "label": "సేవా రకం వారీగా ఆదాయం",
+        "description": "ప్రతి జాబ్ కార్డ్‌లో ఏ సేవలు ఎక్కువ ఆదాయం తెస్తాయి"
       },
       "orderTurnaround": {
-        "label": "Order Turnaround Time",
-        "description": "How many days it actually takes from order to delivery, per order"
+        "label": "ఆర్డర్ టర్నరౌండ్ సమయం",
+        "description": "ప్రతి ఆర్డర్‌కు, ఆర్డర్ నుండి డెలివరీ వరకు వాస్తవానికి ఎన్ని రోజులు పడుతుంది"
       },
       "fittingStageTracker": {
-        "label": "Fitting-Stage Tracker",
-        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+        "label": "ఫిట్టింగ్-దశ ట్రాకర్",
+        "description": "ప్రస్తుతం ట్రయల్ లేదా ఆల్టరేషన్ దశలో ఉన్న ఆర్డర్‌లు, మరియు అవి అక్కడ ఎంతకాలం నుండి ఉన్నాయి"
       },
       "fabricPopularity": {
-        "label": "Fabric / Design Popularity",
-        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+        "label": "ఫాబ్రిక్ / డిజైన్ ప్రజాదరణ",
+        "description": "ఏ ఫాబ్రిక్‌లు మరియు డిజైన్‌లు ఎక్కువగా ఆర్డర్ చేయబడతాయి, మరియు వాటి వెనుక ఉన్న ఆదాయం"
       },
       "renewalFunnel": {
-        "label": "Renewal Funnel",
-        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+        "label": "పునరుద్ధరణ ఫన్నెల్",
+        "description": "యాక్టివ్ AMC కాంట్రాక్టులు, పునరుద్ధరణ ఆవశ్యకత ప్రకారం సమూహపరచబడ్డాయి — గడువు మీరినవి నుండి ఇంకా గడువు కానివి వరకు"
       },
       "chemicalUsageCompliance": {
-        "label": "Chemical Usage / Compliance Log",
-        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+        "label": "రసాయన వినియోగం / సమ్మతి లాగ్",
+        "description": "ప్రతి సందర్శనకు వినియోగించిన పురుగుమందు మొత్తం, మరియు రసాయనం నమోదు కాని పూర్తయిన సందర్శనలు"
       },
       "pestRecurringValueTrend": {
-        "label": "Recurring Contract Value Trend",
-        "description": "Actual AMC contract-fee revenue billed, trended by month"
+        "label": "పునరావృత కాంట్రాక్ట్ విలువ ధోరణి",
+        "description": "బిల్ చేసిన వాస్తవ AMC కాంట్రాక్ట్-ఫీజు ఆదాయం, నెలవారీగా ధోరణి"
       },
       "candidatePipelineFunnel": {
-        "label": "Candidate Pipeline Funnel",
-        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+        "label": "అభ్యర్థి పైప్‌లైన్ ఫన్నెల్",
+        "description": "ప్రతి అభ్యర్థి పురోగతి — చేర్చినప్పటి నుండి ఇంటర్వ్యూ, ఆఫర్ మరియు చివరకు ప్లేస్‌మెంట్ వరకు"
       },
       "jobOrderFunnel": {
-        "label": "Job Order Funnel",
-        "description": "Open client job orders by status — the fill-progress view from the client side"
+        "label": "జాబ్ ఆర్డర్ ఫన్నెల్",
+        "description": "క్లయింట్ యొక్క తెరిచిన జాబ్ ఆర్డర్‌లు, స్థితి ప్రకారం — క్లయింట్ వైపు నుండి ఫిల్-పురోగతి వీక్షణ"
       },
       "feePercentage": {
-        "label": "Client Fee-Percentage Tracking",
-        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+        "label": "క్లయింట్ ఫీజు-శాతం ట్రాకింగ్",
+        "description": "ప్రతి జాబ్ ఆర్డర్‌కు అంగీకరించిన ఫీజు % vs దాని ప్లేస్‌మెంట్‌లపై వాస్తవానికి పొందినది"
       },
       "timeToFill": {
-        "label": "Time to Fill",
-        "description": "How many days it actually takes from job order to a candidate joining"
+        "label": "నియామక సమయం",
+        "description": "జాబ్ ఆర్డర్ నుండి అభ్యర్థి చేరే వరకు వాస్తవానికి ఎన్ని రోజులు పడుతుంది"
       },
       "sourceEffectiveness": {
-        "label": "Source Effectiveness",
-        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+        "label": "మూల ప్రభావశీలత",
+        "description": "అభ్యర్థి మూలం (రిఫరల్, లింక్డ్‌ఇన్, వెబ్‌సైట్...) vs వాస్తవ ప్లేస్‌మెంట్ కన్వర్షన్ రేటు"
       },
       "batchPerformanceTrend": {
-        "label": "Batch Performance Trend",
-        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+        "label": "బ్యాచ్ పనితీరు ధోరణి",
+        "description": "ప్రతి బ్యాచ్ సగటు పరీక్ష స్కోరు, నెలవారీగా ధోరణి — బ్యాచ్ మెరుగుపడుతోందా లేదా క్షీణిస్తోందా?"
       },
       "attendancePerformanceCorrelation": {
-        "label": "Attendance vs. Performance",
-        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+        "label": "హాజరు vs పనితీరు",
+        "description": "ఎక్కువగా హాజరయ్యే విద్యార్థులు నిజంగా ఎక్కువ స్కోరు చేస్తారా — వాస్తవ హాజరు % vs సగటు పరీక్ష %, అలాగే బ్యాచ్ మొత్తానికి సహసంబంధ గుణకం"
       },
       "feeDueUnderperformanceAlert": {
-        "label": "Fee-Due Underperformance Alert",
-        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+        "label": "ఫీజు-బకాయి తక్కువ పనితీరు అలర్ట్",
+        "description": "ఫీజు బకాయి ఉన్న మరియు 50% కంటే తక్కువ స్కోరు చేస్తున్న విద్యార్థులు — సంప్రదింపులకు ప్రాధాన్యత ఇవ్వడానికి ఒక వర్క్‌లిస్ట్"
       },
       "coilWastageYield": {
-        "label": "Coil Wastage & Yield",
-        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+        "label": "కాయిల్ వ్యర్థం మరియు దిగుబడి",
+        "description": "అందుకున్న vs అమ్మిన పొడవు, దిగుబడి %, మరియు ఒక్కో కాయిల్-అమ్మిన ఉత్పత్తికి అంచనా వ్యర్థం"
       },
       "isiBisSafetyRegister": {
-        "label": "ISI/BIS Safety Register",
-        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+        "label": "ISI/BIS భద్రతా రిజిస్టర్",
+        "description": "ప్రతి సీరియల్-ట్రాక్ చేసిన యూనిట్ యొక్క ట్రేసబిలిటీ రిజిస్టర్ — స్వీకరణ, వారంటీ, మరియు ఎక్కడ అమ్మారు"
       },
       "seasonalDemandForecast": {
-        "label": "Seasonal Demand Forecast",
-        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+        "label": "కాలానుగుణ డిమాండ్ అంచనా",
+        "description": "క్యాలెండర్ నెల ప్రకారం ఇప్పటివరకు మొత్తం అమ్మకాలు, పీక్ సీజన్‌ను ఫ్లాగ్ చేస్తూ"
       },
       "institutionalOrderHistory": {
-        "label": "Institutional Order History",
-        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+        "label": "సంస్థాగత ఆర్డర్ చరిత్ర",
+        "description": "పునరుద్ధరణ ప్రణాళిక కోసం, ప్రతి గత బల్క్-లిస్ట్ ఆర్డర్ స్థితి, వస్తు సంఖ్య మరియు మొత్తం విలువతో సహా"
       },
       "locationStockSplit": {
-        "label": "Showroom-vs-Warehouse Stock",
-        "description": "Per-product stock split across every Location"
+        "label": "షోరూమ్-vs-గోడౌన్ స్టాక్",
+        "description": "ప్రతి లొకేషన్‌లో ఒక్కో ఉత్పత్తికి స్టాక్ విభజన"
       },
       "deliveryInstallationSchedule": {
-        "label": "Delivery & Installation Schedule",
-        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+        "label": "డెలివరీ మరియు ఇన్‌స్టాలేషన్ షెడ్యూల్",
+        "description": "ఎంచుకున్న కాలంలో డెలివరీ తేదీ కలిగిన ఫర్నిచర్ బుకింగ్‌లు, ఒక నిజమైన షెడ్యూల్‌గా"
       },
       "specWiseFastMovers": {
         "label": "స్పెక్-వైజ్ ఫాస్ట్ మూవర్స్",
@@ -2556,53 +2561,53 @@
       "dosesEvaluated": "మూల్యాంకనం చేసిన డోసులు",
       "totalCases": "మొత్తం కేసులు",
       "distinctCaseTypes": "విభిన్న కేస్ రకాలు",
-      "totalEnrolled": "Total Enrolled",
-      "overallCompletionPercent": "DL Completion Rate %",
-      "totalOpenCases": "Open Cases",
-      "avgDaysInCurrentStage": "Avg. Days in Stage",
-      "staleCaseCount": "Stale Cases (90+ days)",
-      "totalApproved": "Drawings Approved",
-      "avgDaysToApprove": "Avg. Days to Approve",
-      "totalActiveProjects": "Active Projects",
-      "avgDaysInStage": "Avg. Days in Stage",
-      "totalBillableAmount": "Total Billable",
-      "totalBilledAmount": "Total Billed",
-      "totalUnbilledAmount": "Total Unbilled",
-      "unbilledCount": "Unbilled Visits",
-      "passCount": "Passed",
-      "failCount": "Failed",
-      "pendingCount": "Pending",
-      "passRatePercent": "Pass Rate %",
-      "totalRetainers": "Retainers",
-      "overUtilizedCount": "Over-Utilized",
-      "wonCount": "Won",
-      "lostCount": "Lost",
-      "winRatePercent": "Win Rate %",
-      "wonValue": "Won Value",
-      "topClientSharePercent": "Top Client Share %",
-      "top3SharePercent": "Top 3 Clients Share %",
-      "totalCampaigns": "Campaigns",
-      "totalBudget": "Total Budget",
-      "totalActualSpend": "Total Actual Spend",
-      "overBudgetCount": "Over Budget",
-      "totalDeliverables": "Deliverables",
-      "zeroDeliveredCount": "Zero Delivered",
-      "totalOpenIssues": "Open Issues",
-      "breachedCount": "SLA Breached",
-      "totalBillableHours": "Total Billable Hours",
-      "totalNonBillableHours": "Total Non-Billable Hours",
-      "totalCompletedSprints": "Completed Sprints",
-      "unlinkedCount": "Unbilled Sprints",
-      "totalActive": "Active Bookings",
-      "deliveredCount": "Delivered",
-      "avgRevisionRounds": "Avg. Revision Rounds",
-      "totalBookings": "Total Bookings",
-      "totalEvents": "Events",
-      "totalVendorCost": "Total Vendor Cost",
-      "totalRatedVendors": "Rated Vendors",
-      "overallAvgRating": "Overall Avg. Rating",
-      "correlationCoefficient": "Attendance–Performance Correlation",
-      "alertCount": "Students Flagged"
+      "totalEnrolled": "మొత్తం నమోదైనవారు",
+      "overallCompletionPercent": "DL పూర్తి రేటు %",
+      "totalOpenCases": "తెరిచిన కేసులు",
+      "avgDaysInCurrentStage": "సగటు రోజులు (దశలో)",
+      "staleCaseCount": "నిష్క్రియ కేసులు (90+ రోజులు)",
+      "totalApproved": "ఆమోదించిన డ్రాయింగ్‌లు",
+      "avgDaysToApprove": "సగటు ఆమోద రోజులు",
+      "totalActiveProjects": "యాక్టివ్ ప్రాజెక్ట్‌లు",
+      "avgDaysInStage": "సగటు రోజులు (దశలో)",
+      "totalBillableAmount": "మొత్తం బిల్లబుల్ మొత్తం",
+      "totalBilledAmount": "మొత్తం బిల్ చేసిన మొత్తం",
+      "totalUnbilledAmount": "మొత్తం బిల్ చేయని మొత్తం",
+      "unbilledCount": "బిల్ చేయని సందర్శనలు",
+      "passCount": "ఉత్తీర్ణులు",
+      "failCount": "విఫలమైనవి",
+      "pendingCount": "పెండింగ్",
+      "passRatePercent": "ఉత్తీర్ణత రేటు %",
+      "totalRetainers": "రిటైనర్‌లు",
+      "overUtilizedCount": "అధిక వినియోగం",
+      "wonCount": "గెలిచినవి",
+      "lostCount": "కోల్పోయినవి",
+      "winRatePercent": "విజయ రేటు %",
+      "wonValue": "గెలిచిన విలువ",
+      "topClientSharePercent": "టాప్ క్లయింట్ వాటా %",
+      "top3SharePercent": "టాప్ 3 క్లయింట్ల వాటా %",
+      "totalCampaigns": "క్యాంపెయిన్‌లు",
+      "totalBudget": "మొత్తం బడ్జెట్",
+      "totalActualSpend": "మొత్తం వాస్తవ ఖర్చు",
+      "overBudgetCount": "బడ్జెట్‌కు మించి",
+      "totalDeliverables": "డెలివరబుల్స్",
+      "zeroDeliveredCount": "సున్నా డెలివరీ",
+      "totalOpenIssues": "తెరిచిన సమస్యలు",
+      "breachedCount": "SLA ఉల్లంఘన",
+      "totalBillableHours": "మొత్తం బిల్లబుల్ గంటలు",
+      "totalNonBillableHours": "మొత్తం నాన్-బిల్లబుల్ గంటలు",
+      "totalCompletedSprints": "పూర్తయిన స్ప్రింట్‌లు",
+      "unlinkedCount": "బిల్ చేయని స్ప్రింట్‌లు",
+      "totalActive": "యాక్టివ్ బుకింగ్‌లు",
+      "deliveredCount": "డెలివర్ చేసినవి",
+      "avgRevisionRounds": "సగటు సవరణ రౌండ్లు",
+      "totalBookings": "మొత్తం బుకింగ్‌లు",
+      "totalEvents": "ఈవెంట్‌లు",
+      "totalVendorCost": "మొత్తం వెండర్ ఖర్చు",
+      "totalRatedVendors": "రేట్ చేసిన వెండర్‌లు",
+      "overallAvgRating": "మొత్తం సగటు రేటింగ్",
+      "correlationCoefficient": "హాజరు–పనితీరు సహసంబంధం",
+      "alertCount": "ఫ్లాగ్ చేసిన విద్యార్థులు"
     },
     "aging": {
       "current": "ప్రస్తుత",
@@ -2705,8 +2710,8 @@
       "complianceByRecallType": "రీకాల్ రకం వారీగా కంప్లయన్స్",
       "complianceByVaccine": "వ్యాక్సిన్ వారీగా కంప్లయన్స్",
       "caseTypeVolumeChart": "కేస్ వాల్యూమ్ ట్రెండ్",
-      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
-      "feeDueUnderperformanceDetails": "Flagged Students"
+      "attendancePerformanceDetails": "హాజరు vs పనితీరు, విద్యార్థి వారీగా",
+      "feeDueUnderperformanceDetails": "ఫ్లాగ్ చేసిన విద్యార్థులు"
     },
     "empty": {
       "invoices": "ఈ తేదీ పరిధిలో బిల్లులు లేవు.",
@@ -2805,39 +2810,39 @@
       "dentalRecallCompliance": "ఈ తేదీ పరిధిలో ఏ రీకాల్ మూసివేయబడలేదు.",
       "vaccinationCompliance": "ఈ తేదీ పరిధిలో మునుపటి గడువు తేదీతో ఫాలో-అప్ డోస్ లేదు.",
       "vetCaseTypeVolume": "ఈ తేదీ పరిధిలో కేసులు నమోదు కాలేదు.",
-      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
-      "serviceTypeRevenue": "No service items billed in this date range.",
-      "orderTurnaround": "No orders delivered in this date range.",
-      "fittingStageTracker": "No orders currently at Trial or Alterations.",
-      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
-      "chemicalUsageCompliance": "No completed visits in this date range.",
-      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
-      "attendancePerformanceCorrelation": "No enrolled students yet.",
-      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
-      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range.",
-      "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
-      "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now.",
-      "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now.",
-      "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet.",
-      "retainerUtilization": "No active hourly retainers right now.",
-      "clientRevenueConcentration": "No invoiced revenue in this date range.",
-      "campaignROI": "No marketing campaigns recorded yet.",
-      "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
-      "issueAging": "No open issues right now.",
-      "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet.",
-      "deliveryPipeline": "No bookings with a revision round logged yet.",
-      "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out.",
-      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
-      "vendorPerformanceHistory": "No vendors rated yet."
+      "carPartsVariance": "ఇంకా అంచనా ఇచ్చిన జాబ్‌లు లేవు.",
+      "serviceTypeRevenue": "ఈ కాలంలో సేవా వస్తువులు బిల్ కాలేదు.",
+      "orderTurnaround": "ఈ కాలంలో ఆర్డర్‌లు డెలివర్ కాలేదు.",
+      "fittingStageTracker": "ప్రస్తుతం ట్రయల్ లేదా ఆల్టరేషన్ దశలో ఆర్డర్‌లు లేవు.",
+      "fabricPopularity": "ఈ కాలంలో ఫాబ్రిక్/డిజైన్ నమోదైన ఆర్డర్‌లు లేవు.",
+      "chemicalUsageCompliance": "ఈ కాలంలో పూర్తయిన సందర్శనలు లేవు.",
+      "pestRecurringValueTrend": "ఈ కాలంలో పునరావృత కాంట్రాక్ట్-ఫీజు ఇన్వాయిస్‌లు బిల్ కాలేదు.",
+      "attendancePerformanceCorrelation": "ఇంకా నమోదైన విద్యార్థులు లేరు.",
+      "feeDueUnderperformanceAlert": "ప్రస్తుతం ఫ్లాగ్ చేసిన విద్యార్థులు లేరు — ఫీజు బకాయి మరియు తక్కువ పనితీరు రెండూ ఎవరికీ లేవు.",
+      "stylistRepeatClient": "ఈ కాలంలో స్టైలిస్ట్ కేటాయించిన పూర్తయిన అపాయింట్‌మెంట్‌ల నమోదు లేదు.",
+      "retailAttachRate": "ఈ కాలంలో ఇన్వాయిస్ చేసిన అపాయింట్‌మెంట్‌లు లేవు.",
+      "membershipRenewalFunnel": "ఈ కాలంలో మెంబర్‌షిప్‌లు గడువు ముగియలేదు.",
+      "classAttendanceHeatmap": "ఈ కాలంలో తరగతి చెక్-ఇన్‌లు నమోదు కాలేదు.",
+      "caseAging": "ప్రస్తుతం తెరిచిన కేసులు లేవు.",
+      "lawyerBillableHours": "ఈ కాలంలో కేసుకు వ్యతిరేకంగా సమయ నమోదులు లేవు.",
+      "feeRealization": "ప్రస్తుతం యాక్టివ్, ధర నిర్ణయించిన ఎంగేజ్‌మెంట్‌లు లేవు.",
+      "drawingApprovalCycleTime": "ఇంకా ఫైల్‌లో ఆమోదించిన డ్రాయింగ్‌లు లేవు.",
+      "projectStageProgress": "ప్రస్తుతం దశ సెట్ చేసిన యాక్టివ్ ప్రాజెక్ట్‌లు లేవు.",
+      "siteVisitBilling": "ఇంకా బిల్లబుల్ సైట్ సందర్శనలు నమోదు కాలేదు.",
+      "materialTestResults": "ఇంకా మెటీరియల్ పరీక్ష ఫలితాలు నమోదు కాలేదు.",
+      "retainerUtilization": "ప్రస్తుతం యాక్టివ్ గంట రిటైనర్‌లు లేవు.",
+      "clientRevenueConcentration": "ఈ కాలంలో ఇన్వాయిస్ చేసిన ఆదాయం లేదు.",
+      "campaignROI": "ఇంకా మార్కెటింగ్ క్యాంపెయిన్‌లు నమోదు కాలేదు.",
+      "channelPerformance": "ఇంకా ఛానల్ సెట్ చేసిన క్యాంపెయిన్‌లు లేవు.",
+      "retainerWorkDelivered": "ప్రస్తుతం మార్కెటింగ్-క్యాంపెయిన్ క్లయింట్‌కు యాక్టివ్ రిటైనర్‌లు లేవు.",
+      "issueAging": "ప్రస్తుతం తెరిచిన సమస్యలు లేవు.",
+      "teamUtilization": "ఈ కాలంలో ప్రాజెక్ట్‌కు వ్యతిరేకంగా గంటలు నమోదు కాలేదు.",
+      "sprintBilling": "ఇంకా పూర్తయిన స్ప్రింట్‌లు లేవు.",
+      "deliveryPipeline": "ఇంకా సవరణ రౌండ్ నమోదైన బుకింగ్‌లు లేవు.",
+      "shootTypeRevenueMix": "ఈ కాలంలో ధర నిర్ణయించిన బుకింగ్‌లు లేవు.",
+      "equipmentCheckout": "ప్రస్తుతం చెక్-అవుట్ చేసిన పరికరాలు లేవు.",
+      "vendorCostVsBudget": "ఇంకా రద్దు కాని ఈవెంట్‌లు నమోదు కాలేదు.",
+      "vendorPerformanceHistory": "ఇంకా ఏ వెండర్‌ను రేట్ చేయలేదు."
     },
     "col": {
       "channel": "ఛానల్",
@@ -2944,7 +2949,7 @@
       "actualQuantity": "వాస్తవంగా వాడిన పరిమాణం",
       "varianceQuantity": "వ్యత్యాసం",
       "variancePercent": "వ్యత్యాసం %",
-      "gstin": "GSTIN",
+      "gstin": "జీఎస్టీఐఎన్",
       "party": "పార్టీ",
       "value": "విలువ",
       "placeOfSupply": "సరఫరా స్థలం",
@@ -3136,93 +3141,93 @@
       "recallType": "రీకాల్ రకం",
       "vaccineName": "వ్యాక్సిన్",
       "doses": "డోసులు",
-      "stylist": "Stylist",
-      "totalClients": "Total Clients",
-      "repeatClients": "Repeat Clients",
-      "totalInvoices": "Total Invoices",
-      "withAttach": "With Retail Attach",
-      "attachRatePercent": "Attach Rate %",
-      "planName": "Plan",
-      "expiredCount": "Expired",
-      "renewedCount": "Renewed",
-      "renewalRatePercent": "Renewal Rate %",
-      "className": "Class",
-      "checkInCount": "Check-Ins",
-      "learnerCount": "Learners",
-      "caseNumber": "Case Number",
-      "caseTitle": "Case Title",
-      "clientName": "Client",
-      "daysInStage": "Days in Stage",
-      "daysSinceFiling": "Days Since Filing",
-      "advocate": "Advocate",
-      "billedAmount": "Billed",
-      "unbilledAmount": "Unbilled",
-      "engagement": "Engagement",
-      "expectedFee": "Expected Fee",
-      "realizedFee": "Realized Fee",
-      "realizationPercent": "Realization %",
-      "invoicedThisPeriod": "Invoiced This Period",
-      "drawingNumber": "Drawing No.",
-      "revisionNumber": "Rev.",
-      "discipline": "Discipline",
-      "issuedDate": "Issued Date",
-      "approvedDate": "Approved Date",
-      "daysToApprove": "Days to Approve",
-      "stageProgress": "Stage Progress %",
-      "attendancePercent": "Attendance %",
-      "avgTestPercentage": "Avg. Test %",
-      "feeDueAmount": "Fee Due",
-      "visitType": "Visit Type",
-      "billableAmount": "Billable Amount",
-      "billedStatus": "Billed Status",
-      "testType": "Test Type",
-      "materialDescription": "Material",
-      "testValue": "Test Value",
-      "requiredMinValue": "Pass Minimum",
-      "result": "Result",
-      "testedDate": "Tested Date",
-      "hoursPerMonth": "Hours/Month",
-      "hoursUsed": "Hours Used",
-      "monthlyAmount": "Monthly Amount",
-      "billedThisPeriod": "Billed This Period",
-      "revenueSharePercent": "Revenue Share %",
-      "cumulativeSharePercent": "Cumulative Share %",
-      "targetChannel": "Channel",
-      "adSpendBudget": "Ad Spend Budget",
-      "actualSpend": "Actual Spend",
-      "budgetVariancePercent": "Budget Variance %",
-      "conversions": "Conversions",
-      "costPerConversion": "Cost/Conversion",
-      "campaignCount": "Campaigns",
-      "totalImpressions": "Impressions",
-      "totalClicks": "Clicks",
-      "totalConversions": "Conversions",
-      "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered",
-      "daysOpen": "Days Open",
-      "slaThresholdDays": "SLA (days)",
-      "slaBreached": "SLA Breached",
-      "employeeName": "Employee",
-      "totalHours": "Total Hours",
-      "sprintNumber": "Sprint #",
-      "sprintName": "Sprint Name",
-      "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount",
-      "shootType": "Shoot Type",
-      "revisionRounds": "Revision Rounds",
-      "avgTicket": "Avg. Ticket",
-      "assetName": "Equipment",
-      "checkedOutToName": "Checked Out To",
-      "checkedOutDate": "Checked Out",
-      "expectedReturnDate": "Expected Return",
-      "daysOut": "Days Out",
-      "isOverdue": "Overdue",
-      "eventName": "Event",
-      "clientBudget": "Client Budget",
-      "totalVendorCost": "Total Vendor Cost",
-      "vendorName": "Vendor",
-      "ratedEventCount": "Rated Events",
-      "avgRating": "Avg. Rating"
+      "stylist": "స్టైలిస్ట్",
+      "totalClients": "మొత్తం క్లయింట్లు",
+      "repeatClients": "పునరావృత క్లయింట్లు",
+      "totalInvoices": "మొత్తం ఇన్వాయిస్‌లు",
+      "withAttach": "రిటైల్ అటాచ్‌తో",
+      "attachRatePercent": "అటాచ్ రేటు %",
+      "planName": "ప్లాన్",
+      "expiredCount": "గడువు ముగిసినవి",
+      "renewedCount": "పునరుద్ధరించినవి",
+      "renewalRatePercent": "పునరుద్ధరణ రేటు %",
+      "className": "తరగతి",
+      "checkInCount": "చెక్-ఇన్‌లు",
+      "learnerCount": "అభ్యాసకులు",
+      "caseNumber": "కేసు నంబర్",
+      "caseTitle": "కేసు శీర్షిక",
+      "clientName": "క్లయింట్",
+      "daysInStage": "దశలో రోజులు",
+      "daysSinceFiling": "ఫైలింగ్ నుండి రోజులు",
+      "advocate": "న్యాయవాది",
+      "billedAmount": "బిల్ చేసిన మొత్తం",
+      "unbilledAmount": "బిల్ చేయని మొత్తం",
+      "engagement": "ఎంగేజ్‌మెంట్",
+      "expectedFee": "ఆశించిన ఫీజు",
+      "realizedFee": "అందుకున్న ఫీజు",
+      "realizationPercent": "రియలైజేషన్ %",
+      "invoicedThisPeriod": "ఈ కాలంలో ఇన్వాయిస్ చేసినది",
+      "drawingNumber": "డ్రాయింగ్ నం.",
+      "revisionNumber": "సవరణ నం.",
+      "discipline": "విభాగం",
+      "issuedDate": "జారీ తేదీ",
+      "approvedDate": "ఆమోద తేదీ",
+      "daysToApprove": "ఆమోదానికి పట్టిన రోజులు",
+      "stageProgress": "దశ పురోగతి %",
+      "attendancePercent": "హాజరు %",
+      "avgTestPercentage": "సగటు పరీక్ష %",
+      "feeDueAmount": "బకాయి ఫీజు",
+      "visitType": "సందర్శన రకం",
+      "billableAmount": "బిల్లబుల్ మొత్తం",
+      "billedStatus": "బిల్లింగ్ స్థితి",
+      "testType": "పరీక్ష రకం",
+      "materialDescription": "సామగ్రి",
+      "testValue": "పరీక్ష విలువ",
+      "requiredMinValue": "ఉత్తీర్ణత కనిష్టం",
+      "result": "ఫలితం",
+      "testedDate": "పరీక్ష తేదీ",
+      "hoursPerMonth": "గంటలు/నెల",
+      "hoursUsed": "వినియోగించిన గంటలు",
+      "monthlyAmount": "నెలవారీ మొత్తం",
+      "billedThisPeriod": "ఈ కాలంలో బిల్ చేసినది",
+      "revenueSharePercent": "ఆదాయ వాటా %",
+      "cumulativeSharePercent": "సంచిత వాటా %",
+      "targetChannel": "ఛానల్",
+      "adSpendBudget": "ప్రకటన ఖర్చు బడ్జెట్",
+      "actualSpend": "వాస్తవ ఖర్చు",
+      "budgetVariancePercent": "బడ్జెట్ వ్యత్యాసం %",
+      "conversions": "కన్వర్షన్‌లు",
+      "costPerConversion": "ఖర్చు/కన్వర్షన్",
+      "campaignCount": "క్యాంపెయిన్‌లు",
+      "totalImpressions": "ఇంప్రెషన్‌లు",
+      "totalClicks": "క్లిక్‌లు",
+      "totalConversions": "కన్వర్షన్‌లు",
+      "ctrPercent": "సిటిఆర్ %",
+      "deliveredCount": "డెలివర్ చేసినవి",
+      "daysOpen": "తెరిచిన రోజులు",
+      "slaThresholdDays": "SLA (రోజులు)",
+      "slaBreached": "SLA ఉల్లంఘన",
+      "employeeName": "ఉద్యోగి",
+      "totalHours": "మొత్తం గంటలు",
+      "sprintNumber": "స్ప్రింట్ #",
+      "sprintName": "స్ప్రింట్ పేరు",
+      "milestoneStatus": "మైల్‌స్టోన్ స్థితి",
+      "milestoneAmount": "మైల్‌స్టోన్ మొత్తం",
+      "shootType": "షూట్ రకం",
+      "revisionRounds": "సవరణ రౌండ్లు",
+      "avgTicket": "సగటు టికెట్",
+      "assetName": "పరికరం",
+      "checkedOutToName": "ఎవరికి ఇచ్చారు",
+      "checkedOutDate": "చెక్-అవుట్ తేదీ",
+      "expectedReturnDate": "ఆశించిన రిటర్న్",
+      "daysOut": "బయట రోజులు",
+      "isOverdue": "గడువు మీరినది",
+      "eventName": "ఈవెంట్",
+      "clientBudget": "క్లయింట్ బడ్జెట్",
+      "totalVendorCost": "మొత్తం వెండర్ ఖర్చు",
+      "vendorName": "వెండర్",
+      "ratedEventCount": "రేట్ చేసిన ఈవెంట్లు",
+      "avgRating": "సగటు రేటింగ్"
     },
     "legend": {
       "schemeCost": "స్కీమ్ ఖర్చు",
@@ -3513,10 +3518,10 @@
     "destinationSaveFailed": "బ్యాకప్ ఫోల్డర్‌ను నవీకరించడం సాధ్యపడలేదు",
     "destinationReset": "బ్యాకప్ ఫోల్డర్ డిఫాల్ట్‌కు రీసెట్ చేయబడింది",
     "destinationUnreachable": "\"{{path}}\" ప్రస్తుతం చేరుకోలేము (అన్‌ప్లగ్ చేయబడిందా?) — బదులుగా డిఫాల్ట్ స్థానాన్ని ఉపయోగిస్తోంది.",
-    "restoreFromFile": "Restore from File",
-    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
-    "restoreFromFileConfirmTitle": "Restore from Backup File",
-    "pickBackupFileFailed": "Could not open file picker."
+    "restoreFromFile": "ఫైల్ నుండి పునరుద్ధరించండి",
+    "restoreFromFileDesc": "మరొక పరికరం లేదా USB డ్రైవ్ నుండి .sarang-backup ఫైల్ ఉందా? దాని నుండి నేరుగా పునరుద్ధరించండి.",
+    "restoreFromFileConfirmTitle": "బ్యాకప్ ఫైల్ నుండి పునరుద్ధరించండి",
+    "pickBackupFileFailed": "ఫైల్ పికర్‌ను తెరవలేకపోయాము."
   },
   "audit": {
     "title": "ఆడిట్ లాగ్",
@@ -4892,7 +4897,7 @@
     "docTypePurchaseOrder": "కొనుగోలు ఆర్డర్"
   },
   "disclaimer": {
-    "legalNotice": "సారంగ్ బిజినెస్ ఓఎస్ లైట్ చిన్న వ్యాపారాల కోసం ఒక ఉచిత సంస్థాగత సాధనం. ఇది వైద్య రికార్డు వ్యవస్థ, అకౌంటింగ్ సాఫ్ట్‌వేర్, న్యాయ సలహా సాధనం లేదా లైసెన్స్ పొందిన ఆర్థిక ఉత్పత్తి కాదు. మొత్తం సమాచారం వినియోగదారుని స్వంత డేటా, ఇది వారి పరికరంలో స్థానికంగా నిల్వ చేయబడుతుంది. ఈ సాఫ్ట్‌వేర్ యొక్క ఖచ్చితత్వం, సంపూర్ణత లేదా ఏదైనా నియంత్రిత ప్రయోజనం కోసం సముచితత్వానికి Aszurex ఎటువంటి హామీలను అందించదు. వర్తించే చట్టాలు మరియు వృత్తిపరమైన నిబంధనలకు అనుగుణంగా ఉండటానికి వినియోగదారులే పూర్తి బాధ్యత వహిస్తారు."
+    "legalNotice": "సారంగ్ బిజినెస్ ఓఎస్ లైట్ చిన్న వ్యాపారాల కోసం ఒక ఉచిత సంస్థాగత సాధనం. ఇది వైద్య రికార్డు వ్యవస్థ, న్యాయ సలహా సాధనం లేదా లైసెన్స్ పొందిన ఆర్థిక ఉత్పత్తి కాదు. ఇందులో అకౌంటింగ్ మరియు GST ఫీచర్లు ఉన్నాయి, కానీ ఇది లైసెన్స్ పొందిన అకౌంటెంట్ లేదా టాక్స్ సలహాదారుకు ప్రత్యామ్నాయం కాదు. మొత్తం సమాచారం వినియోగదారుని స్వంత డేటా, ఇది వారి పరికరంలో స్థానికంగా నిల్వ చేయబడుతుంది. ఈ సాఫ్ట్‌వేర్ యొక్క ఖచ్చితత్వం, సంపూర్ణత లేదా ఏదైనా నియంత్రిత ప్రయోజనం కోసం సముచితత్వానికి Aszurex ఎటువంటి హామీలను అందించదు. వర్తించే చట్టాలు మరియు వృత్తిపరమైన నిబంధనలకు అనుగుణంగా ఉండటానికి వినియోగదారులే పూర్తి బాధ్యత వహిస్తారు."
   },
   "compliance": {
     "disclaimerLabel": "నిరాకరణ:",
@@ -5862,26 +5867,26 @@
     }
   },
   "serviceCombos": {
-    "title": "Service Combos",
-    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
-    "comboName": "Combo Name",
-    "services": "Services",
-    "comboPrice": "Combo Price",
-    "savings": "Savings",
-    "newCombo": "New Combo",
-    "editCombo": "Edit Combo",
-    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
-    "nameRequired": "Combo name is required.",
-    "priceRequired": "Combo price must be greater than zero.",
-    "needTwoServices": "A combo needs at least 2 distinct services.",
-    "selectServices": "Select Services",
-    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
-    "memberTotalHint": "Individual price total: {{amount}}",
-    "couldNotLoad": "Could not load service combos.",
-    "couldNotSave": "Could not save this service combo.",
+    "title": "సేవా కాంబోలు",
+    "subtitle": "{{count}} కాంబోలు — 2+ సేవలను ఒకే ప్యాకేజీ ధరలోకి కలపండి, అపాయింట్‌మెంట్ స్క్రీన్ నుండి నేరుగా బుక్ చేయండి",
+    "comboName": "కాంబో పేరు",
+    "services": "సేవలు",
+    "comboPrice": "కాంబో ధర",
+    "savings": "పొదుపు",
+    "newCombo": "కొత్త కాంబో",
+    "editCombo": "కాంబోను సవరించండి",
+    "comboNamePlaceholder": "ఉదా. వాష్ + కట్ + స్టైల్",
+    "nameRequired": "కాంబో పేరు అవసరం.",
+    "priceRequired": "కాంబో ధర సున్నా కంటే ఎక్కువగా ఉండాలి.",
+    "needTwoServices": "కాంబోకు కనీసం 2 వేర్వేరు సేవలు అవసరం.",
+    "selectServices": "సేవలను ఎంచుకోండి",
+    "selectServicesHint": "ఈ కాంబోలో చేర్చడానికి కనీసం 2 సేవలను ఎంచుకోండి.",
+    "memberTotalHint": "వ్యక్తిగత ధర మొత్తం: {{amount}}",
+    "couldNotLoad": "సేవా కాంబోలను లోడ్ చేయడం సాధ్యం కాలేదు.",
+    "couldNotSave": "ఈ సేవా కాంబోను సేవ్ చేయడం సాధ్యం కాలేదు.",
     "empty": {
-      "title": "No service combos yet",
-      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+      "title": "ఇంకా సేవా కాంబోలు లేవు",
+      "body": "2 లేదా అంతకంటే ఎక్కువ సేవలను ఒకే ప్యాకేజీ ధరలోకి కలపండి — ఉదా. విడివిడిగా బుక్ చేయడం కంటే డిస్కౌంట్‌తో వాష్ + కట్ + స్టైల్."
     }
   },
   "checkin": {
@@ -6065,7 +6070,7 @@
         "IN_SERVICE": "సర్వీస్‌లో ఉంది",
         "INACTIVE": "నిష్క్రియం"
       },
-      "changeStatus": "Change vehicle status",
+      "changeStatus": "వాహన స్థితిని మార్చండి",
       "statusUpdated": "స్థితి నవీకరించబడింది",
       "statusUpdateFailed": "వాహన స్థితిని నవీకరించలేకపోయాము."
     },
@@ -6111,11 +6116,11 @@
         "ACTIVE": "క్రియాశీలం",
         "INACTIVE": "నిష్క్రియం"
       },
-      "activate": "Activate",
-      "deactivate": "Deactivate",
+      "activate": "సక్రియం చేయండి",
+      "deactivate": "నిష్క్రియం చేయండి",
       "packageStatusUpdated": "ప్యాకేజీ స్థితి నవీకరించబడింది",
       "packageStatusUpdateFailed": "ప్యాకేజీ స్థితిని నవీకరించలేకపోయాము.",
-      "markComplete": "Mark Complete",
+      "markComplete": "పూర్తయినట్లు గుర్తించండి",
       "cancelDeparture": "రద్దు చేయండి",
       "departureStatusUpdated": "బయలుదేరు స్థితి నవీకరించబడింది",
       "departureStatusUpdateFailed": "బయలుదేరు స్థితిని నవీకరించలేకపోయాము.",
@@ -6193,6 +6198,282 @@
       "cancelBooking": "బుకింగ్‌ను రద్దు చేయండి",
       "bookingCancelled": "బుకింగ్ రద్దు చేయబడింది",
       "bookingCancelFailed": "బుకింగ్‌ను రద్దు చేయలేకపోయాము."
+    }
+  }
+,
+  "restaurant": {
+    "kot": {
+      "title": "కిచెన్ ఆర్డర్ టిక్కెట్లు",
+      "ordersCount": "{{count}} ఆర్డర్లు",
+      "incomingOrders": "వస్తున్న ఆర్డర్లు ({{count}})",
+      "accept": "అంగీకరించు",
+      "reject": "తిరస్కరించు",
+      "noKotsFound": "KOTలు ఏవీ కనబడలేదు",
+      "noKotsHint": "ఆర్డర్ కిచెన్‌కి పంపినప్పుడు KOT సృష్టించబడుతుంది",
+      "takeaway": "టేకావే",
+      "deliveryApp": "డెలివరీ యాప్",
+      "tokenLabel": "టోకెన్ #{{number}}",
+      "statusPending": "పెండింగ్‌లో",
+      "statusInProgress": "ప్రగతిలో",
+      "statusDone": "పూర్తయింది",
+      "statusCancelled": "రద్దు చేయబడింది",
+      "startCooking": "వంట మొదలు పెట్టు",
+      "markDone": "పూర్తయినట్లు గుర్తించు",
+      "served": "సర్వ్ చేయబడింది",
+      "markServed": "సర్వ్ చేసినట్లు గుర్తించు",
+      "printTicket": "కిచెన్ టిక్కెట్ ప్రింట్ చేయి",
+      "acceptOrderTitle": "ఆర్డర్‌ను అంగీకరించు — {{table}}",
+      "acceptOrderNote": "దీనివల్ల ఆర్డర్ కిచెన్‌కి పంపబడి టేబుల్ యొక్క నడుస్తున్న బిల్లుకు జోడించబడుతుంది. బిల్లింగ్ చెక్అవుట్ సమయంలో ఒక్కసారి మాత్రమే జరుగుతుంది.",
+      "sending": "పంపుతోంది…",
+      "confirmAndSend": "నిర్ధారించి కిచెన్‌కి పంపు",
+      "couldNotLoadIncomingOrders": "వస్తున్న ఆర్డర్లు లోడ్ కాలేదు.",
+      "couldNotLoadTickets": "కిచెన్ టిక్కెట్లు లోడ్ కాలేదు.",
+      "couldNotRejectOrder": "ఆర్డర్‌ను తిరస్కరించలేకపోయాం.",
+      "orderAcceptedTitle": "ఆర్డర్ అంగీకరించబడింది",
+      "orderAcceptedDesc": "ఈ టేబుల్ కోసం కిచెన్ టిక్కెట్ సృష్టించబడింది.",
+      "couldNotAcceptOrder": "ఆర్డర్‌ను అంగీకరించలేకపోయాం.",
+      "couldNotUpdateStatus": "KOT స్థితిని అప్‌డేట్ చేయలేకపోయాం.",
+      "couldNotCancelKot": "KOTని రద్దు చేయలేకపోయాం.",
+      "couldNotMarkServed": "ఈ టిక్కెట్‌ను సర్వ్ చేసినట్లు గుర్తించలేకపోయాం.",
+      "printedTitle": "ప్రింట్ అయింది",
+      "printedDesc": "KOT ప్రింటర్‌కి పంపబడింది.",
+      "printFailedTitle": "ప్రింట్ విఫలమైంది",
+      "couldNotPrintKot": "KOTని ప్రింట్ చేయలేకపోయాం."
+    },
+    "kitchenDisplay": {
+      "title": "కిచెన్ డిస్‌ప్లే",
+      "connectionIssue": "కనెక్షన్ సమస్య — మళ్లీ ప్రయత్నిస్తోంది…",
+      "updatedAt": "అప్‌డేట్ చేయబడింది {{time}}",
+      "recentlyDone": "ఇటీవల పూర్తయినవి",
+      "nothingHere": "ఇక్కడ ఏమీ లేదు",
+      "updating": "అప్‌డేట్ అవుతోంది…"
+    },
+    "recipes": {
+      "title": "రెసిపీ నిర్వహణ",
+      "recipesCount": "{{count}} రెసిపీలు కాన్ఫిగర్ చేయబడ్డాయి",
+      "addRecipe": "రెసిపీ జోడించు",
+      "editRecipe": "రెసిపీ సవరించు",
+      "newRecipe": "కొత్త రెసిపీ",
+      "menuProduct": "మెనూ ఉత్పత్తి *",
+      "searchProductPlaceholder": "పేరు లేదా SKU తో ఉత్పత్తిని వెతకండి…",
+      "recipeName": "రెసిపీ పేరు *",
+      "recipeNamePlaceholder": "ఉదా. మసాలా చాయ్ రెసిపీ",
+      "ingredients": "పదార్థాలు *",
+      "addIngredient": "పదార్థం జోడించు",
+      "searchIngredientPlaceholder": "పేరు లేదా SKU తో పదార్థాన్ని వెతకండి…",
+      "qtyPlaceholder": "పరిమాణం",
+      "saveRecipe": "రెసిపీ సేవ్ చేయి",
+      "noRecipesYet": "ఇంకా రెసిపీలు లేవు",
+      "noRecipesHint": "KOTలు పూర్తయినప్పుడు పదార్థాల వినియోగాన్ని ట్రాక్ చేయడానికి రెసిపీలను జోడించండి",
+      "forProductIngredientsCount": "{{product}} కోసం · {{count}} పదార్థాలు",
+      "selectMenuProductError": "ఈ రెసిపీ దేని కోసమో ఆ మెనూ ఉత్పత్తిని ఎంచుకోండి.",
+      "recipeNameRequiredError": "రెసిపీ పేరు అవసరం.",
+      "addIngredientError": "చెల్లుబాటు అయ్యే పరిమాణంతో కనీసం ఒక పదార్థాన్ని జోడించండి.",
+      "couldNotLoadRecipes": "రెసిపీలు లోడ్ కాలేదు.",
+      "couldNotSearchProducts": "ఉత్పత్తులను వెతకలేకపోయాం.",
+      "couldNotSaveRecipe": "రెసిపీని సేవ్ చేయలేకపోయాం.",
+      "couldNotDeleteRecipe": "రెసిపీని తొలగించలేకపోయాం."
+    }
+  },
+  "bloodBank": {
+    "failed": "విఫలమైంది",
+    "saving": "సేవ్ అవుతోంది…",
+    "sending": "పంపుతోంది…",
+    "clearing": "క్లియర్ అవుతోంది…",
+    "unknown": "తెలియదు",
+    "bloodGroup": "బ్లడ్ గ్రూప్",
+    "expiresLabel": "గడువు {{date}}",
+    "missingBloodGroupTitle": "బ్లడ్ గ్రూప్ లేదు",
+    "componentWholeBlood": "పూర్తి రక్తం",
+    "componentPackedRbc": "ప్యాక్డ్ RBC",
+    "componentPlatelets": "ప్లేట్‌లెట్స్",
+    "componentPlasma": "ప్లాస్మా",
+    "componentCryoprecipitate": "క్రయోప్రెసిపిటేట్",
+    "componentAny": "ఏదైనా భాగం",
+    "donors": {
+      "title": "దాత రిజిస్ట్రీ",
+      "registeredCount": "{{count}} నమోదైన దాతలు",
+      "newDonor": "కొత్త దాత",
+      "searchPlaceholder": "పేరు, కోడ్ లేదా ఫోన్‌తో వెతకండి…",
+      "recallDue": "రీకాల్ గడువు ({{count}})",
+      "noneDueForRecall": "ప్రస్తుతం రీకాల్‌కు ఏ దాత గడువులో లేరు",
+      "noDonorsYet": "ఇంకా దాతలు నమోదు కాలేదు",
+      "deferred": "వాయిదా వేయబడింది",
+      "eligible": "అర్హత గల",
+      "recovering": "కోలుకుంటున్నారు",
+      "noPhoneOnFile": "ఫైల్‌లో ఫోన్ లేదు",
+      "lastLabel": "చివరిది: {{date}}",
+      "nextEligibleLabel": "తదుపరి అర్హత: {{date}}",
+      "registerDonor": "దాతను నమోదు చేయి",
+      "fullName": "పూర్తి పేరు",
+      "weightKg": "బరువు (కేజీ)",
+      "weightPlaceholder": "ఉదా. 60",
+      "weightUnit": "{{value}} కేజీ",
+      "gender": "లింగం",
+      "unspecified": "పేర్కొనలేదు",
+      "male": "పురుషుడు",
+      "female": "స్త్రీ",
+      "other": "ఇతర",
+      "lastDonation": "చివరి దానం",
+      "noneYet": "ఇంకా లేదు",
+      "nextEligible": "తదుపరి అర్హత",
+      "now": "ఇప్పుడు",
+      "deferredUntilLabel": "{{date}} వరకు వాయిదా వేయబడింది",
+      "deferredIndefinitely": "— అనిర్దిష్ట కాలం వరకు",
+      "sendRecallReminder": "రీకాల్ రిమైండర్ పంపు",
+      "markDeferred": "వాయిదా వేయబడినట్లు గుర్తించు",
+      "clearDeferral": "వాయిదాను క్లియర్ చేయి",
+      "markDeferredTitle": "{{name}}ని వాయిదా వేయబడినట్లు గుర్తించు",
+      "reasonPlaceholder": "ఉదా. తక్కువ హిమోగ్లోబిన్, రియాక్టివ్ స్క్రీనింగ్ టెస్ట్…",
+      "deferredUntilField": "ఏ తేదీ వరకు వాయిదా (అనిర్దిష్ట/శాశ్వతం కోసం ఖాళీగా ఉంచండి)",
+      "missingNameTitle": "పేరు లేదు",
+      "enterDonorName": "దాత పేరును నమోదు చేయండి.",
+      "donorRegisteredTitle": "దాత నమోదు చేయబడ్డారు",
+      "donorRegisteredDesc": "దాత విజయవంతంగా నమోదు చేయబడ్డారు.",
+      "couldNotLoadDonors": "దాతలు లోడ్ కాలేదు.",
+      "couldNotRegisterDonor": "దాతను నమోదు చేయలేకపోయాం.",
+      "reminderReadyTitle": "రిమైండర్ సిద్ధంగా ఉంది",
+      "reminderReadyDesc": "వాట్సాప్ రిమైండర్ లింక్ సృష్టించబడింది.",
+      "couldNotSendRecall": "రీకాల్ రిమైండర్ పంపలేకపోయాం.",
+      "couldNotRefreshDetails": "దాత వివరాలను రిఫ్రెష్ చేయలేకపోయాం.",
+      "donorDeferredTitle": "దాత వాయిదా వేయబడ్డారు",
+      "donorDeferredDesc": "దాత వాయిదా వేయబడినట్లు గుర్తించబడ్డారు.",
+      "couldNotUpdateDonor": "దాతను అప్‌డేట్ చేయలేకపోయాం.",
+      "deferralClearedTitle": "వాయిదా క్లియర్ చేయబడింది",
+      "deferralClearedDesc": "దాత మళ్లీ దానం చేయడానికి అర్హులు."
+    },
+    "donations": {
+      "title": "దానాలు & స్క్రీనింగ్",
+      "awaitingScreening": "{{count}} స్క్రీనింగ్ కోసం వేచి ఉన్నాయి",
+      "recordDonation": "దానాన్ని నమోదు చేయి",
+      "allTab": "అన్నీ ({{count}})",
+      "statusTab": "{{status}} ({{count}})",
+      "statusPending": "పెండింగ్‌లో",
+      "statusPassed": "పాస్",
+      "statusFailed": "ఫెయిల్",
+      "noRecordsFound": "దాన రికార్డులు కనబడలేదు",
+      "recordScreening": "స్క్రీనింగ్ నమోదు చేయి",
+      "volumeCollectedNoCamp": "{{ml}}మి.లీ · {{date}}న సేకరించబడింది",
+      "volumeCollectedWithCamp": "{{ml}}మి.లీ · {{date}}న సేకరించబడింది · {{camp}}",
+      "donor": "దాత",
+      "selectDonor": "దాతను ఎంచుకోండి…",
+      "componentType": "భాగం రకం",
+      "donationCampLabel": "దాన శిబిరం (ఐచ్ఛికం)",
+      "walkInNotFromCamp": "వాక్-ఇన్ / శిబిరం నుండి కాదు",
+      "volumeMl": "పరిమాణం (మి.లీ)",
+      "donorMissingTitle": "దాత లేరు",
+      "selectDonorMsg": "ఒక దాతను ఎంచుకోండి.",
+      "selectBloodGroupCollected": "సేకరించిన బ్లడ్ గ్రూప్‌ను ఎంచుకోండి.",
+      "donationRecordedTitle": "దానం నమోదు చేయబడింది",
+      "donationRecordedDesc": "దానం నమోదు చేయబడింది — స్క్రీనింగ్ పెండింగ్‌లో ఉంది.",
+      "couldNotRecordDonation": "దానాన్ని నమోదు చేయలేకపోయాం.",
+      "couldNotLoadDonationRecords": "దాన రికార్డులు లోడ్ కాలేదు.",
+      "couldNotLoadDonationsData": "దాన డేటా లోడ్ కాలేదు.",
+      "screeningResultTitle": "స్క్రీనింగ్ ఫలితం",
+      "notesOptionalPlaceholder": "గమనికలు (ఐచ్ఛికం)",
+      "passed": "పాస్",
+      "unitAddedToStockTitle": "యూనిట్ స్టాక్‌కు జోడించబడింది",
+      "markedFailedTitle": "ఫెయిల్‌గా గుర్తించబడింది",
+      "screeningPassedDesc": "స్క్రీనింగ్ పాస్ అయింది — యూనిట్ ఇప్పుడు స్టాక్‌లో ఉంది.",
+      "screeningFailedDesc": "స్క్రీనింగ్ ఫెయిల్ అయింది — యూనిట్ తొలగించబడింది, స్టాక్‌కు జోడించలేదు.",
+      "couldNotRecordScreening": "స్క్రీనింగ్ ఫలితాన్ని నమోదు చేయలేకపోయాం."
+    },
+    "camps": {
+      "title": "దాన శిబిరాలు",
+      "summary": "{{count}} శిబిరం(లు) · అన్ని శిబిరాల్లో మొత్తం {{total}} దానాలు",
+      "scheduleCamp": "శిబిరాన్ని షెడ్యూల్ చేయి",
+      "noCampsYet": "ఇంకా దాన శిబిరాలు షెడ్యూల్ కాలేదు",
+      "organizedByLabel": "నిర్వాహకుడు: {{organizer}}",
+      "donorsLabel": "దాతలు",
+      "campNameLabel": "శిబిరం / డ్రైవ్ పేరు",
+      "campNamePlaceholder": "ఉదా. కమ్యూనిటీ సెంటర్ డ్రైవ్",
+      "location": "స్థానం",
+      "organizer": "నిర్వాహకుడు",
+      "scheduleCampModalTitle": "దాన శిబిరాన్ని షెడ్యూల్ చేయి",
+      "missingNameTitle": "పేరు లేదు",
+      "enterCampName": "శిబిరం/డ్రైవ్ పేరును నమోదు చేయండి.",
+      "missingDateTitle": "తేదీ లేదు",
+      "selectCampDate": "శిబిరం తేదీని ఎంచుకోండి.",
+      "campScheduledTitle": "శిబిరం షెడ్యూల్ చేయబడింది",
+      "campScheduledDesc": "దాన శిబిరం విజయవంతంగా షెడ్యూల్ చేయబడింది.",
+      "couldNotScheduleCamp": "శిబిరాన్ని షెడ్యూల్ చేయలేకపోయాం.",
+      "couldNotLoadCamps": "దాన శిబిరాలు లోడ్ కాలేదు."
+    },
+    "stock": {
+      "title": "బ్లడ్ స్టాక్",
+      "summaryNoExpiring": "{{count}} యూనిట్లు అందుబాటులో ఉన్నాయి",
+      "summaryWithExpiring": "{{count}} యూనిట్లు అందుబాటులో ఉన్నాయి · {{expiring}} త్వరలో గడువు ముగుస్తుంది",
+      "allUnits": "అన్ని యూనిట్లు",
+      "expiringSoon": "త్వరలో గడువు ముగుస్తుంది",
+      "noUnitsToShow": "చూపించడానికి యూనిట్లు లేవు",
+      "unitsAvailableLabel": "యూనిట్లు అందుబాటులో ఉన్నాయి",
+      "expiringSoonCount": "{{count}} త్వరలో గడువు ముగుస్తుంది",
+      "unitCol": "యూనిట్",
+      "groupCol": "గ్రూప్",
+      "componentCol": "భాగం",
+      "collectedCol": "సేకరించినది",
+      "expiresCol": "గడువు",
+      "couldNotLoadStock": "బ్లడ్ స్టాక్ లోడ్ కాలేదు."
+    },
+    "issue": {
+      "title": "బ్లడ్ ఇష్యూ",
+      "activeIssuesCount": "{{count}} యాక్టివ్ ఇష్యూలు",
+      "issueUnits": "యూనిట్లను ఇష్యూ చేయి",
+      "noIssuesYet": "ఇంకా రక్తం ఇష్యూ చేయలేదు",
+      "unitsCount": "{{count}} యూనిట్(లు) · {{groups}}",
+      "issueUnitsModalTitle": "బ్లడ్ యూనిట్లను ఇష్యూ చేయి",
+      "recipientName": "గ్రహీత పేరు",
+      "recipientBloodGroup": "గ్రహీత బ్లడ్ గ్రూప్",
+      "customerOptional": "కస్టమర్ (ఐచ్ఛికం — ఇన్‌వాయిస్ కోసం అవసరం)",
+      "customerSearchPlaceholder": "పేరు లేదా ఫోన్‌తో వెతకండి...",
+      "purpose": "ప్రయోజనం",
+      "purposePlaceholder": "ఉదా. సర్జరీ ట్రాన్స్‌ఫ్యూజన్",
+      "pricePerUnit": "యూనిట్‌కి ధర",
+      "fastMatchTitle": "ఫాస్ట్ మ్యాచ్ — గ్రూప్/భాగం/పరిమాణం ద్వారా సరిపోలే యూనిట్లను కనుగొను",
+      "qtyPlaceholder": "పరిమాణం",
+      "findAndSelect": "కనుగొని ఎంచుకో",
+      "matching": "సరిపోల్చుతోంది…",
+      "matchedAllDesc": "అభ్యర్థించిన మొత్తం {{count}} యూనిట్లు సరిపోయాయి.",
+      "matchedShortDesc": "అభ్యర్థించిన {{requested}}లో {{matched}} సరిపోలే యూనిట్లు మాత్రమే అందుబాటులో ఉన్నాయి — {{shortfall}} తక్కువ.",
+      "selectAvailableUnits": "అందుబాటులో ఉన్న యూనిట్లను ఎంచుకోండి ({{count}} ఎంపిక చేయబడ్డాయి)",
+      "noUnitsInStock": "ప్రస్తుతం స్టాక్‌లో యూనిట్లు లేవు.",
+      "statusIssued": "ఇష్యూ చేయబడింది",
+      "statusCancelled": "రద్దు చేయబడింది",
+      "incompatibleWarningTitle": "సరిపోలని యూనిట్(లు) — ఇష్యూ నిరోధించబడింది.",
+      "incompatibleWarningDesc": "ఇది నిజమైన క్రాస్‌మ్యాచ్ పరీక్షకు ప్రత్యామ్నాయం కాదు:",
+      "overrideEmergencyRelease": "ఓవర్‌రైడ్ — అత్యవసర విడుదల (డాక్యుమెంట్ చేయబడిన కారణం అవసరం)",
+      "overrideReasonPlaceholder": "ఈ సరిపోలని యూనిట్ ఎందుకు ఇష్యూ చేయబడుతోంది (ఉదా. ప్రాణాంతక అత్యవసరం, స్టాక్‌లో సరిపోలే యూనిట్ లేదు, వైద్యుని ఆదేశం)...",
+      "issuing": "ఇష్యూ చేస్తోంది…",
+      "generateInvoice": "ఇన్‌వాయిస్ సృష్టించు",
+      "generating": "సృష్టిస్తోంది…",
+      "cancelIssue": "ఇష్యూను రద్దు చేయి",
+      "overrideReasonLabel": "ఓవర్‌రైడ్ కారణం:",
+      "cancelIssueConfirmMsg": "ఈ ఇష్యూను రద్దు చేసి అన్ని యూనిట్లను స్టాక్‌కు తిరిగి ఇవ్వాలా?",
+      "missingRecipientTitle": "గ్రహీత లేరు",
+      "enterRecipientName": "గ్రహీత పేరును నమోదు చేయండి.",
+      "noUnitsSelectedTitle": "యూనిట్లు ఎంపిక చేయబడలేదు",
+      "selectAtLeastOneUnit": "ఇష్యూ చేయడానికి కనీసం ఒక యూనిట్‌ను ఎంచుకోండి.",
+      "incompatibleSelectedTitle": "సరిపోలని యూనిట్లు ఎంపిక చేయబడ్డాయి",
+      "checkOverrideMsg": "కొనసాగించడానికి \"ఓవర్‌రైడ్ — అత్యవసర విడుదల\" ఎంచుకుని కారణాన్ని నమోదు చేయండి.",
+      "reasonRequiredTitle": "కారణం అవసరం",
+      "enterOverrideReason": "అత్యవసర-విడుదల ఓవర్‌రైడ్ కోసం డాక్యుమెంట్ చేయబడిన కారణాన్ని నమోదు చేయండి.",
+      "selectRecipientBloodGroupFirst": "ముందుగా గ్రహీత బ్లడ్ గ్రూప్‌ను ఎంచుకోండి.",
+      "invalidQuantityTitle": "చెల్లని పరిమాణం",
+      "enterUnitsNeeded": "ఎన్ని యూనిట్లు అవసరమో నమోదు చేయండి.",
+      "unitsIssuedTitle": "యూనిట్లు ఇష్యూ చేయబడ్డాయి",
+      "unitsIssuedDesc": "బ్లడ్ యూనిట్లు విజయవంతంగా ఇష్యూ చేయబడ్డాయి.",
+      "couldNotIssueUnits": "యూనిట్లను ఇష్యూ చేయలేకపోయాం.",
+      "couldNotLoadIssues": "బ్లడ్ ఇష్యూలు లోడ్ కాలేదు.",
+      "couldNotLoadIssueData": "బ్లడ్ ఇష్యూ డేటా లోడ్ కాలేదు.",
+      "couldNotVerifyCompatibility": "బ్లడ్ కాంపాటిబిలిటీని నిర్ధారించలేకపోయాం.",
+      "couldNotRunFastMatch": "ఫాస్ట్-మ్యాచ్ శోధనను అమలు చేయలేకపోయాం.",
+      "couldNotRefreshIssueDetails": "ఇష్యూ వివరాలను రిఫ్రెష్ చేయలేకపోయాం.",
+      "issueCancelledTitle": "ఇష్యూ రద్దు చేయబడింది",
+      "issueCancelledDesc": "యూనిట్లు స్టాక్‌కు తిరిగి ఇవ్వబడ్డాయి.",
+      "couldNotCancelIssue": "ఇష్యూను రద్దు చేయలేకపోయాం.",
+      "invoiceGeneratedTitle": "ఇన్‌వాయిస్ సృష్టించబడింది",
+      "invoiceGeneratedDesc": "ఈ ఇష్యూ కోసం ఇన్‌వాయిస్ సృష్టించబడింది.",
+      "couldNotGenerateInvoice": "ఇన్‌వాయిస్‌ను సృష్టించలేకపోయాం."
     }
   }
 }

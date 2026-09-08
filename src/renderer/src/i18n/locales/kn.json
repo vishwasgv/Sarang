@@ -56,7 +56,7 @@
     "manual": "ಕೈಪಿಡಿ",
     "costCentres": "ವೆಚ್ಚ ಕೇಂದ್ರಗಳು",
     "budgets": "ಬಜೆಟ್‌ಗಳು",
-    "serviceCombos": "Service Combos",
+    "serviceCombos": "ಸೇವಾ ಕಾಂಬೋಗಳು",
     "checkIn": "ಚೆಕ್-ಇನ್",
     "customOrders": "ಕಸ್ಟಮ್ ಆರ್ಡರ್‌ಗಳು",
     "cateringEvents": "ಕೇಟರಿಂಗ್ ಈವೆಂಟ್‌ಗಳು",
@@ -314,6 +314,7 @@
   },
   "billing": {
     "title": "ಬಿಲ್ಲಿಂಗ್",
+    "sellingLocation": "ಮಾರಾಟ ಸ್ಥಳ",
     "newInvoice": "ಹೊಸ ಇನ್‌ವಾಯ್ಸ್",
     "invoiceList": "ಇನ್‌ವಾಯ್ಸ್ ಪಟ್ಟಿ",
     "invoiceNumber": "ಇನ್‌ವಾಯ್ಸ್ ಸಂಖ್ಯೆ",
@@ -1610,6 +1611,10 @@
       "distributor": "ಡಿಸ್ಟ್ರಿಬ್ಯೂಟರ್"
     },
     "defs": {
+      "discounts": {
+        "label": "ರಿಯಾಯಿತಿ ವರದಿ",
+        "description": "ಪ್ರತಿ ರಿಯಾಯಿತಿ ನೀಡಿದ ಇನ್‌ವಾಯ್ಸ್ ಸಾಲು, ಸಿಬ್ಬಂದಿ ಮತ್ತು ಉತ್ಪನ್ನವಾರು ವಿಭಜನೆ, ಜೊತೆಗೆ ರಿಯಾಯಿತಿ ಸಂಭವ ಮತ್ತು ಸರಾಸರಿ ರಿಯಾಯಿತಿ %"
+      },
       "sales": {
         "label": "ಮಾರಾಟ ವರದಿ",
         "description": "ಆದಾಯ, ರಿಯಾಯಿತಿ, ತೆರಿಗೆ — ದಿನ / ವಾರ / ಮಾಸ / ವರ್ಷದ ಪ್ರಕಾರ ವರ್ಗೀಕರಿಸಲಾಗಿದೆ"
@@ -2055,212 +2060,212 @@
         "description": "ನೀವು ಕೇಸ್ ಪ್ರಕಾರದ ಪ್ರಕಾರ ಎಷ್ಟು ಕೇಸ್‌ಗಳನ್ನು ನಿರ್ವಹಿಸಿದ್ದೀರಿ — ಸಮಾಲೋಚನೆಗಳು, ತಡೆಗಟ್ಟುವ ಆರೈಕೆ, ಲಸಿಕೆಗಳು, ಮತ್ತು ನಿಮ್ಮ Service Catalog ನಲ್ಲಿರುವ ಇತರವು — ತಿಂಗಳಿನಿಂದ ತಿಂಗಳಿಗೆ."
       },
       "stylistRepeatClient": {
-        "label": "Stylist Repeat-Client Rate",
-        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+        "label": "ಸ್ಟೈಲಿಸ್ಟ್ ಪುನರಾವರ್ತನೆ-ಕ್ಲೈಂಟ್ ದರ",
+        "description": "ಪ್ರತಿ ಸ್ಟೈಲಿಸ್ಟ್‌ಗೆ, ಅವರ ಸ್ವಂತ ಎಷ್ಟು ಕ್ಲೈಂಟ್‌ಗಳು ಎರಡನೇ ಬಾರಿ ಹಿಂತಿರುಗಿದರು — ಕ್ಲೈಂಟ್-ನಿಷ್ಠೆಯ ನಿಜವಾದ ಲೀಡರ್‌ಬೋರ್ಡ್"
       },
       "retailAttachRate": {
-        "label": "Retail Attach Rate",
-        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+        "label": "ರೀಟೇಲ್ ಅಟ್ಯಾಚ್ ದರ",
+        "description": "ಬುಕ್ ಮಾಡಿದ ಸೇವಾ ಇನ್‌ವಾಯ್ಸ್‌ನಲ್ಲಿ ರೀಟೇಲ್ ಉತ್ಪನ್ನ ಅಪ್‌ಸೆಲ್ ಎಷ್ಟು ಬಾರಿ ಸೇರಿಸಲಾಗಿದೆ, ಪ್ರತಿ ಸ್ಟೈಲಿಸ್ಟ್‌ಗೆ"
       },
       "membershipRenewalFunnel": {
-        "label": "Membership Renewal Funnel",
-        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+        "label": "ಸದಸ್ಯತ್ವ ನವೀಕರಣ ಫನಲ್",
+        "description": "ಈ ಅವಧಿಯಲ್ಲಿ ಅವಧಿ ಮುಗಿದ ಸದಸ್ಯತ್ವಗಳಲ್ಲಿ, ಅದೇ ಕ್ಲೈಂಟ್ ವಾಸ್ತವವಾಗಿ ಎಷ್ಟು ನವೀಕರಿಸಿದರು, ಯೋಜನೆಯ ಪ್ರಕಾರ"
       },
       "classAttendanceHeatmap": {
-        "label": "Class Attendance Heatmap",
-        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+        "label": "ತರಗತಿ ಹಾಜರಾತಿ ಹೀಟ್‌ಮ್ಯಾಪ್",
+        "description": "ವಾರದ ಪ್ರತಿ ದಿನ ಪ್ರತಿ ತರಗತಿಗೆ ವಾಸ್ತವಿಕ ಚೆಕ್-ಇನ್ ಸಾಂದ್ರತೆ — ಯಾವ ಸ್ಲಾಟ್‌ಗಳು ನಿಜವಾಗಿಯೂ ಬ್ಯುಸಿಯಾಗಿವೆ, ಕೇವಲ ದಾಖಲಾಗಿಲ್ಲ"
       },
       "learnerProgressFunnel": {
-        "label": "Learner Progress Funnel",
-        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+        "label": "ಕಲಿಯುವವರ ಪ್ರಗತಿ ಫನಲ್",
+        "description": "ಇಲ್ಲಿಯವರೆಗೆ ದಾಖಲಾದ ಪ್ರತಿ ಕಲಿಯುವವರು, ಅವರು ತಲುಪಿದ ಅತಿ ದೂರದ ಹಂತದ ಪ್ರಕಾರ — ಮೊದಲ ಸೆಷನ್‌ನಿಂದ ಉತ್ತೀರ್ಣರಾದ DL ಪರೀಕ್ಷೆಯವರೆಗೆ"
       },
       "caseAging": {
-        "label": "Case Aging",
-        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+        "label": "ಕೇಸ್ ಏಜಿಂಗ್",
+        "description": "ಪ್ರತಿ ತೆರೆದ ಕೇಸ್, ಅದು ಪ್ರಸ್ತುತ ದಾವೆಯ ಹಂತದಲ್ಲಿ ಎಷ್ಟು ಕಾಲದಿಂದ ಸಿಲುಕಿದೆ ಎಂಬುದರ ಪ್ರಕಾರ ಕ್ರಮಬದ್ಧವಾಗಿ"
       },
       "lawyerBillableHours": {
-        "label": "Billable Hours",
-        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+        "label": "ಬಿಲ್ ಮಾಡಬಹುದಾದ ಗಂಟೆಗಳು",
+        "description": "ಪ್ರತಿ ವಕೀಲರಿಗೆ ಬಿಲ್ ಮಾಡಬಹುದಾದ ವಿರುದ್ಧ ಉಚಿತ ಗಂಟೆಗಳು, ಈಗಾಗಲೇ ಬಿಲ್ ಮಾಡಿದ ಮತ್ತು ಇನ್ನೂ ಬಿಲ್ ಮಾಡದ ಮೊತ್ತಗಳಾಗಿ ವಿಭಜಿಸಲಾಗಿದೆ"
       },
       "feeRealization": {
-        "label": "Fee Realization",
-        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+        "label": "ಶುಲ್ಕ ರಿಯಲೈಸೇಶನ್",
+        "description": "ಈ ತಿಂಗಳು ಪ್ರತಿ ಸಕ್ರಿಯ ಎಂಗೇಜ್‌ಮೆಂಟ್‌ನಿಂದ ನಿರೀಕ್ಷಿತ ಪುನರಾವರ್ತಿತ ಶುಲ್ಕದಲ್ಲಿ, ವಾಸ್ತವವಾಗಿ ಎಷ್ಟು ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಲಾಗಿದೆ"
       },
       "drawingApprovalCycleTime": {
-        "label": "Drawing Approval Cycle Time",
-        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+        "label": "ಡ್ರಾಯಿಂಗ್ ಅನುಮೋದನೆ ಚಕ್ರ ಸಮಯ",
+        "description": "ಪ್ರತಿ ಅನುಮೋದಿತ ಡ್ರಾಯಿಂಗ್‌ಗೆ ವಿತರಣೆಯಿಂದ ಅನುಮೋದನೆಯವರೆಗೆ, ವಿಭಾಗದ ಪ್ರಕಾರ, ವಾಸ್ತವವಾಗಿ ಎಷ್ಟು ದಿನಗಳು ತೆಗೆದುಕೊಂಡಿತು"
       },
       "projectStageProgress": {
-        "label": "Project Stage Progress",
-        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+        "label": "ಪ್ರಾಜೆಕ್ಟ್ ಹಂತ ಪ್ರಗತಿ",
+        "description": "ಪ್ರತಿ ಸಕ್ರಿಯ ಪ್ರಾಜೆಕ್ಟ್, ಅದು ಪ್ರಸ್ತುತ ಹಂತದಲ್ಲಿ ಎಷ್ಟು ಕಾಲದಿಂದ ಸಿಲುಕಿದೆ ಎಂಬುದರ ಪ್ರಕಾರ ಕ್ರಮಬದ್ಧವಾಗಿ"
       },
       "siteVisitBilling": {
-        "label": "Site Visit Billing",
-        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+        "label": "ಸೈಟ್ ಭೇಟಿ ಬಿಲ್ಲಿಂಗ್",
+        "description": "ಪ್ರತಿ ಬಿಲ್ ಮಾಡಬಹುದಾದ ಸೈಟ್ ಭೇಟಿ, ಬಿಲ್ ಮಾಡದವು ಮೊದಲು — ಇಂದು ನಿಖರವಾಗಿ ಏನು ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಬಹುದು"
       },
       "materialTestResults": {
-        "label": "Material Test Results",
-        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+        "label": "ವಸ್ತು ಪರೀಕ್ಷಾ ಫಲಿತಾಂಶಗಳು",
+        "description": "ಪ್ರತಿ ದಾಖಲಾದ ವಸ್ತು ಪರೀಕ್ಷೆ, ವಿಫಲವಾದವು ಮೊದಲು, ಒಟ್ಟಾರೆ ಉತ್ತೀರ್ಣ ದರದೊಂದಿಗೆ"
       },
       "retainerUtilization": {
-        "label": "Retainer Utilization",
-        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+        "label": "ರಿಟೈನರ್ ಬಳಕೆ",
+        "description": "ಈ ಅವಧಿಯಲ್ಲಿ ಪ್ರತಿ ಗಂಟೆಯ ರಿಟೈನರ್‌ನ ಮಾಸಿಕ ಕೋಟಾಗೆ ವಿರುದ್ಧವಾಗಿ ಬಳಸಿದ ಗಂಟೆಗಳು, ಅದು ವಾಸ್ತವವಾಗಿ ಬಿಲ್ ಆಗಿದೆಯೇ ಎಂಬುದರೊಂದಿಗೆ"
       },
       "proposalWinRate": {
-        "label": "Proposal Win Rate",
-        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+        "label": "ಪ್ರಸ್ತಾಪ ಗೆಲುವಿನ ದರ",
+        "description": "ವಾಸ್ತವವಾಗಿ ಕಳುಹಿಸಿದ ಪ್ರತಿ ಪ್ರಸ್ತಾಪದಲ್ಲಿ, ಎಷ್ಟು ಒಪ್ಪಿಗೆಯಾಯಿತು ವಿರುದ್ಧ ಸಹಿ ಮಾಡದೆ ಅವಧಿ ಮುಗಿಯಿತು"
       },
       "clientRevenueConcentration": {
-        "label": "Client Revenue Concentration",
-        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+        "label": "ಕ್ಲೈಂಟ್ ಆದಾಯ ಕೇಂದ್ರೀಕರಣ",
+        "description": "ಒಟ್ಟು ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಿದ ಆದಾಯದಲ್ಲಿ ಪ್ರತಿ ಕ್ಲೈಂಟ್‌ನ ಪಾಲು ಎಷ್ಟು — ಅವಲಂಬನೆ-ಅಪಾಯದ ನಿಜವಾದ ಸಂಕೇತ"
       },
       "campaignROI": {
-        "label": "Campaign ROI",
-        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+        "label": "ಕ್ಯಾಂಪೇನ್ ROI",
+        "description": "ಪ್ರತಿ ಕ್ಯಾಂಪೇನ್‌ಗೆ ಯೋಜಿತ ಜಾಹೀರಾತು-ವೆಚ್ಚ ಬಜೆಟ್ ವಿರುದ್ಧ ವಾಸ್ತವಿಕ ವೆಚ್ಚ, ವೆಚ್ಚ-ಪ್ರತಿ-ಪರಿವರ್ತನೆ ಸಹಿತ — ಆದಾಯ ಆಪಾದನೆ ಟ್ರ್ಯಾಕ್ ಆಗದ ಕಾರಣ, ಯಾವುದೇ ಕಾಲ್ಪನಿಕ ROI ಮೊತ್ತ ತೋರಿಸಲಾಗಿಲ್ಲ"
       },
       "deliverableStatusPipeline": {
-        "label": "Deliverable Status Pipeline",
-        "description": "Every content-calendar deliverable by status, with how many are overdue"
+        "label": "ಡೆಲಿವರಬಲ್ ಸ್ಥಿತಿ ಪೈಪ್‌ಲೈನ್",
+        "description": "ಕಂಟೆಂಟ್-ಕ್ಯಾಲೆಂಡರ್‌ನ ಪ್ರತಿ ಡೆಲಿವರಬಲ್ ಸ್ಥಿತಿಯ ಪ್ರಕಾರ, ಎಷ್ಟು ಅವಧಿ ಮೀರಿವೆ ಎಂಬುದರೊಂದಿಗೆ"
       },
       "channelPerformance": {
-        "label": "Channel Performance",
-        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+        "label": "ಚಾನೆಲ್ ಕಾರ್ಯಕ್ಷಮತೆ",
+        "description": "ಒಂದೇ ಚಾನೆಲ್‌ನಲ್ಲಿರುವ ಎಲ್ಲಾ ಕ್ಯಾಂಪೇನ್‌ಗಳ ಒಟ್ಟು ಜಾಹೀರಾತು ವೆಚ್ಚ, ಕ್ಲಿಕ್‌ಗಳು ಮತ್ತು ಪರಿವರ್ತನೆಗಳು"
       },
       "retainerWorkDelivered": {
-        "label": "Retainer Work Delivered",
-        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+        "label": "ರಿಟೈನರ್ ಕೆಲಸ ವಿತರಿಸಲಾಗಿದೆ",
+        "description": "ಪ್ರತಿ ಮಾರ್ಕೆಟಿಂಗ್ ರಿಟೈನರ್‌ಗೆ, ಬಿಲ್ ಮಾಡಲಾಗುತ್ತಿರುವ ಶುಲ್ಕಕ್ಕೆ ವಿರುದ್ಧವಾಗಿ ಈ ತಿಂಗಳು ವಾಸ್ತವವಾಗಿ ಎಷ್ಟು ಡೆಲಿವರಬಲ್‌ಗಳು ಪ್ರಕಟವಾಗಿವೆ"
       },
       "issueAging": {
-        "label": "Issue Aging",
-        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+        "label": "ಸಮಸ್ಯೆ ಏಜಿಂಗ್",
+        "description": "ಪ್ರತಿ ತೆರೆದ ಸಮಸ್ಯೆ, ತೆರೆದಿರುವ ದಿನಗಳ ಪ್ರಕಾರ, ಆದ್ಯತೆಯ ಪ್ರಕಾರ ನಿಗದಿತ SLA ಮಿತಿಗೆ ವಿರುದ್ಧವಾಗಿ ಫ್ಲ್ಯಾಗ್ ಮಾಡಲಾಗಿದೆ"
       },
       "teamUtilization": {
-        "label": "Team Utilization",
-        "description": "Billable vs. non-billable hours logged per team member against a client project"
+        "label": "ತಂಡದ ಬಳಕೆ",
+        "description": "ಪ್ರತಿ ತಂಡದ ಸದಸ್ಯರಿಗೆ, ಕ್ಲೈಂಟ್ ಪ್ರಾಜೆಕ್ಟ್‌ಗೆ ವಿರುದ್ಧವಾಗಿ ದಾಖಲಾದ ಬಿಲ್ ಮಾಡಬಹುದಾದ ವಿರುದ್ಧ ಬಿಲ್ ಮಾಡಲಾಗದ ಗಂಟೆಗಳು"
       },
       "sprintBilling": {
-        "label": "Sprint Billing",
-        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+        "label": "ಸ್ಪ್ರಿಂಟ್ ಬಿಲ್ಲಿಂಗ್",
+        "description": "ಪ್ರತಿ ಪೂರ್ಣಗೊಂಡ ಸ್ಪ್ರಿಂಟ್, ಮತ್ತು ಅದರ ಕೆಲಸ ವಾಸ್ತವವಾಗಿ ಬಿಲ್ಲಿಂಗ್ ಮೈಲ್‌ಸ್ಟೋನ್‌ಗೆ ಲಿಂಕ್ ಆಗಿದೆಯೇ ಎಂಬುದರೊಂದಿಗೆ"
       },
       "deliveryPipeline": {
-        "label": "Delivery Pipeline",
-        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+        "label": "ಡೆಲಿವರಿ ಪೈಪ್‌ಲೈನ್",
+        "description": "ಪ್ರತಿ ಸಕ್ರಿಯ ಶೂಟ್ ಬುಕಿಂಗ್, ಅದರ ಪೋಸ್ಟ್-ಪ್ರೊಡಕ್ಷನ್ ಎಷ್ಟು ಪ್ರಗತಿ ಹೊಂದಿದೆ ಎಂಬುದರ ಪ್ರಕಾರ, ಜೊತೆಗೆ ಅವಧಿ ಮೀರಿದ ಡೆಲಿವರಿಗಳು ಮತ್ತು ಹೆಚ್ಚು ಪರಿಷ್ಕರಣೆ ಹೊಂದಿರುವ ಬುಕಿಂಗ್‌ಗಳು"
       },
       "shootTypeRevenueMix": {
-        "label": "Shoot-Type Revenue Mix",
-        "description": "Revenue, booking count, and average ticket per shoot type"
+        "label": "ಶೂಟ್-ಪ್ರಕಾರ ಆದಾಯ ಮಿಶ್ರಣ",
+        "description": "ಪ್ರತಿ ಶೂಟ್ ಪ್ರಕಾರಕ್ಕೆ ಆದಾಯ, ಬುಕಿಂಗ್ ಸಂಖ್ಯೆ, ಮತ್ತು ಸರಾಸರಿ ಟಿಕೆಟ್"
       },
       "equipmentCheckout": {
-        "label": "Equipment Checkout",
-        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+        "label": "ಸಾಧನ ಚೆಕ್-ಔಟ್",
+        "description": "ಪ್ರಸ್ತುತ ಚೆಕ್-ಔಟ್ ಆಗಿರುವ ಮತ್ತು ಇನ್ನೂ ಹಿಂತಿರುಗಿಸದ ಸ್ಟುಡಿಯೋದ ಪ್ರತಿ ಸಾಧನ, ಅವಧಿ ಮೀರಿದವು ಮೊದಲು"
       },
       "vendorCostVsBudget": {
-        "label": "Vendor Cost vs. Budget",
-        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+        "label": "ವೆಂಡರ್ ವೆಚ್ಚ ವಿರುದ್ಧ ಬಜೆಟ್",
+        "description": "ಪ್ರತಿ ಈವೆಂಟ್‌ನ ಒಟ್ಟು ವೆಂಡರ್ ವೆಚ್ಚ ಕ್ಲೈಂಟ್‌ನ ಬಜೆಟ್ ಮತ್ತು ಏಜೆನ್ಸಿಯ ಸ್ವಂತ ಉಲ್ಲೇಖಕ್ಕೆ ವಿರುದ್ಧವಾಗಿ — ನಿಜವಾದ ಮಾರ್ಜಿನ್ ಗೋಚರತೆ"
       },
       "vendorPerformanceHistory": {
-        "label": "Vendor Performance History",
-        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+        "label": "ವೆಂಡರ್ ಕಾರ್ಯಕ್ಷಮತೆ ಇತಿಹಾಸ",
+        "description": "ಪ್ರತಿ ರೇಟ್ ಮಾಡಿದ ವೆಂಡರ್‌ನ ಸರಾಸರಿ ರೇಟಿಂಗ್, ಅವರು ಕೆಲಸ ಮಾಡಿದ ಎಲ್ಲಾ ಈವೆಂಟ್‌ಗಳಲ್ಲಿ, ಅತ್ಯಂತ ಕಡಿಮೆ ಮೊದಲು"
       },
       "occupancyTrend": {
-        "label": "Occupancy Trend",
-        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+        "label": "ಆಕ್ಯುಪೆನ್ಸಿ ಪ್ರವೃತ್ತಿ",
+        "description": "ಆಯ್ಕೆ ಮಾಡಿದ ಅವಧಿಯಲ್ಲಿ ದೈನಂದಿನ ಕೋಣೆ ಆಕ್ಯುಪೆನ್ಸಿ % — ಆಕ್ಯುಪೆನ್ಸಿ ಹೆಚ್ಚುತ್ತಿದೆಯೇ ಅಥವಾ ಕಡಿಮೆಯಾಗುತ್ತಿದೆಯೇ?"
       },
       "roomWiseADR": {
-        "label": "Room-wise ADR",
-        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+        "label": "ಕೋಣೆ-ವಾರು ADR",
+        "description": "ಸರಾಸರಿ ದೈನಂದಿನ ದರ (ADR) ಮತ್ತು ಮಾರಾಟವಾದ ರಾತ್ರಿಗಳು, ಪ್ರತಿ ಕೋಣೆಗೆ ವಿಭಜಿಸಲಾಗಿದೆ — ಯಾವ ಕೋಣೆಗಳು ಹೆಚ್ಚು ಗಳಿಸುತ್ತವೆ?"
       },
       "adrRevPAR": {
-        "label": "ADR & RevPAR",
-        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+        "label": "ADR ಮತ್ತು RevPAR",
+        "description": "ಸರಾಸರಿ ದೈನಂದಿನ ದರ (ADR) ಮತ್ತು ಪ್ರತಿ ಲಭ್ಯವಿರುವ ಕೋಣೆಗೆ ಆದಾಯ (RevPAR), ತಿಂಗಳಿಗನುಗುಣವಾಗಿ ಪ್ರವೃತ್ತಿ"
       },
       "carPartsVariance": {
-        "label": "Parts Cost Variance",
-        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+        "label": "ಬಿಡಿಭಾಗಗಳ ವೆಚ್ಚ ವ್ಯತ್ಯಾಸ",
+        "description": "ಇನ್‌ಟೇಕ್‌ನಲ್ಲಿ ಅಂದಾಜು ನೀಡಿದ ಕೆಲಸಗಳಿಗೆ, ವಾಸ್ತವಿಕ ಬಿಡಿಭಾಗಗಳ ವೆಚ್ಚ ವಿರುದ್ಧ ಅಂದಾಜು ವೆಚ್ಚ"
       },
       "serviceTypeRevenue": {
-        "label": "Revenue by Service Type",
-        "description": "Which services bring in the most revenue, across every job card"
+        "label": "ಸೇವಾ ಪ್ರಕಾರದ ಪ್ರಕಾರ ಆದಾಯ",
+        "description": "ಪ್ರತಿ ಜಾಬ್ ಕಾರ್ಡ್‌ನಲ್ಲಿ ಯಾವ ಸೇವೆಗಳು ಹೆಚ್ಚು ಆದಾಯ ತರುತ್ತವೆ"
       },
       "orderTurnaround": {
-        "label": "Order Turnaround Time",
-        "description": "How many days it actually takes from order to delivery, per order"
+        "label": "ಆರ್ಡರ್ ಟರ್ನ್‌ಅರೌಂಡ್ ಸಮಯ",
+        "description": "ಪ್ರತಿ ಆರ್ಡರ್‌ಗೆ, ಆರ್ಡರ್‌ನಿಂದ ಡೆಲಿವರಿಯವರೆಗೆ ವಾಸ್ತವವಾಗಿ ಎಷ್ಟು ದಿನಗಳು ತಗಲುತ್ತವೆ"
       },
       "fittingStageTracker": {
-        "label": "Fitting-Stage Tracker",
-        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+        "label": "ಫಿಟ್ಟಿಂಗ್-ಹಂತ ಟ್ರ್ಯಾಕರ್",
+        "description": "ಪ್ರಸ್ತುತ ಟ್ರಯಲ್ ಅಥವಾ ಆಲ್ಟರೇಶನ್ ಹಂತದಲ್ಲಿರುವ ಆರ್ಡರ್‌ಗಳು, ಮತ್ತು ಅವು ಅಲ್ಲಿ ಎಷ್ಟು ಕಾಲದಿಂದ ಸಿಲುಕಿವೆ"
       },
       "fabricPopularity": {
-        "label": "Fabric / Design Popularity",
-        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+        "label": "ಫ್ಯಾಬ್ರಿಕ್ / ವಿನ್ಯಾಸ ಜನಪ್ರಿಯತೆ",
+        "description": "ಯಾವ ಫ್ಯಾಬ್ರಿಕ್ ಮತ್ತು ವಿನ್ಯಾಸಗಳು ಹೆಚ್ಚು ಆರ್ಡರ್ ಆಗುತ್ತವೆ, ಮತ್ತು ಅವುಗಳ ಹಿಂದಿನ ಆದಾಯ"
       },
       "renewalFunnel": {
-        "label": "Renewal Funnel",
-        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+        "label": "ನವೀಕರಣ ಫನಲ್",
+        "description": "ಸಕ್ರಿಯ AMC ಒಪ್ಪಂದಗಳು, ನವೀಕರಣದ ತುರ್ತಿನ ಪ್ರಕಾರ ಗುಂಪುಗೊಳಿಸಲಾಗಿದೆ — ಅವಧಿ ಮೀರಿದವುಗಳಿಂದ ಇನ್ನೂ ಬಾಕಿ ಇಲ್ಲದವರೆಗೆ"
       },
       "chemicalUsageCompliance": {
-        "label": "Chemical Usage / Compliance Log",
-        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+        "label": "ರಾಸಾಯನಿಕ ಬಳಕೆ / ಅನುಸರಣೆ ಲಾಗ್",
+        "description": "ಪ್ರತಿ ಭೇಟಿಗೆ ಬಳಸಿದ ಕೀಟನಾಶಕ ಪ್ರಮಾಣ, ಮತ್ತು ರಾಸಾಯನಿಕ ದಾಖಲಾಗದ ಪೂರ್ಣಗೊಂಡ ಭೇಟಿಗಳು"
       },
       "pestRecurringValueTrend": {
-        "label": "Recurring Contract Value Trend",
-        "description": "Actual AMC contract-fee revenue billed, trended by month"
+        "label": "ಪುನರಾವರ್ತಿತ ಒಪ್ಪಂದ ಮೌಲ್ಯ ಪ್ರವೃತ್ತಿ",
+        "description": "ಬಿಲ್ ಮಾಡಿದ ವಾಸ್ತವಿಕ AMC ಒಪ್ಪಂದ-ಶುಲ್ಕ ಆದಾಯ, ತಿಂಗಳಿಗನುಗುಣವಾಗಿ ಪ್ರವೃತ್ತಿ"
       },
       "candidatePipelineFunnel": {
-        "label": "Candidate Pipeline Funnel",
-        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+        "label": "ಅಭ್ಯರ್ಥಿ ಪೈಪ್‌ಲೈನ್ ಫನಲ್",
+        "description": "ಪ್ರತಿ ಅಭ್ಯರ್ಥಿಯ ಪ್ರಗತಿ — ಸೇರಿಸಿದಾಗಿನಿಂದ ಸಂದರ್ಶನ, ಆಫರ್ ಮತ್ತು ಅಂತಿಮವಾಗಿ ನಿಯೋಜನೆಯವರೆಗೆ"
       },
       "jobOrderFunnel": {
-        "label": "Job Order Funnel",
-        "description": "Open client job orders by status — the fill-progress view from the client side"
+        "label": "ಜಾಬ್ ಆರ್ಡರ್ ಫನಲ್",
+        "description": "ಕ್ಲೈಂಟ್‌ನ ತೆರೆದ ಜಾಬ್ ಆರ್ಡರ್‌ಗಳು, ಸ್ಥಿತಿಯ ಪ್ರಕಾರ — ಕ್ಲೈಂಟ್ ಕಡೆಯಿಂದ ಭರ್ತಿ-ಪ್ರಗತಿ ನೋಟ"
       },
       "feePercentage": {
-        "label": "Client Fee-Percentage Tracking",
-        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+        "label": "ಕ್ಲೈಂಟ್ ಶುಲ್ಕ-ಶೇಕಡಾವಾರು ಟ್ರ್ಯಾಕಿಂಗ್",
+        "description": "ಪ್ರತಿ ಜಾಬ್ ಆರ್ಡರ್‌ಗೆ ಒಪ್ಪಿದ ಶುಲ್ಕ % ವಿರುದ್ಧ ಅದರ ನಿಯೋಜನೆಗಳಲ್ಲಿ ವಾಸ್ತವವಾಗಿ ಪಡೆದದ್ದು"
       },
       "timeToFill": {
-        "label": "Time to Fill",
-        "description": "How many days it actually takes from job order to a candidate joining"
+        "label": "ನೇಮಕಾತಿ ಸಮಯ",
+        "description": "ಜಾಬ್ ಆರ್ಡರ್‌ನಿಂದ ಅಭ್ಯರ್ಥಿ ಸೇರುವವರೆಗೆ ವಾಸ್ತವವಾಗಿ ಎಷ್ಟು ದಿನಗಳು ತಗಲುತ್ತವೆ"
       },
       "sourceEffectiveness": {
-        "label": "Source Effectiveness",
-        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+        "label": "ಮೂಲ ಪರಿಣಾಮಕಾರಿತ್ವ",
+        "description": "ಅಭ್ಯರ್ಥಿ ಮೂಲ (ರೆಫರಲ್, ಲಿಂಕ್ಡ್‌ಇನ್, ವೆಬ್‌ಸೈಟ್...) ವಿರುದ್ಧ ವಾಸ್ತವಿಕ ನಿಯೋಜನೆ ಪರಿವರ್ತನೆ ದರ"
       },
       "batchPerformanceTrend": {
-        "label": "Batch Performance Trend",
-        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+        "label": "ಬ್ಯಾಚ್ ಕಾರ್ಯಕ್ಷಮತೆ ಪ್ರವೃತ್ತಿ",
+        "description": "ಪ್ರತಿ ಬ್ಯಾಚ್‌ನ ಸರಾಸರಿ ಪರೀಕ್ಷಾ ಅಂಕ, ತಿಂಗಳಿಂದ ತಿಂಗಳಿಗೆ ಪ್ರವೃತ್ತಿ — ಬ್ಯಾಚ್ ಸುಧಾರಿಸುತ್ತಿದೆಯೇ ಅಥವಾ ಕುಸಿಯುತ್ತಿದೆಯೇ?"
       },
       "attendancePerformanceCorrelation": {
-        "label": "Attendance vs. Performance",
-        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+        "label": "ಹಾಜರಾತಿ ವಿರುದ್ಧ ಕಾರ್ಯಕ್ಷಮತೆ",
+        "description": "ಹೆಚ್ಚು ಹಾಜರಾಗುವ ವಿದ್ಯಾರ್ಥಿಗಳು ನಿಜವಾಗಿಯೂ ಹೆಚ್ಚು ಅಂಕ ಗಳಿಸುತ್ತಾರೆಯೇ — ವಾಸ್ತವ ಹಾಜರಾತಿ % ವಿರುದ್ಧ ಸರಾಸರಿ ಪರೀಕ್ಷೆ %, ಜೊತೆಗೆ ಇಡೀ ಬ್ಯಾಚ್‌ಗೆ ಪರಸ್ಪರ ಸಂಬಂಧ ಗುಣಾಂಕ"
       },
       "feeDueUnderperformanceAlert": {
-        "label": "Fee-Due Underperformance Alert",
-        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+        "label": "ಶುಲ್ಕ-ಬಾಕಿ ಕಡಿಮೆ ಕಾರ್ಯಕ್ಷಮತೆ ಎಚ್ಚರಿಕೆ",
+        "description": "ಶುಲ್ಕ ಬಾಕಿ ಇರುವ ಮತ್ತು 50% ಗಿಂತ ಕಡಿಮೆ ಅಂಕ ಗಳಿಸುತ್ತಿರುವ ವಿದ್ಯಾರ್ಥಿಗಳು — ಸಂಪರ್ಕಕ್ಕೆ ಆದ್ಯತೆ ನೀಡಲು ಒಂದು ಕಾರ್ಯಪಟ್ಟಿ"
       },
       "coilWastageYield": {
-        "label": "Coil Wastage & Yield",
-        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+        "label": "ಕಾಯಿಲ್ ವ್ಯರ್ಥ ಮತ್ತು ಇಳುವರಿ",
+        "description": "ಪಡೆದ ವಿರುದ್ಧ ಮಾರಾಟವಾದ ಉದ್ದ, ಇಳುವರಿ %, ಮತ್ತು ಪ್ರತಿ ಕಾಯಿಲ್-ಮಾರಾಟ ಉತ್ಪನ್ನಕ್ಕೆ ಅಂದಾಜು ವ್ಯರ್ಥ"
       },
       "isiBisSafetyRegister": {
-        "label": "ISI/BIS Safety Register",
-        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+        "label": "ISI/BIS ಸುರಕ್ಷತಾ ರಿಜಿಸ್ಟರ್",
+        "description": "ಪ್ರತಿ ಸೀರಿಯಲ್-ಟ್ರ್ಯಾಕ್ ಮಾಡಿದ ಘಟಕದ ಟ್ರೇಸೆಬಿಲಿಟಿ ರಿಜಿಸ್ಟರ್ — ಸ್ವೀಕೃತಿ, ವಾರಂಟಿ, ಮತ್ತು ಎಲ್ಲಿ ಮಾರಾಟವಾಯಿತು"
       },
       "seasonalDemandForecast": {
-        "label": "Seasonal Demand Forecast",
-        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+        "label": "ಋತುಮಾನದ ಬೇಡಿಕೆ ಮುನ್ಸೂಚನೆ",
+        "description": "ಕ್ಯಾಲೆಂಡರ್ ತಿಂಗಳ ಪ್ರಕಾರ ಇಲ್ಲಿಯವರೆಗಿನ ಒಟ್ಟು ಮಾರಾಟ, ಗರಿಷ್ಠ ಋತುವನ್ನು ಫ್ಲ್ಯಾಗ್ ಮಾಡುತ್ತಾ"
       },
       "institutionalOrderHistory": {
-        "label": "Institutional Order History",
-        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+        "label": "ಸಾಂಸ್ಥಿಕ ಆರ್ಡರ್ ಇತಿಹಾಸ",
+        "description": "ನವೀಕರಣ ಯೋಜನೆಗಾಗಿ, ಪ್ರತಿ ಹಿಂದಿನ ಬಲ್ಕ್-ಲಿಸ್ಟ್ ಆರ್ಡರ್ ಸ್ಥಿತಿ, ವಸ್ತು ಸಂಖ್ಯೆ ಮತ್ತು ಒಟ್ಟು ಮೌಲ್ಯದೊಂದಿಗೆ"
       },
       "locationStockSplit": {
-        "label": "Showroom-vs-Warehouse Stock",
-        "description": "Per-product stock split across every Location"
+        "label": "ಶೋರೂಮ್-ವಿರುದ್ಧ-ಗೋದಾಮು ಸ್ಟಾಕ್",
+        "description": "ಪ್ರತಿ ಸ್ಥಳದಲ್ಲಿ ಪ್ರತಿ-ಉತ್ಪನ್ನ ಸ್ಟಾಕ್ ವಿಭಜನೆ"
       },
       "deliveryInstallationSchedule": {
-        "label": "Delivery & Installation Schedule",
-        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+        "label": "ಡೆಲಿವರಿ ಮತ್ತು ಅಳವಡಿಕೆ ವೇಳಾಪಟ್ಟಿ",
+        "description": "ಆಯ್ಕೆ ಮಾಡಿದ ಅವಧಿಯಲ್ಲಿ ಡೆಲಿವರಿ ದಿನಾಂಕ ಹೊಂದಿರುವ ಪೀಠೋಪಕರಣ ಬುಕಿಂಗ್‌ಗಳು, ನಿಜವಾದ ವೇಳಾಪಟ್ಟಿಯಾಗಿ"
       },
       "specWiseFastMovers": {
         "label": "ಸ್ಪೆಕ್-ವೈಸ್ ಫಾಸ್ಟ್ ಮೂವರ್ಸ್",
@@ -2556,53 +2561,53 @@
       "dosesEvaluated": "ಮೌಲ್ಯಮಾಪನ ಮಾಡಿದ ಡೋಸ್‌ಗಳು",
       "totalCases": "ಒಟ್ಟು ಕೇಸ್‌ಗಳು",
       "distinctCaseTypes": "ವಿಭಿನ್ನ ಕೇಸ್ ಪ್ರಕಾರಗಳು",
-      "totalEnrolled": "Total Enrolled",
-      "overallCompletionPercent": "DL Completion Rate %",
-      "totalOpenCases": "Open Cases",
-      "avgDaysInCurrentStage": "Avg. Days in Stage",
-      "staleCaseCount": "Stale Cases (90+ days)",
-      "totalApproved": "Drawings Approved",
-      "avgDaysToApprove": "Avg. Days to Approve",
-      "totalActiveProjects": "Active Projects",
-      "avgDaysInStage": "Avg. Days in Stage",
-      "totalBillableAmount": "Total Billable",
-      "totalBilledAmount": "Total Billed",
-      "totalUnbilledAmount": "Total Unbilled",
-      "unbilledCount": "Unbilled Visits",
-      "passCount": "Passed",
-      "failCount": "Failed",
-      "pendingCount": "Pending",
-      "passRatePercent": "Pass Rate %",
-      "totalRetainers": "Retainers",
-      "overUtilizedCount": "Over-Utilized",
-      "wonCount": "Won",
-      "lostCount": "Lost",
-      "winRatePercent": "Win Rate %",
-      "wonValue": "Won Value",
-      "topClientSharePercent": "Top Client Share %",
-      "top3SharePercent": "Top 3 Clients Share %",
-      "totalCampaigns": "Campaigns",
-      "totalBudget": "Total Budget",
-      "totalActualSpend": "Total Actual Spend",
-      "overBudgetCount": "Over Budget",
-      "totalDeliverables": "Deliverables",
-      "zeroDeliveredCount": "Zero Delivered",
-      "totalOpenIssues": "Open Issues",
-      "breachedCount": "SLA Breached",
-      "totalBillableHours": "Total Billable Hours",
-      "totalNonBillableHours": "Total Non-Billable Hours",
-      "totalCompletedSprints": "Completed Sprints",
-      "unlinkedCount": "Unbilled Sprints",
-      "totalActive": "Active Bookings",
-      "deliveredCount": "Delivered",
-      "avgRevisionRounds": "Avg. Revision Rounds",
-      "totalBookings": "Total Bookings",
-      "totalEvents": "Events",
-      "totalVendorCost": "Total Vendor Cost",
-      "totalRatedVendors": "Rated Vendors",
-      "overallAvgRating": "Overall Avg. Rating",
-      "correlationCoefficient": "Attendance–Performance Correlation",
-      "alertCount": "Students Flagged"
+      "totalEnrolled": "ಒಟ್ಟು ದಾಖಲಾತಿ",
+      "overallCompletionPercent": "DL ಪೂರ್ಣಗೊಳಿಸುವಿಕೆ ದರ %",
+      "totalOpenCases": "ತೆರೆದ ಕೇಸ್‌ಗಳು",
+      "avgDaysInCurrentStage": "ಸರಾಸರಿ ದಿನಗಳು (ಹಂತದಲ್ಲಿ)",
+      "staleCaseCount": "ನಿಷ್ಕ್ರಿಯ ಕೇಸ್‌ಗಳು (90+ ದಿನಗಳು)",
+      "totalApproved": "ಅನುಮೋದಿತ ಡ್ರಾಯಿಂಗ್‌ಗಳು",
+      "avgDaysToApprove": "ಸರಾಸರಿ ಅನುಮೋದನೆ ದಿನಗಳು",
+      "totalActiveProjects": "ಸಕ್ರಿಯ ಪ್ರಾಜೆಕ್ಟ್‌ಗಳು",
+      "avgDaysInStage": "ಸರಾಸರಿ ದಿನಗಳು (ಹಂತದಲ್ಲಿ)",
+      "totalBillableAmount": "ಒಟ್ಟು ಬಿಲ್ ಮಾಡಬಹುದಾದ ಮೊತ್ತ",
+      "totalBilledAmount": "ಒಟ್ಟು ಬಿಲ್ ಮಾಡಿದ ಮೊತ್ತ",
+      "totalUnbilledAmount": "ಒಟ್ಟು ಬಿಲ್ ಮಾಡದ ಮೊತ್ತ",
+      "unbilledCount": "ಬಿಲ್ ಮಾಡದ ಭೇಟಿಗಳು",
+      "passCount": "ಉತ್ತೀರ್ಣ",
+      "failCount": "ವಿಫಲ",
+      "pendingCount": "ಬಾಕಿ",
+      "passRatePercent": "ಉತ್ತೀರ್ಣ ದರ %",
+      "totalRetainers": "ರಿಟೈನರ್‌ಗಳು",
+      "overUtilizedCount": "ಅತಿ-ಬಳಕೆ",
+      "wonCount": "ಗೆದ್ದಿದೆ",
+      "lostCount": "ಕಳೆದುಕೊಂಡಿದೆ",
+      "winRatePercent": "ಗೆಲುವಿನ ದರ %",
+      "wonValue": "ಗೆದ್ದ ಮೌಲ್ಯ",
+      "topClientSharePercent": "ಟಾಪ್ ಕ್ಲೈಂಟ್ ಪಾಲು %",
+      "top3SharePercent": "ಟಾಪ್ 3 ಕ್ಲೈಂಟ್‌ಗಳ ಪಾಲು %",
+      "totalCampaigns": "ಕ್ಯಾಂಪೇನ್‌ಗಳು",
+      "totalBudget": "ಒಟ್ಟು ಬಜೆಟ್",
+      "totalActualSpend": "ಒಟ್ಟು ವಾಸ್ತವಿಕ ವೆಚ್ಚ",
+      "overBudgetCount": "ಬಜೆಟ್‌ಗಿಂತ ಹೆಚ್ಚು",
+      "totalDeliverables": "ಡೆಲಿವರಬಲ್‌ಗಳು",
+      "zeroDeliveredCount": "ಶೂನ್ಯ ವಿತರಣೆ",
+      "totalOpenIssues": "ತೆರೆದ ಸಮಸ್ಯೆಗಳು",
+      "breachedCount": "SLA ಉಲ್ಲಂಘನೆ",
+      "totalBillableHours": "ಒಟ್ಟು ಬಿಲ್ ಮಾಡಬಹುದಾದ ಗಂಟೆಗಳು",
+      "totalNonBillableHours": "ಒಟ್ಟು ಬಿಲ್ ಮಾಡಲಾಗದ ಗಂಟೆಗಳು",
+      "totalCompletedSprints": "ಪೂರ್ಣಗೊಂಡ ಸ್ಪ್ರಿಂಟ್‌ಗಳು",
+      "unlinkedCount": "ಬಿಲ್ ಮಾಡದ ಸ್ಪ್ರಿಂಟ್‌ಗಳು",
+      "totalActive": "ಸಕ್ರಿಯ ಬುಕಿಂಗ್‌ಗಳು",
+      "deliveredCount": "ವಿತರಿಸಲಾಗಿದೆ",
+      "avgRevisionRounds": "ಸರಾಸರಿ ಪರಿಷ್ಕರಣೆ ಸುತ್ತುಗಳು",
+      "totalBookings": "ಒಟ್ಟು ಬುಕಿಂಗ್‌ಗಳು",
+      "totalEvents": "ಈವೆಂಟ್‌ಗಳು",
+      "totalVendorCost": "ಒಟ್ಟು ವೆಂಡರ್ ವೆಚ್ಚ",
+      "totalRatedVendors": "ರೇಟ್ ಮಾಡಿದ ವೆಂಡರ್‌ಗಳು",
+      "overallAvgRating": "ಒಟ್ಟಾರೆ ಸರಾಸರಿ ರೇಟಿಂಗ್",
+      "correlationCoefficient": "ಹಾಜರಾತಿ–ಕಾರ್ಯಕ್ಷಮತೆ ಪರಸ್ಪರ ಸಂಬಂಧ",
+      "alertCount": "ಫ್ಲ್ಯಾಗ್ ಮಾಡಿದ ವಿದ್ಯಾರ್ಥಿಗಳು"
     },
     "aging": {
       "current": "ಪ್ರಸ್ತುತ",
@@ -2705,8 +2710,8 @@
       "complianceByRecallType": "ರಿಕಾಲ್ ಪ್ರಕಾರದ ಪ್ರಕಾರ ಅನುಸರಣೆ",
       "complianceByVaccine": "ಲಸಿಕೆವಾರು ಅನುಸರಣೆ",
       "caseTypeVolumeChart": "ಕೇಸ್ ಪ್ರಮಾಣ ಪ್ರವೃತ್ತಿ",
-      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
-      "feeDueUnderperformanceDetails": "Flagged Students"
+      "attendancePerformanceDetails": "ಹಾಜರಾತಿ ವಿರುದ್ಧ ಕಾರ್ಯಕ್ಷಮತೆ, ವಿದ್ಯಾರ್ಥಿಯ ಪ್ರಕಾರ",
+      "feeDueUnderperformanceDetails": "ಫ್ಲ್ಯಾಗ್ ಮಾಡಿದ ವಿದ್ಯಾರ್ಥಿಗಳು"
     },
     "empty": {
       "invoices": "ಈ ದಿನಾಂಕ ಶ್ರೇಣಿಯಲ್ಲಿ ಯಾವುದೇ ಬಿಲ್‌ಗಳಿಲ್ಲ.",
@@ -2805,39 +2810,39 @@
       "dentalRecallCompliance": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಯಾವುದೇ ರಿಕಾಲ್ ಮುಚ್ಚಲಾಗಿಲ್ಲ.",
       "vaccinationCompliance": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಹಿಂದಿನ ಬಾಕಿ ದಿನಾಂಕವಿರುವ ಯಾವುದೇ ಫಾಲೋ-ಅಪ್ ಡೋಸ್ ಇಲ್ಲ.",
       "vetCaseTypeVolume": "ಈ ದಿನಾಂಕ ವ್ಯಾಪ್ತಿಯಲ್ಲಿ ಕೇಸ್‌ಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
-      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
-      "serviceTypeRevenue": "No service items billed in this date range.",
-      "orderTurnaround": "No orders delivered in this date range.",
-      "fittingStageTracker": "No orders currently at Trial or Alterations.",
-      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
-      "chemicalUsageCompliance": "No completed visits in this date range.",
-      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
-      "attendancePerformanceCorrelation": "No enrolled students yet.",
-      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
-      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range.",
-      "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
-      "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now.",
-      "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now.",
-      "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet.",
-      "retainerUtilization": "No active hourly retainers right now.",
-      "clientRevenueConcentration": "No invoiced revenue in this date range.",
-      "campaignROI": "No marketing campaigns recorded yet.",
-      "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
-      "issueAging": "No open issues right now.",
-      "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet.",
-      "deliveryPipeline": "No bookings with a revision round logged yet.",
-      "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out.",
-      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
-      "vendorPerformanceHistory": "No vendors rated yet."
+      "carPartsVariance": "ಇನ್ನೂ ಬಿಡಿಭಾಗ ಅಂದಾಜು ಹೊಂದಿರುವ ಯಾವುದೇ ಕೆಲಸ ಇಲ್ಲ.",
+      "serviceTypeRevenue": "ಈ ಅವಧಿಯಲ್ಲಿ ಸೇವಾ ವಸ್ತುಗಳು ಬಿಲ್ ಆಗಿಲ್ಲ.",
+      "orderTurnaround": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಆರ್ಡರ್ ವಿತರಿಸಲಾಗಿಲ್ಲ.",
+      "fittingStageTracker": "ಪ್ರಸ್ತುತ ಟ್ರಯಲ್ ಅಥವಾ ಆಲ್ಟರೇಶನ್ ಹಂತದಲ್ಲಿ ಯಾವುದೇ ಆರ್ಡರ್ ಇಲ್ಲ.",
+      "fabricPopularity": "ಈ ಅವಧಿಯಲ್ಲಿ ಫ್ಯಾಬ್ರಿಕ್/ವಿನ್ಯಾಸ ದಾಖಲಾಗಿರುವ ಆರ್ಡರ್‌ಗಳಿಲ್ಲ.",
+      "chemicalUsageCompliance": "ಈ ಅವಧಿಯಲ್ಲಿ ಪೂರ್ಣಗೊಂಡ ಭೇಟಿಗಳಿಲ್ಲ.",
+      "pestRecurringValueTrend": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಪುನರಾವರ್ತಿತ ಒಪ್ಪಂದ-ಶುಲ್ಕ ಇನ್‌ವಾಯ್ಸ್ ಬಿಲ್ ಆಗಿಲ್ಲ.",
+      "attendancePerformanceCorrelation": "ಇನ್ನೂ ದಾಖಲಾದ ವಿದ್ಯಾರ್ಥಿಗಳಿಲ್ಲ.",
+      "feeDueUnderperformanceAlert": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ವಿದ್ಯಾರ್ಥಿ ಫ್ಲ್ಯಾಗ್ ಆಗಿಲ್ಲ — ಶುಲ್ಕ ಬಾಕಿ ಮತ್ತು ಕಡಿಮೆ ಕಾರ್ಯಕ್ಷಮತೆ ಎರಡೂ ಯಾರಿಗೂ ಇಲ್ಲ.",
+      "stylistRepeatClient": "ಈ ಅವಧಿಯಲ್ಲಿ ಸ್ಟೈಲಿಸ್ಟ್ ನಿಯೋಜಿಸಿದ ಪೂರ್ಣಗೊಂಡ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳ ದಾಖಲೆ ಇಲ್ಲ.",
+      "retailAttachRate": "ಈ ಅವಧಿಯಲ್ಲಿ ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಿದ ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್‌ಗಳಿಲ್ಲ.",
+      "membershipRenewalFunnel": "ಈ ಅವಧಿಯಲ್ಲಿ ಯಾವುದೇ ಸದಸ್ಯತ್ವ ಅವಧಿ ಮುಗಿದಿಲ್ಲ.",
+      "classAttendanceHeatmap": "ಈ ಅವಧಿಯಲ್ಲಿ ತರಗತಿ ಚೆಕ್-ಇನ್‌ಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
+      "caseAging": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ತೆರೆದ ಕೇಸ್ ಇಲ್ಲ.",
+      "lawyerBillableHours": "ಈ ಅವಧಿಯಲ್ಲಿ ಕೇಸ್‌ಗೆ ವಿರುದ್ಧವಾಗಿ ಸಮಯ ನಮೂದುಗಳಿಲ್ಲ.",
+      "feeRealization": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ಸಕ್ರಿಯ, ಬೆಲೆ ನಿಗದಿಪಡಿಸಿದ ಎಂಗೇಜ್‌ಮೆಂಟ್‌ಗಳಿಲ್ಲ.",
+      "drawingApprovalCycleTime": "ಇನ್ನೂ ಫೈಲ್‌ನಲ್ಲಿ ಅನುಮೋದಿತ ಡ್ರಾಯಿಂಗ್‌ಗಳಿಲ್ಲ.",
+      "projectStageProgress": "ಪ್ರಸ್ತುತ ಹಂತ ಸೆಟ್ ಹೊಂದಿರುವ ಸಕ್ರಿಯ ಪ್ರಾಜೆಕ್ಟ್‌ಗಳಿಲ್ಲ.",
+      "siteVisitBilling": "ಇನ್ನೂ ಬಿಲ್ ಮಾಡಬಹುದಾದ ಸೈಟ್ ಭೇಟಿಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
+      "materialTestResults": "ಇನ್ನೂ ಯಾವುದೇ ವಸ್ತು ಪರೀಕ್ಷಾ ಫಲಿತಾಂಶಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
+      "retainerUtilization": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ಸಕ್ರಿಯ ಗಂಟೆಯ ರಿಟೈನರ್‌ಗಳಿಲ್ಲ.",
+      "clientRevenueConcentration": "ಈ ಅವಧಿಯಲ್ಲಿ ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಿದ ಆದಾಯವಿಲ್ಲ.",
+      "campaignROI": "ಇನ್ನೂ ಯಾವುದೇ ಮಾರ್ಕೆಟಿಂಗ್ ಕ್ಯಾಂಪೇನ್ ದಾಖಲಾಗಿಲ್ಲ.",
+      "channelPerformance": "ಇನ್ನೂ ಚಾನೆಲ್ ಸೆಟ್ ಹೊಂದಿರುವ ಯಾವುದೇ ಕ್ಯಾಂಪೇನ್ ಇಲ್ಲ.",
+      "retainerWorkDelivered": "ಪ್ರಸ್ತುತ ಮಾರ್ಕೆಟಿಂಗ್-ಕ್ಯಾಂಪೇನ್ ಕ್ಲೈಂಟ್‌ಗೆ ಸಕ್ರಿಯ ರಿಟೈನರ್‌ಗಳಿಲ್ಲ.",
+      "issueAging": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ತೆರೆದ ಸಮಸ್ಯೆ ಇಲ್ಲ.",
+      "teamUtilization": "ಈ ಅವಧಿಯಲ್ಲಿ ಪ್ರಾಜೆಕ್ಟ್‌ಗೆ ವಿರುದ್ಧವಾಗಿ ಗಂಟೆಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
+      "sprintBilling": "ಇನ್ನೂ ಪೂರ್ಣಗೊಂಡ ಸ್ಪ್ರಿಂಟ್‌ಗಳಿಲ್ಲ.",
+      "deliveryPipeline": "ಇನ್ನೂ ಪರಿಷ್ಕರಣೆ ಸುತ್ತು ದಾಖಲಾಗಿರುವ ಬುಕಿಂಗ್‌ಗಳಿಲ್ಲ.",
+      "shootTypeRevenueMix": "ಈ ಅವಧಿಯಲ್ಲಿ ಬೆಲೆ ನಿಗದಿಪಡಿಸಿದ ಬುಕಿಂಗ್‌ಗಳಿಲ್ಲ.",
+      "equipmentCheckout": "ಪ್ರಸ್ತುತ ಚೆಕ್-ಔಟ್ ಆಗಿರುವ ಯಾವುದೇ ಸಾಧನವಿಲ್ಲ.",
+      "vendorCostVsBudget": "ಇನ್ನೂ ರದ್ದಾಗದ ಈವೆಂಟ್‌ಗಳು ದಾಖಲಾಗಿಲ್ಲ.",
+      "vendorPerformanceHistory": "ಇನ್ನೂ ಯಾವುದೇ ವೆಂಡರ್‌ಗೆ ರೇಟ್ ಮಾಡಿಲ್ಲ."
     },
     "col": {
       "channel": "ಚಾನೆಲ್",
@@ -2944,7 +2949,7 @@
       "actualQuantity": "ನಿಜವಾಗಿ ಬಳಸಿದ ಪ್ರಮಾಣ",
       "varianceQuantity": "ವ್ಯತ್ಯಾಸ",
       "variancePercent": "ವ್ಯತ್ಯಾಸ %",
-      "gstin": "GSTIN",
+      "gstin": "ಜಿಎಸ್‌ಟಿಐಎನ್",
       "party": "ಪಕ್ಷ",
       "value": "ಮೌಲ್ಯ",
       "placeOfSupply": "ಪೂರೈಕೆಯ ಸ್ಥಳ",
@@ -3136,93 +3141,93 @@
       "recallType": "ರಿಕಾಲ್ ಪ್ರಕಾರ",
       "vaccineName": "ಲಸಿಕೆ",
       "doses": "ಡೋಸ್‌ಗಳು",
-      "stylist": "Stylist",
-      "totalClients": "Total Clients",
-      "repeatClients": "Repeat Clients",
-      "totalInvoices": "Total Invoices",
-      "withAttach": "With Retail Attach",
-      "attachRatePercent": "Attach Rate %",
-      "planName": "Plan",
-      "expiredCount": "Expired",
-      "renewedCount": "Renewed",
-      "renewalRatePercent": "Renewal Rate %",
-      "className": "Class",
-      "checkInCount": "Check-Ins",
-      "learnerCount": "Learners",
-      "caseNumber": "Case Number",
-      "caseTitle": "Case Title",
-      "clientName": "Client",
-      "daysInStage": "Days in Stage",
-      "daysSinceFiling": "Days Since Filing",
-      "advocate": "Advocate",
-      "billedAmount": "Billed",
-      "unbilledAmount": "Unbilled",
-      "engagement": "Engagement",
-      "expectedFee": "Expected Fee",
-      "realizedFee": "Realized Fee",
-      "realizationPercent": "Realization %",
-      "invoicedThisPeriod": "Invoiced This Period",
-      "drawingNumber": "Drawing No.",
-      "revisionNumber": "Rev.",
-      "discipline": "Discipline",
-      "issuedDate": "Issued Date",
-      "approvedDate": "Approved Date",
-      "daysToApprove": "Days to Approve",
-      "stageProgress": "Stage Progress %",
-      "attendancePercent": "Attendance %",
-      "avgTestPercentage": "Avg. Test %",
-      "feeDueAmount": "Fee Due",
-      "visitType": "Visit Type",
-      "billableAmount": "Billable Amount",
-      "billedStatus": "Billed Status",
-      "testType": "Test Type",
-      "materialDescription": "Material",
-      "testValue": "Test Value",
-      "requiredMinValue": "Pass Minimum",
-      "result": "Result",
-      "testedDate": "Tested Date",
-      "hoursPerMonth": "Hours/Month",
-      "hoursUsed": "Hours Used",
-      "monthlyAmount": "Monthly Amount",
-      "billedThisPeriod": "Billed This Period",
-      "revenueSharePercent": "Revenue Share %",
-      "cumulativeSharePercent": "Cumulative Share %",
-      "targetChannel": "Channel",
-      "adSpendBudget": "Ad Spend Budget",
-      "actualSpend": "Actual Spend",
-      "budgetVariancePercent": "Budget Variance %",
-      "conversions": "Conversions",
-      "costPerConversion": "Cost/Conversion",
-      "campaignCount": "Campaigns",
-      "totalImpressions": "Impressions",
-      "totalClicks": "Clicks",
-      "totalConversions": "Conversions",
-      "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered",
-      "daysOpen": "Days Open",
-      "slaThresholdDays": "SLA (days)",
-      "slaBreached": "SLA Breached",
-      "employeeName": "Employee",
-      "totalHours": "Total Hours",
-      "sprintNumber": "Sprint #",
-      "sprintName": "Sprint Name",
-      "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount",
-      "shootType": "Shoot Type",
-      "revisionRounds": "Revision Rounds",
-      "avgTicket": "Avg. Ticket",
-      "assetName": "Equipment",
-      "checkedOutToName": "Checked Out To",
-      "checkedOutDate": "Checked Out",
-      "expectedReturnDate": "Expected Return",
-      "daysOut": "Days Out",
-      "isOverdue": "Overdue",
-      "eventName": "Event",
-      "clientBudget": "Client Budget",
-      "totalVendorCost": "Total Vendor Cost",
-      "vendorName": "Vendor",
-      "ratedEventCount": "Rated Events",
-      "avgRating": "Avg. Rating"
+      "stylist": "ಸ್ಟೈಲಿಸ್ಟ್",
+      "totalClients": "ಒಟ್ಟು ಕ್ಲೈಂಟ್‌ಗಳು",
+      "repeatClients": "ಪುನರಾವರ್ತಿತ ಕ್ಲೈಂಟ್‌ಗಳು",
+      "totalInvoices": "ಒಟ್ಟು ಇನ್‌ವಾಯ್ಸ್‌ಗಳು",
+      "withAttach": "ರೀಟೇಲ್ ಅಟ್ಯಾಚ್‌ನೊಂದಿಗೆ",
+      "attachRatePercent": "ಅಟ್ಯಾಚ್ ದರ %",
+      "planName": "ಯೋಜನೆ",
+      "expiredCount": "ಅವಧಿ ಮುಗಿದಿದೆ",
+      "renewedCount": "ನವೀಕರಿಸಲಾಗಿದೆ",
+      "renewalRatePercent": "ನವೀಕರಣ ದರ %",
+      "className": "ತರಗತಿ",
+      "checkInCount": "ಚೆಕ್-ಇನ್‌ಗಳು",
+      "learnerCount": "ಕಲಿಯುವವರು",
+      "caseNumber": "ಕೇಸ್ ಸಂಖ್ಯೆ",
+      "caseTitle": "ಕೇಸ್ ಶೀರ್ಷಿಕೆ",
+      "clientName": "ಕ್ಲೈಂಟ್",
+      "daysInStage": "ಹಂತದಲ್ಲಿ ದಿನಗಳು",
+      "daysSinceFiling": "ಸಲ್ಲಿಕೆಯಿಂದ ದಿನಗಳು",
+      "advocate": "ವಕೀಲ",
+      "billedAmount": "ಬಿಲ್ ಮಾಡಿದ ಮೊತ್ತ",
+      "unbilledAmount": "ಬಿಲ್ ಮಾಡದ ಮೊತ್ತ",
+      "engagement": "ಎಂಗೇಜ್‌ಮೆಂಟ್",
+      "expectedFee": "ನಿರೀಕ್ಷಿತ ಶುಲ್ಕ",
+      "realizedFee": "ಪಡೆದ ಶುಲ್ಕ",
+      "realizationPercent": "ರಿಯಲೈಸೇಶನ್ %",
+      "invoicedThisPeriod": "ಈ ಅವಧಿಯಲ್ಲಿ ಇನ್‌ವಾಯ್ಸ್ ಮಾಡಿದ್ದು",
+      "drawingNumber": "ಡ್ರಾಯಿಂಗ್ ಸಂ.",
+      "revisionNumber": "ಪರಿಷ್ಕರಣೆ ಸಂ.",
+      "discipline": "ವಿಭಾಗ",
+      "issuedDate": "ವಿತರಣಾ ದಿನಾಂಕ",
+      "approvedDate": "ಅನುಮೋದನೆ ದಿನಾಂಕ",
+      "daysToApprove": "ಅನುಮೋದನೆಗೆ ತಗುಲಿದ ದಿನಗಳು",
+      "stageProgress": "ಹಂತ ಪ್ರಗತಿ %",
+      "attendancePercent": "ಹಾಜರಾತಿ %",
+      "avgTestPercentage": "ಸರಾಸರಿ ಪರೀಕ್ಷೆ %",
+      "feeDueAmount": "ಬಾಕಿ ಶುಲ್ಕ",
+      "visitType": "ಭೇಟಿ ಪ್ರಕಾರ",
+      "billableAmount": "ಬಿಲ್ ಮಾಡಬಹುದಾದ ಮೊತ್ತ",
+      "billedStatus": "ಬಿಲ್ಲಿಂಗ್ ಸ್ಥಿತಿ",
+      "testType": "ಪರೀಕ್ಷೆ ಪ್ರಕಾರ",
+      "materialDescription": "ಸಾಮಗ್ರಿ",
+      "testValue": "ಪರೀಕ್ಷೆ ಮೌಲ್ಯ",
+      "requiredMinValue": "ಉತ್ತೀರ್ಣ ಕನಿಷ್ಠ",
+      "result": "ಫಲಿತಾಂಶ",
+      "testedDate": "ಪರೀಕ್ಷಾ ದಿನಾಂಕ",
+      "hoursPerMonth": "ಗಂಟೆಗಳು/ತಿಂಗಳು",
+      "hoursUsed": "ಬಳಸಿದ ಗಂಟೆಗಳು",
+      "monthlyAmount": "ಮಾಸಿಕ ಮೊತ್ತ",
+      "billedThisPeriod": "ಈ ಅವಧಿಯಲ್ಲಿ ಬಿಲ್ ಮಾಡಿದ್ದು",
+      "revenueSharePercent": "ಆದಾಯ ಪಾಲು %",
+      "cumulativeSharePercent": "ಸಂಚಿತ ಪಾಲು %",
+      "targetChannel": "ಚಾನೆಲ್",
+      "adSpendBudget": "ಜಾಹೀರಾತು ವೆಚ್ಚ ಬಜೆಟ್",
+      "actualSpend": "ವಾಸ್ತವಿಕ ವೆಚ್ಚ",
+      "budgetVariancePercent": "ಬಜೆಟ್ ವ್ಯತ್ಯಾಸ %",
+      "conversions": "ಪರಿವರ್ತನೆಗಳು",
+      "costPerConversion": "ವೆಚ್ಚ/ಪರಿವರ್ತನೆ",
+      "campaignCount": "ಕ್ಯಾಂಪೇನ್‌ಗಳು",
+      "totalImpressions": "ಇಂಪ್ರೆಷನ್‌ಗಳು",
+      "totalClicks": "ಕ್ಲಿಕ್‌ಗಳು",
+      "totalConversions": "ಪರಿವರ್ತನೆಗಳು",
+      "ctrPercent": "ಸಿಟಿಆರ್ %",
+      "deliveredCount": "ವಿತರಿಸಲಾಗಿದೆ",
+      "daysOpen": "ತೆರೆದ ದಿನಗಳು",
+      "slaThresholdDays": "SLA (ದಿನಗಳು)",
+      "slaBreached": "SLA ಉಲ್ಲಂಘನೆ",
+      "employeeName": "ಉದ್ಯೋಗಿ",
+      "totalHours": "ಒಟ್ಟು ಗಂಟೆಗಳು",
+      "sprintNumber": "ಸ್ಪ್ರಿಂಟ್ #",
+      "sprintName": "ಸ್ಪ್ರಿಂಟ್ ಹೆಸರು",
+      "milestoneStatus": "ಮೈಲ್‌ಸ್ಟೋನ್ ಸ್ಥಿತಿ",
+      "milestoneAmount": "ಮೈಲ್‌ಸ್ಟೋನ್ ಮೊತ್ತ",
+      "shootType": "ಶೂಟ್ ಪ್ರಕಾರ",
+      "revisionRounds": "ಪರಿಷ್ಕರಣೆ ಸುತ್ತುಗಳು",
+      "avgTicket": "ಸರಾಸರಿ ಟಿಕೆಟ್",
+      "assetName": "ಸಾಧನ",
+      "checkedOutToName": "ಯಾರಿಗೆ ನೀಡಲಾಗಿದೆ",
+      "checkedOutDate": "ಚೆಕ್-ಔಟ್ ದಿನಾಂಕ",
+      "expectedReturnDate": "ನಿರೀಕ್ಷಿತ ಹಿಂತಿರುಗುವಿಕೆ",
+      "daysOut": "ಹೊರಗಿನ ದಿನಗಳು",
+      "isOverdue": "ಅವಧಿ ಮೀರಿದೆ",
+      "eventName": "ಈವೆಂಟ್",
+      "clientBudget": "ಕ್ಲೈಂಟ್ ಬಜೆಟ್",
+      "totalVendorCost": "ಒಟ್ಟು ವೆಂಡರ್ ವೆಚ್ಚ",
+      "vendorName": "ವೆಂಡರ್",
+      "ratedEventCount": "ರೇಟ್ ಮಾಡಿದ ಈವೆಂಟ್‌ಗಳು",
+      "avgRating": "ಸರಾಸರಿ ರೇಟಿಂಗ್"
     },
     "legend": {
       "schemeCost": "ಸ್ಕೀಮ್ ವೆಚ್ಚ",
@@ -3513,10 +3518,10 @@
     "destinationSaveFailed": "ಬ್ಯಾಕಪ್ ಫೋಲ್ಡರ್ ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ",
     "destinationReset": "ಬ್ಯಾಕಪ್ ಫೋಲ್ಡರ್ ಡೀಫಾಲ್ಟ್‌ಗೆ ಮರುಹೊಂದಿಸಲಾಗಿದೆ",
     "destinationUnreachable": "\"{{path}}\" ಪ್ರಸ್ತುತ ತಲುಪಲಾಗುತ್ತಿಲ್ಲ (ಅನ್‌ಪ್ಲಗ್ ಆಗಿದೆಯೇ?) — ಬದಲಿಗೆ ಡೀಫಾಲ್ಟ್ ಸ್ಥಳವನ್ನು ಬಳಸಲಾಗುತ್ತಿದೆ.",
-    "restoreFromFile": "Restore from File",
-    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
-    "restoreFromFileConfirmTitle": "Restore from Backup File",
-    "pickBackupFileFailed": "Could not open file picker."
+    "restoreFromFile": "ಫೈಲ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ",
+    "restoreFromFileDesc": "ಬೇರೆ ಸಾಧನ ಅಥವಾ USB ಡ್ರೈವ್‌ನಿಂದ .sarang-backup ಫೈಲ್ ಇದೆಯೇ? ಅದರಿಂದ ನೇರವಾಗಿ ಮರುಸ್ಥಾಪಿಸಿ.",
+    "restoreFromFileConfirmTitle": "ಬ್ಯಾಕಪ್ ಫೈಲ್‌ನಿಂದ ಮರುಸ್ಥಾಪಿಸಿ",
+    "pickBackupFileFailed": "ಫೈಲ್ ಪಿಕರ್ ತೆರೆಯಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
   },
   "audit": {
     "title": "ಆಡಿಟ್ ಲಾಗ್",
@@ -4892,7 +4897,7 @@
     "docTypePurchaseOrder": "ಖರೀದಿ ಆದೇಶ"
   },
   "disclaimer": {
-    "legalNotice": "ಸಾರಂಗ್ ಬಿಸಿನೆಸ್ ಒಎಸ್ ಲೈಟ್ ಸಣ್ಣ ವ್ಯವಹಾರಗಳಿಗಾಗಿ ಉಚಿತ ಸಾಂಸ್ಥಿಕ ಸಾಧನವಾಗಿದೆ. ಇದು ವೈದ್ಯಕೀಯ ದಾಖಲೆ ವ್ಯವಸ್ಥೆ, ಲೆಕ್ಕಪತ್ರ ಸಾಫ್ಟ್‌ವೇರ್, ಕಾನೂನು ಸಲಹಾ ಸಾಧನ ಅಥವಾ ಪರವಾನಗಿ ಪಡೆದ ಹಣಕಾಸು ಉತ್ಪನ್ನವಲ್ಲ. ಎಲ್ಲಾ ಮಾಹಿತಿಯು ಬಳಕೆದಾರರ ಸ್ವಂತ ಡೇಟಾ ಆಗಿದ್ದು ಅವರ ಸಾಧನದಲ್ಲಿ ಸ್ಥಳೀಯವಾಗಿ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ. ಈ ಸಾಫ್ಟ್‌ವೇರ್‌ನ ನಿಖರತೆ, ಸಂಪೂರ್ಣತೆ ಅಥವಾ ಯಾವುದೇ ನಿಯಂತ್ರಿತ ಉದ್ದೇಶಕ್ಕಾಗಿ ಸೂಕ್ತತೆಗೆ Aszurex ಯಾವುದೇ ಖಾತರಿ ನೀಡುವುದಿಲ್ಲ. ಅನ್ವಯವಾಗುವ ಕಾನೂನುಗಳು ಮತ್ತು ವೃತ್ತಿಪರ ನಿಯಮಗಳ ಅನುಸರಣೆಗೆ ಬಳಕೆದಾರರೇ ಸಂಪೂರ್ಣ ಜವಾಬ್ದಾರರು."
+    "legalNotice": "ಸಾರಂಗ್ ಬಿಸಿನೆಸ್ ಒಎಸ್ ಲೈಟ್ ಸಣ್ಣ ವ್ಯವಹಾರಗಳಿಗಾಗಿ ಉಚಿತ ಸಾಂಸ್ಥಿಕ ಸಾಧನವಾಗಿದೆ. ಇದು ವೈದ್ಯಕೀಯ ದಾಖಲೆ ವ್ಯವಸ್ಥೆ, ಕಾನೂನು ಸಲಹಾ ಸಾಧನ ಅಥವಾ ಪರವಾನಗಿ ಪಡೆದ ಹಣಕಾಸು ಉತ್ಪನ್ನವಲ್ಲ. ಇದು ಲೆಕ್ಕಪತ್ರ ಮತ್ತು GST ವೈಶಿಷ್ಟ್ಯಗಳನ್ನು ಒಳಗೊಂಡಿದೆ, ಆದರೆ ಪರವಾನಗಿ ಪಡೆದ ಅಕೌಂಟೆಂಟ್ ಅಥವಾ ತೆರಿಗೆ ಸಲಹೆಗಾರರಿಗೆ ಪರ್ಯಾಯವಲ್ಲ. ಎಲ್ಲಾ ಮಾಹಿತಿಯು ಬಳಕೆದಾರರ ಸ್ವಂತ ಡೇಟಾ ಆಗಿದ್ದು ಅವರ ಸಾಧನದಲ್ಲಿ ಸ್ಥಳೀಯವಾಗಿ ಸಂಗ್ರಹಿಸಲಾಗಿದೆ. ಈ ಸಾಫ್ಟ್‌ವೇರ್‌ನ ನಿಖರತೆ, ಸಂಪೂರ್ಣತೆ ಅಥವಾ ಯಾವುದೇ ನಿಯಂತ್ರಿತ ಉದ್ದೇಶಕ್ಕಾಗಿ ಸೂಕ್ತತೆಗೆ Aszurex ಯಾವುದೇ ಖಾತರಿ ನೀಡುವುದಿಲ್ಲ. ಅನ್ವಯವಾಗುವ ಕಾನೂನುಗಳು ಮತ್ತು ವೃತ್ತಿಪರ ನಿಯಮಗಳ ಅನುಸರಣೆಗೆ ಬಳಕೆದಾರರೇ ಸಂಪೂರ್ಣ ಜವಾಬ್ದಾರರು."
   },
   "compliance": {
     "disclaimerLabel": "ಹಕ್ಕುತ್ಯಾಗ:",
@@ -5862,26 +5867,26 @@
     }
   },
   "serviceCombos": {
-    "title": "Service Combos",
-    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
-    "comboName": "Combo Name",
-    "services": "Services",
-    "comboPrice": "Combo Price",
-    "savings": "Savings",
-    "newCombo": "New Combo",
-    "editCombo": "Edit Combo",
-    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
-    "nameRequired": "Combo name is required.",
-    "priceRequired": "Combo price must be greater than zero.",
-    "needTwoServices": "A combo needs at least 2 distinct services.",
-    "selectServices": "Select Services",
-    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
-    "memberTotalHint": "Individual price total: {{amount}}",
-    "couldNotLoad": "Could not load service combos.",
-    "couldNotSave": "Could not save this service combo.",
+    "title": "ಸೇವಾ ಕಾಂಬೋಗಳು",
+    "subtitle": "{{count}} ಕಾಂಬೋಗಳು — 2+ ಸೇವೆಗಳನ್ನು ಒಂದು ಪ್ಯಾಕೇಜ್ ಬೆಲೆಗೆ ಒಟ್ಟುಗೂಡಿಸಿ, ಅಪಾಯಿಂಟ್‌ಮೆಂಟ್ ಸ್ಕ್ರೀನ್‌ನಿಂದ ನೇರವಾಗಿ ಬುಕ್ ಮಾಡಿ",
+    "comboName": "ಕಾಂಬೋ ಹೆಸರು",
+    "services": "ಸೇವೆಗಳು",
+    "comboPrice": "ಕಾಂಬೋ ಬೆಲೆ",
+    "savings": "ಉಳಿತಾಯ",
+    "newCombo": "ಹೊಸ ಕಾಂಬೋ",
+    "editCombo": "ಕಾಂಬೋ ಸಂಪಾದಿಸಿ",
+    "comboNamePlaceholder": "ಉದಾ. ವಾಶ್ + ಕಟ್ + ಸ್ಟೈಲ್",
+    "nameRequired": "ಕಾಂಬೋ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
+    "priceRequired": "ಕಾಂಬೋ ಬೆಲೆ ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
+    "needTwoServices": "ಕಾಂಬೋಗೆ ಕನಿಷ್ಠ 2 ವಿಭಿನ್ನ ಸೇವೆಗಳು ಬೇಕಾಗುತ್ತವೆ.",
+    "selectServices": "ಸೇವೆಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ",
+    "selectServicesHint": "ಈ ಕಾಂಬೋಗೆ ಸೇರಿಸಲು ಕನಿಷ್ಠ 2 ಸೇವೆಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+    "memberTotalHint": "ವೈಯಕ್ತಿಕ ಬೆಲೆ ಒಟ್ಟು: {{amount}}",
+    "couldNotLoad": "ಸೇವಾ ಕಾಂಬೋಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "couldNotSave": "ಈ ಸೇವಾ ಕಾಂಬೋವನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
     "empty": {
-      "title": "No service combos yet",
-      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+      "title": "ಇನ್ನೂ ಯಾವುದೇ ಸೇವಾ ಕಾಂಬೋಗಳಿಲ್ಲ",
+      "body": "2 ಅಥವಾ ಹೆಚ್ಚು ಸೇವೆಗಳನ್ನು ಒಂದು ಪ್ಯಾಕೇಜ್ ಬೆಲೆಗೆ ಒಟ್ಟುಗೂಡಿಸಿ — ಉದಾ. ಪ್ರತ್ಯೇಕವಾಗಿ ಬುಕ್ ಮಾಡುವುದಕ್ಕಿಂತ ರಿಯಾಯಿತಿಯೊಂದಿಗೆ ವಾಶ್ + ಕಟ್ + ಸ್ಟೈಲ್."
     }
   },
   "checkin": {
@@ -6065,7 +6070,7 @@
         "IN_SERVICE": "ಸೇವೆಯಲ್ಲಿ",
         "INACTIVE": "ನಿಷ್ಕ್ರಿಯ"
       },
-      "changeStatus": "Change vehicle status",
+      "changeStatus": "ವಾಹನ ಸ್ಥಿತಿ ಬದಲಾಯಿಸಿ",
       "statusUpdated": "ಸ್ಥಿತಿ ನವೀಕರಿಸಲಾಗಿದೆ",
       "statusUpdateFailed": "ವಾಹನದ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
@@ -6111,11 +6116,11 @@
         "ACTIVE": "ಸಕ್ರಿಯ",
         "INACTIVE": "ನಿಷ್ಕ್ರಿಯ"
       },
-      "activate": "Activate",
-      "deactivate": "Deactivate",
+      "activate": "ಸಕ್ರಿಯಗೊಳಿಸಿ",
+      "deactivate": "ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಿ",
       "packageStatusUpdated": "ಪ್ಯಾಕೇಜ್ ಸ್ಥಿತಿ ನವೀಕರಿಸಲಾಗಿದೆ",
       "packageStatusUpdateFailed": "ಪ್ಯಾಕೇಜ್ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
-      "markComplete": "Mark Complete",
+      "markComplete": "ಪೂರ್ಣಗೊಂಡಿದೆ ಎಂದು ಗುರುತಿಸಿ",
       "cancelDeparture": "ರದ್ದುಮಾಡಿ",
       "departureStatusUpdated": "ನಿರ್ಗಮನ ಸ್ಥಿತಿ ನವೀಕರಿಸಲಾಗಿದೆ",
       "departureStatusUpdateFailed": "ನಿರ್ಗಮನ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
@@ -6193,6 +6198,282 @@
       "cancelBooking": "ಬುಕಿಂಗ್ ರದ್ದುಮಾಡಿ",
       "bookingCancelled": "ಬುಕಿಂಗ್ ರದ್ದುಗೊಂಡಿದೆ",
       "bookingCancelFailed": "ಬುಕಿಂಗ್ ರದ್ದುಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+    }
+  }
+,
+  "restaurant": {
+    "kot": {
+      "title": "ಅಡುಗೆಮನೆ ಆರ್ಡರ್ ಟಿಕೆಟ್‌ಗಳು",
+      "ordersCount": "{{count}} ಆರ್ಡರ್‌ಗಳು",
+      "incomingOrders": "ಬರುತ್ತಿರುವ ಆರ್ಡರ್‌ಗಳು ({{count}})",
+      "accept": "ಸ್ವೀಕರಿಸಿ",
+      "reject": "ತಿರಸ್ಕರಿಸಿ",
+      "noKotsFound": "ಯಾವುದೇ KOT ಕಂಡುಬಂದಿಲ್ಲ",
+      "noKotsHint": "ಆರ್ಡರ್ ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸಿದಾಗ KOT ರಚಿಸಲಾಗುತ್ತದೆ",
+      "takeaway": "ಟೇಕ್‌ಅವೇ",
+      "deliveryApp": "ಡೆಲಿವರಿ ಅಪ್ಲಿಕೇಶನ್",
+      "tokenLabel": "ಟೋಕನ್ #{{number}}",
+      "statusPending": "ಬಾಕಿ ಇದೆ",
+      "statusInProgress": "ಪ್ರಗತಿಯಲ್ಲಿದೆ",
+      "statusDone": "ಪೂರ್ಣಗೊಂಡಿದೆ",
+      "statusCancelled": "ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
+      "startCooking": "ಅಡುಗೆ ಪ್ರಾರಂಭಿಸಿ",
+      "markDone": "ಪೂರ್ಣಗೊಂಡಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+      "served": "ಬಡಿಸಲಾಗಿದೆ",
+      "markServed": "ಬಡಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+      "printTicket": "ಅಡುಗೆಮನೆ ಟಿಕೆಟ್ ಮುದ್ರಿಸಿ",
+      "acceptOrderTitle": "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಿ — {{table}}",
+      "acceptOrderNote": "ಇದು ಆರ್ಡರ್ ಅನ್ನು ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸಿ ಟೇಬಲ್‌ನ ಚಾಲ್ತಿಯಲ್ಲಿರುವ ಬಿಲ್‌ಗೆ ಸೇರಿಸುತ್ತದೆ. ಬಿಲ್ಲಿಂಗ್ ಚೆಕ್‌ಔಟ್‌ ಸಮಯದಲ್ಲಿ ಒಮ್ಮೆ ಮಾತ್ರ ನಡೆಯುತ್ತದೆ.",
+      "sending": "ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ…",
+      "confirmAndSend": "ದೃಢೀಕರಿಸಿ ಮತ್ತು ಅಡುಗೆಮನೆಗೆ ಕಳುಹಿಸಿ",
+      "couldNotLoadIncomingOrders": "ಬರುತ್ತಿರುವ ಆರ್ಡರ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotLoadTickets": "ಅಡುಗೆಮನೆ ಟಿಕೆಟ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotRejectOrder": "ಆರ್ಡರ್ ತಿರಸ್ಕರಿಸಲಾಗಲಿಲ್ಲ.",
+      "orderAcceptedTitle": "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಿದೆ",
+      "orderAcceptedDesc": "ಈ ಟೇಬಲ್‌ಗಾಗಿ ಅಡುಗೆಮನೆ ಟಿಕೆಟ್ ರಚಿಸಲಾಗಿದೆ.",
+      "couldNotAcceptOrder": "ಆರ್ಡರ್ ಸ್ವೀಕರಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotUpdateStatus": "KOT ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotCancelKot": "KOT ರದ್ದುಗೊಳಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotMarkServed": "ಈ ಟಿಕೆಟ್ ಬಡಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲಾಗಲಿಲ್ಲ.",
+      "printedTitle": "ಮುದ್ರಿಸಲಾಗಿದೆ",
+      "printedDesc": "KOT ಮುದ್ರಕಕ್ಕೆ ಕಳುಹಿಸಲಾಗಿದೆ.",
+      "printFailedTitle": "ಮುದ್ರಣ ವಿಫಲವಾಗಿದೆ",
+      "couldNotPrintKot": "KOT ಮುದ್ರಿಸಲಾಗಲಿಲ್ಲ."
+    },
+    "kitchenDisplay": {
+      "title": "ಅಡುಗೆಮನೆ ಡಿಸ್‌ಪ್ಲೇ",
+      "connectionIssue": "ಸಂಪರ್ಕ ಸಮಸ್ಯೆ — ಮರುಪ್ರಯತ್ನಿಸಲಾಗುತ್ತಿದೆ…",
+      "updatedAt": "ನವೀಕರಿಸಲಾಗಿದೆ {{time}}",
+      "recentlyDone": "ಇತ್ತೀಚೆಗೆ ಪೂರ್ಣಗೊಂಡಿದೆ",
+      "nothingHere": "ಇಲ್ಲಿ ಏನೂ ಇಲ್ಲ",
+      "updating": "ನವೀಕರಿಸಲಾಗುತ್ತಿದೆ…"
+    },
+    "recipes": {
+      "title": "ಪಾಕವಿಧಾನ ನಿರ್ವಹಣೆ",
+      "recipesCount": "{{count}} ಪಾಕವಿಧಾನಗಳನ್ನು ಕಾನ್ಫಿಗರ್ ಮಾಡಲಾಗಿದೆ",
+      "addRecipe": "ಪಾಕವಿಧಾನ ಸೇರಿಸಿ",
+      "editRecipe": "ಪಾಕವಿಧಾನ ಸಂಪಾದಿಸಿ",
+      "newRecipe": "ಹೊಸ ಪಾಕವಿಧಾನ",
+      "menuProduct": "ಮೆನು ಉತ್ಪನ್ನ *",
+      "searchProductPlaceholder": "ಹೆಸರು ಅಥವಾ SKU ಮೂಲಕ ಉತ್ಪನ್ನವನ್ನು ಹುಡುಕಿ…",
+      "recipeName": "ಪಾಕವಿಧಾನದ ಹೆಸರು *",
+      "recipeNamePlaceholder": "ಉದಾ. ಮಸಾಲಾ ಚಹಾ ಪಾಕವಿಧಾನ",
+      "ingredients": "ಪದಾರ್ಥಗಳು *",
+      "addIngredient": "ಪದಾರ್ಥ ಸೇರಿಸಿ",
+      "searchIngredientPlaceholder": "ಹೆಸರು ಅಥವಾ SKU ಮೂಲಕ ಪದಾರ್ಥ ಹುಡುಕಿ…",
+      "qtyPlaceholder": "ಪ್ರಮಾಣ",
+      "saveRecipe": "ಪಾಕವಿಧಾನ ಉಳಿಸಿ",
+      "noRecipesYet": "ಇನ್ನೂ ಯಾವುದೇ ಪಾಕವಿಧಾನಗಳಿಲ್ಲ",
+      "noRecipesHint": "KOTಗಳು ಪೂರ್ಣಗೊಂಡಾಗ ಪದಾರ್ಥಗಳ ಬಳಕೆಯನ್ನು ಟ್ರ್ಯಾಕ್ ಮಾಡಲು ಪಾಕವಿಧಾನಗಳನ್ನು ಸೇರಿಸಿ",
+      "forProductIngredientsCount": "{{product}} ಗಾಗಿ · {{count}} ಪದಾರ್ಥಗಳು",
+      "selectMenuProductError": "ಈ ಪಾಕವಿಧಾನ ಯಾವುದಕ್ಕಾಗಿ ಎಂಬ ಮೆನು ಉತ್ಪನ್ನವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "recipeNameRequiredError": "ಪಾಕವಿಧಾನದ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
+      "addIngredientError": "ಮಾನ್ಯ ಪ್ರಮಾಣದೊಂದಿಗೆ ಕನಿಷ್ಠ ಒಂದು ಪದಾರ್ಥವನ್ನು ಸೇರಿಸಿ.",
+      "couldNotLoadRecipes": "ಪಾಕವಿಧಾನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotSearchProducts": "ಉತ್ಪನ್ನಗಳನ್ನು ಹುಡುಕಲಾಗಲಿಲ್ಲ.",
+      "couldNotSaveRecipe": "ಪಾಕವಿಧಾನ ಉಳಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotDeleteRecipe": "ಪಾಕವಿಧಾನ ಅಳಿಸಲಾಗಲಿಲ್ಲ."
+    }
+  },
+  "bloodBank": {
+    "failed": "ವಿಫಲವಾಗಿದೆ",
+    "saving": "ಉಳಿಸಲಾಗುತ್ತಿದೆ…",
+    "sending": "ಕಳುಹಿಸಲಾಗುತ್ತಿದೆ…",
+    "clearing": "ತೆರವುಗೊಳಿಸಲಾಗುತ್ತಿದೆ…",
+    "unknown": "ಅಜ್ಞಾತ",
+    "bloodGroup": "ರಕ್ತ ಗುಂಪು",
+    "expiresLabel": "ಅವಧಿ ಮುಗಿಯುತ್ತದೆ {{date}}",
+    "missingBloodGroupTitle": "ರಕ್ತ ಗುಂಪು ಕಾಣೆಯಾಗಿದೆ",
+    "componentWholeBlood": "ಸಂಪೂರ್ಣ ರಕ್ತ",
+    "componentPackedRbc": "ಪ್ಯಾಕ್ಡ್ RBC",
+    "componentPlatelets": "ಪ್ಲೇಟ್‌ಲೆಟ್‌ಗಳು",
+    "componentPlasma": "ಪ್ಲಾಸ್ಮಾ",
+    "componentCryoprecipitate": "ಕ್ರಯೋಪ್ರೆಸಿಪಿಟೇಟ್",
+    "componentAny": "ಯಾವುದೇ ಘಟಕ",
+    "donors": {
+      "title": "ದಾನಿ ನೋಂದಣಿ",
+      "registeredCount": "{{count}} ನೋಂದಾಯಿತ ದಾನಿಗಳು",
+      "newDonor": "ಹೊಸ ದಾನಿ",
+      "searchPlaceholder": "ಹೆಸರು, ಕೋಡ್ ಅಥವಾ ಫೋನ್ ಮೂಲಕ ಹುಡುಕಿ…",
+      "recallDue": "ಮರುಕರೆ ಬಾಕಿ ({{count}})",
+      "noneDueForRecall": "ಪ್ರಸ್ತುತ ಯಾವುದೇ ದಾನಿ ಮರುಕರೆಗೆ ಬಾಕಿ ಇಲ್ಲ",
+      "noDonorsYet": "ಇನ್ನೂ ಯಾವುದೇ ದಾನಿಗಳು ನೋಂದಣಿಯಾಗಿಲ್ಲ",
+      "deferred": "ಮುಂದೂಡಲಾಗಿದೆ",
+      "eligible": "ಅರ್ಹ",
+      "recovering": "ಚೇತರಿಸಿಕೊಳ್ಳುತ್ತಿದ್ದಾರೆ",
+      "noPhoneOnFile": "ಫೈಲ್‌ನಲ್ಲಿ ಫೋನ್ ಇಲ್ಲ",
+      "lastLabel": "ಕೊನೆಯದು: {{date}}",
+      "nextEligibleLabel": "ಮುಂದಿನ ಅರ್ಹತೆ: {{date}}",
+      "registerDonor": "ದಾನಿಯನ್ನು ನೋಂದಾಯಿಸಿ",
+      "fullName": "ಪೂರ್ಣ ಹೆಸರು",
+      "weightKg": "ತೂಕ (ಕೆಜಿ)",
+      "weightPlaceholder": "ಉದಾ. 60",
+      "weightUnit": "{{value}} ಕೆಜಿ",
+      "gender": "ಲಿಂಗ",
+      "unspecified": "ನಿರ್ದಿಷ್ಟಪಡಿಸಿಲ್ಲ",
+      "male": "ಪುರುಷ",
+      "female": "ಮಹಿಳೆ",
+      "other": "ಇತರೆ",
+      "lastDonation": "ಕೊನೆಯ ದಾನ",
+      "noneYet": "ಇನ್ನೂ ಇಲ್ಲ",
+      "nextEligible": "ಮುಂದಿನ ಅರ್ಹತೆ",
+      "now": "ಈಗ",
+      "deferredUntilLabel": "{{date}} ವರೆಗೆ ಮುಂದೂಡಲಾಗಿದೆ",
+      "deferredIndefinitely": "— ಅನಿರ್ದಿಷ್ಟ ಅವಧಿಗೆ",
+      "sendRecallReminder": "ಮರುಕರೆ ಜ್ಞಾಪನೆ ಕಳುಹಿಸಿ",
+      "markDeferred": "ಮುಂದೂಡಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+      "clearDeferral": "ಮುಂದೂಡಿಕೆ ತೆರವುಗೊಳಿಸಿ",
+      "markDeferredTitle": "{{name}} ಅನ್ನು ಮುಂದೂಡಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಿ",
+      "reasonPlaceholder": "ಉದಾ. ಕಡಿಮೆ ಹಿಮೋಗ್ಲೋಬಿನ್, ರಿಯಾಕ್ಟಿವ್ ಸ್ಕ್ರೀನಿಂಗ್ ಪರೀಕ್ಷೆ…",
+      "deferredUntilField": "ಯಾವ ದಿನಾಂಕದವರೆಗೆ ಮುಂದೂಡಲಾಗಿದೆ (ಅನಿರ್ದಿಷ್ಟ/ಶಾಶ್ವತಕ್ಕಾಗಿ ಖಾಲಿ ಬಿಡಿ)",
+      "missingNameTitle": "ಹೆಸರು ಕಾಣೆಯಾಗಿದೆ",
+      "enterDonorName": "ದಾನಿಯ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",
+      "donorRegisteredTitle": "ದಾನಿ ನೋಂದಣಿಯಾಗಿದ್ದಾರೆ",
+      "donorRegisteredDesc": "ದಾನಿ ಯಶಸ್ವಿಯಾಗಿ ನೋಂದಣಿಯಾಗಿದ್ದಾರೆ.",
+      "couldNotLoadDonors": "ದಾನಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotRegisterDonor": "ದಾನಿಯನ್ನು ನೋಂದಾಯಿಸಲಾಗಲಿಲ್ಲ.",
+      "reminderReadyTitle": "ಜ್ಞಾಪನೆ ಸಿದ್ಧವಾಗಿದೆ",
+      "reminderReadyDesc": "ವಾಟ್ಸ್‌ಆ್ಯಪ್ ಜ್ಞಾಪನೆ ಲಿಂಕ್ ರಚಿಸಲಾಗಿದೆ.",
+      "couldNotSendRecall": "ಮರುಕರೆ ಜ್ಞಾಪನೆ ಕಳುಹಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotRefreshDetails": "ದಾನಿಯ ವಿವರಗಳನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "donorDeferredTitle": "ದಾನಿ ಮುಂದೂಡಲಾಗಿದೆ",
+      "donorDeferredDesc": "ದಾನಿಯನ್ನು ಮುಂದೂಡಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ.",
+      "couldNotUpdateDonor": "ದಾನಿಯನ್ನು ನವೀಕರಿಸಲಾಗಲಿಲ್ಲ.",
+      "deferralClearedTitle": "ಮುಂದೂಡಿಕೆ ತೆರವುಗೊಳಿಸಲಾಗಿದೆ",
+      "deferralClearedDesc": "ದಾನಿ ಮತ್ತೆ ದಾನ ಮಾಡಲು ಅರ್ಹರಾಗಿದ್ದಾರೆ."
+    },
+    "donations": {
+      "title": "ದಾನಗಳು ಮತ್ತು ಸ್ಕ್ರೀನಿಂಗ್",
+      "awaitingScreening": "{{count}} ಸ್ಕ್ರೀನಿಂಗ್‌ಗಾಗಿ ಕಾಯುತ್ತಿದೆ",
+      "recordDonation": "ದಾನವನ್ನು ದಾಖಲಿಸಿ",
+      "allTab": "ಎಲ್ಲಾ ({{count}})",
+      "statusTab": "{{status}} ({{count}})",
+      "statusPending": "ಬಾಕಿ ಇದೆ",
+      "statusPassed": "ಪಾಸ್",
+      "statusFailed": "ಫೇಲ್",
+      "noRecordsFound": "ದಾನ ದಾಖಲೆಗಳು ಕಂಡುಬಂದಿಲ್ಲ",
+      "recordScreening": "ಸ್ಕ್ರೀನಿಂಗ್ ದಾಖಲಿಸಿ",
+      "volumeCollectedNoCamp": "{{ml}}ಮಿ.ಲೀ · {{date}} ರಂದು ಸಂಗ್ರಹಿಸಲಾಗಿದೆ",
+      "volumeCollectedWithCamp": "{{ml}}ಮಿ.ಲೀ · {{date}} ರಂದು ಸಂಗ್ರಹಿಸಲಾಗಿದೆ · {{camp}}",
+      "donor": "ದಾನಿ",
+      "selectDonor": "ದಾನಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ…",
+      "componentType": "ಘಟಕ ಪ್ರಕಾರ",
+      "donationCampLabel": "ದಾನ ಶಿಬಿರ (ಐಚ್ಛಿಕ)",
+      "walkInNotFromCamp": "ವಾಕ್-ಇನ್ / ಶಿಬಿರದಿಂದ ಅಲ್ಲ",
+      "volumeMl": "ಪ್ರಮಾಣ (ಮಿ.ಲೀ)",
+      "donorMissingTitle": "ದಾನಿ ಕಾಣೆಯಾಗಿದ್ದಾರೆ",
+      "selectDonorMsg": "ಒಬ್ಬ ದಾನಿಯನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "selectBloodGroupCollected": "ಸಂಗ್ರಹಿಸಿದ ರಕ್ತ ಗುಂಪನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "donationRecordedTitle": "ದಾನ ದಾಖಲಿಸಲಾಗಿದೆ",
+      "donationRecordedDesc": "ದಾನ ದಾಖಲಿಸಲಾಗಿದೆ — ಸ್ಕ್ರೀನಿಂಗ್ ಬಾಕಿ ಇದೆ.",
+      "couldNotRecordDonation": "ದಾನವನ್ನು ದಾಖಲಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotLoadDonationRecords": "ದಾನ ದಾಖಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotLoadDonationsData": "ದಾನ ಡೇಟಾವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "screeningResultTitle": "ಸ್ಕ್ರೀನಿಂಗ್ ಫಲಿತಾಂಶ",
+      "notesOptionalPlaceholder": "ಟಿಪ್ಪಣಿಗಳು (ಐಚ್ಛಿಕ)",
+      "passed": "ಪಾಸ್",
+      "unitAddedToStockTitle": "ಘಟಕ ಸ್ಟಾಕ್‌ಗೆ ಸೇರಿಸಲಾಗಿದೆ",
+      "markedFailedTitle": "ಫೇಲ್ ಎಂದು ಗುರುತಿಸಲಾಗಿದೆ",
+      "screeningPassedDesc": "ಸ್ಕ್ರೀನಿಂಗ್ ಪಾಸ್ ಆಗಿದೆ — ಘಟಕ ಈಗ ಸ್ಟಾಕ್‌ನಲ್ಲಿದೆ.",
+      "screeningFailedDesc": "ಸ್ಕ್ರೀನಿಂಗ್ ಫೇಲ್ ಆಗಿದೆ — ಘಟಕವನ್ನು ವಿಲೇವಾರಿ ಮಾಡಲಾಗಿದೆ, ಸ್ಟಾಕ್‌ಗೆ ಸೇರಿಸಿಲ್ಲ.",
+      "couldNotRecordScreening": "ಸ್ಕ್ರೀನಿಂಗ್ ಫಲಿತಾಂಶವನ್ನು ದಾಖಲಿಸಲಾಗಲಿಲ್ಲ."
+    },
+    "camps": {
+      "title": "ದಾನ ಶಿಬಿರಗಳು",
+      "summary": "{{count}} ಶಿಬಿರ(ಗಳು) · ಎಲ್ಲಾ ಶಿಬಿರಗಳಲ್ಲಿ ಒಟ್ಟು {{total}} ದಾನಗಳು",
+      "scheduleCamp": "ಶಿಬಿರವನ್ನು ನಿಗದಿಪಡಿಸಿ",
+      "noCampsYet": "ಇನ್ನೂ ಯಾವುದೇ ದಾನ ಶಿಬಿರಗಳನ್ನು ನಿಗದಿಪಡಿಸಿಲ್ಲ",
+      "organizedByLabel": "ಆಯೋಜಕರು: {{organizer}}",
+      "donorsLabel": "ದಾನಿಗಳು",
+      "campNameLabel": "ಶಿಬಿರ / ಡ್ರೈವ್ ಹೆಸರು",
+      "campNamePlaceholder": "ಉದಾ. ಕಮ್ಯುನಿಟಿ ಸೆಂಟರ್ ಡ್ರೈವ್",
+      "location": "ಸ್ಥಳ",
+      "organizer": "ಆಯೋಜಕರು",
+      "scheduleCampModalTitle": "ದಾನ ಶಿಬಿರವನ್ನು ನಿಗದಿಪಡಿಸಿ",
+      "missingNameTitle": "ಹೆಸರು ಕಾಣೆಯಾಗಿದೆ",
+      "enterCampName": "ಶಿಬಿರ/ಡ್ರೈವ್‌ನ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",
+      "missingDateTitle": "ದಿನಾಂಕ ಕಾಣೆಯಾಗಿದೆ",
+      "selectCampDate": "ಶಿಬಿರದ ದಿನಾಂಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "campScheduledTitle": "ಶಿಬಿರ ನಿಗದಿಯಾಗಿದೆ",
+      "campScheduledDesc": "ದಾನ ಶಿಬಿರ ಯಶಸ್ವಿಯಾಗಿ ನಿಗದಿಯಾಗಿದೆ.",
+      "couldNotScheduleCamp": "ಶಿಬಿರವನ್ನು ನಿಗದಿಪಡಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotLoadCamps": "ದಾನ ಶಿಬಿರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ."
+    },
+    "stock": {
+      "title": "ರಕ್ತ ಸಂಗ್ರಹ",
+      "summaryNoExpiring": "{{count}} ಘಟಕಗಳು ಲಭ್ಯವಿದೆ",
+      "summaryWithExpiring": "{{count}} ಘಟಕಗಳು ಲಭ್ಯವಿದೆ · {{expiring}} ಶೀಘ್ರದಲ್ಲೇ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+      "allUnits": "ಎಲ್ಲಾ ಘಟಕಗಳು",
+      "expiringSoon": "ಶೀಘ್ರದಲ್ಲೇ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+      "noUnitsToShow": "ತೋರಿಸಲು ಘಟಕಗಳಿಲ್ಲ",
+      "unitsAvailableLabel": "ಘಟಕಗಳು ಲಭ್ಯವಿದೆ",
+      "expiringSoonCount": "{{count}} ಶೀಘ್ರದಲ್ಲೇ ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+      "unitCol": "ಘಟಕ",
+      "groupCol": "ಗುಂಪು",
+      "componentCol": "ಘಟಕಾಂಶ",
+      "collectedCol": "ಸಂಗ್ರಹಿಸಲಾಗಿದೆ",
+      "expiresCol": "ಅವಧಿ ಮುಗಿಯುತ್ತದೆ",
+      "couldNotLoadStock": "ರಕ್ತ ಸಂಗ್ರಹವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ."
+    },
+    "issue": {
+      "title": "ರಕ್ತ ವಿತರಣೆ",
+      "activeIssuesCount": "{{count}} ಸಕ್ರಿಯ ವಿತರಣೆಗಳು",
+      "issueUnits": "ಘಟಕಗಳನ್ನು ವಿತರಿಸಿ",
+      "noIssuesYet": "ಇನ್ನೂ ಯಾವುದೇ ರಕ್ತ ವಿತರಿಸಿಲ್ಲ",
+      "unitsCount": "{{count}} ಘಟಕ(ಗಳು) · {{groups}}",
+      "issueUnitsModalTitle": "ರಕ್ತ ಘಟಕಗಳನ್ನು ವಿತರಿಸಿ",
+      "recipientName": "ಸ್ವೀಕರಿಸುವವರ ಹೆಸರು",
+      "recipientBloodGroup": "ಸ್ವೀಕರಿಸುವವರ ರಕ್ತ ಗುಂಪು",
+      "customerOptional": "ಗ್ರಾಹಕ (ಐಚ್ಛಿಕ — ಇನ್ವಾಯ್ಸ್‌ಗೆ ಅಗತ್ಯ)",
+      "customerSearchPlaceholder": "ಹೆಸರು ಅಥವಾ ಫೋನ್ ಮೂಲಕ ಹುಡುಕಿ...",
+      "purpose": "ಉದ್ದೇಶ",
+      "purposePlaceholder": "ಉದಾ. ಶಸ್ತ್ರಚಿಕಿತ್ಸೆ ವರ್ಗಾವಣೆ",
+      "pricePerUnit": "ಪ್ರತಿ ಘಟಕದ ಬೆಲೆ",
+      "fastMatchTitle": "ಫಾಸ್ಟ್ ಮ್ಯಾಚ್ — ಗುಂಪು/ಘಟಕಾಂಶ/ಪ್ರಮಾಣದ ಮೂಲಕ ಹೊಂದಾಣಿಕೆಯ ಘಟಕಗಳನ್ನು ಹುಡುಕಿ",
+      "qtyPlaceholder": "ಪ್ರಮಾಣ",
+      "findAndSelect": "ಹುಡುಕಿ ಮತ್ತು ಆಯ್ಕೆಮಾಡಿ",
+      "matching": "ಹೊಂದಾಣಿಕೆ ಮಾಡಲಾಗುತ್ತಿದೆ…",
+      "matchedAllDesc": "ವಿನಂತಿಸಿದ ಎಲ್ಲಾ {{count}} ಘಟಕಗಳು ಹೊಂದಿಕೆಯಾಗಿವೆ.",
+      "matchedShortDesc": "ವಿನಂತಿಸಿದ {{requested}} ರಲ್ಲಿ ಕೇವಲ {{matched}} ಹೊಂದಾಣಿಕೆಯ ಘಟಕಗಳು ಲಭ್ಯವಿದೆ — {{shortfall}} ಕಡಿಮೆ.",
+      "selectAvailableUnits": "ಲಭ್ಯವಿರುವ ಘಟಕಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿ ({{count}} ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ)",
+      "noUnitsInStock": "ಪ್ರಸ್ತುತ ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಘಟಕಗಳಿಲ್ಲ.",
+      "statusIssued": "ವಿತರಿಸಲಾಗಿದೆ",
+      "statusCancelled": "ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
+      "incompatibleWarningTitle": "ಹೊಂದಾಣಿಕೆಯಾಗದ ಘಟಕ(ಗಳು) — ವಿತರಣೆಯನ್ನು ತಡೆಹಿಡಿಯಲಾಗಿದೆ.",
+      "incompatibleWarningDesc": "ಇದು ನೈಜ ಕ್ರಾಸ್‌ಮ್ಯಾಚ್ ಪರೀಕ್ಷೆಗೆ ಬದಲಿಯಲ್ಲ:",
+      "overrideEmergencyRelease": "ಓವರ್‌ರೈಡ್ — ತುರ್ತು ಬಿಡುಗಡೆ (ದಾಖಲಿತ ಕಾರಣ ಅಗತ್ಯ)",
+      "overrideReasonPlaceholder": "ಈ ಹೊಂದಾಣಿಕೆಯಾಗದ ಘಟಕವನ್ನು ಏಕೆ ವಿತರಿಸಲಾಗುತ್ತಿದೆ (ಉದಾ. ಜೀವಕ್ಕೆ ಅಪಾಯಕಾರಿ ತುರ್ತುಸ್ಥಿತಿ, ಸ್ಟಾಕ್‌ನಲ್ಲಿ ಹೊಂದಾಣಿಕೆಯ ಘಟಕವಿಲ್ಲ, ವೈದ್ಯರ ಆದೇಶ)...",
+      "issuing": "ವಿತರಿಸಲಾಗುತ್ತಿದೆ…",
+      "generateInvoice": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಿ",
+      "generating": "ರಚಿಸಲಾಗುತ್ತಿದೆ…",
+      "cancelIssue": "ವಿತರಣೆ ರದ್ದುಗೊಳಿಸಿ",
+      "overrideReasonLabel": "ಓವರ್‌ರೈಡ್ ಕಾರಣ:",
+      "cancelIssueConfirmMsg": "ಈ ವಿತರಣೆಯನ್ನು ರದ್ದುಗೊಳಿಸಿ ಎಲ್ಲಾ ಘಟಕಗಳನ್ನು ಸ್ಟಾಕ್‌ಗೆ ಹಿಂತಿರುಗಿಸಬೇಕೇ?",
+      "missingRecipientTitle": "ಸ್ವೀಕರಿಸುವವರು ಕಾಣೆಯಾಗಿದ್ದಾರೆ",
+      "enterRecipientName": "ಸ್ವೀಕರಿಸುವವರ ಹೆಸರನ್ನು ನಮೂದಿಸಿ.",
+      "noUnitsSelectedTitle": "ಯಾವುದೇ ಘಟಕಗಳನ್ನು ಆಯ್ಕೆಮಾಡಿಲ್ಲ",
+      "selectAtLeastOneUnit": "ವಿತರಿಸಲು ಕನಿಷ್ಠ ಒಂದು ಘಟಕವನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "incompatibleSelectedTitle": "ಹೊಂದಾಣಿಕೆಯಾಗದ ಘಟಕಗಳನ್ನು ಆಯ್ಕೆಮಾಡಲಾಗಿದೆ",
+      "checkOverrideMsg": "ಮುಂದುವರಿಯಲು \"ಓವರ್‌ರೈಡ್ — ತುರ್ತು ಬಿಡುಗಡೆ\" ಪರಿಶೀಲಿಸಿ ಮತ್ತು ಕಾರಣವನ್ನು ದಾಖಲಿಸಿ.",
+      "reasonRequiredTitle": "ಕಾರಣ ಅಗತ್ಯವಿದೆ",
+      "enterOverrideReason": "ತುರ್ತು-ಬಿಡುಗಡೆ ಓವರ್‌ರೈಡ್‌ಗಾಗಿ ದಾಖಲಿತ ಕಾರಣವನ್ನು ನಮೂದಿಸಿ.",
+      "selectRecipientBloodGroupFirst": "ಮೊದಲು ಸ್ವೀಕರಿಸುವವರ ರಕ್ತ ಗುಂಪನ್ನು ಆಯ್ಕೆಮಾಡಿ.",
+      "invalidQuantityTitle": "ಅಮಾನ್ಯ ಪ್ರಮಾಣ",
+      "enterUnitsNeeded": "ಎಷ್ಟು ಘಟಕಗಳು ಬೇಕು ಎಂದು ನಮೂದಿಸಿ.",
+      "unitsIssuedTitle": "ಘಟಕಗಳನ್ನು ವಿತರಿಸಲಾಗಿದೆ",
+      "unitsIssuedDesc": "ರಕ್ತ ಘಟಕಗಳನ್ನು ಯಶಸ್ವಿಯಾಗಿ ವಿತರಿಸಲಾಗಿದೆ.",
+      "couldNotIssueUnits": "ಘಟಕಗಳನ್ನು ವಿತರಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotLoadIssues": "ರಕ್ತ ವಿತರಣೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotLoadIssueData": "ರಕ್ತ ವಿತರಣೆ ಡೇಟಾವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "couldNotVerifyCompatibility": "ರಕ್ತ ಹೊಂದಾಣಿಕೆಯನ್ನು ಪರಿಶೀಲಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotRunFastMatch": "ಫಾಸ್ಟ್-ಮ್ಯಾಚ್ ಹುಡುಕಾಟವನ್ನು ಚಲಾಯಿಸಲಾಗಲಿಲ್ಲ.",
+      "couldNotRefreshIssueDetails": "ವಿತರಣೆ ವಿವರಗಳನ್ನು ರಿಫ್ರೆಶ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+      "issueCancelledTitle": "ವಿತರಣೆ ರದ್ದುಗೊಳಿಸಲಾಗಿದೆ",
+      "issueCancelledDesc": "ಘಟಕಗಳನ್ನು ಸ್ಟಾಕ್‌ಗೆ ಹಿಂತಿರುಗಿಸಲಾಗಿದೆ.",
+      "couldNotCancelIssue": "ವಿತರಣೆ ರದ್ದುಗೊಳಿಸಲಾಗಲಿಲ್ಲ.",
+      "invoiceGeneratedTitle": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ",
+      "invoiceGeneratedDesc": "ಈ ವಿತರಣೆಗಾಗಿ ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಿದೆ.",
+      "couldNotGenerateInvoice": "ಇನ್ವಾಯ್ಸ್ ರಚಿಸಲಾಗಲಿಲ್ಲ."
     }
   }
 }

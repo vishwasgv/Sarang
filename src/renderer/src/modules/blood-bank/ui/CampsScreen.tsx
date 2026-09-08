@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Tent, Plus, RefreshCw, X, Users } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
@@ -24,6 +25,7 @@ const BLANK_FORM = { campName: '', location: '', campDate: '', organizer: '', no
 // see a camp at all, despite Donations & Screening already being able to
 // link a donation record to one.
 export function CampsScreen() {
+  const { t } = useTranslation()
   const { hasPermission } = useAuthStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canCreate = hasPermission('bloodBank.create')
@@ -41,20 +43,20 @@ export function CampsScreen() {
       if (res.success && res.data) {
         setCamps((res.data as DonationCamp[]) ?? [])
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not load donation camps.')
+        toastError(t('bloodBank.failed'), res.error?.message ?? t('bloodBank.camps.couldNotLoadCamps'))
       }
     } catch {
-      toastError('Failed', 'Could not load donation camps.')
+      toastError(t('bloodBank.failed'), t('bloodBank.camps.couldNotLoadCamps'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { load() }, [load])
 
   async function handleCreate() {
-    if (!form.campName.trim()) { toastError('Missing Name', 'Enter the camp/drive name.'); return }
-    if (!form.campDate) { toastError('Missing Date', 'Select the camp date.'); return }
+    if (!form.campName.trim()) { toastError(t('bloodBank.camps.missingNameTitle'), t('bloodBank.camps.enterCampName')); return }
+    if (!form.campDate) { toastError(t('bloodBank.camps.missingDateTitle'), t('bloodBank.camps.selectCampDate')); return }
     setSaving(true)
     try {
       const res = await api.bloodBank.createDonationCamp({
@@ -65,15 +67,15 @@ export function CampsScreen() {
         notes: form.notes || undefined,
       })
       if (res.success) {
-        toastSuccess('Camp Scheduled', 'Donation camp scheduled successfully.')
+        toastSuccess(t('bloodBank.camps.campScheduledTitle'), t('bloodBank.camps.campScheduledDesc'))
         setShowCreate(false)
         setForm({ ...BLANK_FORM })
         load()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not schedule camp.')
+        toastError(t('bloodBank.failed'), (res.error as { message: string })?.message ?? t('bloodBank.camps.couldNotScheduleCamp'))
       }
     } catch {
-      toastError('Failed', 'Could not schedule camp.')
+      toastError(t('bloodBank.failed'), t('bloodBank.camps.couldNotScheduleCamp'))
     } finally {
       setSaving(false)
     }
@@ -88,9 +90,9 @@ export function CampsScreen() {
           <div>
             <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
               <Tent size={24} className="text-brand" />
-              Donation Camps
+              {t('bloodBank.camps.title')}
             </h1>
-            <p className="text-sm text-text-secondary mt-0.5">{camps.length} camp(s) · {totalTurnout} total donations across all camps</p>
+            <p className="text-sm text-text-secondary mt-0.5">{t('bloodBank.camps.summary', { count: camps.length, total: totalTurnout })}</p>
           </div>
           <div className="flex items-center gap-2">
             <button onClick={load} className="h-11 w-11 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-surface-hover transition-colors">
@@ -98,7 +100,7 @@ export function CampsScreen() {
             </button>
             {canCreate && (
               <button onClick={() => setShowCreate(true)} className="h-11 px-4 flex items-center gap-2 rounded-lg bg-brand text-white text-sm font-semibold hover:bg-brand-dark transition-colors">
-                <Plus size={16} /> Schedule Camp
+                <Plus size={16} /> {t('bloodBank.camps.scheduleCamp')}
               </button>
             )}
           </div>
@@ -111,7 +113,7 @@ export function CampsScreen() {
         ) : camps.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
             <Tent size={40} className="mb-3 opacity-30" />
-            <p className="text-base font-medium">No donation camps scheduled yet</p>
+            <p className="text-base font-medium">{t('bloodBank.camps.noCampsYet')}</p>
           </div>
         ) : (
           <div className="space-y-3">
@@ -121,7 +123,7 @@ export function CampsScreen() {
                   <div className="flex-1 min-w-0">
                     <p className="font-semibold text-text-primary">{c.campName}</p>
                     <p className="text-sm text-text-secondary">
-                      {formatDate(c.campDate)}{c.location ? ` · ${c.location}` : ''}{c.organizer ? ` · Organized by ${c.organizer}` : ''}
+                      {formatDate(c.campDate)}{c.location ? ` · ${c.location}` : ''}{c.organizer ? ` · ${t('bloodBank.camps.organizedByLabel', { organizer: c.organizer })}` : ''}
                     </p>
                     {c.notes && <p className="text-xs text-text-secondary mt-1">{c.notes}</p>}
                   </div>
@@ -129,7 +131,7 @@ export function CampsScreen() {
                     <Users size={16} />
                     <div>
                       <p className="text-lg font-bold leading-tight">{c._count.donations}</p>
-                      <p className="text-xs text-text-secondary leading-tight">donors</p>
+                      <p className="text-xs text-text-secondary leading-tight">{t('bloodBank.camps.donorsLabel')}</p>
                     </div>
                   </div>
                 </div>
@@ -144,42 +146,42 @@ export function CampsScreen() {
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[90vh] overflow-auto">
             <div className="px-6 py-5 border-b border-border flex items-center justify-between">
-              <h2 className="text-xl font-bold text-text-primary">Schedule Donation Camp</h2>
+              <h2 className="text-xl font-bold text-text-primary">{t('bloodBank.camps.scheduleCampModalTitle')}</h2>
               <button onClick={() => setShowCreate(false)} className="text-text-secondary hover:text-text-primary"><X size={20} /></button>
             </div>
             <div className="p-6 space-y-4">
               <div>
-                <label className="block text-sm font-semibold text-text-primary mb-1">Camp / Drive Name</label>
+                <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.camps.campNameLabel')}</label>
                 <input value={form.campName} onChange={(e) => setForm((f) => ({ ...f, campName: e.target.value }))}
-                  placeholder="e.g. Community Center Drive" className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
+                  placeholder={t('bloodBank.camps.campNamePlaceholder')} className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <label className="block text-sm font-semibold text-text-primary mb-1">Date</label>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('common.date')}</label>
                   <input type="date" value={form.campDate} onChange={(e) => setForm((f) => ({ ...f, campDate: e.target.value }))}
                     className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
                 <div>
-                  <label className="block text-sm font-semibold text-text-primary mb-1">Location</label>
+                  <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.camps.location')}</label>
                   <input value={form.location} onChange={(e) => setForm((f) => ({ ...f, location: e.target.value }))}
                     className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
                 </div>
               </div>
               <div>
-                <label className="block text-sm font-semibold text-text-primary mb-1">Organizer</label>
+                <label className="block text-sm font-semibold text-text-primary mb-1">{t('bloodBank.camps.organizer')}</label>
                 <input value={form.organizer} onChange={(e) => setForm((f) => ({ ...f, organizer: e.target.value }))}
                   className="w-full h-12 px-4 rounded-xl border border-border text-base focus:outline-none focus:border-brand" />
               </div>
               <div>
-                <label className="block text-sm font-semibold text-text-primary mb-1">Notes</label>
+                <label className="block text-sm font-semibold text-text-primary mb-1">{t('common.notes')}</label>
                 <textarea value={form.notes} onChange={(e) => setForm((f) => ({ ...f, notes: e.target.value }))} rows={2}
                   className="w-full px-4 py-3 rounded-xl border border-border text-base focus:outline-none focus:border-brand resize-none" />
               </div>
             </div>
             <div className="px-6 pb-6 flex gap-3">
-              <button onClick={() => setShowCreate(false)} className="flex-1 h-12 rounded-xl border border-border text-text-secondary font-semibold hover:bg-surface-hover transition-colors">Cancel</button>
+              <button onClick={() => setShowCreate(false)} className="flex-1 h-12 rounded-xl border border-border text-text-secondary font-semibold hover:bg-surface-hover transition-colors">{t('common.cancel')}</button>
               <button onClick={handleCreate} disabled={saving} className="flex-1 h-12 rounded-xl bg-brand text-white font-semibold hover:bg-brand-dark transition-colors disabled:opacity-50">
-                {saving ? 'Saving…' : 'Schedule Camp'}
+                {saving ? t('bloodBank.saving') : t('bloodBank.camps.scheduleCamp')}
               </button>
             </div>
           </div>

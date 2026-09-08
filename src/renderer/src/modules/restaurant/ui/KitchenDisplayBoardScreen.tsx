@@ -1,4 +1,6 @@
 import React, { useCallback, useEffect, useRef, useState } from 'react'
+import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import { RefreshCw, Clock, AlertTriangle, CheckCircle2 } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
@@ -23,25 +25,30 @@ interface KOT {
 }
 
 // 2026-09-04 — order-channel tagging, same fallback convention as KOTScreen.
-const CHANNEL_LABEL: Record<string, string> = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy', OTHER: 'Delivery App' }
+// ZOMATO/SWIGGY are brand names and are deliberately not translated.
+const CHANNEL_LABEL: Record<string, string> = { ZOMATO: 'Zomato', SWIGGY: 'Swiggy' }
 
 const NEXT_STATUS: Record<string, string | null> = { PENDING: 'IN_PROGRESS', IN_PROGRESS: 'DONE', DONE: null }
-const NEXT_LABEL: Record<string, string> = { PENDING: 'Start Cooking', IN_PROGRESS: 'Mark Done' }
+const NEXT_LABEL_KEY: Record<string, string> = { PENDING: 'startCooking', IN_PROGRESS: 'markDone' }
 const POLL_MS = 15000
 const MAX_DONE_SHOWN = 6
 
-function TicketCard({ kot, onAdvance, busy }: { kot: KOT; onAdvance: (kot: KOT) => void; busy: boolean }) {
+function TicketCard({ kot, onAdvance, busy, t }: { kot: KOT; onAdvance: (kot: KOT) => void; busy: boolean; t: TFunction }) {
   const next = NEXT_STATUS[kot.status]
+  const channel = kot.invoice?.orderChannel
+  const channelText = channel && CHANNEL_LABEL[channel]
+    ? CHANNEL_LABEL[channel]
+    : channel === 'OTHER' ? t('restaurant.kot.deliveryApp') : t('restaurant.kot.takeaway')
   return (
     <div className="bg-white dark:bg-slate-900 rounded-2xl border-2 border-slate-200 dark:border-slate-700 p-5 space-y-3">
       <div className="flex items-start justify-between gap-2">
         <div>
           {kot.tokenNumber != null && (
             <p className="text-sm font-bold uppercase tracking-wide text-warning">
-              {CHANNEL_LABEL[kot.invoice?.orderChannel ?? ''] ?? 'Takeaway'}
+              {channelText}
             </p>
           )}
-          <p className="text-xl font-bold text-dark dark:text-slate-100">{kot.table?.tableName || kot.table?.tableNumber || (kot.tokenNumber != null ? `Token #${kot.tokenNumber}` : null) || kot.invoice?.invoiceNumber || `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
+          <p className="text-xl font-bold text-dark dark:text-slate-100">{kot.table?.tableName || kot.table?.tableNumber || (kot.tokenNumber != null ? t('restaurant.kot.tokenLabel', { number: kot.tokenNumber }) : null) || kot.invoice?.invoiceNumber || `KOT-${kot.id.slice(-6).toUpperCase()}`}</p>
           <p className="text-sm text-slate-400">{new Date(kot.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</p>
         </div>
       </div>
@@ -59,15 +66,15 @@ function TicketCard({ kot, onAdvance, busy }: { kot: KOT; onAdvance: (kot: KOT) 
           disabled={busy}
           className="w-full py-3.5 rounded-xl bg-brand text-white text-base font-bold hover:bg-brand/90 transition-colors disabled:opacity-50"
         >
-          {busy ? 'Updating…' : NEXT_LABEL[kot.status]}
+          {busy ? t('restaurant.kitchenDisplay.updating') : t(`restaurant.kot.${NEXT_LABEL_KEY[kot.status]}`)}
         </button>
       )}
     </div>
   )
 }
 
-function Column({ title, icon, colorClass, kots, onAdvance, busyId }: {
-  title: string; icon: React.ReactNode; colorClass: string; kots: KOT[]; onAdvance: (kot: KOT) => void; busyId: string | null
+function Column({ title, icon, colorClass, kots, onAdvance, busyId, t }: {
+  title: string; icon: React.ReactNode; colorClass: string; kots: KOT[]; onAdvance: (kot: KOT) => void; busyId: string | null; t: TFunction
 }) {
   return (
     <div className="flex-1 min-w-0">
@@ -78,9 +85,9 @@ function Column({ title, icon, colorClass, kots, onAdvance, busyId }: {
       </div>
       <div className="space-y-3">
         {kots.length === 0 ? (
-          <p className="text-center text-slate-400 py-8 text-base">Nothing here</p>
+          <p className="text-center text-slate-400 py-8 text-base">{t('restaurant.kitchenDisplay.nothingHere')}</p>
         ) : (
-          kots.map(kot => <TicketCard key={kot.id} kot={kot} onAdvance={onAdvance} busy={busyId === kot.id} />)
+          kots.map(kot => <TicketCard key={kot.id} kot={kot} onAdvance={onAdvance} busy={busyId === kot.id} t={t} />)
         )}
       </div>
     </div>
@@ -88,6 +95,7 @@ function Column({ title, icon, colorClass, kots, onAdvance, busyId }: {
 }
 
 export function KitchenDisplayBoardScreen() {
+  const { t } = useTranslation()
   const [kots, setKots] = useState<KOT[]>([])
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [busyId, setBusyId] = useState<string | null>(null)
@@ -136,17 +144,17 @@ export function KitchenDisplayBoardScreen() {
   return (
     <div className="min-h-screen bg-surface dark:bg-slate-950 p-6 flex flex-col">
       <div className="flex items-center justify-between mb-6">
-        <h1 className="text-2xl font-bold text-dark dark:text-slate-100">Kitchen Display</h1>
+        <h1 className="text-2xl font-bold text-dark dark:text-slate-100">{t('restaurant.kitchenDisplay.title')}</h1>
         <div className="flex items-center gap-2 text-sm text-slate-400">
-          {loadFailed && <span className="text-danger font-semibold">Connection issue — retrying…</span>}
+          {loadFailed && <span className="text-danger font-semibold">{t('restaurant.kitchenDisplay.connectionIssue')}</span>}
           <RefreshCw size={14} />
-          {lastUpdated ? `Updated ${lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}` : 'Loading…'}
+          {lastUpdated ? t('restaurant.kitchenDisplay.updatedAt', { time: lastUpdated.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) }) : t('common.loading')}
         </div>
       </div>
       <div className="flex gap-6 flex-1">
-        <Column title="Pending" icon={<Clock size={20} />} colorClass="bg-warning/10 text-warning" kots={pending} onAdvance={handleAdvance} busyId={busyId} />
-        <Column title="In Progress" icon={<AlertTriangle size={20} />} colorClass="bg-brand/10 text-brand" kots={inProgress} onAdvance={handleAdvance} busyId={busyId} />
-        <Column title="Recently Done" icon={<CheckCircle2 size={20} />} colorClass="bg-success/10 text-success" kots={done} onAdvance={handleAdvance} busyId={busyId} />
+        <Column title={t('restaurant.kot.statusPending')} icon={<Clock size={20} />} colorClass="bg-warning/10 text-warning" kots={pending} onAdvance={handleAdvance} busyId={busyId} t={t} />
+        <Column title={t('restaurant.kot.statusInProgress')} icon={<AlertTriangle size={20} />} colorClass="bg-brand/10 text-brand" kots={inProgress} onAdvance={handleAdvance} busyId={busyId} t={t} />
+        <Column title={t('restaurant.kitchenDisplay.recentlyDone')} icon={<CheckCircle2 size={20} />} colorClass="bg-success/10 text-success" kots={done} onAdvance={handleAdvance} busyId={busyId} t={t} />
       </div>
     </div>
   )

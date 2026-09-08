@@ -56,7 +56,7 @@
     "tailoring": "Sastrería",
     "costCentres": "Centros de Costo",
     "budgets": "Presupuestos",
-    "serviceCombos": "Service Combos",
+    "serviceCombos": "Combos de Servicio",
     "checkIn": "Registro",
     "customOrders": "Pedidos Personalizados",
     "cateringEvents": "Eventos de Catering",
@@ -314,6 +314,7 @@
   },
   "billing": {
     "title": "Facturación",
+    "sellingLocation": "Ubicación de Venta",
     "bargainedPriceToggleHint": "Alternar {{currSym}} / % / Precio Negociado (Final)",
     "bargainedPriceInputHint": "Escribe el precio final acordado para esta línea — el descuento se calcula automáticamente.",
     "newInvoice": "Nueva Factura",
@@ -1610,6 +1611,10 @@
       "distributor": "Distribuidor"
     },
     "defs": {
+      "discounts": {
+        "label": "Informe de Descuentos",
+        "description": "Cada línea de factura con descuento, desglosada por empleado y producto, más la incidencia de descuentos y el descuento promedio %"
+      },
       "sales": {
         "label": "Informe de Ventas",
         "description": "Ingresos, descuentos, impuestos — agrupados por día / semana / mes / año"
@@ -2055,212 +2060,212 @@
         "description": "Cuántos casos atendió por tipo de caso — consultas, cuidado preventivo, vacunaciones, y otros en su Catálogo de Servicios — mes a mes."
       },
       "stylistRepeatClient": {
-        "label": "Stylist Repeat-Client Rate",
-        "description": "Per stylist, how many of their own clients came back a second time — a real client-loyalty leaderboard"
+        "label": "Tasa de Clientes Recurrentes por Estilista",
+        "description": "Por estilista, cuántos de sus propios clientes regresaron una segunda vez — una tabla real de lealtad de clientes"
       },
       "retailAttachRate": {
-        "label": "Retail Attach Rate",
-        "description": "How often a booked service invoice also included a retail product upsell, per stylist"
+        "label": "Tasa de Venta Adicional Minorista",
+        "description": "Con qué frecuencia una factura de servicio reservada también incluyó una venta adicional de producto minorista, por estilista"
       },
       "membershipRenewalFunnel": {
-        "label": "Membership Renewal Funnel",
-        "description": "Of memberships that expired in this period, how many the same client actually renewed, per plan"
+        "label": "Embudo de Renovación de Membresías",
+        "description": "De las membresías que vencieron en este periodo, cuántas realmente renovó el mismo cliente, por plan"
       },
       "classAttendanceHeatmap": {
-        "label": "Class Attendance Heatmap",
-        "description": "Real check-in density per class by day of week — which slots are actually busy, not just enrolled"
+        "label": "Mapa de Calor de Asistencia a Clases",
+        "description": "Densidad real de registros de entrada por clase según el día de la semana — qué horarios están realmente ocupados, no solo inscritos"
       },
       "learnerProgressFunnel": {
-        "label": "Learner Progress Funnel",
-        "description": "Every learner ever enrolled, by furthest stage reached — from first session to a passed DL test"
+        "label": "Embudo de Progreso del Alumno",
+        "description": "Cada alumno inscrito hasta ahora, según la etapa más avanzada alcanzada — desde la primera sesión hasta un examen de conducir aprobado"
       },
       "caseAging": {
-        "label": "Case Aging",
-        "description": "Every open case, ranked by how long it's been stuck in its current litigation stage"
+        "label": "Antigüedad de Casos",
+        "description": "Cada caso abierto, ordenado por cuánto tiempo lleva estancado en su etapa procesal actual"
       },
       "lawyerBillableHours": {
-        "label": "Billable Hours",
-        "description": "Billable vs. pro-bono hours per advocate, split into already-billed and still-unbilled amounts"
+        "label": "Horas Facturables",
+        "description": "Horas facturables frente a pro bono por abogado, divididas en montos ya facturados y aún no facturados"
       },
       "feeRealization": {
-        "label": "Fee Realization",
-        "description": "Of the recurring fee expected from every active engagement this month, how much has actually been invoiced"
+        "label": "Realización de Honorarios",
+        "description": "Del honorario recurrente esperado de cada relación activa este mes, cuánto se ha facturado realmente"
       },
       "drawingApprovalCycleTime": {
-        "label": "Drawing Approval Cycle Time",
-        "description": "How many days it actually took to get each approved drawing signed off, from issue to approval, by discipline"
+        "label": "Tiempo de Ciclo de Aprobación de Planos",
+        "description": "Cuántos días tomó realmente aprobar cada plano, desde su emisión hasta la aprobación, por disciplina"
       },
       "projectStageProgress": {
-        "label": "Project Stage Progress",
-        "description": "Every active project, ranked by how long it's been stuck in its current stage"
+        "label": "Progreso de Etapa del Proyecto",
+        "description": "Cada proyecto activo, ordenado por cuánto tiempo lleva estancado en su etapa actual"
       },
       "siteVisitBilling": {
-        "label": "Site Visit Billing",
-        "description": "Every billable site visit, unbilled first — exactly what can be invoiced today"
+        "label": "Facturación de Visitas a Sitio",
+        "description": "Cada visita a sitio facturable, las no facturadas primero — exactamente lo que se puede facturar hoy"
       },
       "materialTestResults": {
-        "label": "Material Test Results",
-        "description": "Every recorded material test, failed ones first, with an overall pass rate"
+        "label": "Resultados de Pruebas de Material",
+        "description": "Cada prueba de material registrada, las fallidas primero, con una tasa de aprobación general"
       },
       "retainerUtilization": {
-        "label": "Retainer Utilization",
-        "description": "Hours used this period against each hourly retainer's monthly bucket, alongside whether it's actually been billed"
+        "label": "Utilización de Contrato Fijo",
+        "description": "Horas usadas en este periodo frente a la bolsa mensual de cada contrato por horas, junto con si realmente se ha facturado"
       },
       "proposalWinRate": {
-        "label": "Proposal Win Rate",
-        "description": "Of every proposal actually sent, how many were accepted vs. expired unsigned"
+        "label": "Tasa de Éxito de Propuestas",
+        "description": "De cada propuesta realmente enviada, cuántas fueron aceptadas frente a vencidas sin firmar"
       },
       "clientRevenueConcentration": {
-        "label": "Client Revenue Concentration",
-        "description": "What share of total invoiced revenue comes from each client — a real dependency-risk signal"
+        "label": "Concentración de Ingresos por Cliente",
+        "description": "Qué porcentaje del ingreso total facturado proviene de cada cliente — una señal real de riesgo de dependencia"
       },
       "campaignROI": {
-        "label": "Campaign ROI",
-        "description": "Planned ad-spend budget vs. actual spend per campaign, with cost-per-conversion — no fabricated dollar ROI since attributed revenue isn't tracked"
+        "label": "ROI de Campaña",
+        "description": "Presupuesto de publicidad planificado frente al gasto real por campaña, con costo por conversión — sin ROI en dinero ficticio ya que los ingresos atribuidos no se rastrean"
       },
       "deliverableStatusPipeline": {
-        "label": "Deliverable Status Pipeline",
-        "description": "Every content-calendar deliverable by status, with how many are overdue"
+        "label": "Pipeline de Estado de Entregables",
+        "description": "Cada entregable del calendario de contenido por estado, con cuántos están vencidos"
       },
       "channelPerformance": {
-        "label": "Channel Performance",
-        "description": "Ad spend, clicks, and conversions aggregated across every campaign on the same channel"
+        "label": "Rendimiento por Canal",
+        "description": "Gasto publicitario, clics y conversiones agregados de todas las campañas en el mismo canal"
       },
       "retainerWorkDelivered": {
-        "label": "Retainer Work Delivered",
-        "description": "For each marketing retainer, how many deliverables were actually published this month against the fee being billed"
+        "label": "Trabajo Entregado por Contrato Fijo",
+        "description": "Para cada contrato fijo de marketing, cuántos entregables se publicaron realmente este mes frente al honorario facturado"
       },
       "issueAging": {
-        "label": "Issue Aging",
-        "description": "Every open issue by days open, flagged against a fixed SLA threshold by priority"
+        "label": "Antigüedad de Incidencias",
+        "description": "Cada incidencia abierta por días abierta, marcada contra un umbral fijo de SLA según prioridad"
       },
       "teamUtilization": {
-        "label": "Team Utilization",
-        "description": "Billable vs. non-billable hours logged per team member against a client project"
+        "label": "Utilización del Equipo",
+        "description": "Horas facturables frente a no facturables registradas por miembro del equipo contra un proyecto de cliente"
       },
       "sprintBilling": {
-        "label": "Sprint Billing",
-        "description": "Every completed sprint and whether its work has actually been linked to a billing milestone yet"
+        "label": "Facturación de Sprint",
+        "description": "Cada sprint completado y si su trabajo realmente se ha vinculado a un hito de facturación"
       },
       "deliveryPipeline": {
-        "label": "Delivery Pipeline",
-        "description": "Every active shoot booking by how far its post-production has actually progressed, plus overdue deliveries and high-revision bookings"
+        "label": "Pipeline de Entrega",
+        "description": "Cada reserva de sesión activa según su avance real de posproducción, más entregas vencidas y reservas con muchas revisiones"
       },
       "shootTypeRevenueMix": {
-        "label": "Shoot-Type Revenue Mix",
-        "description": "Revenue, booking count, and average ticket per shoot type"
+        "label": "Mezcla de Ingresos por Tipo de Sesión",
+        "description": "Ingresos, cantidad de reservas y ticket promedio por tipo de sesión"
       },
       "equipmentCheckout": {
-        "label": "Equipment Checkout",
-        "description": "Every piece of studio equipment currently checked out and not yet returned, overdue ones first"
+        "label": "Retiro de Equipos",
+        "description": "Cada equipo del estudio actualmente retirado y aún no devuelto, los vencidos primero"
       },
       "vendorCostVsBudget": {
-        "label": "Vendor Cost vs. Budget",
-        "description": "Every event's total vendor cost against the client's budget and the agency's own quote — real margin visibility"
+        "label": "Costo de Proveedor vs. Presupuesto",
+        "description": "Costo total del proveedor de cada evento frente al presupuesto del cliente y la cotización propia de la agencia — visibilidad real del margen"
       },
       "vendorPerformanceHistory": {
-        "label": "Vendor Performance History",
-        "description": "Every rated vendor's average rating across all the events they've worked, lowest first"
+        "label": "Historial de Rendimiento de Proveedores",
+        "description": "Calificación promedio de cada proveedor calificado en todos los eventos en que trabajó, los más bajos primero"
       },
       "occupancyTrend": {
-        "label": "Occupancy Trend",
-        "description": "Daily room occupancy % over the selected date range — is occupancy trending up or down?"
+        "label": "Tendencia de Ocupación",
+        "description": "Ocupación diaria de habitaciones % durante el rango de fechas seleccionado — ¿la ocupación tiende al alza o a la baja?"
       },
       "roomWiseADR": {
-        "label": "Room-wise ADR",
-        "description": "Average Daily Rate and nights sold, broken down per room — which rooms earn the most?"
+        "label": "ADR por Habitación",
+        "description": "Tarifa Diaria Promedio y noches vendidas, desglosado por habitación — ¿qué habitaciones generan más ingresos?"
       },
       "adrRevPAR": {
-        "label": "ADR & RevPAR",
-        "description": "Average Daily Rate and Revenue per Available Room, trended by month"
+        "label": "ADR y RevPAR",
+        "description": "Tarifa Diaria Promedio e Ingreso por Habitación Disponible, con tendencia mensual"
       },
       "carPartsVariance": {
-        "label": "Parts Cost Variance",
-        "description": "Actual parts cost vs. the estimate quoted at intake, for jobs where an estimate was given"
+        "label": "Variación de Costo de Repuestos",
+        "description": "Costo real de repuestos frente al presupuesto cotizado en la recepción, para trabajos con presupuesto dado"
       },
       "serviceTypeRevenue": {
-        "label": "Revenue by Service Type",
-        "description": "Which services bring in the most revenue, across every job card"
+        "label": "Ingresos por Tipo de Servicio",
+        "description": "Qué servicios generan más ingresos, en todas las órdenes de trabajo"
       },
       "orderTurnaround": {
-        "label": "Order Turnaround Time",
-        "description": "How many days it actually takes from order to delivery, per order"
+        "label": "Tiempo de Entrega del Pedido",
+        "description": "Cuántos días toma realmente desde el pedido hasta la entrega, por pedido"
       },
       "fittingStageTracker": {
-        "label": "Fitting-Stage Tracker",
-        "description": "Orders currently at Trial or Alterations, and how long they've been stuck there"
+        "label": "Rastreador de Etapa de Ajuste",
+        "description": "Pedidos actualmente en Prueba o Ajustes, y cuánto tiempo llevan estancados allí"
       },
       "fabricPopularity": {
-        "label": "Fabric / Design Popularity",
-        "description": "Which fabrics and designs are ordered most, and the revenue behind them"
+        "label": "Popularidad de Tela / Diseño",
+        "description": "Qué telas y diseños se piden más, y los ingresos detrás de ellos"
       },
       "renewalFunnel": {
-        "label": "Renewal Funnel",
-        "description": "Active AMC contracts bucketed by renewal urgency, from overdue to not-yet-due"
+        "label": "Embudo de Renovación",
+        "description": "Contratos AMC activos agrupados por urgencia de renovación, desde vencidos hasta aún no vencidos"
       },
       "chemicalUsageCompliance": {
-        "label": "Chemical Usage / Compliance Log",
-        "description": "Pesticide quantity used per visit, and any completed visit with no chemical documented"
+        "label": "Uso de Productos Químicos / Registro de Cumplimiento",
+        "description": "Cantidad de pesticida usada por visita, y cualquier visita completada sin producto químico documentado"
       },
       "pestRecurringValueTrend": {
-        "label": "Recurring Contract Value Trend",
-        "description": "Actual AMC contract-fee revenue billed, trended by month"
+        "label": "Tendencia del Valor de Contrato Recurrente",
+        "description": "Ingresos reales por cuota de contrato AMC facturados, con tendencia mensual"
       },
       "candidatePipelineFunnel": {
-        "label": "Candidate Pipeline Funnel",
-        "description": "Every candidate's progress from added, to interviewing, to offered, to placed"
+        "label": "Embudo del Pipeline de Candidatos",
+        "description": "El progreso de cada candidato — desde agregado, hasta entrevista, oferta y finalmente contratación"
       },
       "jobOrderFunnel": {
-        "label": "Job Order Funnel",
-        "description": "Open client job orders by status — the fill-progress view from the client side"
+        "label": "Embudo de Órdenes de Trabajo",
+        "description": "Órdenes de trabajo abiertas del cliente por estado — la vista de progreso de cobertura desde el lado del cliente"
       },
       "feePercentage": {
-        "label": "Client Fee-Percentage Tracking",
-        "description": "The agreed fee % per job order vs. what was actually realized on its placements"
+        "label": "Seguimiento del Porcentaje de Honorarios del Cliente",
+        "description": "El % de honorario acordado por orden de trabajo frente a lo realmente obtenido en sus contrataciones"
       },
       "timeToFill": {
-        "label": "Time to Fill",
-        "description": "How many days it actually takes from job order to a candidate joining"
+        "label": "Tiempo de Contratación",
+        "description": "Cuántos días toma realmente desde la orden de trabajo hasta que se incorpora un candidato"
       },
       "sourceEffectiveness": {
-        "label": "Source Effectiveness",
-        "description": "Candidate source (referral, LinkedIn, website...) vs. real placement conversion rate"
+        "label": "Efectividad del Origen",
+        "description": "Origen del candidato (referido, LinkedIn, sitio web...) frente a la tasa real de conversión de contratación"
       },
       "batchPerformanceTrend": {
-        "label": "Batch Performance Trend",
-        "description": "Each batch's average test score, trended month by month — is the batch improving or declining?"
+        "label": "Tendencia de Rendimiento del Lote",
+        "description": "Puntaje promedio de pruebas de cada lote, con tendencia mes a mes — ¿el lote mejora o empeora?"
       },
       "attendancePerformanceCorrelation": {
-        "label": "Attendance vs. Performance",
-        "description": "Whether students who attend more actually score higher — real attendance % against average test %, plus a correlation coefficient across the batch"
+        "label": "Asistencia vs. Rendimiento",
+        "description": "Si los estudiantes que asisten más realmente obtienen mejores calificaciones — asistencia real % frente al promedio de pruebas %, además de un coeficiente de correlación para todo el lote"
       },
       "feeDueUnderperformanceAlert": {
-        "label": "Fee-Due Underperformance Alert",
-        "description": "Students who owe fees AND are scoring below 50% — a worklist to prioritize outreach"
+        "label": "Alerta de Bajo Rendimiento con Pago Pendiente",
+        "description": "Estudiantes con honorarios pendientes Y con calificaciones por debajo del 50% — una lista de trabajo para priorizar el contacto"
       },
       "coilWastageYield": {
-        "label": "Coil Wastage & Yield",
-        "description": "Received vs. sold length, yield %, and estimated wastage per coil-sold product"
+        "label": "Desperdicio y Rendimiento de Bobina",
+        "description": "Longitud recibida frente a vendida, rendimiento %, y desperdicio estimado por producto vendido en bobina"
       },
       "isiBisSafetyRegister": {
-        "label": "ISI/BIS Safety Register",
-        "description": "Traceability register of every serial-tracked unit — received, warranty, and where it was sold"
+        "label": "Registro de Seguridad ISI/BIS",
+        "description": "Registro de trazabilidad de cada unidad rastreada por número de serie — recepción, garantía y dónde se vendió"
       },
       "seasonalDemandForecast": {
-        "label": "Seasonal Demand Forecast",
-        "description": "All-time sales aggregated by calendar month, flagging the peak season"
+        "label": "Pronóstico de Demanda Estacional",
+        "description": "Ventas históricas agregadas por mes calendario, señalando la temporada alta"
       },
       "institutionalOrderHistory": {
-        "label": "Institutional Order History",
-        "description": "Every past bulk-list order with status, item count, and total value, for renewal planning"
+        "label": "Historial de Pedidos Institucionales",
+        "description": "Cada pedido masivo anterior con estado, cantidad de artículos y valor total, para planificación de renovación"
       },
       "locationStockSplit": {
-        "label": "Showroom-vs-Warehouse Stock",
-        "description": "Per-product stock split across every Location"
+        "label": "Stock de Showroom vs. Almacén",
+        "description": "División de stock por producto en cada ubicación"
       },
       "deliveryInstallationSchedule": {
-        "label": "Delivery & Installation Schedule",
-        "description": "Furniture bookings with a delivery date in range, as a real schedule"
+        "label": "Cronograma de Entrega e Instalación",
+        "description": "Reservas de muebles con fecha de entrega dentro del rango, como un cronograma real"
       },
       "specWiseFastMovers": {
         "label": "Productos de Alta Rotación por Especificación",
@@ -2556,53 +2561,53 @@
       "dosesEvaluated": "Dosis Evaluadas",
       "totalCases": "Casos Totales",
       "distinctCaseTypes": "Tipos de Caso Distintos",
-      "totalEnrolled": "Total Enrolled",
-      "overallCompletionPercent": "DL Completion Rate %",
-      "totalOpenCases": "Open Cases",
-      "avgDaysInCurrentStage": "Avg. Days in Stage",
-      "staleCaseCount": "Stale Cases (90+ days)",
-      "totalApproved": "Drawings Approved",
-      "avgDaysToApprove": "Avg. Days to Approve",
-      "totalActiveProjects": "Active Projects",
-      "avgDaysInStage": "Avg. Days in Stage",
-      "totalBillableAmount": "Total Billable",
-      "totalBilledAmount": "Total Billed",
-      "totalUnbilledAmount": "Total Unbilled",
-      "unbilledCount": "Unbilled Visits",
-      "passCount": "Passed",
-      "failCount": "Failed",
-      "pendingCount": "Pending",
-      "passRatePercent": "Pass Rate %",
-      "totalRetainers": "Retainers",
-      "overUtilizedCount": "Over-Utilized",
-      "wonCount": "Won",
-      "lostCount": "Lost",
-      "winRatePercent": "Win Rate %",
-      "wonValue": "Won Value",
-      "topClientSharePercent": "Top Client Share %",
-      "top3SharePercent": "Top 3 Clients Share %",
-      "totalCampaigns": "Campaigns",
-      "totalBudget": "Total Budget",
-      "totalActualSpend": "Total Actual Spend",
-      "overBudgetCount": "Over Budget",
-      "totalDeliverables": "Deliverables",
-      "zeroDeliveredCount": "Zero Delivered",
-      "totalOpenIssues": "Open Issues",
-      "breachedCount": "SLA Breached",
-      "totalBillableHours": "Total Billable Hours",
-      "totalNonBillableHours": "Total Non-Billable Hours",
-      "totalCompletedSprints": "Completed Sprints",
-      "unlinkedCount": "Unbilled Sprints",
-      "totalActive": "Active Bookings",
-      "deliveredCount": "Delivered",
-      "avgRevisionRounds": "Avg. Revision Rounds",
-      "totalBookings": "Total Bookings",
-      "totalEvents": "Events",
-      "totalVendorCost": "Total Vendor Cost",
-      "totalRatedVendors": "Rated Vendors",
-      "overallAvgRating": "Overall Avg. Rating",
-      "correlationCoefficient": "Attendance–Performance Correlation",
-      "alertCount": "Students Flagged"
+      "totalEnrolled": "Total de Inscritos",
+      "overallCompletionPercent": "Tasa de Finalización de Licencia %",
+      "totalOpenCases": "Casos Abiertos",
+      "avgDaysInCurrentStage": "Días Prom. en Etapa",
+      "staleCaseCount": "Casos Inactivos (90+ días)",
+      "totalApproved": "Planos Aprobados",
+      "avgDaysToApprove": "Días Prom. para Aprobar",
+      "totalActiveProjects": "Proyectos Activos",
+      "avgDaysInStage": "Días Prom. en Etapa",
+      "totalBillableAmount": "Total Facturable",
+      "totalBilledAmount": "Total Facturado",
+      "totalUnbilledAmount": "Total No Facturado",
+      "unbilledCount": "Visitas No Facturadas",
+      "passCount": "Aprobados",
+      "failCount": "Reprobados",
+      "pendingCount": "Pendiente",
+      "passRatePercent": "Tasa de Aprobación %",
+      "totalRetainers": "Contratos Fijos",
+      "overUtilizedCount": "Sobreutilizado",
+      "wonCount": "Ganados",
+      "lostCount": "Perdidos",
+      "winRatePercent": "Tasa de Éxito %",
+      "wonValue": "Valor Ganado",
+      "topClientSharePercent": "Participación del Mejor Cliente %",
+      "top3SharePercent": "Participación de los 3 Mejores Clientes %",
+      "totalCampaigns": "Campañas",
+      "totalBudget": "Presupuesto Total",
+      "totalActualSpend": "Gasto Real Total",
+      "overBudgetCount": "Sobre Presupuesto",
+      "totalDeliverables": "Entregables",
+      "zeroDeliveredCount": "Cero Entregados",
+      "totalOpenIssues": "Incidencias Abiertas",
+      "breachedCount": "SLA Incumplido",
+      "totalBillableHours": "Total de Horas Facturables",
+      "totalNonBillableHours": "Total de Horas No Facturables",
+      "totalCompletedSprints": "Sprints Completados",
+      "unlinkedCount": "Sprints No Facturados",
+      "totalActive": "Reservas Activas",
+      "deliveredCount": "Entregados",
+      "avgRevisionRounds": "Rondas Prom. de Revisión",
+      "totalBookings": "Total de Reservas",
+      "totalEvents": "Eventos",
+      "totalVendorCost": "Costo Total del Proveedor",
+      "totalRatedVendors": "Proveedores Calificados",
+      "overallAvgRating": "Calificación Prom. General",
+      "correlationCoefficient": "Correlación Asistencia–Rendimiento",
+      "alertCount": "Estudiantes Marcados"
     },
     "aging": {
       "current": "Al Día",
@@ -2705,8 +2710,8 @@
       "complianceByRecallType": "Cumplimiento por Tipo de Recitación",
       "complianceByVaccine": "Cumplimiento por Vacuna",
       "caseTypeVolumeChart": "Tendencia de Volumen de Casos",
-      "attendancePerformanceDetails": "Attendance vs. Performance, by Student",
-      "feeDueUnderperformanceDetails": "Flagged Students"
+      "attendancePerformanceDetails": "Asistencia vs. Rendimiento, por Estudiante",
+      "feeDueUnderperformanceDetails": "Estudiantes Marcados"
     },
     "empty": {
       "discounts": "No se otorgaron descuentos ni precios negociados en este rango de fechas.",
@@ -2805,39 +2810,39 @@
       "dentalRecallCompliance": "No hay períodos de recitación cerrados en este rango de fechas.",
       "vaccinationCompliance": "No hay dosis de seguimiento con una fecha de vencimiento anterior en este rango de fechas.",
       "vetCaseTypeVolume": "No hay casos registrados en este rango de fechas.",
-      "carPartsVariance": "No jobs with a quoted parts estimate yet.",
-      "serviceTypeRevenue": "No service items billed in this date range.",
-      "orderTurnaround": "No orders delivered in this date range.",
-      "fittingStageTracker": "No orders currently at Trial or Alterations.",
-      "fabricPopularity": "No orders with a fabric/design noted in this date range.",
-      "chemicalUsageCompliance": "No completed visits in this date range.",
-      "pestRecurringValueTrend": "No recurring contract-fee invoices billed in this date range.",
-      "attendancePerformanceCorrelation": "No enrolled students yet.",
-      "feeDueUnderperformanceAlert": "No students currently flagged — no one both owes a fee and is underperforming.",
-      "stylistRepeatClient": "No completed appointments with an assigned stylist in this date range.",
-      "retailAttachRate": "No invoiced appointments in this date range.",
-      "membershipRenewalFunnel": "No memberships expired in this date range.",
-      "classAttendanceHeatmap": "No class check-ins recorded in this date range.",
-      "caseAging": "No open cases right now.",
-      "lawyerBillableHours": "No time entries logged against a case in this date range.",
-      "feeRealization": "No active, priced engagements right now.",
-      "drawingApprovalCycleTime": "No approved drawings on file yet.",
-      "projectStageProgress": "No active projects with a stage set right now.",
-      "siteVisitBilling": "No billable site visits recorded yet.",
-      "materialTestResults": "No material test results recorded yet.",
-      "retainerUtilization": "No active hourly retainers right now.",
-      "clientRevenueConcentration": "No invoiced revenue in this date range.",
-      "campaignROI": "No marketing campaigns recorded yet.",
-      "channelPerformance": "No campaigns with a channel set yet.",
-      "retainerWorkDelivered": "No active retainers for a marketing-campaign client yet.",
-      "issueAging": "No open issues right now.",
-      "teamUtilization": "No hours logged against a project in this date range.",
-      "sprintBilling": "No completed sprints yet.",
-      "deliveryPipeline": "No bookings with a revision round logged yet.",
-      "shootTypeRevenueMix": "No priced bookings in this date range.",
-      "equipmentCheckout": "No equipment currently checked out.",
-      "vendorCostVsBudget": "No non-cancelled events recorded yet.",
-      "vendorPerformanceHistory": "No vendors rated yet."
+      "carPartsVariance": "Aún no hay trabajos con un presupuesto de repuestos.",
+      "serviceTypeRevenue": "No se facturaron artículos de servicio en este rango de fechas.",
+      "orderTurnaround": "No se entregó ningún pedido en este rango de fechas.",
+      "fittingStageTracker": "No hay pedidos actualmente en Prueba o Ajustes.",
+      "fabricPopularity": "No hay pedidos con tela/diseño registrados en este rango de fechas.",
+      "chemicalUsageCompliance": "No hay visitas completadas en este rango de fechas.",
+      "pestRecurringValueTrend": "No se facturaron facturas de cuota de contrato recurrente en este rango de fechas.",
+      "attendancePerformanceCorrelation": "Aún no hay estudiantes inscritos.",
+      "feeDueUnderperformanceAlert": "No hay estudiantes marcados actualmente — nadie tiene honorarios pendientes y bajo rendimiento a la vez.",
+      "stylistRepeatClient": "No hay registro de citas completadas con un estilista asignado en este rango de fechas.",
+      "retailAttachRate": "No hay citas facturadas en este rango de fechas.",
+      "membershipRenewalFunnel": "No venció ninguna membresía en este rango de fechas.",
+      "classAttendanceHeatmap": "No se registraron entradas a clases en este rango de fechas.",
+      "caseAging": "No hay casos abiertos en este momento.",
+      "lawyerBillableHours": "No hay registros de tiempo contra un caso en este rango de fechas.",
+      "feeRealization": "No hay relaciones activas y con precio establecido en este momento.",
+      "drawingApprovalCycleTime": "Aún no hay planos aprobados en archivo.",
+      "projectStageProgress": "No hay proyectos activos con una etapa establecida en este momento.",
+      "siteVisitBilling": "Aún no se han registrado visitas a sitio facturables.",
+      "materialTestResults": "Aún no se han registrado resultados de pruebas de material.",
+      "retainerUtilization": "No hay contratos activos por horas en este momento.",
+      "clientRevenueConcentration": "No hay ingresos facturados en este rango de fechas.",
+      "campaignROI": "Aún no se han registrado campañas de marketing.",
+      "channelPerformance": "Aún no hay campañas con un canal configurado.",
+      "retainerWorkDelivered": "Aún no hay contratos fijos activos para un cliente de campaña de marketing.",
+      "issueAging": "No hay incidencias abiertas en este momento.",
+      "teamUtilization": "No se registraron horas contra un proyecto en este rango de fechas.",
+      "sprintBilling": "Aún no hay sprints completados.",
+      "deliveryPipeline": "Aún no hay reservas con una ronda de revisión registrada.",
+      "shootTypeRevenueMix": "No hay reservas con precio en este rango de fechas.",
+      "equipmentCheckout": "No hay equipos retirados actualmente.",
+      "vendorCostVsBudget": "Aún no se han registrado eventos no cancelados.",
+      "vendorPerformanceHistory": "Aún no se ha calificado a ningún proveedor."
     },
     "col": {
       "channel": "Canal",
@@ -3136,93 +3141,93 @@
       "recallType": "Tipo de Recitación",
       "vaccineName": "Vacuna",
       "doses": "Dosis",
-      "stylist": "Stylist",
-      "totalClients": "Total Clients",
-      "repeatClients": "Repeat Clients",
-      "totalInvoices": "Total Invoices",
-      "withAttach": "With Retail Attach",
-      "attachRatePercent": "Attach Rate %",
+      "stylist": "Estilista",
+      "totalClients": "Total de Clientes",
+      "repeatClients": "Clientes Recurrentes",
+      "totalInvoices": "Total de Facturas",
+      "withAttach": "Con Venta Adicional",
+      "attachRatePercent": "Tasa de Adjunto %",
       "planName": "Plan",
-      "expiredCount": "Expired",
-      "renewedCount": "Renewed",
-      "renewalRatePercent": "Renewal Rate %",
-      "className": "Class",
-      "checkInCount": "Check-Ins",
-      "learnerCount": "Learners",
-      "caseNumber": "Case Number",
-      "caseTitle": "Case Title",
-      "clientName": "Client",
-      "daysInStage": "Days in Stage",
-      "daysSinceFiling": "Days Since Filing",
-      "advocate": "Advocate",
-      "billedAmount": "Billed",
-      "unbilledAmount": "Unbilled",
-      "engagement": "Engagement",
-      "expectedFee": "Expected Fee",
-      "realizedFee": "Realized Fee",
-      "realizationPercent": "Realization %",
-      "invoicedThisPeriod": "Invoiced This Period",
-      "drawingNumber": "Drawing No.",
-      "revisionNumber": "Rev.",
-      "discipline": "Discipline",
-      "issuedDate": "Issued Date",
-      "approvedDate": "Approved Date",
-      "daysToApprove": "Days to Approve",
-      "stageProgress": "Stage Progress %",
-      "attendancePercent": "Attendance %",
-      "avgTestPercentage": "Avg. Test %",
-      "feeDueAmount": "Fee Due",
-      "visitType": "Visit Type",
-      "billableAmount": "Billable Amount",
-      "billedStatus": "Billed Status",
-      "testType": "Test Type",
+      "expiredCount": "Vencidos",
+      "renewedCount": "Renovados",
+      "renewalRatePercent": "Tasa de Renovación %",
+      "className": "Clase",
+      "checkInCount": "Registros de Entrada",
+      "learnerCount": "Alumnos",
+      "caseNumber": "Número de Caso",
+      "caseTitle": "Título del Caso",
+      "clientName": "Cliente",
+      "daysInStage": "Días en Etapa",
+      "daysSinceFiling": "Días Desde Presentación",
+      "advocate": "Abogado",
+      "billedAmount": "Monto Facturado",
+      "unbilledAmount": "Monto No Facturado",
+      "engagement": "Interacción",
+      "expectedFee": "Honorario Esperado",
+      "realizedFee": "Honorario Realizado",
+      "realizationPercent": "Realización %",
+      "invoicedThisPeriod": "Facturado en Este Periodo",
+      "drawingNumber": "N.° de Plano",
+      "revisionNumber": "N.° de Revisión",
+      "discipline": "Disciplina",
+      "issuedDate": "Fecha de Emisión",
+      "approvedDate": "Fecha de Aprobación",
+      "daysToApprove": "Días para Aprobar",
+      "stageProgress": "Progreso de Etapa %",
+      "attendancePercent": "Asistencia %",
+      "avgTestPercentage": "Prueba Prom. %",
+      "feeDueAmount": "Honorario Pendiente",
+      "visitType": "Tipo de Visita",
+      "billableAmount": "Monto Facturable",
+      "billedStatus": "Estado de Facturación",
+      "testType": "Tipo de Prueba",
       "materialDescription": "Material",
-      "testValue": "Test Value",
-      "requiredMinValue": "Pass Minimum",
-      "result": "Result",
-      "testedDate": "Tested Date",
-      "hoursPerMonth": "Hours/Month",
-      "hoursUsed": "Hours Used",
-      "monthlyAmount": "Monthly Amount",
-      "billedThisPeriod": "Billed This Period",
-      "revenueSharePercent": "Revenue Share %",
-      "cumulativeSharePercent": "Cumulative Share %",
-      "targetChannel": "Channel",
-      "adSpendBudget": "Ad Spend Budget",
-      "actualSpend": "Actual Spend",
-      "budgetVariancePercent": "Budget Variance %",
-      "conversions": "Conversions",
-      "costPerConversion": "Cost/Conversion",
-      "campaignCount": "Campaigns",
-      "totalImpressions": "Impressions",
-      "totalClicks": "Clicks",
-      "totalConversions": "Conversions",
+      "testValue": "Valor de Prueba",
+      "requiredMinValue": "Mínimo para Aprobar",
+      "result": "Resultado",
+      "testedDate": "Fecha de Prueba",
+      "hoursPerMonth": "Horas/Mes",
+      "hoursUsed": "Horas Usadas",
+      "monthlyAmount": "Monto Mensual",
+      "billedThisPeriod": "Facturado en Este Periodo",
+      "revenueSharePercent": "Participación en Ingresos %",
+      "cumulativeSharePercent": "Participación Acumulada %",
+      "targetChannel": "Canal",
+      "adSpendBudget": "Presupuesto de Publicidad",
+      "actualSpend": "Gasto Real",
+      "budgetVariancePercent": "Variación de Presupuesto %",
+      "conversions": "Conversiones",
+      "costPerConversion": "Costo/Conversión",
+      "campaignCount": "Campañas",
+      "totalImpressions": "Impresiones",
+      "totalClicks": "Clics",
+      "totalConversions": "Conversiones",
       "ctrPercent": "CTR %",
-      "deliveredCount": "Delivered",
-      "daysOpen": "Days Open",
-      "slaThresholdDays": "SLA (days)",
-      "slaBreached": "SLA Breached",
-      "employeeName": "Employee",
-      "totalHours": "Total Hours",
-      "sprintNumber": "Sprint #",
-      "sprintName": "Sprint Name",
-      "milestoneStatus": "Milestone Status",
-      "milestoneAmount": "Milestone Amount",
-      "shootType": "Shoot Type",
-      "revisionRounds": "Revision Rounds",
-      "avgTicket": "Avg. Ticket",
-      "assetName": "Equipment",
-      "checkedOutToName": "Checked Out To",
-      "checkedOutDate": "Checked Out",
-      "expectedReturnDate": "Expected Return",
-      "daysOut": "Days Out",
-      "isOverdue": "Overdue",
-      "eventName": "Event",
-      "clientBudget": "Client Budget",
-      "totalVendorCost": "Total Vendor Cost",
-      "vendorName": "Vendor",
-      "ratedEventCount": "Rated Events",
-      "avgRating": "Avg. Rating"
+      "deliveredCount": "Entregados",
+      "daysOpen": "Días Abierto",
+      "slaThresholdDays": "SLA (días)",
+      "slaBreached": "SLA Incumplido",
+      "employeeName": "Empleado",
+      "totalHours": "Total de Horas",
+      "sprintNumber": "Sprint N.°",
+      "sprintName": "Nombre del Sprint",
+      "milestoneStatus": "Estado del Hito",
+      "milestoneAmount": "Monto del Hito",
+      "shootType": "Tipo de Sesión",
+      "revisionRounds": "Rondas de Revisión",
+      "avgTicket": "Ticket Prom.",
+      "assetName": "Equipo",
+      "checkedOutToName": "Entregado A",
+      "checkedOutDate": "Fecha de Salida",
+      "expectedReturnDate": "Devolución Esperada",
+      "daysOut": "Días Fuera",
+      "isOverdue": "Vencido",
+      "eventName": "Evento",
+      "clientBudget": "Presupuesto del Cliente",
+      "totalVendorCost": "Costo Total del Proveedor",
+      "vendorName": "Proveedor",
+      "ratedEventCount": "Eventos Calificados",
+      "avgRating": "Calificación Prom."
     },
     "legend": {
       "schemeCost": "Costo del Esquema",
@@ -3695,10 +3700,10 @@
     "destinationSaveFailed": "No se pudo actualizar la carpeta de copia de seguridad",
     "destinationReset": "Carpeta de copia de seguridad restablecida al valor predeterminado",
     "destinationUnreachable": "No se puede acceder a \"{{path}}\" en este momento (¿desconectado?); se usará la ubicación predeterminada.",
-    "restoreFromFile": "Restore from File",
-    "restoreFromFileDesc": "Have a .sarang-backup file from another device or a USB drive? Restore from it directly.",
-    "restoreFromFileConfirmTitle": "Restore from Backup File",
-    "pickBackupFileFailed": "Could not open file picker."
+    "restoreFromFile": "Restaurar desde un archivo",
+    "restoreFromFileDesc": "¿Tiene un archivo .sarang-backup de otro dispositivo o una unidad USB? Restáurelo directamente desde allí.",
+    "restoreFromFileConfirmTitle": "Restaurar desde archivo de copia de seguridad",
+    "pickBackupFileFailed": "No se pudo abrir el selector de archivos."
   },
   "audit": {
     "title": "Registro de Auditoría",
@@ -5083,7 +5088,7 @@
     "docTypePurchaseOrder": "Orden de Compra"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite es una herramienta organizativa gratuita para pequeñas empresas. No es un sistema de registros médicos, software de contabilidad, herramienta de asesoría legal ni un producto financiero autorizado. Toda la información son datos propios del usuario, almacenados localmente en su dispositivo. Aszurex no ofrece garantías sobre la exactitud, integridad o idoneidad de este software para ningún fin regulado. Los usuarios son los únicos responsables de cumplir con las leyes y regulaciones profesionales aplicables."
+    "legalNotice": "Sarang Business OS Lite es una herramienta organizativa gratuita para pequeñas empresas. No es un sistema de registros médicos, herramienta de asesoría legal ni un producto financiero autorizado. Incluye funciones de contabilidad y GST, pero no sustituye a un contador o asesor fiscal con licencia. Toda la información son datos propios del usuario, almacenados localmente en su dispositivo. Aszurex no ofrece garantías sobre la exactitud, integridad o idoneidad de este software para ningún fin regulado. Los usuarios son los únicos responsables de cumplir con las leyes y regulaciones profesionales aplicables."
   },
   "compliance": {
     "disclaimerLabel": "Aviso legal:",
@@ -5862,26 +5867,26 @@
     }
   },
   "serviceCombos": {
-    "title": "Service Combos",
-    "subtitle": "{{count}} combos — bundle 2+ services into one package price, booked directly from the Appointments screen",
-    "comboName": "Combo Name",
-    "services": "Services",
-    "comboPrice": "Combo Price",
-    "savings": "Savings",
-    "newCombo": "New Combo",
-    "editCombo": "Edit Combo",
-    "comboNamePlaceholder": "e.g. Wash + Cut + Style",
-    "nameRequired": "Combo name is required.",
-    "priceRequired": "Combo price must be greater than zero.",
-    "needTwoServices": "A combo needs at least 2 distinct services.",
-    "selectServices": "Select Services",
-    "selectServicesHint": "Pick at least 2 services to bundle into this combo.",
-    "memberTotalHint": "Individual price total: {{amount}}",
-    "couldNotLoad": "Could not load service combos.",
-    "couldNotSave": "Could not save this service combo.",
+    "title": "Combos de Servicio",
+    "subtitle": "{{count}} combos — agrupa 2 o más servicios en un precio de paquete, reservado directamente desde la pantalla de Citas",
+    "comboName": "Nombre del Combo",
+    "services": "Servicios",
+    "comboPrice": "Precio del Combo",
+    "savings": "Ahorro",
+    "newCombo": "Nuevo Combo",
+    "editCombo": "Editar Combo",
+    "comboNamePlaceholder": "ej. Lavado + Corte + Peinado",
+    "nameRequired": "El nombre del combo es obligatorio.",
+    "priceRequired": "El precio del combo debe ser mayor que cero.",
+    "needTwoServices": "Un combo necesita al menos 2 servicios distintos.",
+    "selectServices": "Seleccionar Servicios",
+    "selectServicesHint": "Elige al menos 2 servicios para agrupar en este combo.",
+    "memberTotalHint": "Total de precios individuales: {{amount}}",
+    "couldNotLoad": "No se pudieron cargar los combos de servicio.",
+    "couldNotSave": "No se pudo guardar este combo de servicio.",
     "empty": {
-      "title": "No service combos yet",
-      "body": "Bundle 2 or more services into a package price — e.g. Wash + Cut + Style at a discount over booking each separately."
+      "title": "Aún no hay combos de servicio",
+      "body": "Agrupa 2 o más servicios en un precio de paquete — p. ej. Lavado + Corte + Peinado con descuento frente a reservarlos por separado."
     }
   },
   "checkin": {
@@ -6065,7 +6070,7 @@
         "IN_SERVICE": "En Servicio",
         "INACTIVE": "Inactivo"
       },
-      "changeStatus": "Change vehicle status",
+      "changeStatus": "Cambiar estado del vehículo",
       "statusUpdated": "Estado actualizado",
       "statusUpdateFailed": "No se pudo actualizar el estado del vehículo."
     },
@@ -6111,11 +6116,11 @@
         "ACTIVE": "Activo",
         "INACTIVE": "Inactivo"
       },
-      "activate": "Activate",
-      "deactivate": "Deactivate",
+      "activate": "Activar",
+      "deactivate": "Desactivar",
       "packageStatusUpdated": "Estado del paquete actualizado",
       "packageStatusUpdateFailed": "No se pudo actualizar el estado del paquete.",
-      "markComplete": "Mark Complete",
+      "markComplete": "Marcar como Completado",
       "cancelDeparture": "Cancelar",
       "departureStatusUpdated": "Estado de la salida actualizado",
       "departureStatusUpdateFailed": "No se pudo actualizar el estado de la salida.",
@@ -6193,6 +6198,282 @@
       "cancelBooking": "Cancelar Reserva",
       "bookingCancelled": "Reserva cancelada",
       "bookingCancelFailed": "No se pudo cancelar la reserva."
+    }
+  }
+,
+  "restaurant": {
+    "kot": {
+      "title": "Tickets de Cocina",
+      "ordersCount": "{{count}} pedidos",
+      "incomingOrders": "Pedidos Entrantes ({{count}})",
+      "accept": "Aceptar",
+      "reject": "Rechazar",
+      "noKotsFound": "No se encontraron tickets de cocina",
+      "noKotsHint": "Los tickets de cocina se crean cuando un pedido se envía a la cocina",
+      "takeaway": "Para llevar",
+      "deliveryApp": "App de Delivery",
+      "tokenLabel": "Turno #{{number}}",
+      "statusPending": "Pendiente",
+      "statusInProgress": "En Curso",
+      "statusDone": "Listo",
+      "statusCancelled": "Cancelado",
+      "startCooking": "Empezar a Cocinar",
+      "markDone": "Marcar como Listo",
+      "served": "Servido",
+      "markServed": "Marcar como Servido",
+      "printTicket": "Imprimir ticket de cocina",
+      "acceptOrderTitle": "Aceptar Pedido — {{table}}",
+      "acceptOrderNote": "Esto envía el pedido a la cocina y lo añade a la cuenta abierta de la mesa. La facturación se hace una sola vez, al cerrar la cuenta.",
+      "sending": "Enviando…",
+      "confirmAndSend": "Confirmar y Enviar a Cocina",
+      "couldNotLoadIncomingOrders": "No se pudieron cargar los pedidos entrantes.",
+      "couldNotLoadTickets": "No se pudieron cargar los tickets de cocina.",
+      "couldNotRejectOrder": "No se pudo rechazar el pedido.",
+      "orderAcceptedTitle": "Pedido Aceptado",
+      "orderAcceptedDesc": "Se creó el ticket de cocina para esta mesa.",
+      "couldNotAcceptOrder": "No se pudo aceptar el pedido.",
+      "couldNotUpdateStatus": "No se pudo actualizar el estado del ticket.",
+      "couldNotCancelKot": "No se pudo cancelar el ticket.",
+      "couldNotMarkServed": "No se pudo marcar este ticket como servido.",
+      "printedTitle": "Impreso",
+      "printedDesc": "Ticket enviado a la impresora.",
+      "printFailedTitle": "Error al Imprimir",
+      "couldNotPrintKot": "No se pudo imprimir el ticket."
+    },
+    "kitchenDisplay": {
+      "title": "Pantalla de Cocina",
+      "connectionIssue": "Problema de conexión — reintentando…",
+      "updatedAt": "Actualizado {{time}}",
+      "recentlyDone": "Recién Listos",
+      "nothingHere": "Nada por aquí",
+      "updating": "Actualizando…"
+    },
+    "recipes": {
+      "title": "Gestión de Recetas",
+      "recipesCount": "{{count}} recetas configuradas",
+      "addRecipe": "Añadir Receta",
+      "editRecipe": "Editar Receta",
+      "newRecipe": "Nueva Receta",
+      "menuProduct": "Producto del Menú *",
+      "searchProductPlaceholder": "Buscar producto por nombre o SKU…",
+      "recipeName": "Nombre de la Receta *",
+      "recipeNamePlaceholder": "ej. Receta de Chai Masala",
+      "ingredients": "Ingredientes *",
+      "addIngredient": "Añadir ingrediente",
+      "searchIngredientPlaceholder": "Buscar ingrediente por nombre o SKU…",
+      "qtyPlaceholder": "Cant.",
+      "saveRecipe": "Guardar Receta",
+      "noRecipesYet": "Aún no hay recetas",
+      "noRecipesHint": "Añade recetas para rastrear el uso de ingredientes cuando se completen los tickets de cocina",
+      "forProductIngredientsCount": "Para {{product}} · {{count}} ingredientes",
+      "selectMenuProductError": "Selecciona el producto del menú para el que es esta receta.",
+      "recipeNameRequiredError": "El nombre de la receta es obligatorio.",
+      "addIngredientError": "Añade al menos un ingrediente con una cantidad válida.",
+      "couldNotLoadRecipes": "No se pudieron cargar las recetas.",
+      "couldNotSearchProducts": "No se pudieron buscar los productos.",
+      "couldNotSaveRecipe": "No se pudo guardar la receta.",
+      "couldNotDeleteRecipe": "No se pudo eliminar la receta."
+    }
+  },
+  "bloodBank": {
+    "failed": "Error",
+    "saving": "Guardando…",
+    "sending": "Enviando…",
+    "clearing": "Eliminando…",
+    "unknown": "Desconocido",
+    "bloodGroup": "Grupo Sanguíneo",
+    "expiresLabel": "Vence {{date}}",
+    "missingBloodGroupTitle": "Falta el Grupo Sanguíneo",
+    "componentWholeBlood": "Sangre Completa",
+    "componentPackedRbc": "Glóbulos Rojos Concentrados",
+    "componentPlatelets": "Plaquetas",
+    "componentPlasma": "Plasma",
+    "componentCryoprecipitate": "Crioprecipitado",
+    "componentAny": "Cualquier componente",
+    "donors": {
+      "title": "Registro de Donantes",
+      "registeredCount": "{{count}} donantes registrados",
+      "newDonor": "Nuevo Donante",
+      "searchPlaceholder": "Buscar por nombre, código o teléfono…",
+      "recallDue": "Recordatorio Pendiente ({{count}})",
+      "noneDueForRecall": "Actualmente ningún donante tiene un recordatorio pendiente",
+      "noDonorsYet": "Aún no hay donantes registrados",
+      "deferred": "Aplazado",
+      "eligible": "Elegible",
+      "recovering": "En Recuperación",
+      "noPhoneOnFile": "Sin teléfono registrado",
+      "lastLabel": "Última: {{date}}",
+      "nextEligibleLabel": "Próxima elegibilidad: {{date}}",
+      "registerDonor": "Registrar Donante",
+      "fullName": "Nombre Completo",
+      "weightKg": "Peso (kg)",
+      "weightPlaceholder": "ej. 60",
+      "weightUnit": "{{value}} kg",
+      "gender": "Género",
+      "unspecified": "No especificado",
+      "male": "Masculino",
+      "female": "Femenino",
+      "other": "Otro",
+      "lastDonation": "Última Donación",
+      "noneYet": "Aún ninguna",
+      "nextEligible": "Próxima Elegibilidad",
+      "now": "Ahora",
+      "deferredUntilLabel": "Aplazado hasta {{date}}",
+      "deferredIndefinitely": "— indefinidamente",
+      "sendRecallReminder": "Enviar Recordatorio",
+      "markDeferred": "Marcar como Aplazado",
+      "clearDeferral": "Quitar Aplazamiento",
+      "markDeferredTitle": "Marcar a {{name}} como Aplazado",
+      "reasonPlaceholder": "ej. Hemoglobina baja, prueba de detección reactiva…",
+      "deferredUntilField": "Aplazado hasta (dejar en blanco para indefinido/permanente)",
+      "missingNameTitle": "Falta el Nombre",
+      "enterDonorName": "Ingresa el nombre del donante.",
+      "donorRegisteredTitle": "Donante Registrado",
+      "donorRegisteredDesc": "El donante fue registrado con éxito.",
+      "couldNotLoadDonors": "No se pudieron cargar los donantes.",
+      "couldNotRegisterDonor": "No se pudo registrar al donante.",
+      "reminderReadyTitle": "Recordatorio Listo",
+      "reminderReadyDesc": "Se generó un enlace de recordatorio por WhatsApp.",
+      "couldNotSendRecall": "No se pudo enviar el recordatorio.",
+      "couldNotRefreshDetails": "No se pudieron actualizar los datos del donante.",
+      "donorDeferredTitle": "Donante Aplazado",
+      "donorDeferredDesc": "El donante fue marcado como aplazado.",
+      "couldNotUpdateDonor": "No se pudo actualizar al donante.",
+      "deferralClearedTitle": "Aplazamiento Eliminado",
+      "deferralClearedDesc": "El donante es elegible para donar de nuevo."
+    },
+    "donations": {
+      "title": "Donaciones y Detección",
+      "awaitingScreening": "{{count}} esperando detección",
+      "recordDonation": "Registrar Donación",
+      "allTab": "Todas ({{count}})",
+      "statusTab": "{{status}} ({{count}})",
+      "statusPending": "Pendiente",
+      "statusPassed": "Aprobado",
+      "statusFailed": "Rechazado",
+      "noRecordsFound": "No se encontraron registros de donación",
+      "recordScreening": "Registrar Detección",
+      "volumeCollectedNoCamp": "{{ml}}ml · Recolectado {{date}}",
+      "volumeCollectedWithCamp": "{{ml}}ml · Recolectado {{date}} · {{camp}}",
+      "donor": "Donante",
+      "selectDonor": "Seleccionar donante…",
+      "componentType": "Tipo de Componente",
+      "donationCampLabel": "Campaña de Donación (opcional)",
+      "walkInNotFromCamp": "Sin cita / no proviene de una campaña",
+      "volumeMl": "Volumen (ml)",
+      "donorMissingTitle": "Falta el Donante",
+      "selectDonorMsg": "Selecciona un donante.",
+      "selectBloodGroupCollected": "Selecciona el grupo sanguíneo recolectado.",
+      "donationRecordedTitle": "Donación Registrada",
+      "donationRecordedDesc": "Donación registrada — detección pendiente.",
+      "couldNotRecordDonation": "No se pudo registrar la donación.",
+      "couldNotLoadDonationRecords": "No se pudieron cargar los registros de donación.",
+      "couldNotLoadDonationsData": "No se pudieron cargar los datos de donaciones.",
+      "screeningResultTitle": "Resultado de la Detección",
+      "notesOptionalPlaceholder": "Notas (opcional)",
+      "passed": "Aprobado",
+      "unitAddedToStockTitle": "Unidad Añadida al Stock",
+      "markedFailedTitle": "Marcado como Rechazado",
+      "screeningPassedDesc": "Detección aprobada — la unidad ya está en stock.",
+      "screeningFailedDesc": "Detección rechazada — unidad descartada, no añadida al stock.",
+      "couldNotRecordScreening": "No se pudo registrar el resultado de la detección."
+    },
+    "camps": {
+      "title": "Campañas de Donación",
+      "summary": "{{count}} campaña(s) · {{total}} donaciones en total en todas las campañas",
+      "scheduleCamp": "Programar Campaña",
+      "noCampsYet": "Aún no hay campañas de donación programadas",
+      "organizedByLabel": "Organizado por {{organizer}}",
+      "donorsLabel": "donantes",
+      "campNameLabel": "Nombre de la Campaña",
+      "campNamePlaceholder": "ej. Campaña del Centro Comunitario",
+      "location": "Ubicación",
+      "organizer": "Organizador",
+      "scheduleCampModalTitle": "Programar Campaña de Donación",
+      "missingNameTitle": "Falta el Nombre",
+      "enterCampName": "Ingresa el nombre de la campaña.",
+      "missingDateTitle": "Falta la Fecha",
+      "selectCampDate": "Selecciona la fecha de la campaña.",
+      "campScheduledTitle": "Campaña Programada",
+      "campScheduledDesc": "La campaña de donación se programó con éxito.",
+      "couldNotScheduleCamp": "No se pudo programar la campaña.",
+      "couldNotLoadCamps": "No se pudieron cargar las campañas de donación."
+    },
+    "stock": {
+      "title": "Stock de Sangre",
+      "summaryNoExpiring": "{{count}} unidades disponibles",
+      "summaryWithExpiring": "{{count}} unidades disponibles · {{expiring}} por vencer pronto",
+      "allUnits": "Todas las Unidades",
+      "expiringSoon": "Por Vencer Pronto",
+      "noUnitsToShow": "No hay unidades para mostrar",
+      "unitsAvailableLabel": "unidades disponibles",
+      "expiringSoonCount": "{{count}} por vencer pronto",
+      "unitCol": "Unidad",
+      "groupCol": "Grupo",
+      "componentCol": "Componente",
+      "collectedCol": "Recolectado",
+      "expiresCol": "Vence",
+      "couldNotLoadStock": "No se pudo cargar el stock de sangre."
+    },
+    "issue": {
+      "title": "Entrega de Sangre",
+      "activeIssuesCount": "{{count}} entregas activas",
+      "issueUnits": "Entregar Unidades",
+      "noIssuesYet": "Aún no se ha entregado sangre",
+      "unitsCount": "{{count}} unidad(es) · {{groups}}",
+      "issueUnitsModalTitle": "Entregar Unidades de Sangre",
+      "recipientName": "Nombre del Receptor",
+      "recipientBloodGroup": "Grupo Sanguíneo del Receptor",
+      "customerOptional": "Cliente (opcional — necesario para facturar)",
+      "customerSearchPlaceholder": "Buscar por nombre o teléfono...",
+      "purpose": "Motivo",
+      "purposePlaceholder": "ej. Transfusión por cirugía",
+      "pricePerUnit": "Precio por Unidad",
+      "fastMatchTitle": "Búsqueda Rápida — encuentra unidades compatibles por grupo/componente/cantidad",
+      "qtyPlaceholder": "Cant.",
+      "findAndSelect": "Buscar y Seleccionar",
+      "matching": "Buscando coincidencias…",
+      "matchedAllDesc": "Se encontraron las {{count}} unidades solicitadas.",
+      "matchedShortDesc": "Solo {{matched}} de {{requested}} unidades compatibles disponibles — faltan {{shortfall}}.",
+      "selectAvailableUnits": "Seleccionar Unidades Disponibles ({{count}} seleccionadas)",
+      "noUnitsInStock": "Actualmente no hay unidades en stock.",
+      "statusIssued": "Entregado",
+      "statusCancelled": "Cancelado",
+      "incompatibleWarningTitle": "Unidad(es) incompatible(s) — entrega bloqueada.",
+      "incompatibleWarningDesc": "Esto no sustituye una prueba cruzada real:",
+      "overrideEmergencyRelease": "Anular — liberación de emergencia (se requiere un motivo documentado)",
+      "overrideReasonPlaceholder": "Por qué se está entregando esta unidad incompatible de todas formas (ej. emergencia potencialmente mortal, no hay unidad compatible en stock, orden médica)...",
+      "issuing": "Entregando…",
+      "generateInvoice": "Generar Factura",
+      "generating": "Generando…",
+      "cancelIssue": "Cancelar Entrega",
+      "overrideReasonLabel": "Motivo de la anulación:",
+      "cancelIssueConfirmMsg": "¿Cancelar esta entrega y devolver todas las unidades al stock?",
+      "missingRecipientTitle": "Falta el Receptor",
+      "enterRecipientName": "Ingresa el nombre del receptor.",
+      "noUnitsSelectedTitle": "No se Seleccionaron Unidades",
+      "selectAtLeastOneUnit": "Selecciona al menos una unidad para entregar.",
+      "incompatibleSelectedTitle": "Unidades Incompatibles Seleccionadas",
+      "checkOverrideMsg": "Para continuar, marca \"Anular — liberación de emergencia\" y documenta un motivo.",
+      "reasonRequiredTitle": "Motivo Requerido",
+      "enterOverrideReason": "Ingresa un motivo documentado para la anulación de liberación de emergencia.",
+      "selectRecipientBloodGroupFirst": "Primero selecciona el grupo sanguíneo del receptor.",
+      "invalidQuantityTitle": "Cantidad Inválida",
+      "enterUnitsNeeded": "Indica cuántas unidades se necesitan.",
+      "unitsIssuedTitle": "Unidades Entregadas",
+      "unitsIssuedDesc": "Las unidades de sangre se entregaron con éxito.",
+      "couldNotIssueUnits": "No se pudieron entregar las unidades.",
+      "couldNotLoadIssues": "No se pudieron cargar las entregas de sangre.",
+      "couldNotLoadIssueData": "No se pudieron cargar los datos de la entrega.",
+      "couldNotVerifyCompatibility": "No se pudo verificar la compatibilidad sanguínea.",
+      "couldNotRunFastMatch": "No se pudo ejecutar la búsqueda rápida.",
+      "couldNotRefreshIssueDetails": "No se pudieron actualizar los detalles de la entrega.",
+      "issueCancelledTitle": "Entrega Cancelada",
+      "issueCancelledDesc": "Las unidades fueron devueltas al stock.",
+      "couldNotCancelIssue": "No se pudo cancelar la entrega.",
+      "invoiceGeneratedTitle": "Factura Generada",
+      "invoiceGeneratedDesc": "Se generó la factura para esta entrega.",
+      "couldNotGenerateInvoice": "No se pudo generar la factura."
     }
   }
 }

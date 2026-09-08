@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Droplets, RefreshCw, AlertTriangle } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -21,12 +22,26 @@ interface StockSummaryEntry { available: number; expiringSoon: number }
 
 const BLOOD_GROUPS = ['O+', 'O-', 'A+', 'A-', 'B+', 'B-', 'AB+', 'AB-']
 
+const COMPONENT_LABEL_KEY: Record<string, string> = {
+  WHOLE_BLOOD: 'componentWholeBlood',
+  PACKED_RBC: 'componentPackedRbc',
+  PLATELETS: 'componentPlatelets',
+  PLASMA: 'componentPlasma',
+  CRYOPRECIPITATE: 'componentCryoprecipitate',
+}
+
 export function BloodStockScreen() {
+  const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [units, setUnits] = useState<StockUnit[]>([])
   const [summary, setSummary] = useState<Record<string, StockSummaryEntry>>({})
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState<'ALL' | 'EXPIRING'>('ALL')
+
+  function componentLabel(type: string): string {
+    const key = COMPONENT_LABEL_KEY[type]
+    return key ? t(`bloodBank.${key}`) : type.replace('_', ' ')
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -37,14 +52,14 @@ export function BloodStockScreen() {
         setUnits(d.units ?? [])
         setSummary(d.summary ?? {})
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not load blood stock.')
+        toastError(t('bloodBank.failed'), res.error?.message ?? t('bloodBank.stock.couldNotLoadStock'))
       }
     } catch {
-      toastError('Failed', 'Could not load blood stock.')
+      toastError(t('bloodBank.failed'), t('bloodBank.stock.couldNotLoadStock'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { load() }, [load])
 
@@ -59,9 +74,13 @@ export function BloodStockScreen() {
           <div>
             <h1 className="text-2xl font-bold text-text-primary flex items-center gap-2">
               <Droplets size={24} className="text-brand" />
-              Blood Stock
+              {t('bloodBank.stock.title')}
             </h1>
-            <p className="text-sm text-text-secondary mt-0.5">{totalAvailable} units available{totalExpiringSoon > 0 ? ` · ${totalExpiringSoon} expiring soon` : ''}</p>
+            <p className="text-sm text-text-secondary mt-0.5">
+              {totalExpiringSoon > 0
+                ? t('bloodBank.stock.summaryWithExpiring', { count: totalAvailable, expiring: totalExpiringSoon })
+                : t('bloodBank.stock.summaryNoExpiring', { count: totalAvailable })}
+            </p>
           </div>
           <button onClick={load} className="h-11 w-11 flex items-center justify-center rounded-lg border border-border text-text-secondary hover:bg-surface-hover transition-colors">
             <RefreshCw size={16} className={loading ? 'animate-spin' : ''} />
@@ -83,8 +102,8 @@ export function BloodStockScreen() {
                   {expiringSoon > 0 && <AlertTriangle size={14} className="text-warning" />}
                 </div>
                 <p className="text-2xl font-bold text-text-primary mt-1">{available}</p>
-                <p className="text-xs text-text-secondary">units available</p>
-                {expiringSoon > 0 && <p className="text-xs text-warning mt-1">{expiringSoon} expiring soon</p>}
+                <p className="text-xs text-text-secondary">{t('bloodBank.stock.unitsAvailableLabel')}</p>
+                {expiringSoon > 0 && <p className="text-xs text-warning mt-1">{t('bloodBank.stock.expiringSoonCount', { count: expiringSoon })}</p>}
               </div>
             )
           })}
@@ -92,8 +111,8 @@ export function BloodStockScreen() {
 
         <div>
           <div className="flex gap-2 mb-3">
-            <button onClick={() => setFilter('ALL')} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === 'ALL' ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>All Units</button>
-            <button onClick={() => setFilter('EXPIRING')} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === 'EXPIRING' ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>Expiring Soon</button>
+            <button onClick={() => setFilter('ALL')} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === 'ALL' ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{t('bloodBank.stock.allUnits')}</button>
+            <button onClick={() => setFilter('EXPIRING')} className={`px-4 py-2 rounded-lg text-sm font-medium ${filter === 'EXPIRING' ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300'}`}>{t('bloodBank.stock.expiringSoon')}</button>
           </div>
 
           {loading ? (
@@ -101,18 +120,18 @@ export function BloodStockScreen() {
           ) : visible.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-16 text-text-secondary">
               <Droplets size={40} className="mb-3 opacity-30" />
-              <p className="text-base font-medium">No units to show</p>
+              <p className="text-base font-medium">{t('bloodBank.stock.noUnitsToShow')}</p>
             </div>
           ) : (
             <div className="bg-white dark:bg-slate-900 rounded-xl border border-border overflow-hidden">
               <table className="w-full text-sm">
                 <thead className="bg-slate-50 dark:bg-slate-800">
                   <tr className="text-start text-text-secondary">
-                    <th className="px-4 py-2 font-semibold">Unit</th>
-                    <th className="px-4 py-2 font-semibold">Group</th>
-                    <th className="px-4 py-2 font-semibold">Component</th>
-                    <th className="px-4 py-2 font-semibold">Collected</th>
-                    <th className="px-4 py-2 font-semibold">Expires</th>
+                    <th className="px-4 py-2 font-semibold">{t('bloodBank.stock.unitCol')}</th>
+                    <th className="px-4 py-2 font-semibold">{t('bloodBank.stock.groupCol')}</th>
+                    <th className="px-4 py-2 font-semibold">{t('bloodBank.stock.componentCol')}</th>
+                    <th className="px-4 py-2 font-semibold">{t('bloodBank.stock.collectedCol')}</th>
+                    <th className="px-4 py-2 font-semibold">{t('bloodBank.stock.expiresCol')}</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -120,7 +139,7 @@ export function BloodStockScreen() {
                     <tr key={u.donationRecordId} className="border-t border-border">
                       <td className="px-4 py-2 font-mono text-xs">{u.donationNumber}</td>
                       <td className="px-4 py-2"><Badge variant="brand" size="sm">{u.bloodGroup}</Badge></td>
-                      <td className="px-4 py-2">{u.componentType.replace('_', ' ')}</td>
+                      <td className="px-4 py-2">{componentLabel(u.componentType)}</td>
                       <td className="px-4 py-2">{formatDate(u.collectionDate)}</td>
                       <td className="px-4 py-2">
                         <span className={u.isExpiringSoon ? 'text-warning font-semibold' : 'text-text-primary'}>{formatDate(u.expiryDate)}</span>
