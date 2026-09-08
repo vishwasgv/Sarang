@@ -652,6 +652,16 @@ export async function returnBooking(payload: {
         const dailyEquivalent = (item.rateAmount / UNIT_MS[item.rateBasis as RateBasis]) * UNIT_MS.DAY
         lateFee += dailyEquivalent * multiplier * lateDurationUnits * item.quantity
       }
+      // Real bug found in this audit: lateFee was persisted (and later used
+      // directly as an invoice line's unitPrice, see generateRentalInvoice
+      // below) without ever going through roundCurrency() — unlike every
+      // other computed money value in this file. The per-item division
+      // above (rateAmount / UNIT_MS[basis] * UNIT_MS.DAY) is exact for clean
+      // rates but accumulates ordinary binary floating-point error for
+      // everyday non-round rates (e.g. 99.99), so a multi-item late return
+      // could silently store/bill a late fee like 2399.7599999999998 instead
+      // of 2399.76.
+      lateFee = roundCurrency(lateFee)
     }
 
     // Real bug found live (2026-07-28 product-vertical audit): the

@@ -10,6 +10,7 @@ import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/Customer
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface GoldSavingsInstallment { id: string; amount: number; paymentMethod: string | null; paidAt: string }
 interface GoldSavingsScheme {
@@ -43,7 +44,7 @@ export function GoldSavingsScreen(): React.JSX.Element {
   const [metalType, setMetalType] = useState('GOLD')
   const [monthlyAmount, setMonthlyAmount] = useState('')
   const [tenureMonths, setTenureMonths] = useState('11')
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [startDate, setStartDate] = useState(() => toLocalISODate(new Date()))
   const [notes, setNotes] = useState('')
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
@@ -75,7 +76,7 @@ export function GoldSavingsScreen(): React.JSX.Element {
     setPickedCustomer(null)
     setMonthlyAmount('')
     setTenureMonths('11')
-    setStartDate(new Date().toISOString().slice(0, 10))
+    setStartDate(toLocalISODate(new Date()))
     setNotes('')
     setError('')
   }

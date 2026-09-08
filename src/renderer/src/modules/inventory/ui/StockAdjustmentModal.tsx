@@ -9,7 +9,12 @@ import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
 
 const schema = z.object({
-  quantity: z.coerce.number().min(0, 'Quantity cannot be negative'),
+  // REAL BUG found+fixed (pre-launch audit): this mirrored the backend's own
+  // now-fixed AdjustStockSchema mistake — see that file's comment. Negative
+  // is a real, setting-gated case (inventory.service.ts's adjustStock/
+  // getAllowNegative()), not something the form should reject outright;
+  // the backend still returns a friendly error when the setting is off.
+  quantity: z.coerce.number().finite('Quantity must be a valid number'),
   reason: z.string().min(1, 'Reason is required for stock adjustment').max(255),
   // z.coerce.number() alone turns a blank input into 0 (Number('') === 0 in JS),
   // not undefined — which would silently recalculate average cost using a cost
@@ -153,7 +158,6 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
           <Input
             label={`New Quantity (${inventoryItem.product.unit})`}
             type="number"
-            min="0"
             step="1"
             {...register('quantity')}
             error={errors.quantity?.message}

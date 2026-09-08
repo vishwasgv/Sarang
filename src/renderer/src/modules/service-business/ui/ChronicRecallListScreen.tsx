@@ -6,6 +6,7 @@ import { useIndustryStore } from '@app/store/industry.store'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 // Phase 67 §9.1 item 19 (GP Clinic, GREENFIELD) — deliberately English-only:
 // this is a vertical-specific screen (GP_CLINIC only), same languageLock
@@ -52,7 +53,7 @@ function fmt(dateStr: string) {
   return new Date(dateStr).toLocaleDateString('en-IN', { day: 'numeric', month: 'short', year: 'numeric' })
 }
 
-const emptyForm = { id: undefined as string | undefined, patientId: '', conditionName: '', diagnosedDate: '', lastVisitDate: new Date().toISOString().slice(0, 10), nextRecallDate: '', notes: '' }
+const emptyForm = { id: undefined as string | undefined, patientId: '', conditionName: '', diagnosedDate: '', lastVisitDate: toLocalISODate(new Date()), nextRecallDate: '', notes: '' }
 
 export function ChronicRecallListScreen() {
   const isChronicRecall = useIndustryStore((s) => s.isModuleEnabled('chronic_recall'))
@@ -132,7 +133,7 @@ export function ChronicRecallListScreen() {
       patientId: r.patientId,
       conditionName: r.conditionName,
       diagnosedDate: r.diagnosedDate ? r.diagnosedDate.slice(0, 10) : '',
-      lastVisitDate: new Date().toISOString().slice(0, 10),
+      lastVisitDate: toLocalISODate(new Date()),
       nextRecallDate: '',
       notes: r.notes ?? '',
     })

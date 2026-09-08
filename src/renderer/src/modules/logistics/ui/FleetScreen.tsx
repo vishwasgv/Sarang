@@ -52,7 +52,9 @@ export default function FleetScreen() {
   const [filterStatus, setFilterStatus] = useState('ALL')
   const [filterOwnerType, setFilterOwnerType] = useState('ALL')
   const [search, setSearch] = useState('')
-  const PAGE_SIZE = 100
+  // Pre-release audit fix (2026-09) — same client-side-search-over-loaded-
+  // page fix as ChallanScreen/GRNScreen/CarriersScreen.
+  const PAGE_SIZE = 1000
   const [limit, setLimit] = useState(PAGE_SIZE)
   const [total, setTotal] = useState(0)
 

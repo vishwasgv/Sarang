@@ -11,7 +11,7 @@ import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { Skeleton } from '@shared/ui/Skeleton'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDateTime } from '@shared/utils/locale.util'
+import { formatDateTime, toLocalISODate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { splitTaxLines } from '@shared/utils/tax.util'
 import { useAuthStore } from '@app/store/auth.store'
@@ -242,7 +242,7 @@ export function InvoiceDetailScreen() {
         customerId: invoice.customer.id,
         customerName: invoice.customer.customerName,
         invoiceId: invoice.id,
-        dispatchDate: new Date().toISOString().slice(0, 10),
+        dispatchDate: toLocalISODate(new Date()),
         notes: t('billing.deliveryNoteFromInvoice', { number: invoice.invoiceNumber }),
         items: invoice.items.map(item => ({
           productId: item.product.id,
@@ -284,7 +284,7 @@ export function InvoiceDetailScreen() {
         customerId: invoice.customer.id,
         customerName: invoice.customer.customerName,
         invoiceId: invoice.id,
-        dispatchDate: new Date().toISOString().slice(0, 10),
+        dispatchDate: toLocalISODate(new Date()),
         notes: t('billing.packingSlipFromInvoice', { number: invoice.invoiceNumber }),
         items: invoice.items.map(item => ({
           productId: item.product.id,

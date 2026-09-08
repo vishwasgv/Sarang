@@ -9,6 +9,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { cn } from '@shared/utils/cn'
+import { toLocalISODate } from '@shared/utils/locale.util'
 import { VaccinationCertificate } from './VaccinationCertificate'
 import { useNotificationStore } from '@app/store/notification.store'
 
@@ -173,7 +174,7 @@ interface VaccinationFormData {
 
 const EMPTY_VAC_FORM: VaccinationFormData = {
   vaccineName: '', vaccineType: '', batchNumber: '', manufacturer: '',
-  administeredAt: new Date().toISOString().slice(0, 10), administeredBy: '', nextDueDate: '', notes: '',
+  administeredAt: toLocalISODate(new Date()), administeredBy: '', nextDueDate: '', notes: '',
 }
 
 export function PetProfileScreen() {
@@ -269,7 +270,7 @@ export function PetProfileScreen() {
   // click-through on the Vaccinations tab's Edit button.
   function toDateInputValue(v: string | Date | null | undefined): string {
     if (!v) return ''
-    return new Date(v).toISOString().slice(0, 10)
+    return toLocalISODate(new Date(v))
   }
 
   function openEditPet() {
@@ -376,7 +377,7 @@ export function PetProfileScreen() {
   // ── Vaccination CRUD ──────────────────────────────────────────────────────
 
   function openNewVac() {
-    setVacForm({ ...EMPTY_VAC_FORM, administeredAt: new Date().toISOString().slice(0, 10) })
+    setVacForm({ ...EMPTY_VAC_FORM, administeredAt: toLocalISODate(new Date()) })
     setEditVacId(null)
     setVacError(null)
     setShowVacForm(true)

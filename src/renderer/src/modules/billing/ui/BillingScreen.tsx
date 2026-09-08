@@ -244,6 +244,21 @@ export function BillingScreen() {
   const [exchangeSearch, setExchangeSearch] = useState('')
   const [exchangeResults, setExchangeResults] = useState<Array<{ id: string; exchangeNumber: string; valueGiven: number; customerName: string | null; customer?: { customerName: string } | null }>>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
+  // Pre-release audit fix (2026-09) — only rendered when the business has
+  // more than one active Location; a single-location business (the vast
+  // majority) never sees this and locationId stays undefined, preserving
+  // the existing default-Location behavior exactly.
+  const [locations, setLocations] = useState<{ id: string; name: string }[]>([])
+  const [locationId, setLocationId] = useState<string>('')
+  // A ref mirror, read inside handleSubmit — keeps locationId OUT of that
+  // callback's own dependency array. That array also drives the F10-keydown
+  // useEffect below (it depends on handleSubmit's identity), so including a
+  // value here that changes asynchronously right after mount (this state
+  // updates once the locations.list() fetch resolves) would re-register that
+  // listener at an unpredictable moment — a real, if narrow, window for a
+  // keypress to land between remove/add. The ref sidesteps it entirely.
+  const locationIdRef = useRef('')
+  useEffect(() => { locationIdRef.current = locationId }, [locationId])
   // 2026-09-04 — order-channel tagging for a table-less restaurant sale.
   // Only meaningful/sent when !tableId — a dine-in sale is DINE_IN by
   // construction (tableId already implies it), never a picker choice.
@@ -336,6 +351,17 @@ export function BillingScreen() {
   useEffect(() => {
     window.api.costCentres.list().then((res) => {
       if (res.success && res.data) setCostCentres(res.data as { id: string; name: string }[])
+    }).catch(() => {})
+  }, [])
+
+  useEffect(() => {
+    window.api.locations.list().then((res) => {
+      if (res.success && res.data) {
+        const active = (res.data as { id: string; name: string; isActive: boolean; isDefault: boolean }[]).filter(l => l.isActive)
+        setLocations(active)
+        const def = active.find(l => l.isDefault)
+        if (def) setLocationId(def.id)
+      }
     }).catch(() => {})
   }, [])
 
@@ -1015,12 +1041,17 @@ export function BillingScreen() {
         return
       }
       const netWeight = product.netWeight ?? 0
-      const metalValue = netWeight * rate.ratePerGram
+      // Real bug found live (this audit): raw JS multiplication with no
+      // rounding — netWeight=8.1, ratePerGram=6410.20 gives
+      // 51922.619999999995 — the exact bug class metal-exchange.service.ts's
+      // valueGiven was already fixed for (see its own comment), never
+      // propagated back to this mirrored client-side formula.
+      const metalValue = Math.round(netWeight * rate.ratePerGram * 100) / 100
       let makingCharge = 0
       if (product.makingChargeType === 'FIXED') makingCharge = product.makingChargeValue ?? 0
-      else if (product.makingChargeType === 'PER_GRAM') makingCharge = (product.makingChargeValue ?? 0) * netWeight
-      else if (product.makingChargeType === 'PERCENTAGE') makingCharge = metalValue * ((product.makingChargeValue ?? 0) / 100)
-      const unitPrice = metalValue + makingCharge
+      else if (product.makingChargeType === 'PER_GRAM') makingCharge = Math.round((product.makingChargeValue ?? 0) * netWeight * 100) / 100
+      else if (product.makingChargeType === 'PERCENTAGE') makingCharge = Math.round(metalValue * ((product.makingChargeValue ?? 0) / 100) * 100) / 100
+      const unitPrice = Math.round((metalValue + makingCharge) * 100) / 100
       setCart(prev => prev.map(i => (i.serialId ?? i.variantId ?? i.productId) === cartKey
         ? {
             ...i, unitPrice,
@@ -1062,7 +1093,7 @@ export function BillingScreen() {
       const makingCharge = Math.max(0, newMakingCharge)
       return {
         ...i,
-        unitPrice: i.jewelleryDetail.metalValue + makingCharge,
+        unitPrice: Math.round((i.jewelleryDetail.metalValue + makingCharge) * 100) / 100,
         jewelleryDetail: { ...i.jewelleryDetail, makingCharge, makingChargeOverridden: true }
       }
     }))
@@ -1250,6 +1281,7 @@ export function BillingScreen() {
 
       const res = await window.api.billing.createInvoice({
         customerId: customer?.id,
+        locationId: locationIdRef.current || undefined,
         paymentMethod,
         items: cart.map(i => ({
           productId: i.productId,
@@ -1951,6 +1983,17 @@ export function BillingScreen() {
               </>
             )}
           </div>
+
+          {/* Selling location — only shown for a business with more than one active Location */}
+          {locations.length > 1 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('billing.sellingLocation')}</p>
+              <select value={locationId} onChange={(e) => setLocationId(e.target.value)}
+                className="w-full h-9 px-2.5 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 text-slate-700 dark:text-slate-300">
+                {locations.map(l => <option key={l.id} value={l.id}>{l.name}</option>)}
+              </select>
+            </div>
+          )}
 
           {/* Payment method */}
           <div>

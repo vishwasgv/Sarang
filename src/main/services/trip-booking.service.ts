@@ -45,7 +45,37 @@ export async function createCharterBooking(payload: {
     if (advanceAmount < 0) return { success: false, error: { code: 'TRB-005', message: 'Advance amount cannot be negative.' } }
     if (advanceAmount > payload.packageRate) return { success: false, error: { code: 'TRB-006', message: 'Advance cannot exceed the package rate.' } }
 
+    // Real bug found in this audit: unlike hotel.service.ts's findConflict
+    // (rooms) and rental.service.ts's computeAvailability (rental units),
+    // this vertical had NO check preventing the same physical vehicle from
+    // being charter-booked twice for overlapping trip dates — the vehicle
+    // picker (TripBookingScreen) lists every ACTIVE vehicle unfiltered, and
+    // vehicle.service.ts's getFleetAndSeatAvailability only ever surfaced
+    // booked dates for informational display, never enforced them. A
+    // dispatcher could double-book one bus/car for two overlapping trips
+    // with zero warning anywhere in the flow. Same interval-overlap formula
+    // and "missing tripEndDate = single-day trip" convention
+    // getFleetAndSeatAvailability already established for its own read-only
+    // query, now actually enforced — re-checked fresh inside the
+    // transaction below (not against this pre-transaction snapshot) so two
+    // dispatchers booking the same vehicle for overlapping dates moments
+    // apart can't both succeed, mirroring hotel/rental's identical
+    // in-transaction re-check.
+    const tripEnd = payload.tripEndDate ? parseLocalDateStart(payload.tripEndDate) : parseLocalDateStart(payload.tripStartDate)
+    const tripStart = parseLocalDateStart(payload.tripStartDate)
+
     const booking = await db.$transaction(async (tx) => {
+      const conflict = await tx.tripBooking.findFirst({
+        where: {
+          bookingType: 'CHARTER', vehicleId: payload.vehicleId, status: { not: 'CANCELLED' },
+          tripStartDate: { lte: tripEnd },
+          OR: [{ tripEndDate: { gte: tripStart } }, { tripEndDate: null, tripStartDate: { gte: tripStart } }],
+        },
+      })
+      if (conflict) {
+        throw new ServiceError('TRB-016', `Vehicle ${vehicle.registrationNumber} is already booked for an overlapping trip (booking ${conflict.bookingNumber}).`)
+      }
+
       const bookingNumber = await generateSequenceNumber(
         tx, 'trip_booking_number_sequence', 'TRP', 5,
         async () => {
@@ -72,6 +102,7 @@ export async function createCharterBooking(payload: {
     await scheduleDepartureReminder(booking.id).catch(() => {})
     return { success: true, data: booking }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'TRB-015', message: err instanceof Error ? err.message : 'Could not create charter booking.' } }
   }
 }

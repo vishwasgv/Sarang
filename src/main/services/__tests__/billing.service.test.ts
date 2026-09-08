@@ -665,7 +665,7 @@ describe('billingService.createInvoice — Phase 63 zero-value/free-of-cost bill
     // asserting it ran for the real quantity confirms FOC lines aren't
     // silently skipped the way a zero-quantity line would be.
     expect(vi.mocked(inventoryService.reduceStockTx)).toHaveBeenCalledWith(
-      expect.anything(), 'prod-1', 3, expect.any(String), 'INVOICE', expect.any(String), undefined
+      expect.anything(), 'prod-1', 3, expect.any(String), 'INVOICE', expect.any(String), undefined, undefined
     )
   })
 
@@ -717,13 +717,13 @@ describe('billingService.createInvoice — Phase 64 composite items/kits', () =>
     expect(res.success).toBe(true)
     // 3 kits sold * 2 per kit = 6 of comp-1, * 1 per kit = 3 of comp-2 — never 'kit-1' itself.
     expect(vi.mocked(inventoryService.reduceStockTx)).toHaveBeenCalledWith(
-      expect.anything(), 'comp-1', 6, expect.any(String), 'INVOICE', expect.any(String), undefined
+      expect.anything(), 'comp-1', 6, expect.any(String), 'INVOICE', expect.any(String), undefined, undefined
     )
     expect(vi.mocked(inventoryService.reduceStockTx)).toHaveBeenCalledWith(
-      expect.anything(), 'comp-2', 3, expect.any(String), 'INVOICE', expect.any(String), undefined
+      expect.anything(), 'comp-2', 3, expect.any(String), 'INVOICE', expect.any(String), undefined, undefined
     )
     expect(vi.mocked(inventoryService.reduceStockTx)).not.toHaveBeenCalledWith(
-      expect.anything(), 'kit-1', expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything()
+      expect.anything(), 'kit-1', expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything(), expect.anything()
     )
   })
 

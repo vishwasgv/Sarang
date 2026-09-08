@@ -1,7 +1,26 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+
+// Real bug found (Group E service-family audit, 2026-09-04): learnerLicenseDate/
+// permanentLicenseDate are pure calendar-date fields, but were returned as raw
+// Prisma Date | null values, which cross the contextBridge as real Date
+// instances (structuredClone preserves them), not ISO strings.
+// DrivingSchoolScreen.tsx's handleSelectLearner calls `.slice(0, 10)` on both
+// fields when prefilling its edit form — `.slice` doesn't exist on Date, so
+// selecting any learner who already had a license date on file threw, wiped
+// the just-fetched profile out of state, and showed "Could not load learner
+// profile" even though the fetch itself succeeded. Same bug class already
+// fixed for ComplianceTask/ROCFiling/RetainerAgreement/Engagement/
+// ServiceProject/LegalCase/RecallRecord (see date.util.ts's toLocalDateOnlyIso).
+function serializeLearnerProfile<T extends { learnerLicenseDate: Date | null; permanentLicenseDate: Date | null }>(p: T): T {
+  return {
+    ...p,
+    learnerLicenseDate: (p.learnerLicenseDate ? toLocalDateOnlyIso(p.learnerLicenseDate) : null) as unknown as Date | null,
+    permanentLicenseDate: (p.permanentLicenseDate ? toLocalDateOnlyIso(p.permanentLicenseDate) : null) as unknown as Date | null,
+  }
+}
 
 // DrivingSession.sessionFee and DrivingPackage.price/DrivingPackageEnrollment
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -65,7 +84,7 @@ export async function getLearnerProfile(customerId: string) {
       where: { customerId },
       include: { customer: { select: { id: true, customerName: true, phone: true, email: true } } },
     })
-    return { success: true, data: profile }
+    return { success: true, data: profile ? serializeLearnerProfile(profile) : null }
   } catch (err) {
     return { success: false, error: { code: 'LP27-001', message: err instanceof Error ? err.message : 'Could not get learner profile.' } }
   }
@@ -95,7 +114,7 @@ export async function upsertLearnerProfile(payload: {
       update: data,
       include: { customer: { select: { id: true, customerName: true, phone: true, email: true } } },
     })
-    return { success: true, data: profile }
+    return { success: true, data: serializeLearnerProfile(profile) }
   } catch (err) {
     return { success: false, error: { code: 'LP27-002', message: err instanceof Error ? err.message : 'Could not save learner profile.' } }
   }

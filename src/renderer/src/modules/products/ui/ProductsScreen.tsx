@@ -59,8 +59,18 @@ export function ProductsScreen() {
   const loadData = useCallback(async () => {
     setLoading(true)
     try {
+      // REAL BUG found+fixed (pre-launch audit): this call passed no `limit`,
+      // silently defaulting to listProducts()'s own limit:50 — the DataTable
+      // below does client-side-only search/pagination over whatever array it's
+      // handed, so any product ranked 51st+ alphabetically was UNSEARCHABLE
+      // and unreachable from this screen (the "record count"/page controls
+      // only ever reflected that same capped 50, never the true total). Every
+      // OTHER caller of products.list() across the app (BillingScreen,
+      // SalesOrderFormModal, PurchaseOrderFormModal, LocationsScreen, etc.)
+      // already passes limit:500/1000 — this was the one screen actually
+      // dedicated to managing the catalog that had been missed.
       const [pRes, cRes] = await Promise.all([
-        window.api.products.list({ categoryId: selectedCategory || undefined }),
+        window.api.products.list({ categoryId: selectedCategory || undefined, limit: 1000 }),
         window.api.categories.list()
       ])
       if (pRes.success) {

@@ -8,7 +8,7 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDateTime } from '@shared/utils/locale.util'
+import { formatDateTime, toLocalISODate } from '@shared/utils/locale.util'
 
 interface JELine { id: string; debitAmount: number; creditAmount: number; account: { accountCode: string; accountName: string } }
 interface JournalEntry {
@@ -172,7 +172,7 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [accounts, setAccounts] = useState<Account[]>([])
-  const [entryDate, setEntryDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [entryDate, setEntryDate] = useState(() => toLocalISODate(new Date()))
   const [narration, setNarration] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([
     { accountId: '', debitAmount: '', creditAmount: '', remarks: '' },

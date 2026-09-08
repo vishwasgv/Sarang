@@ -34,7 +34,9 @@ export default function CarriersScreen() {
   const [deleting, setDeleting] = useState(false)
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
-  const PAGE_SIZE = 100
+  // Pre-release audit fix (2026-09) — same client-side-search-over-loaded-
+  // page fix as ChallanScreen/GRNScreen/FleetScreen.
+  const PAGE_SIZE = 1000
   const [limit, setLimit] = useState(PAGE_SIZE)
   const [total, setTotal] = useState(0)
 

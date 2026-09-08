@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { roundCurrency } from './currency.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // Phase 67 §9.1 — Jewellery item 1: Gold savings scheme (chit) ledger, "the
 // single most-requested feature in Indian jewellery retail" per the source
@@ -66,7 +67,7 @@ export async function createGoldSavingsScheme(payload: {
           metalType: payload.metalType,
           monthlyAmount: payload.monthlyAmount,
           tenureMonths: payload.tenureMonths,
-          startDate: new Date(payload.startDate),
+          startDate: parseLocalDateStart(payload.startDate),
           notes: payload.notes?.trim() || null,
           createdById: payload.createdById ?? null,
         },

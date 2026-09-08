@@ -8,7 +8,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
-import { formatDate } from '@shared/utils/locale.util'
+import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 
 interface Vehicle {
   id: string; registrationNumber: string; vehicleType: string; seatingCapacity: number
@@ -69,7 +69,12 @@ export function VehicleFleetScreen(): React.JSX.Element {
   useEffect(() => {
     void (async () => {
       const from = new Date(); const to = new Date(Date.now() + 30 * 86400000)
-      const res = await window.api.vehicle.fleetAvailability({ dateFrom: from.toISOString().slice(0, 10), dateTo: to.toISOString().slice(0, 10) })
+      // Bug found in this audit: from/to were run through toISOString() (UTC)
+      // before slicing to a date-only string — for any UTC-negative-offset
+      // deployment this can roll "today" back to yesterday near local
+      // midnight, shifting the whole 30-day availability window by a day.
+      // toLocalISODate builds the date-only string from local Y/M/D instead.
+      const res = await window.api.vehicle.fleetAvailability({ dateFrom: toLocalISODate(from), dateTo: toLocalISODate(to) })
       if (res.success) setAvailability(res.data as { vehicles: VehicleAvailabilityRow[]; departures: DepartureAvailabilityRow[] })
     })()
   }, [vehicles])

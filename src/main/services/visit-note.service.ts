@@ -1,7 +1,28 @@
 import { getPrisma } from '../database/db'
 import { computeVitalsFlags } from './normal-range.service'
-import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { parseLocalDateStart, parseLocalDateEnd, toLocalDateOnlyIso } from '../utils/date.util'
 import { createAppointment } from './appointment.service'
+
+// Real bug found (Group E service-family audit, 2026-09-04): followUpDate/
+// referralDate are pure calendar-date fields, but (a) were WRITTEN via a bare
+// `new Date(dateString)` — parses "YYYY-MM-DD" as UTC midnight, landing one
+// calendar day early in any negative-UTC-offset timezone, the same bug shape
+// already fixed via parseLocalDateStart everywhere else in this codebase —
+// and (b) were READ back as raw Prisma Date objects, which cross the
+// contextBridge as real Date instances, not ISO strings.
+// VisitNoteScreen.tsx's load() calls `.slice(0, 10)` on both fields when
+// prefilling its edit form — `.slice` doesn't exist on Date, so opening any
+// visit note that already had a follow-up or referral date set threw. Same
+// bug class already fixed for ComplianceTask/ROCFiling/RetainerAgreement/
+// Engagement/ServiceProject/LegalCase/RecallRecord/LearnerProfile (see
+// date.util.ts's toLocalDateOnlyIso).
+function serializeNote<T extends { followUpDate: Date | null; referralDate: Date | null }>(n: T): T {
+  return {
+    ...n,
+    followUpDate: (n.followUpDate ? toLocalDateOnlyIso(n.followUpDate) : null) as unknown as Date | null,
+    referralDate: (n.referralDate ? toLocalDateOnlyIso(n.referralDate) : null) as unknown as Date | null,
+  }
+}
 
 // Phase 58 §2 — Vet Clinic: looked up server-side (never trust a client-sent
 // species for a fact that changes how vitals get flagged) so a dog/cat's
@@ -42,7 +63,7 @@ export async function getVisitNote(appointmentId: string) {
       }).catch(() => {})
     }
 
-    return { success: true, data: note }
+    return { success: true, data: note ? serializeNote(note) : null }
   } catch (err) {
     return { success: false, error: { code: 'VN-001', message: err instanceof Error ? err.message : 'Could not fetch visit note.' } }
   }
@@ -97,10 +118,10 @@ export async function createVisitNote(payload: {
         assessment: payload.assessment ?? null,
         diagnosisCategory: payload.diagnosisCategory ?? null,
         plan: payload.plan ?? null,
-        followUpDate: payload.followUpDate ? new Date(payload.followUpDate) : null,
+        followUpDate: payload.followUpDate ? parseLocalDateStart(payload.followUpDate) : null,
         followUpNotes: payload.followUpNotes ?? null,
         referredBy: payload.referredBy ?? null,
-        referralDate: payload.referralDate ? new Date(payload.referralDate) : null,
+        referralDate: payload.referralDate ? parseLocalDateStart(payload.referralDate) : null,
         referralReason: payload.referralReason ?? null,
         referredByPhone: payload.referredByPhone ?? null,
         referredByEmail: payload.referredByEmail ?? null,
@@ -125,7 +146,7 @@ export async function createVisitNote(payload: {
       data: { action: 'CREATE', entityType: 'VisitNote', entityId: note.id, newValue: JSON.stringify({ appointmentId: payload.appointmentId }) },
     }).catch(() => {})
 
-    return { success: true, data: note }
+    return { success: true, data: serializeNote(note) }
   } catch (err) {
     return { success: false, error: { code: 'VN-002', message: err instanceof Error ? err.message : 'Could not create visit note.' } }
   }
@@ -192,8 +213,8 @@ export async function updateVisitNote(payload: {
         ...rest,
         ...(painScore !== undefined ? { painScore: painScore !== null ? Math.min(10, Math.max(0, Math.round(painScore))) : null } : {}),
         ...(functionalScore !== undefined ? { functionalScore: functionalScore !== null ? Math.min(100, Math.max(0, Math.round(functionalScore))) : null } : {}),
-        ...(followUpDate !== undefined ? { followUpDate: followUpDate ? new Date(followUpDate) : null } : {}),
-        ...(referralDate !== undefined ? { referralDate: referralDate ? new Date(referralDate) : null } : {}),
+        ...(followUpDate !== undefined ? { followUpDate: followUpDate ? parseLocalDateStart(followUpDate) : null } : {}),
+        ...(referralDate !== undefined ? { referralDate: referralDate ? parseLocalDateStart(referralDate) : null } : {}),
         ...(bpSystolic !== undefined ? { bpSystolic } : {}),
         ...(bpDiastolic !== undefined ? { bpDiastolic } : {}),
         ...(pulseRate !== undefined ? { pulseRate } : {}),
@@ -206,7 +227,7 @@ export async function updateVisitNote(payload: {
       data: { action: 'UPDATE', entityType: 'VisitNote', entityId: id },
     }).catch(() => {})
 
-    return { success: true, data: note }
+    return { success: true, data: serializeNote(note) }
   } catch (err) {
     return { success: false, error: { code: 'VN-003', message: err instanceof Error ? err.message : 'Could not update visit note.' } }
   }
@@ -295,7 +316,7 @@ export async function listVisitNotes(filters?: {
       }),
     ])
 
-    return { success: true, data: { items, total, page, limit } }
+    return { success: true, data: { items: items.map(serializeNote), total, page, limit } }
   } catch (err) {
     return { success: false, error: { code: 'VN-005', message: err instanceof Error ? err.message : 'Could not list visit notes.' } }
   }

@@ -65,9 +65,12 @@ function currentMonthRange(): { from: string; to: string } {
   return { from, to }
 }
 
-function todayStr(): string {
-  const d = new Date()
+function toLocalDateStr(d: Date): string {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
+
+function todayStr(): string {
+  return toLocalDateStr(new Date())
 }
 
 // ── Component ─────────────────────────────────────────────────────────────────
@@ -189,7 +192,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
     setEditEntry(e)
     // date crosses the contextBridge as a real Date object (structuredClone
     // preserves it), not an ISO string -- a bare .slice(0,10) throws.
-    setFormDate(new Date(e.date).toISOString().slice(0, 10))
+    setFormDate(toLocalDateStr(new Date(e.date)))
     setFormStaffId(e.employeeId ?? '')
     setFormProjectId(e.projectId ?? '')
     setFormRetainerId(e.retainerId ?? '')

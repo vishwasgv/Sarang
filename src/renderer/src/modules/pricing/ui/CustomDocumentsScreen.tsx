@@ -11,7 +11,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
-import { formatDate } from '@shared/utils/locale.util'
+import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 
 interface DocumentType { id: string; name: string; description: string | null; isActive: boolean }
 interface FieldDefinition { id: string; fieldName: string; fieldType: 'TEXT' | 'NUMBER' | 'DATE' | 'SELECT'; selectOptions: string[] | null; isActive: boolean }
@@ -164,14 +164,14 @@ export function CustomDocumentsScreen() {
 
   function openCreateEntry() {
     setEntryEditTarget(null)
-    setEntryDate(new Date().toISOString().slice(0, 10))
+    setEntryDate(toLocalISODate(new Date()))
     setEntryNotes('')
     setEntryFieldValues({})
     setShowEntryModal(true)
   }
   function openEditEntry(entry: Entry) {
     setEntryEditTarget(entry)
-    setEntryDate(new Date(entry.entryDate).toISOString().slice(0, 10))
+    setEntryDate(toLocalISODate(new Date(entry.entryDate)))
     setEntryNotes(entry.notes ?? '')
     setEntryFieldValues(entry.customFields ?? {})
     setShowEntryModal(true)

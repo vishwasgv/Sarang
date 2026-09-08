@@ -48,6 +48,13 @@ const InvoiceItemSchema = z.object({
 
 export const CreateInvoiceSchema = z.object({
   customerId: z.string().optional(),
+  // Pre-release audit fix (2026-09) — a multi-location business had no way to
+  // tell billing which physical location a sale drew stock from; every sale
+  // silently reduced the default Location's LocationStock regardless of where
+  // it actually happened. Optional so a single-location business (the vast
+  // majority) is completely unaffected — reduceStockTx already falls back to
+  // the default Location when this is omitted.
+  locationId: z.string().optional(),
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'WALLET', 'CREDIT', 'SPLIT']),
   items: z.array(InvoiceItemSchema).min(1, 'At least one item is required'),
   globalDiscount: z.number().min(0).default(0),

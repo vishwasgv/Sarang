@@ -12,6 +12,7 @@ import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { formatCurrency } from '@shared/utils/currency.util'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface FixedAsset {
   id: string; assetCode: string; assetName: string; category: string | null
@@ -118,7 +119,7 @@ function CreateAssetModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [form, setForm] = useState({
-    assetCode: '', assetName: '', category: '', purchaseDate: new Date().toISOString().slice(0, 10),
+    assetCode: '', assetName: '', category: '', purchaseDate: toLocalISODate(new Date()),
     purchaseCost: '', usefulLifeMonths: '', depreciationMethod: 'STRAIGHT_LINE', salvageValue: '0'
   })
   const [saving, setSaving] = useState(false)

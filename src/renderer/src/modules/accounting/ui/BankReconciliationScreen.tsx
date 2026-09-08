@@ -9,7 +9,7 @@ import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDateTime } from '@shared/utils/locale.util'
+import { formatDateTime, toLocalISODate } from '@shared/utils/locale.util'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 
 interface StatementLine {
@@ -178,14 +178,14 @@ interface DraftLine { transactionDate: string; description: string; debitAmount:
 function ImportStatementModal({ bankAccountId, onClose, onSaved }: { bankAccountId: string; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
-  const [rows, setRows] = useState<DraftLine[]>([{ transactionDate: new Date().toISOString().slice(0, 10), description: '', debitAmount: '', creditAmount: '' }])
+  const [rows, setRows] = useState<DraftLine[]>([{ transactionDate: toLocalISODate(new Date()), description: '', debitAmount: '', creditAmount: '' }])
   const [saving, setSaving] = useState(false)
 
   function updateRow(idx: number, patch: Partial<DraftLine>) {
     setRows((prev) => prev.map((r, i) => (i === idx ? { ...r, ...patch } : r)))
   }
   function addRow() {
-    setRows((prev) => [...prev, { transactionDate: new Date().toISOString().slice(0, 10), description: '', debitAmount: '', creditAmount: '' }])
+    setRows((prev) => [...prev, { transactionDate: toLocalISODate(new Date()), description: '', debitAmount: '', creditAmount: '' }])
   }
   function removeRow(idx: number) {
     setRows((prev) => prev.filter((_, i) => i !== idx))

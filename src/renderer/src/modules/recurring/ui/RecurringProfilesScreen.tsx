@@ -12,6 +12,7 @@ import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
+import { toLocalISODate } from '@shared/utils/locale.util'
 import { CustomerFormModal } from '@modules/customers/ui/CustomerFormModal'
 import { SupplierFormModal } from '@modules/suppliers/ui/SupplierFormModal'
 
@@ -319,7 +320,7 @@ interface FormValues {
   remarks: string
 }
 
-function todayStr() { return new Date().toISOString().slice(0, 10) }
+function todayStr() { return toLocalISODate(new Date()) }
 
 export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()

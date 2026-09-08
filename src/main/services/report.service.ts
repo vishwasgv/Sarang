@@ -4514,7 +4514,10 @@ async function generateRejectionRateTrendReport(params: { dateFrom: string; date
   for (const s of steps) {
     const inspected = s.qtyInspected ?? 0
     const rejected = s.qtyRejected ?? 0
-    const month = s.completedAt!.toISOString().slice(0, 7)
+    // Local year-month, not UTC (toISOString() would bucket early-morning IST
+    // completions into the previous month) — same fix shape as groupLabel() above.
+    const completedAt = s.completedAt!
+    const month = `${completedAt.getFullYear()}-${String(completedAt.getMonth() + 1).padStart(2, '0')}`
 
     const m = byMonth.get(month) ?? { qtyInspected: 0, qtyRejected: 0 }
     m.qtyInspected += inspected; m.qtyRejected += rejected

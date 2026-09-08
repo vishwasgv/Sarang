@@ -10,7 +10,7 @@ import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/Customer
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
-import { formatDate } from '@shared/utils/locale.util'
+import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 
 interface ServiceContract {
   id: string; contractNumber: string; customerId: string
@@ -39,7 +39,7 @@ export function ServiceContractsScreen(): React.JSX.Element {
   const [scope, setScope] = useState('')
   const [frequency, setFrequency] = useState('MONTHLY')
   const [contractValue, setContractValue] = useState('')
-  const [startDate, setStartDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [startDate, setStartDate] = useState(() => toLocalISODate(new Date()))
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState('')
 
@@ -66,7 +66,7 @@ export function ServiceContractsScreen(): React.JSX.Element {
     setScope('')
     setFrequency('MONTHLY')
     setContractValue('')
-    setStartDate(new Date().toISOString().slice(0, 10))
+    setStartDate(toLocalISODate(new Date()))
     setError('')
   }
 

@@ -10,7 +10,7 @@ import { Modal } from '@shared/ui/molecules/Modal'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDateTime } from '@shared/utils/locale.util'
+import { formatDateTime, toLocalISODate } from '@shared/utils/locale.util'
 
 interface DepreciationRun { id: string; periodStart: string; periodEnd: string; amount: number }
 interface FixedAsset {
@@ -133,8 +133,8 @@ function RunDepreciationModal({ assetId, onClose, onSaved }: { assetId: string; 
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const now = new Date()
-  const [periodStart, setPeriodStart] = useState(new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10))
-  const [periodEnd, setPeriodEnd] = useState(new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10))
+  const [periodStart, setPeriodStart] = useState(toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1)))
+  const [periodEnd, setPeriodEnd] = useState(toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0)))
   const [saving, setSaving] = useState(false)
 
   async function handleSave() {
@@ -176,7 +176,7 @@ function RunDepreciationModal({ assetId, onClose, onSaved }: { assetId: string; 
 function DisposeAssetModal({ assetId, bookValue, onClose, onSaved }: { assetId: string; bookValue: number; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
-  const [disposalDate, setDisposalDate] = useState(new Date().toISOString().slice(0, 10))
+  const [disposalDate, setDisposalDate] = useState(toLocalISODate(new Date()))
   const [disposalAmount, setDisposalAmount] = useState('')
   const [saving, setSaving] = useState(false)
 

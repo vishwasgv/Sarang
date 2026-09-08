@@ -776,7 +776,8 @@ export const billingService = {
             for (const comp of componentLines) {
               await inventoryService.reduceStockTx(
                 tx, comp.componentProductId, comp.quantity,
-                `Invoice ${invoiceNumber} (component of kit "${item.productName}")`, 'INVOICE', inv.id, userId
+                `Invoice ${invoiceNumber} (component of kit "${item.productName}")`, 'INVOICE', inv.id, userId,
+                payload.locationId
               )
             }
             continue
@@ -784,7 +785,8 @@ export const billingService = {
           if (item.productType === 'STANDARD') {
             await inventoryService.reduceStockTx(
               tx, item.productId, item.quantity,
-              `Invoice ${invoiceNumber}`, 'INVOICE', inv.id, userId
+              `Invoice ${invoiceNumber}`, 'INVOICE', inv.id, userId,
+              payload.locationId
             )
             // Decrement per-variant stock (clothing/footwear); inventory.quantity already handled above
             if (item.variantId) {

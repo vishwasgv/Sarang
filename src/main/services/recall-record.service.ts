@@ -1,6 +1,24 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
-import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { parseLocalDateStart, parseLocalDateEnd, toLocalDateOnlyIso } from '../utils/date.util'
+
+// Real bug found (Group E service-family audit, 2026-09-04): lastVisitDate/
+// nextRecallDate are pure calendar-date fields, but were returned as raw
+// Prisma Date objects, which cross the contextBridge as real Date instances
+// (structuredClone preserves them), not ISO strings. DentalPatientScreen.tsx
+// calls `.slice(0, 10)` on both fields when prefilling its recall form —
+// `.slice` doesn't exist on Date, so the load threw and the whole patient
+// screen fell back to "Could not load patient" any time a recall record
+// existed. Same bug class already fixed for ComplianceTask/ROCFiling/
+// BoardMeeting/RetainerAgreement/Engagement/ServiceProject/LegalCase (see
+// date.util.ts's toLocalDateOnlyIso), just missed for this table.
+function serializeRecall<T extends { lastVisitDate: Date; nextRecallDate: Date }>(r: T): T {
+  return {
+    ...r,
+    lastVisitDate: toLocalDateOnlyIso(r.lastVisitDate) as unknown as Date,
+    nextRecallDate: toLocalDateOnlyIso(r.nextRecallDate) as unknown as Date,
+  }
+}
 
 export async function getPatientRecall(patientId: string) {
   try {
@@ -9,7 +27,7 @@ export async function getPatientRecall(patientId: string) {
       where: { patientId },
       include: { patient: { select: { id: true, customerName: true, phone: true } } },
     })
-    return { success: true, data: record }
+    return { success: true, data: record ? serializeRecall(record) : null }
   } catch (err) {
     return { success: false, error: { code: 'RC-001', message: err instanceof Error ? err.message : 'Could not fetch recall record.' } }
   }
@@ -132,7 +150,7 @@ export async function upsertRecall(payload: {
       },
     }).catch(() => {})
 
-    return { success: true, data: record }
+    return { success: true, data: serializeRecall(record) }
   } catch (err) {
     return { success: false, error: { code: 'RC-002', message: err instanceof Error ? err.message : 'Could not save recall record.' } }
   }
@@ -221,7 +239,7 @@ export async function listRecalls(filters?: {
       include: { patient: { select: { id: true, customerName: true, phone: true } } },
       orderBy: { nextRecallDate: 'asc' },
     })
-    return { success: true, data: records }
+    return { success: true, data: records.map(serializeRecall) }
   } catch (err) {
     return { success: false, error: { code: 'RC-003', message: err instanceof Error ? err.message : 'Could not list recalls.' } }
   }

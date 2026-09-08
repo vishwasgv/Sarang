@@ -9,7 +9,7 @@ import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { formatCurrency } from '@shared/utils/currency.util'
-import { formatDateTime } from '@shared/utils/locale.util'
+import { formatDateTime, toLocalISODate } from '@shared/utils/locale.util'
 
 interface BankAccount { id: string; accountName: string; accountType: string }
 interface AvailableCheque { id: string; chequeNumber: string; amount: number; partyType: string | null }
@@ -124,7 +124,7 @@ function CreateDepositModal({ bankAccounts, onClose, onSaved }: { bankAccounts: 
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const [bankAccountId, setBankAccountId] = useState('')
-  const [depositDate, setDepositDate] = useState(() => new Date().toISOString().slice(0, 10))
+  const [depositDate, setDepositDate] = useState(() => toLocalISODate(new Date()))
   const [counts, setCounts] = useState<Record<string, string>>({})
   const [availableCheques, setAvailableCheques] = useState<AvailableCheque[]>([])
   const [selectedChequeIds, setSelectedChequeIds] = useState<string[]>([])

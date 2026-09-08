@@ -20,7 +20,10 @@ function makeCloseDutyDb(overrides: {
   includedHoursPerDay?: number | null
   vehicleCurrentOdometer?: number
 } = {}) {
-  const log = {
+  // Mirrors the real atomic claim-sentinel semantics: updateMany only
+  // "claims" (count: 1) when the where-clause's endOdometer:null still
+  // matches the current in-memory state, exactly like a real DB would.
+  const log: Record<string, unknown> = {
     id: 'ddl-1', startOdometer: 1000, dutyStartTime: new Date('2024-06-01T08:00:00'), endOdometer: null,
     tripBooking: {
       vehicleId: 'v-1',
@@ -35,10 +38,18 @@ function makeCloseDutyDb(overrides: {
     tourVehicle: { update: vi.fn().mockResolvedValue({}) },
   }
   const db: Record<string, any> = {
-    driverDutyLog: { findUnique: vi.fn().mockResolvedValue(log) },
+    driverDutyLog: {
+      updateMany: vi.fn().mockImplementation(({ where }: { where: { endOdometer: null } }) => {
+        if (log.endOdometer !== null) return Promise.resolve({ count: 0 })
+        log.endOdometer = -1 // claim sentinel, matching the real implementation
+        return Promise.resolve({ count: 1 })
+      }),
+      findUnique: vi.fn().mockImplementation(() => Promise.resolve(log)),
+      update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => { Object.assign(log, data); return Promise.resolve({ id: 'ddl-1', ...log, ...data }) }),
+    },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx)),
   }
-  return { db, tx }
+  return { db, tx, log }
 }
 
 describe('driver-duty-log.service.closeDuty — km/hour math', () => {
@@ -149,7 +160,7 @@ describe('driver-duty-log.service.closeDuty — validation', () => {
   })
 
   it('rejects an unknown duty log id', async () => {
-    const db = { driverDutyLog: { findUnique: vi.fn().mockResolvedValue(null) } }
+    const db = { driverDutyLog: { updateMany: vi.fn().mockResolvedValue({ count: 0 }), findUnique: vi.fn().mockResolvedValue(null) } }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await closeDuty({ id: 'ddl-missing', endOdometer: 1200, dutyEndTime: '2024-06-01T18:00:00' })

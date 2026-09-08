@@ -69,15 +69,38 @@ export async function startDuty(payload: {
 // here, at close time — a closed duty log is a settled financial record,
 // same reasoning InvoiceItem snapshots jewellery pricing at sale time
 // rather than re-deriving it later from possibly-since-changed data.
+// Pre-release audit fix (2026-09) — closeDuty read-then-write had a TOCTOU
+// gap (the "already closed" check and the actual update lived in separate
+// statements), unlike every sibling close/finalize action in this codebase.
+// A concurrent double-submit (e.g. a double-click) could pass the check
+// twice and compute excess-charge fields twice from two different inputs,
+// with the second write silently winning. Fixed with the same atomic
+// claim-sentinel pattern used elsewhere (e.g. lab-test-order.service.ts's
+// generateLabTestOrderInvoice): -1 is a safe sentinel since a real odometer
+// reading is never negative and DDL-003 already rejects negative input.
+const DUTY_CLOSE_CLAIM_SENTINEL = -1
+
 export async function closeDuty(payload: { id: string; endOdometer: number; dutyEndTime: string }) {
+  const db = getPrisma()
+  const claim = await db.driverDutyLog.updateMany({ where: { id: payload.id, endOdometer: null }, data: { endOdometer: DUTY_CLOSE_CLAIM_SENTINEL } })
+  if (claim.count === 0) {
+    const existing = await db.driverDutyLog.findUnique({ where: { id: payload.id }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'DDL-001', message: 'Duty log not found.' } }
+    return { success: false, error: { code: 'DDL-002', message: 'This duty has already been closed.' } }
+  }
+
   try {
-    const db = getPrisma()
     const log = await db.driverDutyLog.findUnique({ where: { id: payload.id }, include: { tripBooking: { include: { vehicle: true } } } })
-    if (!log) return { success: false, error: { code: 'DDL-001', message: 'Duty log not found.' } }
-    if (log.endOdometer != null) return { success: false, error: { code: 'DDL-002', message: 'This duty has already been closed.' } }
-    if (payload.endOdometer < log.startOdometer) return { success: false, error: { code: 'DDL-003', message: 'End odometer cannot be less than start odometer.' } }
+    if (!log) throw new Error('Duty log not found after claim.')
+    if (payload.endOdometer < log.startOdometer) {
+      await db.driverDutyLog.update({ where: { id: payload.id }, data: { endOdometer: null } })
+      return { success: false, error: { code: 'DDL-003', message: 'End odometer cannot be less than start odometer.' } }
+    }
     const dutyEndTime = new Date(payload.dutyEndTime)
-    if (dutyEndTime.getTime() < log.dutyStartTime.getTime()) return { success: false, error: { code: 'DDL-004', message: 'Duty end time cannot be before start time.' } }
+    if (dutyEndTime.getTime() < log.dutyStartTime.getTime()) {
+      await db.driverDutyLog.update({ where: { id: payload.id }, data: { endOdometer: null } })
+      return { success: false, error: { code: 'DDL-004', message: 'Duty end time cannot be before start time.' } }
+    }
 
     const kmDriven = roundCurrency(payload.endOdometer - log.startOdometer)
     const drivingHours = Math.round(((dutyEndTime.getTime() - log.dutyStartTime.getTime()) / 3600000) * 100) / 100
@@ -105,6 +128,7 @@ export async function closeDuty(payload: { id: string; endOdometer: number; duty
     await logAction({ action: 'DRIVER_DUTY_CLOSED', entityType: 'DriverDutyLog', entityId: payload.id, newValue: { kmDriven, drivingHours, excessKmCharge, excessHourCharge } })
     return { success: true, data: updated }
   } catch (err) {
+    await db.driverDutyLog.update({ where: { id: payload.id }, data: { endOdometer: null } }).catch(() => {})
     return { success: false, error: { code: 'DDL-005', message: err instanceof Error ? err.message : 'Could not close duty.' } }
   }
 }

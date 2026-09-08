@@ -9,7 +9,11 @@ function makeMockDb() {
   return {
     leaveRequest: {
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
-        Promise.resolve({ id: 'lr-1', ...data, employee: { fullName: 'Test Employee' }, leaveType: { name: 'Casual' } })
+        // createdAt isn't in `data` (Prisma sets it via the schema's
+        // @default(now()), same as real usage) — the mock must supply it
+        // itself or hr.service's `new Date(r.createdAt).toISOString()` call
+        // throws RangeError: Invalid time value on the returned mock row.
+        Promise.resolve({ id: 'lr-1', createdAt: new Date(), ...data, employee: { fullName: 'Test Employee' }, leaveType: { name: 'Casual' } })
       ),
     },
   }
@@ -52,10 +56,12 @@ describe('hr.service.createLeaveRequest — local calendar-date correctness', ()
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    await createLeaveRequest({
+    const result = await createLeaveRequest({
       employeeId: 'emp-1', leaveTypeId: 'lt-1',
       fromDate: '2026-07-31', toDate: '2026-08-02', days: 3,
     })
+
+    expect(result.success).toBe(true)
 
     const createCall = db.leaveRequest.create.mock.calls[0][0]
     const storedFrom = createCall.data.fromDate as Date

@@ -71,7 +71,10 @@ export default function ChallanScreen() {
   const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const profile = useBusinessStore(s => s.profile)
-  const PAGE_SIZE = 100
+  // Pre-release audit fix (2026-09) — search below filters only the
+  // currently-loaded page; 100 was too low for a busy shop's challan
+  // history (same bug class as the fixed ProductsScreen 50-cap regression).
+  const PAGE_SIZE = 1000
   const [limit, setLimit] = useState(PAGE_SIZE)
   const [total, setTotal] = useState(0)
 

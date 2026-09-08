@@ -1374,7 +1374,7 @@ export async function getRoomWiseADRReport(params: { dateFrom: string; dateTo: s
 
     const byRoom = new Map<string, { roomNumber: string; roomType: string; nights: number; revenue: number }>()
     for (const b of bookings) {
-      const nights = Math.max(1, Math.round((b.checkOutDate.getTime() - b.checkInDate.getTime()) / 86400000))
+      const nights = computeNights(b.checkInDate, b.checkOutDate)
       const revenue = b.roomChargeTotal ?? (b.ratePerNight * nights)
       const entry = byRoom.get(b.roomId) ?? { roomNumber: b.room.roomNumber, roomType: b.room.roomType, nights: 0, revenue: 0 }
       entry.nights += nights
@@ -1434,7 +1434,7 @@ export async function getADRRevPARReport(params: { dateFrom: string; dateTo: str
 
     const byMonth = new Map<string, { revenue: number; nights: number }>()
     for (const b of bookings) {
-      const nights = Math.max(1, Math.round((b.checkOutDate.getTime() - b.checkInDate.getTime()) / 86400000))
+      const nights = computeNights(b.checkInDate, b.checkOutDate)
       const revenue = b.roomChargeTotal ?? (b.ratePerNight * nights)
       const key = `${b.checkInDate.getFullYear()}-${String(b.checkInDate.getMonth() + 1).padStart(2, '0')}`
       const entry = byMonth.get(key) ?? { revenue: 0, nights: 0 }

@@ -19,7 +19,18 @@ export const AdjustStockReasonCategory = z.enum(['DAMAGE', 'RECOUNT', 'THEFT', '
 
 export const AdjustStockSchema = z.object({
   productId: z.string().min(1, 'Product ID is required'),
-  quantity: z.number().min(0, 'Quantity cannot be negative'),
+  // REAL BUG found+fixed (pre-launch audit): this unconditionally rejected
+  // any negative quantity at the validation layer, BEFORE inventory.service.ts's
+  // adjustStock() ever ran — making its own `if (payload.quantity < 0)` /
+  // getAllowNegative() / INV-005 branch permanently dead code. A business
+  // that explicitly enabled "allow negative inventory" (Settings) still could
+  // never set an absolute stock count below zero via a manual stock
+  // adjustment (recount/correction) through any real path (UI, IPC) —
+  // the one setting-gated case this schema itself was clearly written to
+  // support. The service is the single source of truth for this business
+  // rule (and returns a friendly INV-005 message either way) — the schema
+  // now only needs to guarantee a real, finite number.
+  quantity: z.number().finite('Quantity must be a valid number'),
   reason: z.string().min(1, 'Reason is required for stock adjustment').max(255),
   reasonCategory: AdjustStockReasonCategory,
   unitCost: z.number().min(0).optional(),

@@ -114,7 +114,15 @@ export async function updateServiceContract(payload: { id: string; status?: stri
 export async function generateServiceContractInvoice(contractId: string, period?: string) {
   const db = getPrisma()
   try {
-    const targetPeriod = period ?? new Date().toISOString().slice(0, 7)
+    // Real bug found (Group E service-family audit, 2026-09-04): a raw
+    // `.toISOString().slice(0, 7)` computes the UTC year-month, bucketing an
+    // invoice generated in the first few hours of a local day into the
+    // PREVIOUS month in any negative-UTC-offset timezone — the exact bug
+    // shape already fixed in pest-contract.service.ts/retainer.service.ts/
+    // engagement.service.ts's own generateContractInvoice-shaped functions,
+    // just missed in this file's own copy of the same pattern.
+    const now = new Date()
+    const targetPeriod = period ?? `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
     const contract = await db.serviceContract.findUnique({
       where: { id: contractId },
       include: { customer: { select: { id: true, customerName: true } } },

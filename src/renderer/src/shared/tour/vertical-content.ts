@@ -1,6 +1,6 @@
 /**
  * Phase 60 — hand-authored, per-screen tour content for the genuinely
- * distinctive vertical-specific screens across all 43 business types (as
+ * distinctive vertical-specific screens across all 50 business types (as
  * opposed to the generic "look around" template every vertical screen
  * fell back to before this file existed). Keyed by the screen's real
  * NAV_ITEMS path — the exact same path used for navigation and for the
