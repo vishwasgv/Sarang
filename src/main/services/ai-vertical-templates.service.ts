@@ -63,6 +63,18 @@ import { getCarJobCardKPIs } from './car-job-card.service'
 import { getFeeKPIs } from './coaching-fee.service'
 import { getUpcomingTestsAndLowBalanceKPIs } from './driving.service'
 import { getExpiringMemberships } from './membership.service'
+// 2026-09 — 7 newest verticals (Electrical/Plumbing/Stationery/Furniture/
+// Grocery/Bakery/Tours & Travels) had zero vertical-specific AI templates,
+// silently falling back to only the 18 universal ones — undisclosed, unlike
+// RETAIL/GENERAL's own explicit "nothing vertical-specific" comment below.
+// Every function wired in below already existed and is already unit-tested
+// (report.service.ts's own Phase 69 §11 / 2026-09 §12 sections, plus each
+// vertical's own real UI screens) EXCEPT getJobSiteAccountsOverview, which
+// this pass adds — see that function's own header comment for why.
+import { getAnnualReorderReminders } from './bulk-list-order.service'
+import { getBookedOrderCashFlowForecast } from './furniture-booking.service'
+import { getJobSiteAccountsOverview } from './job-site-account.service'
+import { khataReminderService } from './khata-reminder.service'
 
 interface TemplateResult { headline: string; details: string[]; isEmpty: boolean }
 
@@ -211,6 +223,45 @@ export async function getActiveVerticalTemplateNames(): Promise<string[]> {
     // quote-to-job conversion tracking.
     case 'SERVICE': return ['service.slaBreaches', 'service.resolutionTime', 'service.contractSummary', 'service.repeatBusinessRate', 'service.quoteToJobConversion']
     case 'CONSULTANT': return ['consultant.engagementConversion', 'consultant.utilization', 'consultant.retainerBurnDown', 'consultant.clientProfitability', 'consultant.proposalWinRate']
+    // 2026-09 — Electrical items 3/5: coil wastage & yield, ISI/BIS safety
+    // register (both report.service.ts, already wired to Electrical's own
+    // Reports screen tiles) + item 4 spec-wise fast movers, plus the shared
+    // job-site-account overview below (Electrical/Plumbing both bill
+    // contractor running accounts).
+    case 'ELECTRICAL': return ['electrical.coilWastageYield', 'electrical.isiBisSafetyRegister', 'electrical.specWiseFastMovers', 'jobSiteAccount.outstandingOverview']
+    // 2026-09 — Plumbing items 3/4: fitting cross-sell misses, material
+    // sales mix, plus the shared job-site-account overview.
+    case 'PLUMBING': return ['plumbing.fittingCrossSellMisses', 'plumbing.materialSalesMix', 'jobSiteAccount.outstandingOverview']
+    // 2026-09 — Stationery's real Annual Reorder Reminder feature
+    // (bulk-list-order.service.ts, already live on the Stationery UI) plus
+    // items 3/4: seasonal demand forecast, institutional order history.
+    case 'STATIONERY': return ['stationery.annualReorderReminders', 'stationery.seasonalDemandForecast', 'stationery.institutionalOrderHistory']
+    // 2026-09 — Furniture's real Booked-Order Cash Flow Forecast feature
+    // (furniture-booking.service.ts) plus items 3/4: delivery/installation
+    // schedule, showroom-vs-warehouse location stock split. Verified
+    // furniture-trade-in.service.ts has no aggregate export of its own
+    // (plain CRUD) — no template invented for it.
+    case 'FURNITURE': return ['furniture.bookedOrderCashFlowForecast', 'furniture.deliveryInstallationSchedule', 'furniture.locationStockSplit']
+    // 2026-09 — Grocery's real Khata Reminder feature
+    // (khata-reminder.service.ts, already live on the Khata Reminder UI) +
+    // the richer risk-tiered version (report.service.ts, already live on
+    // Grocery's own Reports screen) + items 1/2/4/5: MRP compliance,
+    // perishable wastage, daily restock alert, loose-vs-packaged mix.
+    case 'GROCERY': return ['grocery.khataOverdueReminders', 'grocery.khataRiskOverview', 'grocery.mrpViolations', 'grocery.perishableWastage', 'grocery.dailyRestockAlert', 'grocery.looseVsPackagedMix']
+    // 2026-09 — Bakery's Pre-Order Production Sheet (bookings + recipe
+    // ingredient expansion) and Catering's Event Profitability, both
+    // report.service.ts. custom-order-booking.service.ts and
+    // catering-event.service.ts themselves are plain CRUD — no aggregate
+    // invented there since the production-sheet report already synthesizes
+    // both bookings and demand history into one real answer.
+    case 'BAKERY': return ['bakery.preOrderProductionSheet', 'bakery.eventProfitability']
+    // 2026-09 — Tours & Travels: Trip Profitability (the real answer behind
+    // suite 93's "commission-profitability" name), Commission by Agent, and
+    // Vehicle Service-Due, all report.service.ts. tour-package.service.ts/
+    // trip-booking.service.ts/driver-duty-log.service.ts themselves are
+    // plain CRUD — every genuinely aggregate question here already had a
+    // real report function, just never connected to the assistant.
+    case 'TOURS_TRAVELS': return ['toursTravels.tripProfitability', 'toursTravels.commissionByAgent', 'toursTravels.vehicleServiceDue']
   }
 
   if (PROJECT_BASED_TYPES.has(businessType)) {
@@ -1808,6 +1859,305 @@ export async function executeVerticalTemplate(template: string, params: Record<s
         headline: `${formatAmountForSpeech(totalValue, sym)} of unbilled time (${totalHours.toFixed(1)} hours) not yet invoiced`,
         details: [],
         isEmpty: entries.length === 0
+      }
+    }
+    // 2026-09 — Electrical item 3: coil wastage & yield.
+    case 'electrical.coilWastageYield': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateCoilWastageYieldReport({ dateFrom, dateTo })
+      const worst = [...r.rows].sort((a, b) => b.estimatedWastageQty - a.estimatedWastageQty)[0] ?? null
+      return {
+        headline: r.rows.length > 0
+          ? `${r.summary.avgYieldPercent}% average yield across length-billed items this period${worst ? `, most wastage on ${worst.productName}` : ''}`
+          : 'No length-billed coil activity this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.productName}: ${row.yieldPercent}% yield, ${row.estimatedWastageQty} ${row.lengthUnit ?? 'unit'} estimated wastage`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — Electrical item 5: ISI/BIS batch safety register.
+    case 'electrical.isiBisSafetyRegister': {
+      const r = await reportService.generateIsiBisSafetyRegisterReport()
+      return {
+        headline: `${r.summary.totalUnits} serial-tracked unit(s) on record, ${r.summary.availableUnits} in stock, ${r.summary.soldUnits} sold`,
+        details: [],
+        isEmpty: r.summary.totalUnits === 0
+      }
+    }
+    // 2026-09 — Electrical item 4: spec-wise fast movers.
+    case 'electrical.specWiseFastMovers': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateSpecWiseFastMoversReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.topSpec
+          ? `${r.summary.topSpec} is your fastest-moving spec this period, ${r.summary.totalUnitsSold} unit(s) sold across all specs`
+          : 'No variant/spec sales this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.spec} (${row.productName}): ${row.unitsSold} units, ${formatAmountForSpeech(row.revenue, sym)}`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — shared Electrical/Plumbing job-site-account portfolio
+    // overview. See job-site-account.service.ts's getJobSiteAccountsOverview
+    // for why a new function was needed (the existing balance lookup only
+    // takes a single account ID).
+    case 'jobSiteAccount.outstandingOverview': {
+      const r = await getJobSiteAccountsOverview()
+      const stats = r.data ?? { openAccountCount: 0, totalOutstanding: 0, accounts: [] }
+      return {
+        headline: stats.accounts.length > 0
+          ? `${formatAmountForSpeech(stats.totalOutstanding, sym)} outstanding across ${stats.accounts.length} job-site account(s) with a balance`
+          : `No job-site accounts currently carry an outstanding balance (${stats.openAccountCount} open)`,
+        details: stats.accounts.slice(0, 5).map((a) => `${a.accountName} (${a.contractorName}): ${formatAmountForSpeech(a.outstanding, sym)}`),
+        isEmpty: stats.openAccountCount === 0
+      }
+    }
+    // 2026-09 — Plumbing item 3: fitting-compatibility cross-sell misses.
+    case 'plumbing.fittingCrossSellMisses': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateFittingCrossSellReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: r.summary.missedOpportunities > 0
+          ? `${r.summary.missedOpportunities} sale(s) this period likely missed a usual companion item${top ? `, most often ${top.anchorProductName} without ${top.expectedPartnerProductName}` : ''}`
+          : 'No likely missed cross-sell opportunities this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.invoiceNumber}: ${row.anchorProductName} sold without ${row.expectedPartnerProductName} (${row.pairStrengthPercent}% usual pairing)`),
+        isEmpty: r.summary.missedOpportunities === 0
+      }
+    }
+    // 2026-09 — Plumbing item 4: material sales mix (PVC/CPVC/GI/copper etc.).
+    case 'plumbing.materialSalesMix': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateMaterialSalesMixReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top
+          ? `${top.materialName} leads material sales this period at ${top.revenueSharePercent}% of revenue (${formatAmountForSpeech(top.revenue, sym)})`
+          : 'No categorized material sales this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.materialName}: ${row.revenueSharePercent}% (${formatAmountForSpeech(row.revenue, sym)})`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — Stationery's real Annual Reorder Reminder for institutional
+    // clients (bulk-list-order.service.ts, already live on the Stationery
+    // UI's own report).
+    case 'stationery.annualReorderReminders': {
+      const r = await getAnnualReorderReminders()
+      const rows = r.data ?? []
+      const overdue = rows.filter((row) => row.status === 'OVERDUE')
+      return {
+        headline: rows.length > 0
+          ? `${rows.length} institutional client(s) likely due to reorder, ${overdue.length} overdue`
+          : 'No institutional clients are due to reorder yet',
+        details: rows.slice(0, 5).map((row) => `${row.institutionName}: last ordered ${row.monthsSinceLastOrder} month(s) ago (${row.status === 'OVERDUE' ? 'overdue' : 'due soon'})`),
+        isEmpty: rows.length === 0
+      }
+    }
+    // 2026-09 — Stationery item 3: seasonal demand forecast.
+    case 'stationery.seasonalDemandForecast': {
+      const r = await reportService.generateSeasonalDemandForecastReport()
+      const peakRow = r.peakMonth ? r.rows.find((row) => row.month === r.peakMonth) : null
+      return {
+        headline: peakRow
+          ? `${peakRow.monthName} is historically your busiest month, ${peakRow.unitsSold} unit(s) sold (based on ${r.summary.monthsOfHistory} months of history)`
+          : 'Not enough sales history yet to forecast seasonal demand',
+        details: r.rows.filter((row) => row.unitsSold > 0).slice(0, 3).map((row) => `${row.monthName}: ${row.unitsSold} units, ${formatAmountForSpeech(row.revenue, sym)}`),
+        isEmpty: r.summary.totalUnitsSold === 0
+      }
+    }
+    // 2026-09 — Stationery item 4: institutional order history.
+    case 'stationery.institutionalOrderHistory': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateInstitutionalOrderHistoryReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.totalOrders > 0
+          ? `${r.summary.totalOrders} institutional order(s) this period, ${r.summary.billedOrders} billed, ${formatAmountForSpeech(r.summary.totalValue, sym)} total value`
+          : 'No institutional orders this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.institutionName} — ${row.listName}: ${formatAmountForSpeech(row.totalValue, sym)} (${row.status})`),
+        isEmpty: r.summary.totalOrders === 0
+      }
+    }
+    // 2026-09 — Furniture's real Booked-Order Cash Flow Forecast
+    // (furniture-booking.service.ts, already live on the Furniture UI).
+    case 'furniture.bookedOrderCashFlowForecast': {
+      const r = await getBookedOrderCashFlowForecast()
+      const stats = r.data ?? { rows: [], summary: { totalBookings: 0, totalExpectedBalanceDue: 0 } }
+      return {
+        headline: stats.summary.totalBookings > 0
+          ? `${formatAmountForSpeech(stats.summary.totalExpectedBalanceDue, sym)} expected from ${stats.summary.totalBookings} booked, not-yet-invoiced order(s)`
+          : 'No booked, uninvoiced furniture orders to forecast',
+        details: stats.rows.slice(0, 5).map((row) => `${row.month}: ${formatAmountForSpeech(row.expectedBalanceDue, sym)} (${row.bookingCount} booking(s))`),
+        isEmpty: stats.summary.totalBookings === 0
+      }
+    }
+    // 2026-09 — Furniture item 4: delivery & installation schedule.
+    case 'furniture.deliveryInstallationSchedule': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateDeliveryInstallationScheduleReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.totalBookings > 0
+          ? `${r.summary.pendingCount} delivery/installation(s) still pending this period, ${r.summary.deliveredCount} delivered, out of ${r.summary.totalBookings} scheduled`
+          : 'No furniture deliveries scheduled this period',
+        details: r.rows.filter((row) => row.status === 'BOOKED').slice(0, 5).map((row) => `${row.bookingNumber} — ${row.customerName}: ${row.deliveryDate}`),
+        isEmpty: r.summary.totalBookings === 0
+      }
+    }
+    // 2026-09 — Furniture item 3: showroom-vs-warehouse stock split.
+    case 'furniture.locationStockSplit': {
+      const r = await reportService.generateLocationStockSplitReport()
+      return {
+        headline: r.summary.productCount > 0
+          ? `${r.summary.productCount} product(s) tracked across ${r.locations.length} location(s), ${r.summary.totalQty} unit(s) total`
+          : 'No stock currently tracked by location',
+        details: r.rows.slice(0, 5).map((row) => `${row.productName}: ${row.byLocation.map((l) => `${l.locationName} ${l.quantity}`).join(', ')}`),
+        isEmpty: r.summary.productCount === 0
+      }
+    }
+    // 2026-09 — Grocery's real Khata Reminder candidate list
+    // (khata-reminder.service.ts, already live on the Khata Reminder UI).
+    // Read-only: does NOT call buildKhataReminderLink, which has the
+    // send-cooldown side effect of stamping lastKhataReminderSentAt.
+    case 'grocery.khataOverdueReminders': {
+      const r = await khataReminderService.listKhataReminderCandidates()
+      const candidates = r.data ?? []
+      const total = candidates.reduce((s, c) => s + c.outstanding, 0)
+      return {
+        headline: candidates.length > 0
+          ? `${candidates.length} customer(s) overdue on khata, ${formatAmountForSpeech(total, sym)} total outstanding`
+          : 'No customers currently overdue on khata',
+        details: candidates.slice(0, 5).map((c) => `${c.customerName}: ${formatAmountForSpeech(c.outstanding, sym)}, ${c.daysOverdue} day(s) overdue`),
+        isEmpty: candidates.length === 0
+      }
+    }
+    // 2026-09 — Grocery's Khata Risk Tier (report.service.ts, already live
+    // on Grocery's own Reports screen) — a distinct question from the plain
+    // reminder-eligibility list above: who's trending toward bad debt, not
+    // just who's currently overdue.
+    case 'grocery.khataRiskOverview': {
+      const r = await reportService.generateKhataRiskReport()
+      return {
+        headline: r.summary.highRiskCount > 0
+          ? `${r.summary.highRiskCount} customer(s) are HIGH khata risk, ${r.summary.mediumRiskCount} MEDIUM`
+          : `No HIGH-risk khata customers right now, ${r.summary.mediumRiskCount} MEDIUM`,
+        details: r.rows.filter((row) => row.riskTier === 'HIGH').slice(0, 5).map((row) => `${row.customerName}: ${formatAmountForSpeech(row.outstanding, sym)}, trend ${row.trend.toLowerCase()}`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — Grocery item 1: MRP compliance.
+    case 'grocery.mrpViolations': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateMrpViolationReport({ dateFrom, dateTo })
+      return {
+        headline: r.summary.violationCount > 0
+          ? `${r.summary.violationCount} sale(s) this period were priced above MRP, ${formatAmountForSpeech(r.summary.totalExcessCollected, sym)} collected in excess`
+          : 'No above-MRP sales this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.productName}: ${formatAmountForSpeech(row.excessPerUnit, sym)}/unit over MRP (${row.quantity} sold)`),
+        isEmpty: r.summary.violationCount === 0
+      }
+    }
+    // 2026-09 — Grocery item 2: perishable wastage.
+    case 'grocery.perishableWastage': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generatePerishableWastageReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: r.summary.totalWastageValue > 0
+          ? `${formatAmountForSpeech(r.summary.totalWastageValue, sym)} lost to expired perishable stock this period${top ? `, most from ${top.productName}` : ''}`
+          : 'No expired-stock wastage recorded this period',
+        details: r.rows.slice(0, 5).map((row) => `${row.productName}: ${formatAmountForSpeech(row.expiredWastageValue, sym)} (${row.expiredWastageQty} unit(s))`),
+        isEmpty: r.summary.totalWastageValue === 0
+      }
+    }
+    // 2026-09 — Grocery item 4: daily restock alert.
+    case 'grocery.dailyRestockAlert': {
+      const r = await reportService.generateDailyRestockAlertReport()
+      return {
+        headline: r.summary.urgentCount > 0
+          ? `${r.summary.urgentCount} product(s) urgently need restocking (2 days or less of stock left)`
+          : r.summary.watchlistCount > 0
+            ? `${r.summary.watchlistCount} product(s) are running low on stock`
+            : 'No products currently need restocking',
+        details: r.rows.slice(0, 5).map((row) => `${row.productName}: ${row.daysOfStockRemaining} day(s) of stock left`),
+        isEmpty: r.summary.watchlistCount === 0
+      }
+    }
+    // 2026-09 — Grocery item 5: loose vs. packaged sales mix.
+    case 'grocery.looseVsPackagedMix': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateLooseVsPackagedMixReport({ dateFrom, dateTo })
+      const loose = r.rows.find((row) => row.label === 'Loose')
+      return {
+        headline: r.summary.totalRevenue > 0
+          ? `${r.summary.loosePercent}% of revenue this period came from loose-sold items (${formatAmountForSpeech(loose?.revenue ?? 0, sym)})`
+          : 'No sales recorded this period',
+        details: r.rows.map((row) => `${row.label}: ${formatAmountForSpeech(row.revenue, sym)} (${row.unitsSold} units)`),
+        isEmpty: r.summary.totalRevenue === 0
+      }
+    }
+    // 2026-09 — Bakery's Pre-Order Production Sheet: bookings due a given
+    // date + typical same-day-of-week demand, expanded through each
+    // product's Recipe into an ingredient shopping list. Defaults to today
+    // unless the question's own extracted date overrides it (same
+    // params.dateFrom override convention thisMonthRange already uses).
+    case 'bakery.preOrderProductionSheet': {
+      const date = (params.dateFrom as string) ?? toLocalISODate(new Date())
+      const r = await reportService.generatePreOrderProductionSheetReport({ date })
+      return {
+        headline: r.summary.orderCount > 0 || r.products.length > 0
+          ? `${r.summary.orderCount} custom order(s) due ${date}, ${r.summary.totalProductQty} unit(s) of product needed across ${r.products.length} item(s)`
+          : `No custom orders or expected demand for ${date}`,
+        details: r.ingredients.slice(0, 5).map((i) => `${i.ingredientName}: ${i.totalQtyNeeded} ${i.unit}`),
+        isEmpty: r.summary.orderCount === 0 && r.products.length === 0
+      }
+    }
+    // 2026-09 — Catering (Bakery vertical) Event Profitability.
+    case 'bakery.eventProfitability': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateEventProfitabilityReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top
+          ? `${formatAmountForSpeech(r.summary.totalNetProfit, sym)} net profit across ${r.rows.length} completed catering event(s) this period, best: ${top.customerName} (${formatAmountForSpeech(top.netProfit, sym)})`
+          : 'No completed catering events this period',
+        details: r.rows.slice(0, 3).map((row) => `${row.customerName}: ${formatAmountForSpeech(row.netProfit, sym)} net profit`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — Tours & Travels signature win: Trip Profitability — the real
+    // answer behind suite 93's "commission-profitability" name.
+    case 'toursTravels.tripProfitability': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateTripProfitabilityReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top
+          ? `${formatAmountForSpeech(r.summary.totalNetProfit, sym)} net profit across ${r.rows.length} completed trip(s) this period, most profitable: ${top.bookingNumber} (${formatAmountForSpeech(top.netProfit, sym)})`
+          : 'No completed trips this period',
+        details: r.rows.slice(0, 3).map((row) => `${row.bookingNumber} (${row.customerName}): ${formatAmountForSpeech(row.netProfit, sym)} net profit`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — Tours & Travels item 5: commission by agent.
+    case 'toursTravels.commissionByAgent': {
+      const { dateFrom, dateTo } = thisMonthRange(params)
+      const r = await reportService.generateCommissionByAgentReport({ dateFrom, dateTo })
+      const top = r.rows[0] ?? null
+      return {
+        headline: top
+          ? `${top.agentName} leads with ${formatAmountForSpeech(top.totalCommission, sym)} commission this period across ${top.bookingCount} booking(s)`
+          : 'No agent-referred bookings this period',
+        details: r.rows.slice(0, 3).map((row) => `${row.agentName}: ${formatAmountForSpeech(row.totalCommission, sym)} (${row.bookingCount} booking(s))`),
+        isEmpty: r.rows.length === 0
+      }
+    }
+    // 2026-09 — Tours & Travels item 4: vehicle service-due & total-km-run.
+    case 'toursTravels.vehicleServiceDue': {
+      const r = await reportService.generateVehicleServiceDueReport()
+      const dueSoon = r.rows.filter((v) => v.isDueSoon)
+      return {
+        headline: dueSoon.length > 0
+          ? `${dueSoon.length} vehicle(s) due for service soon`
+          : 'No vehicles are currently due for service',
+        details: dueSoon.slice(0, 5).map((v) => `${v.registrationNumber}: ${v.kmSinceLastService ?? 'unknown'} km since last service`),
+        isEmpty: r.rows.length === 0
       }
     }
     default:

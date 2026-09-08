@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { sumCurrency } from './currency.service'
+import { roundCurrency, sumCurrency } from './currency.service'
 
 // Electrical/Plumbing vertical — a contractor's running account for one job
 // site, tagged onto CREDIT invoices via Invoice.jobSiteAccountId. Balance is
@@ -72,6 +72,52 @@ export async function getJobSiteAccountBalance(id: string) {
     return { success: true, data: { account, invoices, totalBilled, totalOutstanding } }
   } catch (err) {
     return { success: false, error: { code: 'JSA-005', message: err instanceof Error ? err.message : 'Could not compute account balance.' } }
+  }
+}
+
+// AI Assistant vertical templates, 2026-09 — Electrical/Plumbing had zero
+// AI-answerable questions since neither vertical has a fleet-wide aggregate:
+// getJobSiteAccountBalance above only takes a single account ID. Portfolio-
+// wide view across every open account, same shape as
+// distributor-credit-risk.service.ts's own getCreditRiskOverview (one
+// batched query instead of N+1 calls into getJobSiteAccountBalance).
+export interface JobSiteAccountOverviewRow { id: string; accountName: string; contractorName: string; outstanding: number }
+export interface JobSiteAccountsOverview {
+  openAccountCount: number
+  totalOutstanding: number
+  accounts: JobSiteAccountOverviewRow[]
+}
+
+export async function getJobSiteAccountsOverview(): Promise<{ success: boolean; data?: JobSiteAccountsOverview; error?: { code: string; message: string } }> {
+  try {
+    const db = getPrisma()
+    const accounts = await db.jobSiteAccount.findMany({
+      where: { status: 'ACTIVE' },
+      include: { contractor: { select: { customerName: true } } },
+    })
+    if (accounts.length === 0) return { success: true, data: { openAccountCount: 0, totalOutstanding: 0, accounts: [] } }
+
+    const invoices = await db.invoice.findMany({
+      where: { jobSiteAccountId: { in: accounts.map(a => a.id) }, status: 'ACTIVE' },
+      select: { jobSiteAccountId: true, balanceAmount: true },
+    })
+    const outstandingByAccount = new Map<string, number>()
+    for (const inv of invoices) {
+      if (!inv.jobSiteAccountId) continue
+      outstandingByAccount.set(inv.jobSiteAccountId, (outstandingByAccount.get(inv.jobSiteAccountId) ?? 0) + inv.balanceAmount)
+    }
+
+    const accountRows: JobSiteAccountOverviewRow[] = accounts
+      .map(a => ({ id: a.id, accountName: a.accountName, contractorName: a.contractor.customerName, outstanding: roundCurrency(outstandingByAccount.get(a.id) ?? 0) }))
+      .filter(r => r.outstanding > 0)
+      .sort((a, b) => b.outstanding - a.outstanding)
+
+    return {
+      success: true,
+      data: { openAccountCount: accounts.length, totalOutstanding: sumCurrency(accountRows.map(r => r.outstanding)), accounts: accountRows },
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'JSA-009', message: err instanceof Error ? err.message : 'Could not compute job-site accounts overview.' } }
   }
 }
 

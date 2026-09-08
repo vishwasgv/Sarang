@@ -7,7 +7,21 @@ vi.mock('../hearing.service', () => ({ listHearings: vi.fn() }))
 vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../hotel.service', () => ({ getOccupancyReport: vi.fn() }))
-vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn(), generateVendorMarginReport: vi.fn(), generateBrandMarginReturnRateReport: vi.fn(), generateSizeAvailabilityHeatmapReport: vi.fn(), generateLandedCostPerUnitReport: vi.fn(), generateRejectionRateTrendReport: vi.fn(), generateSeasonalCreditExposureReport: vi.fn(), generateFarmerRepaymentReport: vi.fn(), generateDonationToIssueCycleTimeReport: vi.fn(), generateAssetUtilizationReport: vi.fn(), generateMakingChargeMarginReport: vi.fn(), generateHallmarkComplianceReport: vi.fn(), generateMetalRateVsSalesVolumeReport: vi.fn(), generatePurityAdjustedExchangeReport: vi.fn(), generateServiceResolutionTimeReport: vi.fn(), generateRepeatBusinessRateReport: vi.fn(), generateConsultantUtilizationReport: vi.fn(), generateClientProfitabilityReport: vi.fn(), generateJobCardTurnaroundByTechnicianReport: vi.fn(), generateRepairCategoryVolumeTrendReport: vi.fn(), generateFieldRepLeaderboardReport: vi.fn(), generateScheduleH1XRegisterReport: vi.fn() } }))
+vi.mock('../report.service', () => ({ reportService: { generatePrescriptionDrugSalesReport: vi.fn(), generateBatchExpiryReport: vi.fn(), generateSchemeCostVsVolumeReport: vi.fn(), generateWalkInVsAppointmentRatioReport: vi.fn(), generateDiagnosisCategoryTrendReport: vi.fn(), generateReferralOutcomeReport: vi.fn(), generatePackUtilizationReport: vi.fn(), generateLabTATReport: vi.fn(), generateTestVolumeByPanelReport: vi.fn(), generateReferralLeaderboardReport: vi.fn(), generateSecondOpinionConversionReport: vi.fn(), generateCaseComplexityMixReport: vi.fn(), generateTreatmentAcceptanceRateReport: vi.fn(), generateDentalRecallComplianceReport: vi.fn(), generateVaccinationComplianceReport: vi.fn(), generateVetCaseTypeVolumeReport: vi.fn(), generateDishContributionMarginReport: vi.fn(), generateTableTurnoverByHourReport: vi.fn(), generateRecipeWasteVarianceReport: vi.fn(), generateDeadStockClearanceReport: vi.fn(), generateCategorySellThroughReport: vi.fn(), generateBasketCompositionReport: vi.fn(), generateCategoryMixReport: vi.fn(), generateCashPositionTrendReport: vi.fn(), generateFastSlowMoverMatrixReport: vi.fn(), generateVendorRecoveryLedgerReport: vi.fn(), generateRepairTurnaroundByTechnicianReport: vi.fn(), generateSeasonSellThroughReport: vi.fn(), generateSizeStyleHeatmapReport: vi.fn(), generateVendorMarginReport: vi.fn(), generateBrandMarginReturnRateReport: vi.fn(), generateSizeAvailabilityHeatmapReport: vi.fn(), generateLandedCostPerUnitReport: vi.fn(), generateRejectionRateTrendReport: vi.fn(), generateSeasonalCreditExposureReport: vi.fn(), generateFarmerRepaymentReport: vi.fn(), generateDonationToIssueCycleTimeReport: vi.fn(), generateAssetUtilizationReport: vi.fn(), generateMakingChargeMarginReport: vi.fn(), generateHallmarkComplianceReport: vi.fn(), generateMetalRateVsSalesVolumeReport: vi.fn(), generatePurityAdjustedExchangeReport: vi.fn(), generateServiceResolutionTimeReport: vi.fn(), generateRepeatBusinessRateReport: vi.fn(), generateConsultantUtilizationReport: vi.fn(), generateClientProfitabilityReport: vi.fn(), generateJobCardTurnaroundByTechnicianReport: vi.fn(), generateRepairCategoryVolumeTrendReport: vi.fn(), generateFieldRepLeaderboardReport: vi.fn(), generateScheduleH1XRegisterReport: vi.fn(),
+  // 2026-09 — the 7 newest verticals' report functions (Phase 69 §11 / 2026-09 §12 in report.service.ts).
+  generateCoilWastageYieldReport: vi.fn(), generateIsiBisSafetyRegisterReport: vi.fn(), generateSpecWiseFastMoversReport: vi.fn(),
+  generateFittingCrossSellReport: vi.fn(), generateMaterialSalesMixReport: vi.fn(),
+  generateSeasonalDemandForecastReport: vi.fn(), generateInstitutionalOrderHistoryReport: vi.fn(),
+  generateDeliveryInstallationScheduleReport: vi.fn(), generateLocationStockSplitReport: vi.fn(),
+  generateMrpViolationReport: vi.fn(), generatePerishableWastageReport: vi.fn(), generateDailyRestockAlertReport: vi.fn(),
+  generateLooseVsPackagedMixReport: vi.fn(), generateKhataRiskReport: vi.fn(),
+  generatePreOrderProductionSheetReport: vi.fn(), generateEventProfitabilityReport: vi.fn(),
+  generateTripProfitabilityReport: vi.fn(), generateCommissionByAgentReport: vi.fn(), generateVehicleServiceDueReport: vi.fn(),
+} }))
+vi.mock('../bulk-list-order.service', () => ({ getAnnualReorderReminders: vi.fn() }))
+vi.mock('../furniture-booking.service', () => ({ getBookedOrderCashFlowForecast: vi.fn() }))
+vi.mock('../job-site-account.service', () => ({ getJobSiteAccountsOverview: vi.fn() }))
+vi.mock('../khata-reminder.service', () => ({ khataReminderService: { listKhataReminderCandidates: vi.fn() } }))
 vi.mock('../gold-savings.service', () => ({ listGoldSavingsSchemes: vi.fn() }))
 vi.mock('../service-ticket.service', () => ({ listTickets: vi.fn(), getQuoteToJobConversionStats: vi.fn() }))
 vi.mock('../service-contract.service', () => ({ listServiceContracts: vi.fn() }))
@@ -63,6 +77,10 @@ import { customDocumentService } from '../custom-document.service'
 import { listChronicConditions } from '../chronic-condition-record.service'
 import { loyaltyProgramService } from '../loyalty-program.service'
 import { getPrisma } from '../../database/db'
+import { getAnnualReorderReminders } from '../bulk-list-order.service'
+import { getBookedOrderCashFlowForecast } from '../furniture-booking.service'
+import { getJobSiteAccountsOverview } from '../job-site-account.service'
+import { khataReminderService } from '../khata-reminder.service'
 import { getActiveVerticalTemplateNames, executeVerticalTemplate } from '../ai-vertical-templates.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -2751,6 +2769,654 @@ describe('ai-vertical-templates.service — Repair', () => {
     const result = await executeVerticalTemplate('repair.partsVariance', {}, '₹')
 
     expect(result.headline).toBe('No quoted-and-used job cards to compare yet.')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+// 2026-09 — the 7 newest verticals (Electrical/Plumbing/Stationery/
+// Furniture/Grocery/Bakery/Tours & Travels) had zero vertical-specific AI
+// templates before this pass. Every underlying function reused here already
+// existed and was already unit-tested elsewhere (report.service.ts's own
+// Phase 69 §11 / 2026-09 §12 tests, plus bulk-list-order/furniture-booking/
+// khata-reminder's own service tests) — these tests cover the NEW wiring
+// (registration + formatter shape) specifically, matching this file's own
+// existing per-template test convention.
+describe('ai-vertical-templates.service — ELECTRICAL', () => {
+  it('registers exactly the 4 Electrical templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'ELECTRICAL' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['electrical.coilWastageYield', 'electrical.isiBisSafetyRegister', 'electrical.specWiseFastMovers', 'jobSiteAccount.outstandingOverview'])
+  })
+
+  it('coilWastageYield reports average yield and names the worst-wastage product', async () => {
+    vi.mocked(reportService.generateCoilWastageYieldReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ productId: 'p1', productName: '2.5mm Wire', sku: null, lengthUnit: 'M', receivedQty: 100, soldQty: 80, recordedAdjustment: 5, yieldPercent: 80, estimatedWastageQty: 15 }],
+      summary: { totalReceived: 100, totalSold: 80, avgYieldPercent: 80 },
+    } as never)
+
+    const result = await executeVerticalTemplate('electrical.coilWastageYield', {}, '₹')
+
+    expect(result.headline).toBe('80% average yield across length-billed items this period, most wastage on 2.5mm Wire')
+    expect(result.details).toEqual(['2.5mm Wire: 80% yield, 15 M estimated wastage'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('coilWastageYield gives an honest headline with no length-billed activity', async () => {
+    vi.mocked(reportService.generateCoilWastageYieldReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalReceived: 0, totalSold: 0, avgYieldPercent: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('electrical.coilWastageYield', {}, '₹')
+
+    expect(result.headline).toBe('No length-billed coil activity this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('isiBisSafetyRegister reports total/available/sold serial units', async () => {
+    vi.mocked(reportService.generateIsiBisSafetyRegisterReport).mockResolvedValue({
+      rows: [], summary: { totalUnits: 12, soldUnits: 7, availableUnits: 5 },
+    } as never)
+
+    const result = await executeVerticalTemplate('electrical.isiBisSafetyRegister', {}, '₹')
+
+    expect(result.headline).toBe('12 serial-tracked unit(s) on record, 5 in stock, 7 sold')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('isiBisSafetyRegister marks isEmpty true with zero serial units', async () => {
+    vi.mocked(reportService.generateIsiBisSafetyRegisterReport).mockResolvedValue({
+      rows: [], summary: { totalUnits: 0, soldUnits: 0, availableUnits: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('electrical.isiBisSafetyRegister', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('specWiseFastMovers names the top spec and total units sold', async () => {
+    vi.mocked(reportService.generateSpecWiseFastMoversReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ spec: '2.5mm', productName: 'Copper Wire', unitsSold: 50, revenue: 5000 }],
+      summary: { totalUnitsSold: 50, topSpec: '2.5mm' },
+    } as never)
+
+    const result = await executeVerticalTemplate('electrical.specWiseFastMovers', {}, '₹')
+
+    expect(result.headline).toBe('2.5mm is your fastest-moving spec this period, 50 unit(s) sold across all specs')
+    expect(result.details).toEqual(['2.5mm (Copper Wire): 50 units, ₹5,000.00'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('specWiseFastMovers gives an honest headline with no variant sales', async () => {
+    vi.mocked(reportService.generateSpecWiseFastMoversReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalUnitsSold: 0, topSpec: null },
+    } as never)
+
+    const result = await executeVerticalTemplate('electrical.specWiseFastMovers', {}, '₹')
+
+    expect(result.headline).toBe('No variant/spec sales this period')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — PLUMBING', () => {
+  it('registers exactly the 3 Plumbing templates, sharing jobSiteAccount.outstandingOverview with Electrical', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'PLUMBING' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['plumbing.fittingCrossSellMisses', 'plumbing.materialSalesMix', 'jobSiteAccount.outstandingOverview'])
+  })
+
+  it('fittingCrossSellMisses names the anchor/partner pair most often missed', async () => {
+    vi.mocked(reportService.generateFittingCrossSellReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ invoiceId: 'i1', invoiceNumber: 'INV-01', invoiceDate: '2026-09-05', anchorProductId: 'a1', anchorProductName: 'PVC Pipe', expectedPartnerProductId: 'b1', expectedPartnerProductName: 'Elbow Joint', pairStrengthPercent: 60 }],
+      summary: { missedOpportunities: 1, invoicesScanned: 10 },
+    } as never)
+
+    const result = await executeVerticalTemplate('plumbing.fittingCrossSellMisses', {}, '₹')
+
+    expect(result.headline).toBe('1 sale(s) this period likely missed a usual companion item, most often PVC Pipe without Elbow Joint')
+    expect(result.details).toEqual(['INV-01: PVC Pipe sold without Elbow Joint (60% usual pairing)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('fittingCrossSellMisses gives an honest headline with no misses this period', async () => {
+    vi.mocked(reportService.generateFittingCrossSellReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { missedOpportunities: 0, invoicesScanned: 10 },
+    } as never)
+
+    const result = await executeVerticalTemplate('plumbing.fittingCrossSellMisses', {}, '₹')
+
+    expect(result.headline).toBe('No likely missed cross-sell opportunities this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('materialSalesMix names the leading material by revenue share', async () => {
+    vi.mocked(reportService.generateMaterialSalesMixReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ categoryId: 'c1', materialName: 'PVC', unitsSold: 40, revenue: 8000, revenueSharePercent: 60 }],
+      summary: { totalRevenue: 8000, materialCount: 1 },
+    } as never)
+
+    const result = await executeVerticalTemplate('plumbing.materialSalesMix', {}, '₹')
+
+    expect(result.headline).toBe('PVC leads material sales this period at 60% of revenue (₹8,000.00)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('materialSalesMix gives an honest headline with no categorized sales', async () => {
+    vi.mocked(reportService.generateMaterialSalesMixReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalRevenue: 0, materialCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('plumbing.materialSalesMix', {}, '₹')
+
+    expect(result.headline).toBe('No categorized material sales this period')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — jobSiteAccount.outstandingOverview (shared Electrical/Plumbing)', () => {
+  it('reports total outstanding and the top accounts', async () => {
+    vi.mocked(getJobSiteAccountsOverview).mockResolvedValue({
+      success: true,
+      data: { openAccountCount: 2, totalOutstanding: 600, accounts: [{ id: 'jsa-1', accountName: 'Site A', contractorName: 'Sharma Contractors', outstanding: 600 }] },
+    } as never)
+
+    const result = await executeVerticalTemplate('jobSiteAccount.outstandingOverview', {}, '₹')
+
+    expect(result.headline).toBe('₹600.00 outstanding across 1 job-site account(s) with a balance')
+    expect(result.details).toEqual(['Site A (Sharma Contractors): ₹600.00'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('gives an honest headline when there are no open accounts', async () => {
+    vi.mocked(getJobSiteAccountsOverview).mockResolvedValue({
+      success: true, data: { openAccountCount: 0, totalOutstanding: 0, accounts: [] },
+    } as never)
+
+    const result = await executeVerticalTemplate('jobSiteAccount.outstandingOverview', {}, '₹')
+
+    expect(result.headline).toBe('No job-site accounts currently carry an outstanding balance (0 open)')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — STATIONERY', () => {
+  it('registers exactly the 3 Stationery templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'STATIONERY' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['stationery.annualReorderReminders', 'stationery.seasonalDemandForecast', 'stationery.institutionalOrderHistory'])
+  })
+
+  it('annualReorderReminders counts due-soon and overdue institutions', async () => {
+    vi.mocked(getAnnualReorderReminders).mockResolvedValue({
+      success: true,
+      data: [{ customerId: 'c1', institutionName: 'ABC School', lastOrderId: 'blo-1', lastOrderNumber: 'BLO-001', lastOrderDate: '2025-06-01', monthsSinceLastOrder: 15, status: 'OVERDUE' }],
+    } as never)
+
+    const result = await executeVerticalTemplate('stationery.annualReorderReminders', {}, '₹')
+
+    expect(result.headline).toBe('1 institutional client(s) likely due to reorder, 1 overdue')
+    expect(result.details).toEqual(['ABC School: last ordered 15 month(s) ago (overdue)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('annualReorderReminders gives an honest headline when nobody is due', async () => {
+    vi.mocked(getAnnualReorderReminders).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('stationery.annualReorderReminders', {}, '₹')
+
+    expect(result.headline).toBe('No institutional clients are due to reorder yet')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('seasonalDemandForecast names the historically busiest month', async () => {
+    vi.mocked(reportService.generateSeasonalDemandForecastReport).mockResolvedValue({
+      rows: [{ month: 8, monthName: 'August', unitsSold: 120, revenue: 15000 }],
+      peakMonth: 8,
+      summary: { totalUnitsSold: 300, totalRevenue: 40000, monthsOfHistory: 10 },
+    } as never)
+
+    const result = await executeVerticalTemplate('stationery.seasonalDemandForecast', {}, '₹')
+
+    expect(result.headline).toBe('August is historically your busiest month, 120 unit(s) sold (based on 10 months of history)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('seasonalDemandForecast gives an honest headline with no sales history', async () => {
+    vi.mocked(reportService.generateSeasonalDemandForecastReport).mockResolvedValue({
+      rows: [], peakMonth: null, summary: { totalUnitsSold: 0, totalRevenue: 0, monthsOfHistory: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('stationery.seasonalDemandForecast', {}, '₹')
+
+    expect(result.headline).toBe('Not enough sales history yet to forecast seasonal demand')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('institutionalOrderHistory reports total orders/billed/value', async () => {
+    vi.mocked(reportService.generateInstitutionalOrderHistoryReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ orderId: 'blo-1', orderNumber: 'BLO-001', institutionName: 'XYZ Office', listName: 'Office Supplies', status: 'BILLED', itemCount: 5, totalValue: 2000, createdAt: '2026-09-05' }],
+      summary: { totalOrders: 1, billedOrders: 1, totalValue: 2000 },
+    } as never)
+
+    const result = await executeVerticalTemplate('stationery.institutionalOrderHistory', {}, '₹')
+
+    expect(result.headline).toBe('1 institutional order(s) this period, 1 billed, ₹2,000.00 total value')
+    expect(result.details).toEqual(['XYZ Office — Office Supplies: ₹2,000.00 (BILLED)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('institutionalOrderHistory gives an honest headline with no orders', async () => {
+    vi.mocked(reportService.generateInstitutionalOrderHistoryReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalOrders: 0, billedOrders: 0, totalValue: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('stationery.institutionalOrderHistory', {}, '₹')
+
+    expect(result.headline).toBe('No institutional orders this period')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — FURNITURE', () => {
+  it('registers exactly the 3 Furniture templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'FURNITURE' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['furniture.bookedOrderCashFlowForecast', 'furniture.deliveryInstallationSchedule', 'furniture.locationStockSplit'])
+  })
+
+  it('bookedOrderCashFlowForecast reports total expected balance due', async () => {
+    vi.mocked(getBookedOrderCashFlowForecast).mockResolvedValue({
+      success: true,
+      data: { rows: [{ month: '2026-09', bookingCount: 3, expectedBalanceDue: 15000 }], summary: { totalBookings: 3, totalExpectedBalanceDue: 15000 } },
+    } as never)
+
+    const result = await executeVerticalTemplate('furniture.bookedOrderCashFlowForecast', {}, '₹')
+
+    expect(result.headline).toBe('₹15,000.00 expected from 3 booked, not-yet-invoiced order(s)')
+    expect(result.details).toEqual(['2026-09: ₹15,000.00 (3 booking(s))'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('bookedOrderCashFlowForecast gives an honest headline with no booked orders', async () => {
+    vi.mocked(getBookedOrderCashFlowForecast).mockResolvedValue({
+      success: true, data: { rows: [], summary: { totalBookings: 0, totalExpectedBalanceDue: 0 } },
+    } as never)
+
+    const result = await executeVerticalTemplate('furniture.bookedOrderCashFlowForecast', {}, '₹')
+
+    expect(result.headline).toBe('No booked, uninvoiced furniture orders to forecast')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('deliveryInstallationSchedule reports pending vs. delivered counts', async () => {
+    vi.mocked(reportService.generateDeliveryInstallationScheduleReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ bookingId: 'fbk-1', bookingNumber: 'FBK-001', customerName: 'Ramesh', deliveryDate: '2026-09-10', deliveryAddress: null, status: 'BOOKED', itemCount: 2, totalValue: 5000 }],
+      summary: { totalBookings: 1, deliveredCount: 0, pendingCount: 1 },
+    } as never)
+
+    const result = await executeVerticalTemplate('furniture.deliveryInstallationSchedule', {}, '₹')
+
+    expect(result.headline).toBe('1 delivery/installation(s) still pending this period, 0 delivered, out of 1 scheduled')
+    expect(result.details).toEqual(['FBK-001 — Ramesh: 2026-09-10'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('deliveryInstallationSchedule gives an honest headline with nothing scheduled', async () => {
+    vi.mocked(reportService.generateDeliveryInstallationScheduleReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalBookings: 0, deliveredCount: 0, pendingCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('furniture.deliveryInstallationSchedule', {}, '₹')
+
+    expect(result.headline).toBe('No furniture deliveries scheduled this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('locationStockSplit reports product/location counts and the per-location breakdown', async () => {
+    vi.mocked(reportService.generateLocationStockSplitReport).mockResolvedValue({
+      locations: [{ id: 'l1', name: 'Showroom' }, { id: 'l2', name: 'Warehouse' }],
+      rows: [{ productId: 'p1', productName: 'Sofa', sku: null, byLocation: [{ locationId: 'l1', locationName: 'Showroom', quantity: 3 }, { locationId: 'l2', locationName: 'Warehouse', quantity: 7 }], totalQty: 10 }],
+      summary: { productCount: 1, totalQty: 10 },
+    } as never)
+
+    const result = await executeVerticalTemplate('furniture.locationStockSplit', {}, '₹')
+
+    expect(result.headline).toBe('1 product(s) tracked across 2 location(s), 10 unit(s) total')
+    expect(result.details).toEqual(['Sofa: Showroom 3, Warehouse 7'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('locationStockSplit gives an honest headline with no tracked stock', async () => {
+    vi.mocked(reportService.generateLocationStockSplitReport).mockResolvedValue({
+      locations: [], rows: [], summary: { productCount: 0, totalQty: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('furniture.locationStockSplit', {}, '₹')
+
+    expect(result.headline).toBe('No stock currently tracked by location')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — GROCERY', () => {
+  it('registers exactly the 6 Grocery templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'GROCERY' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['grocery.khataOverdueReminders', 'grocery.khataRiskOverview', 'grocery.mrpViolations', 'grocery.perishableWastage', 'grocery.dailyRestockAlert', 'grocery.looseVsPackagedMix'])
+  })
+
+  it('khataOverdueReminders reports overdue count and total outstanding (read-only, never builds a reminder link)', async () => {
+    vi.mocked(khataReminderService.listKhataReminderCandidates).mockResolvedValue({
+      success: true,
+      data: [{ customerId: 'c1', customerName: 'Ramesh Kirana', phone: '9990001111', outstanding: 500, daysOverdue: 10, eligibleForReminder: true }],
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.khataOverdueReminders', {}, '₹')
+
+    expect(result.headline).toBe('1 customer(s) overdue on khata, ₹500.00 total outstanding')
+    expect(result.details).toEqual(['Ramesh Kirana: ₹500.00, 10 day(s) overdue'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('khataOverdueReminders gives an honest headline with nobody overdue', async () => {
+    vi.mocked(khataReminderService.listKhataReminderCandidates).mockResolvedValue({ success: true, data: [] } as never)
+
+    const result = await executeVerticalTemplate('grocery.khataOverdueReminders', {}, '₹')
+
+    expect(result.headline).toBe('No customers currently overdue on khata')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('khataRiskOverview counts HIGH/MEDIUM risk customers and lists the HIGH-risk ones', async () => {
+    vi.mocked(reportService.generateKhataRiskReport).mockResolvedValue({
+      generatedAt: '2026-09-08T00:00:00.000Z',
+      rows: [{ customerId: 'c1', customerName: 'Suresh', phone: null, outstanding: 1000, daysOldOfOldestDebt: 40, trend: 'RISING', riskTier: 'HIGH' }],
+      summary: { highRiskCount: 1, mediumRiskCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.khataRiskOverview', {}, '₹')
+
+    expect(result.headline).toBe('1 customer(s) are HIGH khata risk, 0 MEDIUM')
+    expect(result.details).toEqual(['Suresh: ₹1,000.00, trend rising'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('khataRiskOverview gives an honest headline with no rated customers', async () => {
+    vi.mocked(reportService.generateKhataRiskReport).mockResolvedValue({
+      generatedAt: '2026-09-08T00:00:00.000Z', rows: [], summary: { highRiskCount: 0, mediumRiskCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.khataRiskOverview', {}, '₹')
+
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('mrpViolations reports violation count and excess collected', async () => {
+    vi.mocked(reportService.generateMrpViolationReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ invoiceId: 'i1', invoiceNumber: 'INV-1', invoiceDate: '2026-09-05', productId: 'p1', productName: 'Oil 1L', sku: null, unitPrice: 110, mrp: 100, excessPerUnit: 10, quantity: 3 }],
+      summary: { violationCount: 1, totalExcessCollected: 30 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.mrpViolations', {}, '₹')
+
+    expect(result.headline).toBe('1 sale(s) this period were priced above MRP, ₹30.00 collected in excess')
+    expect(result.details).toEqual(['Oil 1L: ₹10.00/unit over MRP (3 sold)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('mrpViolations gives an honest headline with no violations', async () => {
+    vi.mocked(reportService.generateMrpViolationReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { violationCount: 0, totalExcessCollected: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.mrpViolations', {}, '₹')
+
+    expect(result.headline).toBe('No above-MRP sales this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('perishableWastage reports total wastage value and names the worst product', async () => {
+    vi.mocked(reportService.generatePerishableWastageReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ productId: 'p1', productName: 'Milk', sku: null, expiredWastageQty: 5, expiredWastageValue: 250 }],
+      summary: { totalWastageQty: 5, totalWastageValue: 250 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.perishableWastage', {}, '₹')
+
+    expect(result.headline).toBe('₹250.00 lost to expired perishable stock this period, most from Milk')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('perishableWastage gives an honest headline with no expired-stock wastage', async () => {
+    vi.mocked(reportService.generatePerishableWastageReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalWastageQty: 0, totalWastageValue: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.perishableWastage', {}, '₹')
+
+    expect(result.headline).toBe('No expired-stock wastage recorded this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('dailyRestockAlert leads with the urgent count when any products are urgent', async () => {
+    vi.mocked(reportService.generateDailyRestockAlertReport).mockResolvedValue({
+      rows: [{ productId: 'p1', productName: 'Rice 5kg', sku: null, currentStock: 2, dailyVelocity: 1, daysOfStockRemaining: 2 }],
+      summary: { urgentCount: 1, watchlistCount: 1 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.dailyRestockAlert', {}, '₹')
+
+    expect(result.headline).toBe('1 product(s) urgently need restocking (2 days or less of stock left)')
+    expect(result.details).toEqual(['Rice 5kg: 2 day(s) of stock left'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('dailyRestockAlert falls back to the watchlist count when nothing is urgent', async () => {
+    vi.mocked(reportService.generateDailyRestockAlertReport).mockResolvedValue({
+      rows: [{ productId: 'p1', productName: 'Sugar 1kg', sku: null, currentStock: 10, dailyVelocity: 2, daysOfStockRemaining: 5 }],
+      summary: { urgentCount: 0, watchlistCount: 1 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.dailyRestockAlert', {}, '₹')
+
+    expect(result.headline).toBe('1 product(s) are running low on stock')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('dailyRestockAlert gives an honest headline with nothing to restock', async () => {
+    vi.mocked(reportService.generateDailyRestockAlertReport).mockResolvedValue({
+      rows: [], summary: { urgentCount: 0, watchlistCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.dailyRestockAlert', {}, '₹')
+
+    expect(result.headline).toBe('No products currently need restocking')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('looseVsPackagedMix reports the loose-sale revenue share', async () => {
+    vi.mocked(reportService.generateLooseVsPackagedMixReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ label: 'Loose', unitsSold: 20, revenue: 2000 }, { label: 'Packaged', unitsSold: 30, revenue: 6000 }],
+      summary: { totalRevenue: 8000, loosePercent: 25 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.looseVsPackagedMix', {}, '₹')
+
+    expect(result.headline).toBe('25% of revenue this period came from loose-sold items (₹2,000.00)')
+    expect(result.details).toEqual(['Loose: ₹2,000.00 (20 units)', 'Packaged: ₹6,000.00 (30 units)'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('looseVsPackagedMix gives an honest headline with no sales', async () => {
+    vi.mocked(reportService.generateLooseVsPackagedMixReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [{ label: 'Loose', unitsSold: 0, revenue: 0 }, { label: 'Packaged', unitsSold: 0, revenue: 0 }], summary: { totalRevenue: 0, loosePercent: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('grocery.looseVsPackagedMix', {}, '₹')
+
+    expect(result.headline).toBe('No sales recorded this period')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — BAKERY', () => {
+  it('registers exactly the 2 Bakery templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'BAKERY' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['bakery.preOrderProductionSheet', 'bakery.eventProfitability'])
+  })
+
+  it('preOrderProductionSheet reports order/product/ingredient totals for the requested date', async () => {
+    vi.mocked(reportService.generatePreOrderProductionSheetReport).mockResolvedValue({
+      date: '2026-09-15',
+      products: [{ productId: 'p1', productName: 'Bread', qtyFromOrders: 10, qtyFromDemandForecast: 5, totalQtyNeeded: 15 }],
+      ingredients: [{ ingredientProductId: 'i1', ingredientName: 'Flour', unit: 'kg', totalQtyNeeded: 7.5 }],
+      summary: { orderCount: 2, totalProductQty: 15 },
+    } as never)
+
+    const result = await executeVerticalTemplate('bakery.preOrderProductionSheet', { dateFrom: '2026-09-15' }, '₹')
+
+    expect(reportService.generatePreOrderProductionSheetReport).toHaveBeenCalledWith({ date: '2026-09-15' })
+    expect(result.headline).toBe('2 custom order(s) due 2026-09-15, 15 unit(s) of product needed across 1 item(s)')
+    expect(result.details).toEqual(['Flour: 7.5 kg'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('preOrderProductionSheet gives an honest headline with no orders or demand for that date', async () => {
+    vi.mocked(reportService.generatePreOrderProductionSheetReport).mockResolvedValue({
+      date: '2026-09-15', products: [], ingredients: [], summary: { orderCount: 0, totalProductQty: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('bakery.preOrderProductionSheet', { dateFrom: '2026-09-15' }, '₹')
+
+    expect(result.headline).toBe('No custom orders or expected demand for 2026-09-15')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('eventProfitability reports total net profit and the best-performing event', async () => {
+    vi.mocked(reportService.generateEventProfitabilityReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ eventId: 'e1', eventNumber: 'CAT-01', customerName: 'Mehta Wedding', revenue: 50000, staffCost: 8000, ingredientCostEstimate: 12000, netProfit: 30000 }],
+      summary: { totalRevenue: 50000, totalNetProfit: 30000 },
+    } as never)
+
+    const result = await executeVerticalTemplate('bakery.eventProfitability', {}, '₹')
+
+    expect(result.headline).toBe('₹30,000.00 net profit across 1 completed catering event(s) this period, best: Mehta Wedding (₹30,000.00)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('eventProfitability gives an honest headline with no completed events', async () => {
+    vi.mocked(reportService.generateEventProfitabilityReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalRevenue: 0, totalNetProfit: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('bakery.eventProfitability', {}, '₹')
+
+    expect(result.headline).toBe('No completed catering events this period')
+    expect(result.isEmpty).toBe(true)
+  })
+})
+
+describe('ai-vertical-templates.service — TOURS_TRAVELS', () => {
+  it('registers exactly the 3 Tours & Travels templates', async () => {
+    vi.mocked(getActiveTemplate).mockResolvedValue({ success: true, data: { businessType: 'TOURS_TRAVELS' } } as never)
+
+    const names = await getActiveVerticalTemplateNames()
+
+    expect(names).toEqual(['toursTravels.tripProfitability', 'toursTravels.commissionByAgent', 'toursTravels.vehicleServiceDue'])
+  })
+
+  it('tripProfitability reports total net profit and the most profitable trip', async () => {
+    vi.mocked(reportService.generateTripProfitabilityReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ bookingId: 'tb1', bookingNumber: 'TRP-01', customerName: 'Verma Family', revenue: 20000, driverCost: 3000, fuelCostEstimate: 2000, maintenanceCostEstimate: 500, commission: 1000, netProfit: 13500 }],
+      summary: { totalRevenue: 20000, totalNetProfit: 13500 },
+    } as never)
+
+    const result = await executeVerticalTemplate('toursTravels.tripProfitability', {}, '₹')
+
+    expect(result.headline).toBe('₹13,500.00 net profit across 1 completed trip(s) this period, most profitable: TRP-01 (₹13,500.00)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('tripProfitability gives an honest headline with no completed trips', async () => {
+    vi.mocked(reportService.generateTripProfitabilityReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalRevenue: 0, totalNetProfit: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('toursTravels.tripProfitability', {}, '₹')
+
+    expect(result.headline).toBe('No completed trips this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('commissionByAgent names the leading agent by commission', async () => {
+    vi.mocked(reportService.generateCommissionByAgentReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30',
+      rows: [{ agentName: 'Agent Ravi', bookingCount: 4, totalPackageRevenue: 80000, totalCommission: 8000 }],
+      summary: { totalCommission: 8000, agentCount: 1 },
+    } as never)
+
+    const result = await executeVerticalTemplate('toursTravels.commissionByAgent', {}, '₹')
+
+    expect(result.headline).toBe('Agent Ravi leads with ₹8,000.00 commission this period across 4 booking(s)')
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('commissionByAgent gives an honest headline with no agent-referred bookings', async () => {
+    vi.mocked(reportService.generateCommissionByAgentReport).mockResolvedValue({
+      dateFrom: '2026-09-01', dateTo: '2026-09-30', rows: [], summary: { totalCommission: 0, agentCount: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('toursTravels.commissionByAgent', {}, '₹')
+
+    expect(result.headline).toBe('No agent-referred bookings this period')
+    expect(result.isEmpty).toBe(true)
+  })
+
+  it('vehicleServiceDue counts vehicles due for service soon', async () => {
+    vi.mocked(reportService.generateVehicleServiceDueReport).mockResolvedValue({
+      rows: [{ vehicleId: 'v1', registrationNumber: 'MH12AB1234', vehicleType: 'SEDAN', currentOdometer: 50000, kmSinceLastService: 9800, lastServiceDate: '2026-06-01', nextServiceDueKm: 60000, nextServiceDueDate: null, isDueSoon: true }],
+      summary: { dueSoonCount: 1, totalFleetKm: 50000 },
+    } as never)
+
+    const result = await executeVerticalTemplate('toursTravels.vehicleServiceDue', {}, '₹')
+
+    expect(result.headline).toBe('1 vehicle(s) due for service soon')
+    expect(result.details).toEqual(['MH12AB1234: 9800 km since last service'])
+    expect(result.isEmpty).toBe(false)
+  })
+
+  it('vehicleServiceDue gives an honest headline with no tracked vehicles', async () => {
+    vi.mocked(reportService.generateVehicleServiceDueReport).mockResolvedValue({
+      rows: [], summary: { dueSoonCount: 0, totalFleetKm: 0 },
+    } as never)
+
+    const result = await executeVerticalTemplate('toursTravels.vehicleServiceDue', {}, '₹')
+
+    expect(result.headline).toBe('No vehicles are currently due for service')
     expect(result.isEmpty).toBe(true)
   })
 })

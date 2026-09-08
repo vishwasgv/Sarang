@@ -117,6 +117,17 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // pattern, and being earlier in this array it would otherwise always win
   // first. Real bug found live during the 70-template UAT re-verification.
   { template: 'sales.walkInVsRegistered', patterns: [/walk-?in.*(vs\.?|versus).*registered/i, /walk-?in.*registered/i] },
+  // 2026-09 — checked BEFORE sales.totalThisMonth below for the same reason
+  // sales.walkInVsRegistered is: its own `(sold|sell|sale).*this month`
+  // pattern also fires on any of these 4 phrasings (e.g. "cross-sell"
+  // contains "sell", "material sales mix this month" contains "sale"), and
+  // being earlier in the array it would otherwise always win first — a real
+  // live misroute this pass's own verification caught (all 4 landed on
+  // sales.totalThisMonth instead of the correct vertical template).
+  { template: 'electrical.specWiseFastMovers', patterns: [/spec.?wise.*(mover|fast|slow)/i, /which spec.*(sell|mov)/i] },
+  { template: 'plumbing.fittingCrossSellMisses', patterns: [/(fitting|part)s?.*(missed|forgot|cross.?sell)/i, /cross.?sell.*(fitting|part)/i] },
+  { template: 'plumbing.materialSalesMix', patterns: [/material.*(mix|sales)/i, /(pvc|cpvc|copper).*sales/i] },
+  { template: 'grocery.mrpViolations', patterns: [/\bmrp\b/i, /above mrp/i, /over mrp/i] },
   { template: 'sales.totalThisMonth', patterns: [/\bthis month'?s?\s+sales?\b/i, /(sold|sell|sale).*this month/i] },
   { template: 'sales.averageInvoiceValue', patterns: [/average\s+(invoice|order|sale|bill)/i] },
   { template: 'inventory.lowStock', patterns: [/low\s+(on\s+)?stock/i, /running\s+(low|out)/i, /what'?s\s+low/i] },
@@ -449,6 +460,16 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'purchasing.landedCostForPurchase', patterns: [/freight.*add.*cost/i, /landed cost/i, /what.*(freight|duty|shipping).*add/i] },
   { template: 'kits.components', patterns: [/what'?s in.*kit/i, /kit.*(made of|components?|contains?)/i, /components?.*(of|in).*kit/i] },
   { template: 'locations.stockAtLocation', patterns: [/stock at/i, /how much.*(stock|inventory).*at/i, /what'?s at.*(location|warehouse|branch)/i] },
+  // 2026-09 — checked BEFORE costCentres.performanceThisMonth below for the
+  // same "narrower pattern must win" reason as the sales.totalThisMonth
+  // block above: that template's own `(profit|margin|performance).*this
+  // month` pattern also fires on "trip/event profitability this month" (the
+  // word "profit" is a substring of "profitability"), and being earlier in
+  // the array it would otherwise always win — a real live misroute this
+  // pass's own verification caught for Tours & Travels' trip-profitability
+  // question.
+  { template: 'toursTravels.tripProfitability', patterns: [/trip profitability/i, /(most|least) profitable trip/i] },
+  { template: 'bakery.eventProfitability', patterns: [/event profitability/i, /catering.*profit/i] },
   // Phase 65 — Cost Centres, Budgets & Payroll Compliance's 5 required
   // intents (Section 7.3), given deterministic fast-path coverage the same
   // way every other "must answer" example in this file already gets it.
@@ -456,7 +477,33 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'budgets.varianceCheck', patterns: [/over budget/i, /under budget/i, /am i.*budget/i, /budget.*(variance|vs\.? actual)/i] },
   { template: 'cashFlow.projectionNextMonth', patterns: [/projected cash flow/i, /cash flow.*next month/i, /how.*(cash|funds?).*look/i] },
   { template: 'payments.slowestPayingCustomers', patterns: [/slowest.*(to pay|paying)/i, /(customers?|clients?).*slow.*pay/i, /who.*takes?.*longest.*pay/i] },
-  { template: 'payroll.statutoryLiabilityThisMonth', patterns: [/(pf|esi).*liability/i, /statutory.*liability/i, /how much.*(pf|esi).*this month/i] }
+  { template: 'payroll.statutoryLiabilityThisMonth', patterns: [/(pf|esi).*liability/i, /statutory.*liability/i, /how much.*(pf|esi).*this month/i] },
+  // 2026-09 — the 7 newest verticals' (Electrical/Plumbing/Stationery/
+  // Furniture/Grocery/Bakery/Tours & Travels) new templates, given
+  // deterministic fast-path coverage the same way every other vertical
+  // template in this array already gets it. Placed last so every
+  // pre-existing pattern (including the universal finance.profitAndLoss's
+  // own bare /\bprofit\b/i) keeps winning where it would otherwise apply —
+  // safe here since "profitability"/"profit" as used below never appears as
+  // an isolated word (see finance.profitTrend's own comment above for why
+  // that distinction matters).
+  { template: 'electrical.coilWastageYield', patterns: [/coil.*(wastage|yield)/i, /wastage.*(coil|yield)/i] },
+  { template: 'electrical.isiBisSafetyRegister', patterns: [/isi.?\/?.?bis/i, /safety register/i] },
+  { template: 'jobSiteAccount.outstandingOverview', patterns: [/job.?site account/i, /contractor.*(balance|account|outstanding)/i] },
+  { template: 'stationery.annualReorderReminders', patterns: [/reorder remind/i, /institution.*(reorder|due)/i, /annual reorder/i] },
+  { template: 'stationery.seasonalDemandForecast', patterns: [/seasonal demand/i, /busiest month/i] },
+  { template: 'stationery.institutionalOrderHistory', patterns: [/institutional order/i, /bulk.?list order/i] },
+  { template: 'furniture.bookedOrderCashFlowForecast', patterns: [/cash flow forecast/i, /booked order.*cash/i, /expected.*(balance|cash).*(booking|order)/i] },
+  { template: 'furniture.deliveryInstallationSchedule', patterns: [/delivery.*(schedule|installation)/i, /installation schedule/i] },
+  { template: 'furniture.locationStockSplit', patterns: [/(showroom|warehouse).*stock/i, /stock.*(showroom|warehouse)/i] },
+  { template: 'grocery.khataOverdueReminders', patterns: [/khata.*(overdue|remind)/i, /overdue.*khata/i] },
+  { template: 'grocery.khataRiskOverview', patterns: [/khata risk/i, /risk.*khata/i] },
+  { template: 'grocery.perishableWastage', patterns: [/perishable.*wastage/i, /expired.*wastage/i, /wastage.*expired/i] },
+  { template: 'grocery.dailyRestockAlert', patterns: [/restock alert/i, /daily restock/i, /days of stock (remaining|left)/i] },
+  { template: 'grocery.looseVsPackagedMix', patterns: [/loose.*(vs\.?|versus).*packaged/i, /loose.*packaged/i] },
+  { template: 'bakery.preOrderProductionSheet', patterns: [/production sheet/i, /pre.?order.*production/i] },
+  { template: 'toursTravels.commissionByAgent', patterns: [/commission.*agent/i, /agent.*commission/i] },
+  { template: 'toursTravels.vehicleServiceDue', patterns: [/vehicle.*(service due|due for service)/i, /fleet.*(service|km)/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {

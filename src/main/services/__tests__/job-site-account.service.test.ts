@@ -4,7 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
-import { createJobSiteAccount, listJobSiteAccounts, getJobSiteAccountBalance, updateJobSiteAccount, closeJobSiteAccount } from '../job-site-account.service'
+import { createJobSiteAccount, listJobSiteAccounts, getJobSiteAccountBalance, updateJobSiteAccount, closeJobSiteAccount, getJobSiteAccountsOverview } from '../job-site-account.service'
 
 function makeMockDb() {
   const db: Record<string, any> = {
@@ -108,6 +108,42 @@ describe('job-site-account.service.closeJobSiteAccount', () => {
 
     expect(res.success).toBe(true)
     expect(db.jobSiteAccount.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'jsa-1' }, data: { status: 'CLOSED' } }))
+  })
+})
+
+describe('job-site-account.service.getJobSiteAccountsOverview', () => {
+  it('returns a zeroed overview when there are no open accounts', async () => {
+    const db = makeMockDb()
+    db.jobSiteAccount.findMany = vi.fn().mockResolvedValue([])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getJobSiteAccountsOverview()
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { openAccountCount: number; totalOutstanding: number; accounts: unknown[] } }).data
+    expect(data).toEqual({ openAccountCount: 0, totalOutstanding: 0, accounts: [] })
+  })
+
+  it('sums outstanding balance per account across tagged ACTIVE invoices, excluding zero-balance accounts', async () => {
+    const db = makeMockDb()
+    db.jobSiteAccount.findMany = vi.fn().mockResolvedValue([
+      { id: 'jsa-1', accountName: 'Site A', contractor: { customerName: 'Sharma Contractors' } },
+      { id: 'jsa-2', accountName: 'Site B', contractor: { customerName: 'Verma Builders' } },
+    ])
+    db.invoice.findMany = vi.fn().mockResolvedValue([
+      { jobSiteAccountId: 'jsa-1', balanceAmount: 400 },
+      { jobSiteAccountId: 'jsa-1', balanceAmount: 200 },
+      { jobSiteAccountId: 'jsa-2', balanceAmount: 0 },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await getJobSiteAccountsOverview()
+
+    expect(res.success).toBe(true)
+    const data = (res as { data: { openAccountCount: number; totalOutstanding: number; accounts: Array<{ id: string; outstanding: number }> } }).data
+    expect(data.openAccountCount).toBe(2)
+    expect(data.totalOutstanding).toBe(600)
+    expect(data.accounts).toEqual([{ id: 'jsa-1', accountName: 'Site A', contractorName: 'Sharma Contractors', outstanding: 600 }])
   })
 })
 
