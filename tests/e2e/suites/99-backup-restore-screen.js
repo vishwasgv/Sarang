@@ -87,7 +87,8 @@ async function run() {
     await r.step('delete-backup-via-real-ui', async () => {
       if (!newBackupId) return r.log('skipped-no-backup-id', false)
       const deleteBtn = page.locator('button[title="Delete Backup"]').first()
-      r.log('delete-button-visible', await deleteBtn.count() > 0)
+      const deleteVisible = await deleteBtn.waitFor({ state: 'visible', timeout: 5000 }).then(() => true).catch(() => false)
+      r.log('delete-button-visible', deleteVisible)
       await deleteBtn.click()
       await page.waitForTimeout(400)
       const confirmModal = h.topModal(page)
