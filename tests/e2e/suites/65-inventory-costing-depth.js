@@ -78,6 +78,13 @@ async function run() {
     await r.step('build-kit-via-real-ui', async () => {
       await h.gotoHash(page, '#/products')
       await page.waitForTimeout(700)
+      // The DataTable only renders 20 rows per page client-side, and this
+      // shared dev DB has accumulated far more than 20 products over months
+      // of E2E runs -- a fresh product can land on any page. Filter through
+      // the table's own built-in search box first so the row always renders
+      // on page 1, instead of assuming default pagination happens to show it.
+      await page.getByPlaceholder('Search products…').fill(kitName)
+      await page.waitForTimeout(400)
       const row = page.locator('tr', { hasText: kitName })
       // MANUFACTURING business type has no KOT-toggle/variant buttons on this
       // row, so Edit (the only icon-only button with no aria-label) is first.
@@ -214,12 +221,16 @@ async function run() {
       r.log('transfer-submit-button-enabled', await submitBtn.isEnabled(), `disabled=${await submitBtn.isDisabled()}`)
       await h.shot(page, 'transfer-before-submit-click')
       await submitBtn.click({ force: true })
-      await page.waitForTimeout(2500)
+      // A fixed sleep raced the real transfer (location/stock writes + audit
+      // trail insert) on this suite's large, months-old dev DB, same class
+      // of bug already fixed once for 99-backup-restore-screen.js's wait --
+      // wait for the actual toast text instead of guessing a delay.
+      const toastVisible = await page.getByText('Stock transferred', { exact: false }).first()
+        .waitFor({ state: 'visible', timeout: 15000 }).then(() => true).catch(() => false)
       await h.shot(page, 'transfer-after-submit-click')
       const modalStillOpen = await modal.count()
       r.log('modal-closed-after-submit', modalStillOpen === 0, `stillOpenCount=${modalStillOpen}`)
-      const bodyText = await page.locator('body').innerText().catch(() => '')
-      r.log('transfer-success-toast-shown', /stock transferred/i.test(bodyText), bodyText.match(/(Could not|Select a product|Select both|Stock transferred|Transfer)[^\n]{0,60}/i)?.[0] ?? 'no toast text found')
+      r.log('transfer-success-toast-shown', toastVisible)
       r.log('transfer-no-crash', !(await h.hasErrorBoundary(page)))
     })
 

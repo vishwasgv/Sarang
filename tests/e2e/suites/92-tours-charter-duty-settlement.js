@@ -123,6 +123,7 @@ async function run() {
     })
 
     let bookingId, bookingNumber
+    let dutyStart
 
     await r.step('create-charter-booking-via-real-ui', async () => {
       if (!vehicleId) return
@@ -181,8 +182,8 @@ async function run() {
 
       await page.getByLabel('Driver', { exact: true }).selectOption(driverId)
       await page.getByLabel('Start Odometer', { exact: true }).fill('1000')
-      const now = new Date()
-      await page.getByLabel('Duty Start Time', { exact: true }).fill(toDateTimeLocal(now))
+      dutyStart = new Date()
+      await page.getByLabel('Duty Start Time', { exact: true }).fill(toDateTimeLocal(dutyStart))
 
       // Modal's own submit button shares the same "Start Duty" text as the
       // row-level button that opened it — it's the last one rendered.
@@ -205,7 +206,13 @@ async function run() {
       // SEDAN's ₹12/km = ₹2400. 3 hours vs. 1 included = 2 excess hours @
       // the flat ₹100/hr rate = ₹200. Total excess = ₹2600.
       await page.getByLabel('End Odometer', { exact: true }).fill('1300')
-      const end = new Date(Date.now() + 3 * 3600000)
+      // Anchor on the actual recorded duty-start time, not a fresh Date.now()
+      // taken here -- the real UI clicks between starting and closing the
+      // duty (driver select, odometer fill, modal waits) add real wall-clock
+      // seconds, which previously padded the exact-3-hour assumption and
+      // made excessHours land just over 2.00 (e.g. 2.02), failing the exact
+      // excessHourCharge===200 check below.
+      const end = new Date(dutyStart.getTime() + 3 * 3600000)
       await page.getByLabel('Duty End Time', { exact: true }).fill(toDateTimeLocal(end))
 
       await page.locator('button:has-text("Close Duty")').last().click()

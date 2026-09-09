@@ -29,7 +29,8 @@ async function run() {
     })
 
     async function bookAppointmentForNewCustomer(customerName, phoneSeed) {
-      const custRes = await page.evaluate(async ({ name, phone }) => window.api.customers.create({ customerName: name, phone }), { name: customerName, phone: `9${phoneSeed}` })
+      const phone = `9${phoneSeed}`
+      const custRes = await page.evaluate(async ({ name, phone }) => window.api.customers.create({ customerName: name, phone }), { name: customerName, phone })
       const customerId = custRes?.data?.id
 
       await h.gotoHash(page, '#/appointments')
@@ -37,9 +38,13 @@ async function run() {
       await page.getByRole('button', { name: 'New Appointment' }).click()
       await page.waitForTimeout(500)
       const modal = h.topModal(page)
-      await modal.getByPlaceholder('Search existing client by name or phone...').fill(customerName)
+      // Search by phone (unique per run via phoneSeed), not by customerName --
+      // this fixed literal name repeats across hundreds of prior E2E runs in
+      // this shared dev DB, so a name-based search+`.first()` click can grab
+      // a stale duplicate customer instead of the one just created above.
+      await modal.getByPlaceholder('Search existing client by name or phone...').fill(phone)
       await page.waitForTimeout(700)
-      await modal.locator('button', { hasText: customerName }).first().click()
+      await modal.locator('button', { hasText: phone }).first().click()
       await page.waitForTimeout(300)
       await modal.getByLabel('Service Title').fill('E2E Notif Checkup')
       // +3 days -- guarantees schedule24h (scheduledDate - 24h) is still
@@ -52,9 +57,13 @@ async function run() {
       await modal.getByRole('button', { name: 'Book Appointment' }).click()
       await page.waitForTimeout(1300)
 
-      const listRes = await page.evaluate(async () => window.api.appointments.list({}))
+      // Filter by customerId, not an unfiltered default-50-row list sorted
+      // soonest-first -- this dev DB has accumulated far more than 50
+      // appointments over months of runs, so a fresh multi-day-out booking
+      // can fall outside the default page and never be found by scanning.
+      const listRes = await page.evaluate(async (customerId) => window.api.appointments.list({ customerId }), customerId)
       const items = listRes?.data?.items || []
-      const created = items.find((a) => a.customerName === customerName || a.customer?.customerName === customerName)
+      const created = items[0]
       return { customerId, appointmentId: created?.id }
     }
 
