@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { HardHat, Plus, RefreshCw, Lock, ChevronDown, ChevronUp } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
@@ -27,10 +28,8 @@ interface JobSiteAccountBalance {
   totalOutstanding: number
 }
 
-// Phase 69 — Electrical/Plumbing contractor job-site running accounts.
-// English-only for now, same deliberate scope-fork convention as Phase 38's
-// Print Labels screen — full-language translation is a later task.
 export function JobSiteAccountsScreen(): React.JSX.Element {
+  const { t } = useTranslation()
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canManage = hasPermission('jobSiteAccount.manage')
@@ -53,13 +52,13 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     try {
       const res = await window.api.jobSiteAccount.list()
       if (res.success) setAccounts((res.data as JobSiteAccount[]) ?? [])
-      else toastError('Error', res.error?.message ?? 'Could not load job-site accounts.')
+      else toastError(t('common.error'), res.error?.message ?? t('jobsite.accounts.couldNotLoad'))
     } catch {
-      toastError('Error', 'Could not load job-site accounts.')
+      toastError(t('common.error'), t('jobsite.accounts.couldNotLoad'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { void load() }, [load])
 
@@ -73,8 +72,8 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
 
   async function handleCreate() {
     setError('')
-    if (!accountName.trim()) { setError('Account name is required.'); return }
-    if (!contractor) { setError('Select the contractor this account bills against.'); return }
+    if (!accountName.trim()) { setError(t('jobsite.accounts.accountNameRequired')); return }
+    if (!contractor) { setError(t('jobsite.accounts.selectContractor')); return }
     setSaving(true)
     try {
       const res = await window.api.jobSiteAccount.create({
@@ -84,12 +83,12 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
         notes: notes.trim() || undefined,
       })
       if (res.success) {
-        toastSuccess('Account created', accountName.trim())
+        toastSuccess(t('jobsite.accounts.accountCreatedTitle'), accountName.trim())
         setShowForm(false)
         resetForm()
         await load()
       } else {
-        setError(res.error?.message ?? 'Could not create account.')
+        setError(res.error?.message ?? t('jobsite.accounts.couldNotCreateAccount'))
       }
     } finally {
       setSaving(false)
@@ -102,7 +101,7 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     if (!balances[id]) {
       const res = await window.api.jobSiteAccount.balance({ id })
       if (res.success) setBalances((prev) => ({ ...prev, [id]: res.data as JobSiteAccountBalance }))
-      else toastError('Error', res.error?.message ?? 'Could not load account balance.')
+      else toastError(t('common.error'), res.error?.message ?? t('jobsite.accounts.couldNotLoadBalance'))
     }
   }
 
@@ -110,8 +109,8 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     setClosingId(id)
     try {
       const res = await window.api.jobSiteAccount.close({ id })
-      if (res.success) { toastSuccess('Account closed', ''); await load() }
-      else toastError('Error', res.error?.message ?? 'Could not close account.')
+      if (res.success) { toastSuccess(t('jobsite.accounts.accountClosedTitle'), ''); await load() }
+      else toastError(t('common.error'), res.error?.message ?? t('jobsite.accounts.couldNotCloseAccount'))
     } finally {
       setClosingId(null)
     }
@@ -121,15 +120,15 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><HardHat size={20} /> Job-Site Accounts</h2>
-          <p className="text-sm text-slate-400">A contractor's running account for one job site — tag CREDIT invoices to it while billing.</p>
+          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><HardHat size={20} /> {t('jobsite.accounts.title')}</h2>
+          <p className="text-sm text-slate-400">{t('jobsite.accounts.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => void load()} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-300 transition-colors">
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
           {canManage && (
-            <Button size="sm" onClick={() => setShowForm((s) => !s)} icon={<Plus size={14} />}>New Account</Button>
+            <Button size="sm" onClick={() => setShowForm((s) => !s)} icon={<Plus size={14} />}>{t('jobsite.accounts.newAccount')}</Button>
           )}
         </div>
       </div>
@@ -137,25 +136,25 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
       {showForm && canManage && (
         <Card padding="md" className="space-y-3">
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Account Name" placeholder="e.g. Sharma Residence — Wing B" value={accountName} onChange={(e) => setAccountName(e.target.value)} />
-            <CustomerPicker value={contractor} onChange={setContractor} label="Contractor" />
+            <Input label={t('jobsite.accounts.accountNameLabel')} placeholder={t('jobsite.accounts.accountNamePlaceholder')} value={accountName} onChange={(e) => setAccountName(e.target.value)} />
+            <CustomerPicker value={contractor} onChange={setContractor} label={t('jobsite.accounts.contractorLabel')} />
           </div>
-          <Input label="Site Address" value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} />
-          <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input label={t('jobsite.accounts.siteAddress')} value={siteAddress} onChange={(e) => setSiteAddress(e.target.value)} />
+          <Input label={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
           {error && <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-md px-3 py-2">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => { setShowForm(false); resetForm() }}>Cancel</Button>
-            <Button size="sm" onClick={() => void handleCreate()} loading={saving}>Create</Button>
+            <Button variant="secondary" size="sm" onClick={() => { setShowForm(false); resetForm() }}>{t('common.cancel')}</Button>
+            <Button size="sm" onClick={() => void handleCreate()} loading={saving}>{t('common.create')}</Button>
           </div>
         </Card>
       )}
 
       {loading ? (
-        <div className="text-center py-16 text-slate-400">Loading…</div>
+        <div className="text-center py-16 text-slate-400">{t('common.loading')}</div>
       ) : accounts.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <HardHat size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No job-site accounts yet.</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('jobsite.accounts.empty')}</p>
         </Card>
       ) : (
         <Card padding="none" className="overflow-hidden">
@@ -178,28 +177,28 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
                   {isOpen && (
                     <div className="px-5 pb-4">
                       {!bal ? (
-                        <p className="text-xs text-slate-400">Loading balance…</p>
+                        <p className="text-xs text-slate-400">{t('jobsite.accounts.loadingBalance')}</p>
                       ) : (
                         <div className="bg-slate-50 dark:bg-slate-800/50 rounded-lg p-3 space-y-2">
                           <div className="flex items-center gap-4 text-xs">
-                            <span className="text-slate-500">Total billed: <span className="font-semibold text-dark dark:text-slate-100">{formatCurrency(bal.totalBilled)}</span></span>
-                            <span className="text-slate-500">Outstanding: <span className="font-semibold text-danger">{formatCurrency(bal.totalOutstanding)}</span></span>
+                            <span className="text-slate-500">{t('jobsite.accounts.totalBilled')} <span className="font-semibold text-dark dark:text-slate-100">{formatCurrency(bal.totalBilled)}</span></span>
+                            <span className="text-slate-500">{t('jobsite.accounts.outstanding')} <span className="font-semibold text-danger">{formatCurrency(bal.totalOutstanding)}</span></span>
                           </div>
                           {bal.invoices.length === 0 ? (
-                            <p className="text-xs text-slate-400">No invoices tagged to this account yet.</p>
+                            <p className="text-xs text-slate-400">{t('jobsite.accounts.noInvoicesTagged')}</p>
                           ) : (
                             <div className="space-y-1">
                               {bal.invoices.map((inv) => (
                                 <div key={inv.id} className="flex items-center justify-between text-xs text-slate-600 dark:text-slate-400">
                                   <span>{inv.invoiceNumber} — {new Date(inv.createdAt).toLocaleDateString()}</span>
-                                  <span>{formatCurrency(inv.totalAmount)} (bal {formatCurrency(inv.balanceAmount)})</span>
+                                  <span>{t('jobsite.accounts.invoiceAmountWithBalance', { amount: formatCurrency(inv.totalAmount), balance: formatCurrency(inv.balanceAmount) })}</span>
                                 </div>
                               ))}
                             </div>
                           )}
                           {canManage && a.status === 'ACTIVE' && bal.totalOutstanding === 0 && (
                             <button onClick={() => void handleClose(a.id)} disabled={closingId === a.id} className="text-xs px-3 py-1.5 rounded-lg bg-slate-100 text-slate-600 border border-slate-200 hover:bg-slate-200 flex items-center gap-1 font-medium dark:bg-slate-800 dark:text-slate-300 dark:border-slate-700">
-                              <Lock size={12} /> {closingId === a.id ? 'Closing…' : 'Close Account'}
+                              <Lock size={12} /> {closingId === a.id ? t('jobsite.accounts.closing') : t('jobsite.accounts.closeAccount')}
                             </button>
                           )}
                         </div>

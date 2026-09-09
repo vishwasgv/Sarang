@@ -11553,165 +11553,169 @@ function ComplianceTaskView({ data }: { data: ComplianceTaskReport }) {
 }
 
 // Phase 69 §11 — Electrical/Plumbing/Stationery/Furniture new verticals.
-// English-only for now, same deliberate scope-fork convention as the rest of
-// Phase 69's new UI — full-language translation is a later task.
 function CoilWastageYieldView({ data }: { data: CoilWastageYieldReport }) {
+  const { t } = useTranslation()
   const s = data.summary
   const chartRows = data.rows.filter(r => r.estimatedWastageQty > 0).slice(0, 10)
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Received', value: String(s.totalReceived) },
-        { label: 'Total Sold', value: String(s.totalSold) },
-        { label: 'Avg Yield %', value: `${s.avgYieldPercent}%` }
+        { label: t('reports.coilWastageYield.totalReceived'), value: String(s.totalReceived) },
+        { label: t('reports.coilWastageYield.totalSold'), value: String(s.totalSold) },
+        { label: t('reports.coilWastageYield.avgYieldPercent'), value: `${s.avgYieldPercent}%` }
       ]} />
       {chartRows.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Estimated Wastage by Product</h3>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.coilWastageYield.chartTitle')}</h3>
           <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
             <BarChart data={chartRows.map(r => ({ label: r.productName, value: r.estimatedWastageQty }))} layout="vertical" margin={{ left: 12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
               <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-              <Bar dataKey="value" name="Estimated Wastage" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.danger} />
+              <Bar dataKey="value" name={t('reports.coilWastageYield.estWastage')} radius={[0, 4, 4, 0]} fill={STATUS_COLORS.danger} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
       <DataTable
-        headers={['Product', 'SKU', 'Unit', 'Received', 'Sold', 'Recorded Adjustment', 'Yield %', 'Est. Wastage']}
+        headers={[t('reports.col.product'), t('reports.col.sku'), t('common.unit'), t('reports.coilWastageYield.received'), t('reports.coilWastageYield.sold'), t('reports.coilWastageYield.recordedAdjustment'), t('reports.coilWastageYield.yieldPercent'), t('reports.coilWastageYield.estWastageShort')]}
         rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.lengthUnit ?? '—', r.receivedQty, r.soldQty, r.recordedAdjustment, `${r.yieldPercent}%`, r.estimatedWastageQty])}
-        emptyText="No length-billed products with movement in this range."
+        emptyText={t('reports.coilWastageYield.empty')}
       />
     </div>
   )
 }
 
 function SafetyRegisterView({ data }: { data: SafetyRegisterReport }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Units', value: String(s.totalUnits) },
-        { label: 'Sold Units', value: String(s.soldUnits) },
-        { label: 'Available Units', value: String(s.availableUnits) }
+        { label: t('reports.safetyRegister.totalUnits'), value: String(s.totalUnits) },
+        { label: t('reports.safetyRegister.soldUnits'), value: String(s.soldUnits) },
+        { label: t('reports.safetyRegister.availableUnits'), value: String(s.availableUnits) }
       ]} />
       <BreakdownChart
-        title="Units"
-        data={[{ label: 'Sold', value: s.soldUnits }, { label: 'Available', value: s.availableUnits }]}
+        title={t('reports.safetyRegister.chartTitle')}
+        data={[{ label: t('reports.safetyRegister.sold'), value: s.soldUnits }, { label: t('reports.safetyRegister.available'), value: s.availableUnits }]}
         labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
       />
       <DataTable
-        headers={['Product', 'SKU', 'Serial/Batch No.', 'Status', 'Purchase Date', 'Warranty (mo.)', 'Sold Date', 'Invoice ID']}
+        headers={[t('reports.col.product'), t('reports.col.sku'), t('reports.safetyRegister.serialBatchNo'), t('common.status'), t('reports.safetyRegister.purchaseDate'), t('reports.safetyRegister.warrantyMonths'), t('reports.safetyRegister.soldDate'), t('reports.safetyRegister.invoiceId')]}
         rows={data.rows.map(r => [r.productName, r.sku ?? '—', r.serialNumber, r.status, r.purchaseDate ?? '—', r.warrantyMonths ?? '—', r.soldDate ?? '—', r.invoiceId ?? '—'])}
-        emptyText="No serial-tracked units recorded yet."
+        emptyText={t('reports.safetyRegister.empty')}
       />
     </div>
   )
 }
 
 function SeasonalDemandForecastView({ data, fmt }: { data: SeasonalDemandForecastReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
   const s = data.summary
   const peakName = data.peakMonth ? data.rows.find(r => r.month === data.peakMonth)?.monthName ?? '—' : '—'
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Units Sold', value: String(s.totalUnitsSold) },
-        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
-        { label: 'Peak Month', value: peakName },
-        { label: 'Months of History', value: String(s.monthsOfHistory) }
+        { label: t('reports.seasonalDemandForecast.totalUnitsSold'), value: String(s.totalUnitsSold) },
+        { label: t('reports.summary.totalRevenue'), value: fmt(s.totalRevenue) },
+        { label: t('reports.seasonalDemandForecast.peakMonth'), value: peakName },
+        { label: t('reports.seasonalDemandForecast.monthsOfHistory'), value: String(s.monthsOfHistory) }
       ]} />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Units Sold by Month (All-Time)</h3>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.seasonalDemandForecast.chartTitle')}</h3>
         <ResponsiveContainer width="100%" height={260}>
           <BarChart data={data.rows.map(r => ({ label: r.monthName.slice(0, 3), value: r.unitsSold }))}>
             <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
             <XAxis dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} />
             <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} />
             <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-            <Bar dataKey="value" name="Units Sold" radius={[4, 4, 0, 0]} fill={STATUS_COLORS.brand} />
+            <Bar dataKey="value" name={t('reports.col.unitsSold')} radius={[4, 4, 0, 0]} fill={STATUS_COLORS.brand} />
           </BarChart>
         </ResponsiveContainer>
       </div>
       <DataTable
-        headers={['Month', 'Units Sold', 'Revenue']}
+        headers={[t('reports.col.month'), t('reports.col.unitsSold'), t('reports.col.revenue')]}
         rows={data.rows.map(r => [r.monthName, r.unitsSold, fmt(r.revenue)])}
-        emptyText="No sales history yet."
+        emptyText={t('reports.seasonalDemandForecast.empty')}
       />
     </div>
   )
 }
 
 function InstitutionalOrderHistoryView({ data, fmt }: { data: InstitutionalOrderHistoryReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Orders', value: String(s.totalOrders) },
-        { label: 'Billed Orders', value: String(s.billedOrders) },
-        { label: 'Total Value', value: fmt(s.totalValue) }
+        { label: t('reports.institutionalOrderHistory.totalOrders'), value: String(s.totalOrders) },
+        { label: t('reports.institutionalOrderHistory.billedOrders'), value: String(s.billedOrders) },
+        { label: t('reports.institutionalOrderHistory.totalValue'), value: fmt(s.totalValue) }
       ]} />
-      <BreakdownChart title="Total Value" data={data.rows} labelKey="institutionName" valueKey="totalValue" fmt={fmt} />
+      <BreakdownChart title={t('reports.institutionalOrderHistory.totalValue')} data={data.rows} labelKey="institutionName" valueKey="totalValue" fmt={fmt} />
       <DataTable
-        headers={['Order #', 'Institution', 'List Name', 'Status', 'Items', 'Total Value', 'Created']}
+        headers={[t('reports.col.orderNumber'), t('reports.institutionalOrderHistory.institutionName'), t('reports.institutionalOrderHistory.listName'), t('common.status'), t('reports.col.itemCount'), t('reports.institutionalOrderHistory.totalValue'), t('reports.col.createdDate')]}
         rows={data.rows.map(r => [r.orderNumber, r.institutionName, r.listName, r.status, r.itemCount, fmt(r.totalValue), r.createdAt])}
-        emptyText="No bulk-list orders in this range."
+        emptyText={t('reports.institutionalOrderHistory.empty')}
       />
     </div>
   )
 }
 
 function LocationStockSplitView({ data }: { data: LocationStockSplitReport }) {
+  const { t } = useTranslation()
   const s = data.summary
   const chartRows = data.rows.slice(0, 10)
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Products', value: String(s.productCount) },
-        { label: 'Total Stock Qty', value: String(s.totalQty) }
+        { label: t('reports.locationStockSplit.products'), value: String(s.productCount) },
+        { label: t('reports.locationStockSplit.totalStockQty'), value: String(s.totalQty) }
       ]} />
       {chartRows.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Total Stock by Product</h3>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.locationStockSplit.chartTitle')}</h3>
           <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
             <BarChart data={chartRows.map(r => ({ label: r.productName, value: r.totalQty }))} layout="vertical" margin={{ left: 12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
               <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-              <Bar dataKey="value" name="Total Qty" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
+              <Bar dataKey="value" name={t('reports.locationStockSplit.totalQty')} radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
       <DataTable
-        headers={['Product', 'SKU', ...data.locations.map(l => l.name), 'Total']}
+        headers={[t('reports.col.product'), t('reports.col.sku'), ...data.locations.map(l => l.name), t('common.total')]}
         rows={data.rows.map(r => [r.productName, r.sku ?? '—', ...data.locations.map(l => r.byLocation.find(b => b.locationId === l.id)?.quantity ?? 0), r.totalQty])}
-        emptyText="No stock recorded at any location yet."
+        emptyText={t('reports.locationStockSplit.empty')}
       />
     </div>
   )
 }
 
 function DeliveryInstallationScheduleView({ data, fmt }: { data: DeliveryInstallationScheduleReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Bookings', value: String(s.totalBookings) },
-        { label: 'Delivered', value: String(s.deliveredCount) },
-        { label: 'Pending', value: String(s.pendingCount) }
+        { label: t('reports.deliveryInstallationSchedule.totalBookings'), value: String(s.totalBookings) },
+        { label: t('reports.deliveryInstallationSchedule.delivered'), value: String(s.deliveredCount) },
+        { label: t('reports.deliveryInstallationSchedule.pending'), value: String(s.pendingCount) }
       ]} />
       <BreakdownChart
-        title="Delivery Status"
-        data={[{ label: 'Delivered', value: s.deliveredCount }, { label: 'Pending', value: s.pendingCount }]}
+        title={t('reports.deliveryInstallationSchedule.chartTitle')}
+        data={[{ label: t('reports.deliveryInstallationSchedule.delivered'), value: s.deliveredCount }, { label: t('reports.deliveryInstallationSchedule.pending'), value: s.pendingCount }]}
         labelKey="label" valueKey="value" fmt={(n) => String(n)} kind="pie"
       />
       <DataTable
-        headers={['Booking #', 'Customer', 'Delivery Date', 'Address', 'Status', 'Items', 'Value']}
+        headers={[t('reports.deliveryInstallationSchedule.bookingNumber'), t('reports.col.customer'), t('reports.deliveryInstallationSchedule.deliveryDate'), t('common.address'), t('common.status'), t('reports.col.itemCount'), t('reports.col.value')]}
         rows={data.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, fmt(r.totalValue)])}
-        emptyText="No deliveries scheduled in this range."
+        emptyText={t('reports.deliveryInstallationSchedule.empty')}
       />
     </div>
   )
@@ -11719,32 +11723,33 @@ function DeliveryInstallationScheduleView({ data, fmt }: { data: DeliveryInstall
 
 // Deferred-item closure 2026-09-01 — Electrical item 4: Spec-Wise Fast Movers.
 function SpecWiseFastMoversView({ data, fmt }: { data: SpecWiseFastMoversReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
   const s = data.summary
   const chartRows = data.rows.slice(0, 10)
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Units Sold', value: String(s.totalUnitsSold) },
-        { label: 'Top Spec', value: s.topSpec ?? '—' }
+        { label: t('reports.specWiseFastMovers.totalUnitsSold'), value: String(s.totalUnitsSold) },
+        { label: t('reports.specWiseFastMovers.topSpec'), value: s.topSpec ?? '—' }
       ]} />
       {chartRows.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Fast Movers by Spec</h3>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.specWiseFastMovers.chartTitle')}</h3>
           <ResponsiveContainer width="100%" height={Math.max(220, chartRows.length * 34)}>
             <BarChart data={chartRows.map(r => ({ label: `${r.spec} (${r.productName})`, value: r.unitsSold }))} layout="vertical" margin={{ left: 12 }}>
               <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
               <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} />
               <YAxis type="category" dataKey="label" tick={{ ...CHART_TICK, fontSize: 10 }} tickLine={false} axisLine={false} width={140} />
               <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-              <Bar dataKey="value" name="Units Sold" radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
+              <Bar dataKey="value" name={t('reports.col.unitsSold')} radius={[0, 4, 4, 0]} fill={STATUS_COLORS.brand} />
             </BarChart>
           </ResponsiveContainer>
         </div>
       )}
       <DataTable
-        headers={['Spec', 'Product', 'Units Sold', 'Revenue']}
+        headers={[t('reports.specWiseFastMovers.spec'), t('reports.col.product'), t('reports.col.unitsSold'), t('reports.col.revenue')]}
         rows={data.rows.map(r => [r.spec, r.productName, r.unitsSold, fmt(r.revenue)])}
-        emptyText="No variant-tracked sales with a spec set in this range."
+        emptyText={t('reports.specWiseFastMovers.empty')}
       />
     </div>
   )
@@ -11754,17 +11759,18 @@ function SpecWiseFastMoversView({ data, fmt }: { data: SpecWiseFastMoversReport;
 // Cross-Sell. Register-shaped (a list of individual missed pairings), no
 // chart — same precedent as SafetyRegisterView/InstitutionalOrderHistoryView.
 function FittingCrossSellView({ data }: { data: FittingCrossSellReport }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Missed Opportunities', value: String(s.missedOpportunities) },
-        { label: 'Invoices Scanned', value: String(s.invoicesScanned) }
+        { label: t('reports.fittingCrossSell.missedOpportunities'), value: String(s.missedOpportunities) },
+        { label: t('reports.fittingCrossSell.invoicesScanned'), value: String(s.invoicesScanned) }
       ]} />
       <DataTable
-        headers={['Invoice #', 'Date', 'Product Sold', 'Usually Paired With (Not Bought)', 'Pair Strength']}
+        headers={[t('reports.col.invoiceNo'), t('common.date'), t('reports.fittingCrossSell.productSold'), t('reports.fittingCrossSell.usuallyPairedWith'), t('reports.fittingCrossSell.pairStrength')]}
         rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.anchorProductName, r.expectedPartnerProductName, `${r.pairStrengthPercent}%`])}
-        emptyText="No usual-pairing gaps found in this range — either sales history is too thin, or customers are consistently buying the full set."
+        emptyText={t('reports.fittingCrossSell.empty')}
       />
     </div>
   )
@@ -11772,18 +11778,19 @@ function FittingCrossSellView({ data }: { data: FittingCrossSellReport }) {
 
 // Deferred-item closure 2026-09-01 — Plumbing item 4: Material Sales Mix.
 function MaterialSalesMixView({ data, fmt }: { data: MaterialSalesMixReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
-        { label: 'Total Revenue', value: fmt(s.totalRevenue) },
-        { label: 'Materials', value: String(s.materialCount) }
+        { label: t('reports.summary.totalRevenue'), value: fmt(s.totalRevenue) },
+        { label: t('reports.materialSalesMix.materials'), value: String(s.materialCount) }
       ]} />
-      <BreakdownChart title="Material Sales Mix" data={data.rows} labelKey="materialName" valueKey="revenue" fmt={fmt} kind="pie" />
+      <BreakdownChart title={t('reports.materialSalesMix.chartTitle')} data={data.rows} labelKey="materialName" valueKey="revenue" fmt={fmt} kind="pie" />
       <DataTable
-        headers={['Material', 'Units Sold', 'Revenue', 'Revenue Share']}
+        headers={[t('reports.materialSalesMix.material'), t('reports.col.unitsSold'), t('reports.col.revenue'), t('reports.materialSalesMix.revenueShare')]}
         rows={data.rows.map(r => [r.materialName, r.unitsSold, fmt(r.revenue), `${r.revenueSharePercent}%`])}
-        emptyText="No categorized sales in this range — assign products to a Category named by material (PVC/CPVC/GI/Copper) to see this breakdown."
+        emptyText={t('reports.materialSalesMix.empty')}
       />
     </div>
   )
@@ -11907,6 +11914,7 @@ const KHATA_RISK_BADGE: Record<KhataRiskRow['riskTier'], 'danger' | 'warning' | 
 
 function KhataRiskView({ data, fmt }: { data: KhataRiskReport; fmt: (n: number) => string }) {
   const s = data.summary
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [sendingId, setSendingId] = useState<string | null>(null)
 
@@ -11916,9 +11924,9 @@ function KhataRiskView({ data, fmt }: { data: KhataRiskReport; fmt: (n: number) 
       const res = await window.api.khataReminder.buildLink({ customerId })
       if (res.success && res.data) {
         window.open(res.data as string, '_blank')
-        toastSuccess('Opening WhatsApp…', 'Send the reminder to the customer.')
+        toastSuccess(t('reports.khataRisk.openingWhatsApp'), t('reports.khataRisk.sendReminderDesc'))
       } else {
-        toastError('Could Not Send', res.error?.message ?? 'Could not build the reminder link.')
+        toastError(t('reports.khataRisk.couldNotSendTitle'), res.error?.message ?? t('reports.khataRisk.couldNotBuildLink'))
       }
     } finally {
       setSendingId(null)

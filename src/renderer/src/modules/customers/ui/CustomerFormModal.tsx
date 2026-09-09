@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -70,6 +71,7 @@ interface CustomerFormModalProps {
 }
 
 export function CustomerFormModal({ open, onClose, onSaved, customer }: CustomerFormModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
   const fieldOrderCaptureEnabled = isModuleEnabled('field_order_capture')
@@ -125,14 +127,14 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         : await window.api.customers.create(payload)
 
       if (!response.success) {
-        toastError('Error', response.error?.message ?? 'Failed to save customer.')
+        toastError(t('common.error'), response.error?.message ?? t('customers.saveFailedMessage'))
         return
       }
-      toastSuccess(isEdit ? 'Customer Updated' : 'Customer Created', `${values.customerName} has been saved.`)
+      toastSuccess(isEdit ? t('customers.updatedTitle') : t('customers.createdTitle'), t('customers.savedMessage', { name: values.customerName }))
       onSaved(response.data as { id: string; customerName: string } | undefined)
       onClose()
     } catch {
-      toastError('Error', 'Something went wrong. Please try again.')
+      toastError(t('common.error'), t('common.somethingWentWrong'))
     }
   }
 
@@ -140,13 +142,13 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Edit Customer' : 'Add Customer'}
+      title={isEdit ? t('customers.editCustomer') : t('customers.addCustomer')}
       size="lg"
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
           <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-            {isEdit ? 'Save Changes' : 'Add Customer'}
+            {isEdit ? t('common.saveChanges') : t('customers.addCustomer')}
           </Button>
         </>
       }
@@ -156,44 +158,44 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           {(['INDIVIDUAL', 'BUSINESS'] as const).map(kind => (
             <label key={kind} className={`px-3 py-1.5 rounded-md text-sm font-medium cursor-pointer transition-colors ${customerKind === kind ? 'bg-brand text-white' : 'text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
               <input type="radio" value={kind} {...register('customerKind')} className="sr-only" />
-              {kind === 'INDIVIDUAL' ? 'Individual' : 'Business'}
+              {kind === 'INDIVIDUAL' ? t('customers.individualLabel') : t('customers.businessLabel')}
             </label>
           ))}
         </div>
         <Input
-          label={customerKind === 'BUSINESS' ? 'Business/Company Name *' : 'Customer Name *'}
-          placeholder={customerKind === 'BUSINESS' ? 'e.g. Ramesh Enterprises Pvt Ltd' : 'e.g. Ramesh Kumar'}
+          label={customerKind === 'BUSINESS' ? `${t('customers.businessCompanyName')} *` : `${t('customers.customerName')} *`}
+          placeholder={customerKind === 'BUSINESS' ? t('customers.businessNamePlaceholder') : t('customers.individualNamePlaceholder')}
           {...register('customerName')}
           error={errors.customerName?.message}
         />
         {customerKind === 'BUSINESS' ? (
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Company Registration Number" placeholder="CIN / registration no." {...register('companyRegistrationNumber')} />
-            <Input label="Contact Person" placeholder="Person to reach at this company" {...register('contactPersonName')} />
+            <Input label={t('customers.companyRegNumberLabel')} placeholder={t('customers.companyRegNumberPlaceholder')} {...register('companyRegistrationNumber')} />
+            <Input label={t('customers.contactPersonLabel')} placeholder={t('customers.contactPersonPlaceholder')} {...register('contactPersonName')} />
           </div>
         ) : (
           <div className="grid grid-cols-2 gap-4">
-            <Input label="ID Proof Type" placeholder="e.g. Aadhaar, Passport, Driving Licence" {...register('idProofType')} />
-            <Input label="ID Proof Number" {...register('idProofNumber')} />
+            <Input label={t('customers.idProofTypeLabel')} placeholder={t('customers.idProofTypePlaceholder')} {...register('idProofType')} />
+            <Input label={t('customers.idProofNumberLabel')} {...register('idProofNumber')} />
           </div>
         )}
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Phone *" placeholder="+91 98765 43210" {...register('phone')} error={errors.phone?.message} />
-          <Input label="Email" type="email" placeholder="customer@example.com" {...register('email')} error={errors.email?.message} />
+          <Input label={`${t('common.phone')} *`} placeholder={t('common.phonePlaceholder')} {...register('phone')} error={errors.phone?.message} />
+          <Input label={t('common.email')} type="email" placeholder={t('customers.emailPlaceholder')} {...register('email')} error={errors.email?.message} />
         </div>
-        <Input label="Address" placeholder="Street address" {...register('address')} error={errors.address?.message} />
+        <Input label={t('common.address')} placeholder={t('common.streetAddressPlaceholder')} {...register('address')} error={errors.address?.message} />
         <div className="grid grid-cols-3 gap-4">
-          <Input label="City" placeholder="Mumbai" {...register('city')} />
-          <Input label="State" placeholder="Maharashtra" {...register('state')} />
-          <Input label="Country" placeholder="India" {...register('country')} />
+          <Input label={t('customers.city')} placeholder={t('customers.cityPlaceholder')} {...register('city')} />
+          <Input label={t('customers.state')} placeholder={t('common.statePlaceholder')} {...register('state')} />
+          <Input label={t('common.country')} placeholder={t('common.countryPlaceholder')} {...register('country')} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Tax Number" placeholder="GST / PAN / VAT" {...register('taxNumber')} />
-          <Input label="Credit Limit" type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
+          <Input label={t('common.taxNumber')} placeholder={t('common.taxNumberPlaceholder')} {...register('taxNumber')} />
+          <Input label={t('customers.creditLimit')} type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
         </div>
         {priceLists.length > 0 && (
-          <Select label="Price List" {...register('priceListId')}>
-            <option value="">None — normal selling price</option>
+          <Select label={t('common.priceList')} {...register('priceListId')}>
+            <option value="">{t('customers.priceListNoneSelling')}</option>
             {priceLists.map((pl) => (
               <option key={pl.id} value={pl.id}>{pl.name}</option>
             ))}
@@ -201,8 +203,8 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         )}
         {fieldOrderCaptureEnabled && (
           <Input
-            label="Customer Class"
-            placeholder="e.g. RETAILER, WHOLESALER, VIP"
+            label={t('customers.customerClassLabel')}
+            placeholder={t('customers.customerClassPlaceholder')}
             {...register('customerClass')}
             error={errors.customerClass?.message}
           />
@@ -210,16 +212,16 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
             <input type="checkbox" {...register('taxExempt')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
-            Tax Exempt / Reverse Charge
+            {t('customers.taxExemptLabel')}
           </label>
-          <p className="text-xs text-slate-400">Invoices to this customer are billed at 0% tax — for B2B reverse charge, diplomatic/NGO exemptions, or other tax-exempt buyers.</p>
+          <p className="text-xs text-slate-400">{t('customers.taxExemptHint')}</p>
           {taxExempt && (
-            <Input label="Reason (printed on the invoice)" placeholder="e.g. Reverse charge — VAT Reg GB123456789" {...register('taxExemptReason')} />
+            <Input label={t('customers.taxExemptReasonLabel')} placeholder={t('customers.taxExemptReasonPlaceholder')} {...register('taxExemptReason')} />
           )}
         </div>
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Notes</label>
-          <textarea {...register('notes')} rows={2} placeholder="Optional notes…"
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('common.notes')}</label>
+          <textarea {...register('notes')} rows={2} placeholder={t('common.optionalNotesPlaceholder')}
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400" />
         </div>
         <CustomFieldsEditor entityType="CUSTOMER" values={customFieldValues} onChange={setCustomFieldValues} />

@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Search, Trash2, Printer, Barcode, Scale, XCircle, RefreshCw } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
@@ -22,6 +23,7 @@ interface LabelLine { product: Product; variant?: Variant; copies: number }
 // reachable if barcode_printing is enabled (see router.tsx) — there is no path
 // into this screen for a business that hasn't opted in.
 export function PrintLabelsScreen() {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
 
   // Batch label printing
@@ -47,31 +49,31 @@ export function PrintLabelsScreen() {
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await window.api.products.search(query)
         if (res.success) setResults(res.data as Product[])
-        else toastError('Search Failed', res.error?.message ?? 'Could not search products.')
+        else toastError(t('products.printLabels.searchFailedTitle'), res.error?.message ?? t('products.printLabels.searchFailedMessage'))
       } catch {
-        toastError('Search Failed', 'Could not search products.')
+        toastError(t('products.printLabels.searchFailedTitle'), t('products.printLabels.searchFailedMessage'))
       }
     }, 200)
-    return () => clearTimeout(t)
-  }, [query, toastError])
+    return () => clearTimeout(timer)
+  }, [query, toastError, t])
 
   useEffect(() => {
     if (!looseQuery.trim()) { setLooseResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await window.api.products.search(looseQuery)
         if (res.success) setLooseResults((res.data as Product[]).filter(p => p.sellByWeight))
-        else toastError('Search Failed', res.error?.message ?? 'Could not search products.')
+        else toastError(t('products.printLabels.searchFailedTitle'), res.error?.message ?? t('products.printLabels.searchFailedMessage'))
       } catch {
-        toastError('Search Failed', 'Could not search products.')
+        toastError(t('products.printLabels.searchFailedTitle'), t('products.printLabels.searchFailedMessage'))
       }
     }, 200)
-    return () => clearTimeout(t)
-  }, [looseQuery, toastError])
+    return () => clearTimeout(timer)
+  }, [looseQuery, toastError, t])
 
   // A variant-tracked product's OWN barcode (if it even has one) doesn't
   // correspond to any specific physical unit — so adding one first checks
@@ -117,14 +119,14 @@ export function PrintLabelsScreen() {
     try {
       const res = await window.api.variants.bulkGenerateMissingBarcodes({ productId: variantPicker.product.id })
       if (res.success && res.data) {
-        toastSuccess('Barcodes Generated', `${(res.data as { generated: number }).generated} variant barcode(s) generated.`)
+        toastSuccess(t('products.printLabels.barcodesGeneratedTitle'), t('products.printLabels.barcodesGeneratedMessage', { count: (res.data as { generated: number }).generated }))
         const refreshed = await window.api.variants.list({ productId: variantPicker.product.id })
         if (refreshed.success) setVariantPicker(v => v ? { ...v, variants: (refreshed.data as Variant[]).filter(x => x.isActive !== false) } : v)
       } else {
-        toastError('Failed', (res.error as { message?: string })?.message ?? 'Could not generate barcodes.')
+        toastError(t('products.printLabels.genericFailedTitle'), (res.error as { message?: string })?.message ?? t('products.printLabels.generateBarcodesFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not generate barcodes.')
+      toastError(t('products.printLabels.genericFailedTitle'), t('products.printLabels.generateBarcodesFailedMessage'))
     } finally {
       setGeneratingVariantBarcodes(false)
     }
@@ -146,7 +148,7 @@ export function PrintLabelsScreen() {
   function buildPayload() {
     const withoutBarcode = lines.filter(l => l.variant ? !l.variant.barcode : !l.product.barcode)
     if (withoutBarcode.length > 0) {
-      toastError('Missing Barcodes', `${withoutBarcode.map(l => l.product.productName).join(', ')} — generate a barcode for these first (Products screen or Settings → Generate Missing Barcodes).`)
+      toastError(t('products.printLabels.missingBarcodesTitle'), t('products.printLabels.missingBarcodesMessage', { names: withoutBarcode.map(l => l.product.productName).join(', ') }))
       return null
     }
     return {
@@ -164,9 +166,9 @@ export function PrintLabelsScreen() {
     try {
       const res = await window.api.print.previewLabels(payload)
       if (res.success) setPreviewHtml(res.data as string)
-      else toastError('Preview Failed', res.error?.message ?? 'Could not generate preview.')
+      else toastError(t('products.printLabels.previewFailedTitle'), res.error?.message ?? t('products.printLabels.previewFailedMessage'))
     } catch {
-      toastError('Preview Failed', 'Could not generate preview.')
+      toastError(t('products.printLabels.previewFailedTitle'), t('products.printLabels.previewFailedMessage'))
     } finally { setBusy(false) }
   }
 
@@ -177,25 +179,25 @@ export function PrintLabelsScreen() {
     try {
       const res = await window.api.print.labels(payload)
       if (res.success) {
-        toastSuccess('Labels Printed', `${lines.reduce((s, l) => s + l.copies, 0)} label(s) sent to print.`)
+        toastSuccess(t('products.printLabels.labelsPrintedTitle'), t('products.printLabels.labelsPrintedMessage', { count: lines.reduce((s, l) => s + l.copies, 0) }))
         setPreviewHtml(null)
         setLines([])
       } else {
-        toastError('Print Failed', res.error?.message ?? 'Could not print labels.')
+        toastError(t('products.printLabels.printFailedTitle'), res.error?.message ?? t('products.printLabels.printFailedMessage'))
       }
     } catch {
-      toastError('Print Failed', 'Could not print labels.')
+      toastError(t('products.printLabels.printFailedTitle'), t('products.printLabels.printFailedMessage'))
     } finally { setBusy(false) }
   }
 
   async function handleWeighAndPrint() {
     if (!looseProduct) return
     const grams = Math.round(parseFloat(weightGrams))
-    if (!grams || grams < 1) { toastError('Invalid Weight', 'Enter a whole number of grams (at least 1).'); return }
+    if (!grams || grams < 1) { toastError(t('products.printLabels.invalidWeightTitle'), t('products.printLabels.invalidWeightMessage')); return }
     setWeighPrinting(true)
     try {
       const genRes = await window.api.products.generateWeightLabel({ productId: looseProduct.id, weightGrams: grams })
-      if (!genRes.success) { toastError('Error', genRes.error?.message ?? 'Could not create the weight label.'); return }
+      if (!genRes.success) { toastError(t('common.error'), genRes.error?.message ?? t('products.printLabels.createWeightLabelFailedMessage')); return }
       // The price is computed server-side (barcode.service.ts), not re-derived
       // here — a prior version hardcoded a /1000 conversion that was correct
       // for kg/L but silently 1000x-undercharged the printed price for any
@@ -212,33 +214,35 @@ export function PrintLabelsScreen() {
         fields: { showPrice: true, showBarcode: true, showName: true }
       })
       if (printRes.success) {
-        toastSuccess('Label Printed', `Weight label for ${looseProduct.productName} (${grams}g) printed. Barcode: ${barcode}`)
+        toastSuccess(t('products.printLabels.labelPrintedTitle'), t('products.printLabels.weightLabelPrintedMessage', { productName: looseProduct.productName, grams, barcode }))
         // A reprint at the exact same weight after a price change produces an
         // identical barcode to the earlier label — there's no way for a scan
         // to tell them apart afterward, so the only defense is catching it now,
         // while whoever is printing can still go pull the old sticker.
         if (reprintPriceChanged) {
           toastError(
-            'Check the shelf for an old label',
-            `A label for ${looseProduct.productName} at exactly ${grams}g was printed before at a different price. If that old label is still on the shelf, remove it — a customer bringing it to checkout will be charged the old price.`
+            t('products.printLabels.oldLabelWarningTitle'),
+            t('products.printLabels.oldLabelWarningMessage', { productName: looseProduct.productName, grams })
           )
         }
       } else {
-        toastError('Print Failed', printRes.error?.message ?? 'Label was generated but printing failed.')
+        toastError(t('products.printLabels.printFailedTitle'), printRes.error?.message ?? t('products.printLabels.printGeneratedButFailedMessage'))
       }
       setWeightGrams('')
       setLooseProduct(null)
       setLooseQuery('')
     } catch {
-      toastError('Error', 'Could not print the weight label.')
+      toastError(t('common.error'), t('products.printLabels.printWeightLabelFailedMessage'))
     } finally { setWeighPrinting(false) }
   }
+
+  const totalCopies = lines.reduce((s, l) => s + l.copies, 0)
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-6 space-y-8">
       <div>
-        <h1 className="text-lg font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Barcode size={20} /> Print Labels</h1>
-        <p className="text-sm text-slate-500 mt-1">Print barcode + price labels for your products — on a thermal label printer or a regular A4/letter printer.</p>
+        <h1 className="text-lg font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Barcode size={20} /> {t('products.printLabels.title')}</h1>
+        <p className="text-sm text-slate-500 mt-1">{t('products.printLabels.subtitle')}</p>
       </div>
 
       {/* Batch label printing */}
@@ -247,7 +251,7 @@ export function PrintLabelsScreen() {
           <Search size={16} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input
             value={query} onChange={e => setQuery(e.target.value)}
-            placeholder="Search or scan a product to add…"
+            placeholder={t('products.printLabels.searchPlaceholder')}
             className="w-full h-11 ps-10 pe-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
           />
           {results.length > 0 && (
@@ -255,7 +259,7 @@ export function PrintLabelsScreen() {
               {results.map(p => (
                 <button key={p.id} onClick={() => addLine(p)} className="w-full text-start px-4 py-2.5 hover:bg-slate-50 dark:hover:bg-slate-700 text-sm flex items-center justify-between">
                   <span>{p.productName}</span>
-                  <span className="text-xs text-slate-400">{p.barcode ? p.barcode : 'No barcode yet'}</span>
+                  <span className="text-xs text-slate-400">{p.barcode ? p.barcode : t('products.printLabels.noBarcodeYet')}</span>
                 </button>
               ))}
             </div>
@@ -268,25 +272,25 @@ export function PrintLabelsScreen() {
         {variantPicker && (
           <Card padding="md" className="space-y-2">
             <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold text-dark dark:text-slate-100">{variantPicker.product.productName} — choose a variant</p>
+              <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('products.printLabels.chooseVariantFor', { productName: variantPicker.product.productName })}</p>
               <button onClick={() => setVariantPicker(null)} className="text-slate-400 hover:text-danger transition-colors"><XCircle size={16} /></button>
             </div>
             <button onClick={() => addPlainProductLine(variantPicker.product)} className="text-xs text-slate-500 hover:underline">
-              Print the whole product's own barcode instead (no variant)
+              {t('products.printLabels.printWholeProductInstead')}
             </button>
             {variantPicker.variants.some(v => !v.barcode) && (
               <button onClick={handleGenerateMissingVariantBarcodes} disabled={generatingVariantBarcodes}
                 className="flex items-center gap-1.5 text-xs text-brand hover:underline disabled:opacity-50">
                 {generatingVariantBarcodes ? <RefreshCw size={12} className="animate-spin" /> : null}
-                Generate missing barcodes for these variants
+                {t('products.printLabels.generateMissingBarcodes')}
               </button>
             )}
             <div className="space-y-1 max-h-56 overflow-y-auto">
               {variantPicker.variants.map(v => (
                 <button key={v.id} onClick={() => addVariantLine(variantPicker.product, v)}
                   className="w-full flex items-center justify-between px-3 py-2 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800 text-sm">
-                  <span>{[v.size, v.width, v.color].filter(Boolean).join(' / ') || '(unnamed variant)'}</span>
-                  <span className="text-xs text-slate-400">{v.barcode ?? 'No barcode yet'}</span>
+                  <span>{[v.size, v.width, v.color].filter(Boolean).join(' / ') || t('products.printLabels.unnamedVariant')}</span>
+                  <span className="text-xs text-slate-400">{v.barcode ?? t('products.printLabels.noBarcodeYet')}</span>
                 </button>
               ))}
             </div>
@@ -301,7 +305,7 @@ export function PrintLabelsScreen() {
                   <p className="text-sm font-semibold text-dark dark:text-slate-100">
                     {l.product.productName}{l.variant ? ` — ${[l.variant.size, l.variant.width, l.variant.color].filter(Boolean).join(' / ')}` : ''}
                   </p>
-                  <p className="text-xs text-slate-400">{(l.variant ? l.variant.barcode : l.product.barcode) ?? 'No barcode — will fail to print'}</p>
+                  <p className="text-xs text-slate-400">{(l.variant ? l.variant.barcode : l.product.barcode) ?? t('products.printLabels.noBarcodeWillFail')}</p>
                 </div>
                 <div className="flex items-center gap-3">
                   <input type="number" min="1" max="500" value={l.copies}
@@ -321,28 +325,28 @@ export function PrintLabelsScreen() {
             {(['A4_SHEET', 'THERMAL_LABEL'] as const).map(m => (
               <button key={m} onClick={() => setOutputMode(m)}
                 className={cn('px-4 py-2 text-xs font-medium transition-colors', outputMode === m ? 'bg-brand text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300')}>
-                {m === 'A4_SHEET' ? 'A4 / Letter Sheet' : 'Thermal Label Printer'}
+                {m === 'A4_SHEET' ? t('products.printLabels.a4Sheet') : t('products.printLabels.thermalLabelPrinter')}
               </button>
             ))}
           </div>
-          <Button variant="secondary" onClick={handlePreview} disabled={lines.length === 0} loading={busy}>Preview</Button>
+          <Button variant="secondary" onClick={handlePreview} disabled={lines.length === 0} loading={busy}>{t('products.printLabels.preview')}</Button>
           <Button onClick={handlePrint} disabled={lines.length === 0} loading={busy}>
-            <Printer size={14} className="me-1" /> Print {lines.reduce((s, l) => s + l.copies, 0) || ''} Label{lines.reduce((s, l) => s + l.copies, 0) === 1 ? '' : 's'}
+            <Printer size={14} className="me-1" /> {t('products.printLabels.printButton', { count: totalCopies || '', suffix: totalCopies === 1 ? '' : 's' })}
           </Button>
         </div>
       </div>
 
       {/* Weigh-and-print for loose-billed products */}
       <div className="border-t border-slate-100 dark:border-slate-800 pt-6 space-y-3">
-        <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Scale size={16} /> Weigh & Print a Loose Item</h2>
-        <p className="text-xs text-slate-400">Weigh the item on any scale, enter the weight, and print a label with the price already worked out. Scanning it at checkout adds it to the bill in one scan.</p>
+        <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Scale size={16} /> {t('products.printLabels.weighAndPrintTitle')}</h2>
+        <p className="text-xs text-slate-400">{t('products.printLabels.weighAndPrintDescription')}</p>
         <div className="flex items-end gap-3 flex-wrap">
           <div className="relative w-64">
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Product</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('billing.product')}</label>
             <input
               value={looseProduct ? looseProduct.productName : looseQuery}
               onChange={e => { setLooseProduct(null); setLooseQuery(e.target.value) }}
-              placeholder="Search loose-billed products…"
+              placeholder={t('products.printLabels.searchLooseProductsPlaceholder')}
               className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand"
             />
             {looseResults.length > 0 && !looseProduct && (
@@ -355,9 +359,9 @@ export function PrintLabelsScreen() {
               </div>
             )}
           </div>
-          <Input label="Weight (grams)" type="number" min="1" max="99999" value={weightGrams} onChange={e => setWeightGrams(e.target.value)} className="w-40" />
+          <Input label={t('products.printLabels.weightGramsLabel')} type="number" min="1" max="99999" value={weightGrams} onChange={e => setWeightGrams(e.target.value)} className="w-40" />
           <Button onClick={handleWeighAndPrint} disabled={!looseProduct || !weightGrams} loading={weighPrinting}>
-            <Printer size={14} className="me-1" /> Print Label
+            <Printer size={14} className="me-1" /> {t('products.printLabels.printLabelButton')}
           </Button>
         </div>
       </div>
@@ -367,18 +371,18 @@ export function PrintLabelsScreen() {
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
             <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
-              <h2 className="text-base font-bold text-dark dark:text-slate-100">Label Preview</h2>
+              <h2 className="text-base font-bold text-dark dark:text-slate-100">{t('products.printLabels.labelPreviewTitle')}</h2>
               <button onClick={() => setPreviewHtml(null)} className="text-slate-400 hover:text-danger transition-colors">
                 <XCircle size={18} />
               </button>
             </div>
             <div className="flex-1 overflow-hidden bg-slate-100 dark:bg-slate-950 p-3">
-              <iframe title="Label preview" srcDoc={previewHtml} className="w-full h-full bg-white rounded-lg border border-slate-200" style={{ minHeight: '60vh' }} />
+              <iframe title={t('products.printLabels.labelPreviewIframeTitle')} srcDoc={previewHtml} className="w-full h-full bg-white rounded-lg border border-slate-200" style={{ minHeight: '60vh' }} />
             </div>
             <div className="flex justify-end gap-3 px-5 py-4 border-t border-slate-100 dark:border-slate-700">
-              <Button variant="outline" onClick={() => setPreviewHtml(null)}>Cancel</Button>
+              <Button variant="outline" onClick={() => setPreviewHtml(null)}>{t('common.cancel')}</Button>
               <Button onClick={handlePrint} loading={busy}>
-                <Printer size={14} className="me-1" /> Print
+                <Printer size={14} className="me-1" /> {t('common.print')}
               </Button>
             </div>
           </div>

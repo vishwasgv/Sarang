@@ -248,7 +248,7 @@ export function JobCardsScreen() {
         setForm({ ...BLANK_FORM })
         load()
       } else {
-        toastError((res.error as any)?.message ?? 'Could not create job card')
+        toastError((res.error as any)?.message ?? t('service.couldNotCreateJobCard'))
       }
     } catch {
       toastError(t('common.error'))
@@ -344,7 +344,7 @@ export function JobCardsScreen() {
         setCards(prev => prev.filter(c => c.id !== cardId))
         setDeleteConfirmId(null)
       } else {
-        toastError((res.error as any)?.message ?? 'Could not delete')
+        toastError((res.error as any)?.message ?? t('service.couldNotDeleteJobCard'))
       }
     } catch {
       toastError(t('common.error'))
@@ -359,11 +359,11 @@ export function JobCardsScreen() {
       const res = await api.jobCards.generateInvoice({ id: cardId })
       if (res.success) {
         const data = res.data as { invoiceId: string }
-        toastSuccess('Invoice generated')
+        toastSuccess(t('service.invoiceGenerated'))
         setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
         setCards(prev => prev.map(c => c.id === cardId ? { ...c, invoiceId: data.invoiceId } : c))
       } else {
-        toastError((res.error as any)?.message ?? 'Could not generate invoice')
+        toastError((res.error as any)?.message ?? t('service.couldNotGenerateInvoice'))
       }
     } catch {
       toastError(t('common.error'))
@@ -801,7 +801,7 @@ export function JobCardsScreen() {
         onConfirm={handleCancel}
         loading={cancelling}
         title={t('service.cancelJob')}
-        message="Cancel this job card? The customer's item will no longer be tracked through the repair workflow. This cannot be undone."
+        message={t('service.confirmCancelJob')}
         confirmLabel={t('service.cancelJob')}
       />
     </div>

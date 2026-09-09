@@ -133,9 +133,9 @@ export function BillDetailScreen() {
   async function handleRecordPayment() {
     if (!bill) return
     const amount = parseFloat(paymentAmount)
-    if (!amount || amount <= 0) { toastError('Invalid Amount', 'Enter a valid payment amount.'); return }
+    if (!amount || amount <= 0) { toastError(t('bills.toasts.invalidAmountTitle'), t('bills.toasts.enterValidPaymentAmount')); return }
     const parsedTdsAmount = deductTds ? parseFloat(tdsAmount) || 0 : 0
-    if (parsedTdsAmount > amount) { toastError('Invalid TDS Amount', 'TDS amount cannot exceed the payment amount.'); return }
+    if (parsedTdsAmount > amount) { toastError(t('bills.toasts.invalidTdsAmountTitle'), t('bills.toasts.tdsExceedsPayment')); return }
     setRecordingPayment(true)
     try {
       const res = await window.api.supplierPayments.record({
@@ -148,16 +148,16 @@ export function BillDetailScreen() {
         tdsSection: deductTds ? (tdsSection.trim() || undefined) : undefined
       })
       if (res.success) {
-        toastSuccess('Payment Recorded', `${formatCurrency(amount)} recorded for ${bill.billNumber}.`)
+        toastSuccess(t('bills.toasts.paymentRecordedTitle'), t('bills.toasts.paymentRecordedDesc', { amount: formatCurrency(amount), billNumber: bill.billNumber }))
         setShowPaymentModal(false)
         setPaymentAmount(''); setPaymentRef(''); setPaymentRemarks('')
         setDeductTds(false); setTdsSection(''); setTdsAmount(''); setTdsSuggestion(null)
         loadBill()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not record payment.')
+        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.recordPaymentFailed'))
       }
     } catch {
-      toastError('Failed', 'Could not record payment.')
+      toastError(t('bills.toasts.failedTitle'), t('bills.toasts.recordPaymentFailed'))
     } finally { setRecordingPayment(false) }
   }
 
@@ -165,8 +165,8 @@ export function BillDetailScreen() {
     if (!bill) return
     const foreignAmount = parseFloat(fxForeignAmount)
     const settlementRate = parseFloat(fxSettlementRate)
-    if (!foreignAmount || foreignAmount <= 0) { toastError('Invalid Amount', 'Enter the foreign-currency amount paid.'); return }
-    if (!settlementRate || settlementRate <= 0) { toastError('Invalid Rate', 'Enter the exchange rate at settlement.'); return }
+    if (!foreignAmount || foreignAmount <= 0) { toastError(t('bills.toasts.invalidAmountTitle'), t('bills.toasts.enterForeignAmountPaid')); return }
+    if (!settlementRate || settlementRate <= 0) { toastError(t('bills.toasts.invalidRateTitle'), t('bills.toasts.enterSettlementRate')); return }
     setFxSettling(true)
     try {
       const res = await window.api.supplierPayments.recordForeignCurrencySettlement({
@@ -178,49 +178,49 @@ export function BillDetailScreen() {
         remarks: paymentRemarks.trim() || undefined
       })
       if (res.success) {
-        toastSuccess('Bill Settled', `${bill.foreignCurrencyCode} ${foreignAmount.toFixed(2)} recorded for ${bill.billNumber}.`)
+        toastSuccess(t('bills.toasts.billSettledTitle'), t('bills.toasts.billSettledDesc', { code: bill.foreignCurrencyCode, amount: foreignAmount.toFixed(2), billNumber: bill.billNumber }))
         setShowPaymentModal(false)
         setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
         loadBill()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not settle bill.')
+        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.settleFailed'))
       }
     } catch {
-      toastError('Failed', 'Could not settle bill.')
+      toastError(t('bills.toasts.failedTitle'), t('bills.toasts.settleFailed'))
     } finally { setFxSettling(false) }
   }
 
   async function handleReverse() {
-    if (!reversingId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reason for reversal.'); return }
+    if (!reversingId || !reverseReason.trim()) { toastError(t('bills.toasts.reasonRequiredTitle'), t('bills.toasts.enterReversalReason')); return }
     setReversing(true)
     try {
       const res = await window.api.supplierPayments.reverse({ paymentId: reversingId, reason: reverseReason.trim() })
       if (res.success) {
-        toastSuccess('Reversed', 'Payment has been reversed.')
+        toastSuccess(t('bills.toasts.reversedTitle'), t('bills.toasts.paymentReversedDesc'))
         setReversingId(null); setReverseReason('')
         loadBill()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not reverse payment.')
+        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.reverseFailed'))
       }
     } catch {
-      toastError('Failed', 'Could not reverse payment.')
+      toastError(t('bills.toasts.failedTitle'), t('bills.toasts.reverseFailed'))
     } finally { setReversing(false) }
   }
 
   async function handleVoid() {
-    if (!bill || !voidReason.trim()) { toastError('Reason Required', 'Enter a void reason.'); return }
+    if (!bill || !voidReason.trim()) { toastError(t('bills.toasts.reasonRequiredTitle'), t('bills.toasts.enterVoidReason')); return }
     setVoiding(true)
     try {
       const res = await window.api.bills.void({ id: bill.id, reason: voidReason.trim() })
       if (res.success) {
-        toastSuccess('Bill Voided', `${bill.billNumber} has been voided.`)
+        toastSuccess(t('bills.toasts.billVoidedTitle'), t('bills.toasts.billVoidedDesc', { billNumber: bill.billNumber }))
         setVoidOpen(false)
         loadBill()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not void this bill.')
+        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.voidFailed'))
       }
     } catch {
-      toastError('Failed', 'Could not void this bill.')
+      toastError(t('bills.toasts.failedTitle'), t('bills.toasts.voidFailed'))
     } finally { setVoiding(false) }
   }
 
@@ -229,9 +229,9 @@ export function BillDetailScreen() {
     setPrinting(true)
     try {
       const res = await window.api.bills.print(bill.id)
-      if (!res.success) toastError('Failed', res.error?.message ?? 'Could not print this bill.')
+      if (!res.success) toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.printFailed'))
     } catch {
-      toastError('Failed', 'Could not print this bill.')
+      toastError(t('bills.toasts.failedTitle'), t('bills.toasts.printFailed'))
     } finally { setPrinting(false) }
   }
 

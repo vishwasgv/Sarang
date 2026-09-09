@@ -1,4 +1,5 @@
 import React, { useState, useEffect } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { PackagePlus, Search, X, Plus, Minus, RefreshCw, CheckCircle2, User, UserPlus } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
@@ -36,6 +37,7 @@ function volumeDiscountPct(quantity: number): number {
 }
 
 export function BulkOrderScreen() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const profile = useBusinessStore(s => s.profile)
@@ -62,32 +64,32 @@ export function BulkOrderScreen() {
   // Debounced product search
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await api.products.search(query.trim())
         if (res.success && res.data) setResults(res.data as Product[])
-        else toastError('Search Failed', (res.error as { message?: string })?.message ?? 'Could not search products.')
+        else toastError(t('distributor.bulkOrder.searchFailedTitle'), (res.error as { message?: string })?.message ?? t('distributor.bulkOrder.couldNotSearchProducts'))
       } catch {
-        toastError('Search Failed', 'Could not search products.')
+        toastError(t('distributor.bulkOrder.searchFailedTitle'), t('distributor.bulkOrder.couldNotSearchProducts'))
       }
     }, 250)
-    return () => clearTimeout(t)
-  }, [query, toastError])
+    return () => clearTimeout(timer)
+  }, [query, toastError, t])
 
   // Debounced customer search
   useEffect(() => {
     if (!customerQuery.trim()) { setCustomerResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       try {
         const res = await api.customers.search(customerQuery.trim())
         if (res.success && res.data) setCustomerResults(res.data as Customer[])
-        else toastError('Search Failed', (res.error as { message?: string })?.message ?? 'Could not search customers.')
+        else toastError(t('distributor.bulkOrder.searchFailedTitle'), (res.error as { message?: string })?.message ?? t('distributor.bulkOrder.couldNotSearchCustomers'))
       } catch {
-        toastError('Search Failed', 'Could not search customers.')
+        toastError(t('distributor.bulkOrder.searchFailedTitle'), t('distributor.bulkOrder.couldNotSearchCustomers'))
       }
     }, 250)
-    return () => clearTimeout(t)
-  }, [customerQuery, toastError])
+    return () => clearTimeout(timer)
+  }, [customerQuery, toastError, t])
 
   // Phase 58 §2 — Distributor customer-class/negotiated pricing. Resolved
   // fresh from the server (never computed client-side) the moment a
@@ -134,7 +136,7 @@ export function BulkOrderScreen() {
       }))
       setItems(repriced)
     } catch {
-      toastError('Pricing Failed', 'Could not update prices for this customer. Cart prices may be stale.')
+      toastError(t('distributor.bulkOrder.pricingFailedTitle'), t('distributor.bulkOrder.pricingFailedMessage'))
     }
   }
 
@@ -153,8 +155,8 @@ export function BulkOrderScreen() {
   const total = subtotal - bulkDiscount + tax
 
   async function handleSubmit() {
-    if (!items.length) { toastError('Empty Order', 'Add at least one product.'); return }
-    if (paymentMethod === 'CREDIT' && !customer) { toastError('No Customer', 'Select a customer for a credit order.'); return }
+    if (!items.length) { toastError(t('distributor.bulkOrder.emptyOrderTitle'), t('distributor.bulkOrder.emptyOrderMessage')); return }
+    if (paymentMethod === 'CREDIT' && !customer) { toastError(t('distributor.bulkOrder.noCustomerTitle'), t('distributor.bulkOrder.noCustomerMessage')); return }
     setSubmitting(true)
     try {
       const res = await api.billing.createInvoice({
@@ -170,13 +172,13 @@ export function BulkOrderScreen() {
       })
       if (res.success && res.data) {
         const inv = res.data as { invoiceNumber: string }
-        toastSuccess('Order Created', `Bulk order ${inv.invoiceNumber} created.`)
+        toastSuccess(t('distributor.bulkOrder.orderCreatedTitle'), t('distributor.bulkOrder.orderCreatedMessage', { invoiceNumber: inv.invoiceNumber }))
         setDone(inv.invoiceNumber)
       } else {
-        toastError('Failed', (res.error as { message?: string })?.message ?? 'Could not create order.')
+        toastError(t('distributor.bulkOrder.failedTitle'), (res.error as { message?: string })?.message ?? t('distributor.bulkOrder.couldNotCreateOrder'))
       }
     } catch {
-      toastError('Failed', 'Could not create order.')
+      toastError(t('distributor.bulkOrder.failedTitle'), t('distributor.bulkOrder.couldNotCreateOrder'))
     } finally {
       setSubmitting(false)
     }
@@ -187,16 +189,16 @@ export function BulkOrderScreen() {
       <div className="p-6 max-w-xl mx-auto">
         <Card padding="lg" className="text-center space-y-4">
           <CheckCircle2 size={40} className="text-success mx-auto" />
-          <h3 className="text-base font-bold text-dark">Bulk Order Created</h3>
-          <p className="text-sm text-slate-500">Invoice <strong>{done}</strong> has been created.</p>
+          <h3 className="text-base font-bold text-dark">{t('distributor.bulkOrder.createdHeading')}</h3>
+          <p className="text-sm text-slate-500">{t('distributor.bulkOrder.invoiceCreatedPre')} <strong>{done}</strong> {t('distributor.bulkOrder.invoiceCreatedPost')}</p>
           <div className="flex gap-3 justify-center">
             <button onClick={() => { setDone(null); setItems([]); setOrderRef(''); setNotes(''); setCustomer(null); setPaymentMethod('CASH') }}
               className="px-4 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-300 transition-colors">
-              New Order
+              {t('distributor.bulkOrder.newOrder')}
             </button>
             <button onClick={() => navigate('/billing')}
               className="px-4 py-2 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
-              View Invoices
+              {t('distributor.bulkOrder.viewInvoices')}
             </button>
           </div>
         </Card>
@@ -207,8 +209,8 @@ export function BulkOrderScreen() {
   return (
     <div className="p-6 max-w-5xl mx-auto space-y-5">
       <div>
-        <h2 className="text-lg font-bold text-dark">Bulk Order Entry</h2>
-        <p className="text-sm text-slate-400">Add multiple products quickly for large distributor orders</p>
+        <h2 className="text-lg font-bold text-dark">{t('distributor.bulkOrder.title')}</h2>
+        <p className="text-sm text-slate-400">{t('distributor.bulkOrder.subtitle')}</p>
       </div>
 
       <div className="grid grid-cols-3 gap-5">
@@ -221,7 +223,7 @@ export function BulkOrderScreen() {
               <input
                 value={query}
                 onChange={e => setQuery(e.target.value)}
-                placeholder="Search products by name or SKU…"
+                placeholder={t('distributor.bulkOrder.searchProductsPlaceholder')}
                 className="w-full ps-9 pe-4 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand"
               />
             </div>
@@ -237,7 +239,7 @@ export function BulkOrderScreen() {
                     <div className="text-end">
                       <p className="text-sm font-semibold text-dark">{sym}{p.sellingPrice.toFixed(2)}</p>
                       <p className={cn('text-xs', (p.inventory?.quantity ?? 0) <= 0 ? 'text-danger' : 'text-slate-400')}>
-                        Stock: {p.inventory?.quantity ?? 0}
+                        {t('distributor.bulkOrder.stockLabel', { qty: p.inventory?.quantity ?? 0 })}
                       </p>
                     </div>
                   </button>
@@ -250,10 +252,10 @@ export function BulkOrderScreen() {
           {items.length > 0 && (
             <Card padding="none" className="overflow-hidden">
               <div className="grid grid-cols-12 gap-2 px-5 py-2.5 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-                <div className="col-span-5">Product</div>
-                <div className="col-span-3 text-center">Qty</div>
-                <div className="col-span-2 text-end">Unit Price</div>
-                <div className="col-span-2 text-end">Total</div>
+                <div className="col-span-5">{t('distributor.bulkOrder.columnProduct')}</div>
+                <div className="col-span-3 text-center">{t('distributor.bulkOrder.columnQty')}</div>
+                <div className="col-span-2 text-end">{t('distributor.bulkOrder.columnUnitPrice')}</div>
+                <div className="col-span-2 text-end">{t('common.total')}</div>
               </div>
               <div className="divide-y divide-slate-50 dark:divide-slate-800">
                 {items.map(item => {
@@ -282,12 +284,12 @@ export function BulkOrderScreen() {
                         </div>
                         {pct > 0 && (
                           <span className="text-[10px] font-semibold text-success bg-success/10 px-1.5 py-0.5 rounded">
-                            {pct}% bulk discount
+                            {t('distributor.bulkOrder.bulkDiscountBadge', { pct })}
                           </span>
                         )}
                         {item.quantity > item.availableQty && (
                           <span className="text-[10px] font-semibold text-danger bg-danger/10 px-1.5 py-0.5 rounded">
-                            Exceeds stock ({item.availableQty} available)
+                            {t('distributor.bulkOrder.exceedsStock', { available: item.availableQty })}
                           </span>
                         )}
                       </div>
@@ -313,7 +315,7 @@ export function BulkOrderScreen() {
                 })}
               </div>
               <p className="px-5 py-2 text-[11px] text-slate-400 border-t border-slate-100 dark:border-slate-800">
-                Volume pricing: {VOLUME_DISCOUNT_TIERS.slice().reverse().map(t => `${t.minQty}+ units → ${t.pct}% off`).join(' · ')}
+                {t('distributor.bulkOrder.volumePricingLabel')} {VOLUME_DISCOUNT_TIERS.slice().reverse().map(tier => t('distributor.bulkOrder.volumePricingTier', { minQty: tier.minQty, pct: tier.pct })).join(' · ')}
               </p>
             </Card>
           )}
@@ -322,10 +324,10 @@ export function BulkOrderScreen() {
         {/* Right: Order summary */}
         <div className="space-y-4">
           <Card padding="lg" className="space-y-4">
-            <h3 className="text-sm font-semibold text-dark dark:text-slate-100">Order Details</h3>
+            <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{t('distributor.bulkOrder.orderDetailsTitle')}</h3>
 
             <div>
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Customer (optional — required for credit)</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">{t('distributor.bulkOrder.customerLabel')}</label>
               {customer ? (
                 <div className="flex items-center justify-between gap-2 px-3 py-2 rounded-lg border border-brand/30 bg-brand/5">
                   <div className="flex items-center gap-2 min-w-0">
@@ -343,7 +345,7 @@ export function BulkOrderScreen() {
                   <input
                     value={customerQuery}
                     onChange={e => setCustomerQuery(e.target.value)}
-                    placeholder="Search wholesale customer…"
+                    placeholder={t('distributor.bulkOrder.searchCustomerPlaceholder')}
                     className="w-full ps-9 pe-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand"
                   />
                   {customerResults.length > 0 && (
@@ -363,49 +365,49 @@ export function BulkOrderScreen() {
             </div>
 
             <div>
-              <label className="text-xs font-medium text-slate-500 mb-1 block">Order Reference</label>
+              <label className="text-xs font-medium text-slate-500 mb-1 block">{t('distributor.bulkOrder.orderReferenceLabel')}</label>
               <input value={orderRef} onChange={e => setOrderRef(e.target.value)}
-                placeholder="e.g. PO-2026-001"
+                placeholder={t('distributor.bulkOrder.orderReferencePlaceholder')}
                 className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-lg focus:outline-none focus:border-brand" />
             </div>
             <div>
-              <Select label="Payment Method" value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as typeof paymentMethod)}>
-                <option value="CASH">Cash</option>
-                <option value="UPI">UPI</option>
-                <option value="CARD">Card</option>
-                {customer && <option value="CREDIT">Credit (Pay Later)</option>}
+              <Select label={t('distributor.bulkOrder.paymentMethodLabel')} value={paymentMethod} onChange={e => setPaymentMethod(e.target.value as typeof paymentMethod)}>
+                <option value="CASH">{t('distributor.bulkOrder.cash')}</option>
+                <option value="UPI">{t('distributor.bulkOrder.upi')}</option>
+                <option value="CARD">{t('distributor.bulkOrder.card')}</option>
+                {customer && <option value="CREDIT">{t('distributor.bulkOrder.creditPayLater')}</option>}
               </Select>
-              <p className="text-xs text-slate-400 mt-1">{customer ? 'Credit orders count against the customer\'s credit limit.' : 'Select a customer above to enable credit orders.'}</p>
+              <p className="text-xs text-slate-400 mt-1">{customer ? t('distributor.bulkOrder.creditHintWithCustomer') : t('distributor.bulkOrder.creditHintNoCustomer')}</p>
             </div>
             <div>
-              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">Notes</label>
+              <label className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-1 block">{t('common.notes')}</label>
               <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
-                placeholder="Delivery instructions, special notes…"
+                placeholder={t('distributor.bulkOrder.notesPlaceholder')}
                 className="w-full px-3 py-2 text-sm border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 rounded-xl focus:outline-none focus:border-brand resize-none" />
             </div>
           </Card>
 
           <Card padding="lg" className="space-y-3">
             <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <span>Subtotal</span><span>{sym}{subtotal.toFixed(2)}</span>
+              <span>{t('common.subtotal')}</span><span>{sym}{subtotal.toFixed(2)}</span>
             </div>
             {bulkDiscount > 0 && (
               <div className="flex justify-between text-sm text-success">
-                <span>Bulk Discount</span><span>−{sym}{bulkDiscount.toFixed(2)}</span>
+                <span>{t('distributor.bulkOrder.bulkDiscountLabel')}</span><span>−{sym}{bulkDiscount.toFixed(2)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <span>Tax</span><span>{sym}{tax.toFixed(2)}</span>
+              <span>{t('common.tax')}</span><span>{sym}{tax.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-base font-bold text-dark dark:text-slate-100 border-t border-slate-100 dark:border-slate-800 pt-3">
-              <span>Total</span><span>{sym}{total.toFixed(2)}</span>
+              <span>{t('common.total')}</span><span>{sym}{total.toFixed(2)}</span>
             </div>
-            <p className="text-xs text-slate-400">{items.length} product{items.length !== 1 ? 's' : ''} · {items.reduce((s, i) => s + i.quantity, 0)} units</p>
+            <p className="text-xs text-slate-400">{t('distributor.bulkOrder.productCount', { count: items.length })} · {t('distributor.bulkOrder.unitsCount', { count: items.reduce((s, i) => s + i.quantity, 0) })}</p>
 
             <button onClick={handleSubmit} disabled={submitting || items.length === 0}
               className="w-full flex items-center justify-center gap-2 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors disabled:opacity-50">
               {submitting ? <RefreshCw size={14} className="animate-spin" /> : <PackagePlus size={14} />}
-              {submitting ? 'Creating…' : 'Create Bulk Order'}
+              {submitting ? t('distributor.bulkOrder.creating') : t('distributor.bulkOrder.createBulkOrder')}
             </button>
           </Card>
         </div>

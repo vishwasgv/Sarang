@@ -42,13 +42,13 @@ export function TutorialPromptScreen({ onDone, businessType }: TutorialPromptScr
       await api.app.dismissTutorialPrompt()
       const res = await api.tutorial.start({ businessType: businessType ?? 'GENERAL' })
       if (res.success === false) {
-        toastError('Error', res.error?.message ?? 'Could not start the tutorial.')
+        toastError(t('common.error'), res.error?.message ?? t('tour.couldNotStartTutorial'))
         setStarting(false)
         onDone()
       }
       // On success the whole app relaunches into the tutorial — nothing more to do here.
     } catch {
-      toastError('Error', 'Could not start the tutorial.')
+      toastError(t('common.error'), t('tour.couldNotStartTutorial'))
       setStarting(false)
       onDone()
     }

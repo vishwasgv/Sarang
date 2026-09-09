@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Edit2, Archive, Check, X, FolderOpen } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
@@ -22,6 +23,7 @@ interface CategoryManageModalProps {
 }
 
 export function CategoryManageModal({ open, onClose }: CategoryManageModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
   const [categories, setCategories] = useState<Category[]>([])
@@ -46,9 +48,9 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     try {
       const res = await window.api.categories.list()
       if (res.success) setCategories(res.data as Category[])
-      else toastError('Error', res.error?.message ?? 'Failed to load categories.')
+      else toastError(t('common.error'), res.error?.message ?? t('products.loadCategoriesFailed'))
     } catch {
-      toastError('Error', 'Failed to load categories.')
+      toastError(t('common.error'), t('products.loadCategoriesFailed'))
     } finally {
       setLoading(false)
     }
@@ -64,16 +66,16 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     try {
       const res = await window.api.categories.create({ name: addName.trim(), description: addDesc.trim() || undefined })
       if (res.success) {
-        toastSuccess('Category Added', `"${addName.trim()}" has been created.`)
+        toastSuccess(t('products.categoryAddedTitle'), t('products.categoryCreatedMessage', { name: addName.trim() }))
         setAddName('')
         setAddDesc('')
         setShowAddForm(false)
         loadCategories()
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to add category.')
+        toastError(t('common.error'), res.error?.message ?? t('products.addCategoryFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to add category.')
+      toastError(t('common.error'), t('products.addCategoryFailed'))
     } finally {
       setAdding(false)
     }
@@ -97,14 +99,14 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     try {
       const res = await window.api.categories.update({ id: cat.id, name: editName.trim(), description: editDesc.trim() || undefined })
       if (res.success) {
-        toastSuccess('Category Updated', `"${editName.trim()}" has been saved.`)
+        toastSuccess(t('products.categoryUpdatedTitle'), t('products.categorySavedMessage', { name: editName.trim() }))
         cancelEdit()
         loadCategories()
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to update category.')
+        toastError(t('common.error'), res.error?.message ?? t('products.updateCategoryFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to update category.')
+      toastError(t('common.error'), t('products.updateCategoryFailed'))
     } finally {
       setSaving(false)
     }
@@ -116,14 +118,14 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     try {
       const res = await window.api.categories.archive(archiveTarget.id)
       if (res.success) {
-        toastSuccess('Category Archived', `"${archiveTarget.name}" has been archived.`)
+        toastSuccess(t('products.categoryArchivedTitle'), t('products.categoryArchivedMessage', { name: archiveTarget.name }))
         setArchiveTarget(null)
         loadCategories()
       } else {
-        toastError('Cannot Archive', res.error?.message ?? 'Failed to archive.')
+        toastError(t('products.cannotArchiveTitle'), res.error?.message ?? t('products.archiveCategoryFailed'))
       }
     } catch {
-      toastError('Cannot Archive', 'Failed to archive.')
+      toastError(t('products.cannotArchiveTitle'), t('products.archiveCategoryFailed'))
     } finally {
       setArchiving(false)
     }
@@ -134,16 +136,16 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
       <Modal
         open={open}
         onClose={onClose}
-        title="Manage Categories"
+        title={t('products.manageCategoriesTitle')}
         size="md"
         footer={
           <div className="flex items-center justify-between w-full">
             {canCreate && !showAddForm && (
               <Button size="sm" onClick={() => setShowAddForm(true)}>
-                <Plus size={14} className="me-1.5" /> New Category
+                <Plus size={14} className="me-1.5" /> {t('products.newCategory')}
               </Button>
             )}
-            <Button variant="secondary" size="sm" onClick={onClose} className="ms-auto">Done</Button>
+            <Button variant="secondary" size="sm" onClick={onClose} className="ms-auto">{t('common.done')}</Button>
           </div>
         }
       >
@@ -151,22 +153,22 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
           {/* Add new form */}
           {showAddForm && (
             <div className="p-3 bg-brand/5 border border-brand/20 rounded-lg space-y-2">
-              <p className="text-xs font-semibold text-brand">New Category</p>
+              <p className="text-xs font-semibold text-brand">{t('products.newCategory')}</p>
               <Input
-                placeholder="Category name *"
+                placeholder={t('products.categoryNamePlaceholder')}
                 value={addName}
                 onChange={(e) => setAddName(e.target.value)}
                 autoFocus
                 onKeyDown={(e) => { if (e.key === 'Enter') handleAdd(); if (e.key === 'Escape') setShowAddForm(false) }}
               />
               <Input
-                placeholder="Description (optional)"
+                placeholder={t('products.categoryDescPlaceholder')}
                 value={addDesc}
                 onChange={(e) => setAddDesc(e.target.value)}
               />
               <div className="flex gap-2">
-                <Button size="sm" onClick={handleAdd} loading={adding} disabled={!addName.trim()}>Add</Button>
-                <Button variant="secondary" size="sm" onClick={() => { setShowAddForm(false); setAddName(''); setAddDesc('') }}>Cancel</Button>
+                <Button size="sm" onClick={handleAdd} loading={adding} disabled={!addName.trim()}>{t('common.add')}</Button>
+                <Button variant="secondary" size="sm" onClick={() => { setShowAddForm(false); setAddName(''); setAddDesc('') }}>{t('common.cancel')}</Button>
               </div>
             </div>
           )}
@@ -179,7 +181,7 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
           ) : categories.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-10 text-center">
               <FolderOpen size={32} className="text-slate-200 mb-3" />
-              <p className="text-sm text-slate-400">No categories yet.</p>
+              <p className="text-sm text-slate-400">{t('products.noCategoriesYet')}</p>
             </div>
           ) : (
             categories.map((cat) => (
@@ -194,10 +196,10 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
                       onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(cat); if (e.key === 'Escape') cancelEdit() }}
                     />
                     <button onClick={() => handleSaveEdit(cat)} disabled={saving || !editName.trim()}
-                      className="p-1.5 rounded text-success hover:bg-success/10 disabled:opacity-40 transition-colors" title="Save">
+                      className="p-1.5 rounded text-success hover:bg-success/10 disabled:opacity-40 transition-colors" title={t('common.save')}>
                       <Check size={14} />
                     </button>
-                    <button onClick={cancelEdit} className="p-1.5 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title="Cancel">
+                    <button onClick={cancelEdit} className="p-1.5 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('common.cancel')}>
                       <X size={14} />
                     </button>
                   </div>
@@ -208,15 +210,15 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
                       {cat.description && <p className="text-xs text-slate-400 truncate">{cat.description}</p>}
                     </div>
                     <span className={cn('text-xs px-2 py-0.5 rounded-full shrink-0', (cat._count?.products ?? 0) > 0 ? 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400' : 'bg-slate-50 dark:bg-slate-800 text-slate-300')}>
-                      {cat._count?.products ?? 0} products
+                      {t('products.productsCount', { count: cat._count?.products ?? 0 })}
                     </span>
                     {canUpdate && (
-                      <button onClick={() => startEdit(cat)} className="p-1.5 rounded text-slate-400 hover:text-brand hover:bg-brand/10 transition-colors shrink-0" title="Edit">
+                      <button onClick={() => startEdit(cat)} className="p-1.5 rounded text-slate-400 hover:text-brand hover:bg-brand/10 transition-colors shrink-0" title={t('common.edit')}>
                         <Edit2 size={13} />
                       </button>
                     )}
                     {canArchive && (
-                      <button onClick={() => setArchiveTarget(cat)} className="p-1.5 rounded text-slate-400 hover:text-danger hover:bg-danger/10 transition-colors shrink-0" title="Archive">
+                      <button onClick={() => setArchiveTarget(cat)} className="p-1.5 rounded text-slate-400 hover:text-danger hover:bg-danger/10 transition-colors shrink-0" title={t('common.archive')}>
                         <Archive size={13} />
                       </button>
                     )}
@@ -233,9 +235,9 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
         onClose={() => setArchiveTarget(null)}
         onConfirm={handleArchive}
         loading={archiving}
-        title="Archive Category"
-        message={`Archive "${archiveTarget?.name}"? Products in this category will be uncategorized.`}
-        confirmLabel="Archive"
+        title={t('products.archiveCategoryTitle')}
+        message={t('products.archiveCategoryMessage', { name: archiveTarget?.name })}
+        confirmLabel={t('common.archive')}
       />
     </>
   )

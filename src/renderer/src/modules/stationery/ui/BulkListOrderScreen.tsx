@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback, useRef } from 'react'
+import { useTranslation } from 'react-i18next'
 import { PackagePlus, Plus, RefreshCw, Trash2, Search, Receipt, CheckCircle2, BellRing } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
@@ -42,6 +43,7 @@ interface BulkListOrder {
 }
 
 function ProductPicker({ products, value, onChange }: { products: Product[]; value: string; onChange: (id: string, price: number) => void }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -67,14 +69,14 @@ function ProductPicker({ products, value, onChange }: { products: Product[]; val
           value={open ? query : (selected ? selected.productName : '')}
           onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
           onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder="Search product…"
+          placeholder={t('stationery.bulkListOrder.searchProductPlaceholder')}
           className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
         />
       </div>
       {open && (
         <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
           {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">No products match.</p>
+            <p className="px-3 py-2 text-xs text-slate-400">{t('stationery.bulkListOrder.noProductsMatch')}</p>
           ) : results.map(p => (
             <button key={p.id} type="button" onClick={() => { onChange(p.id, p.sellingPrice); setQuery(''); setOpen(false) }}
               className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}>
@@ -87,10 +89,8 @@ function ProductPicker({ products, value, onChange }: { products: Product[]; val
   )
 }
 
-// Phase 69 — Stationery vertical, institutional bulk/supply-list orders.
-// English-only for now, same deliberate scope-fork convention as Phase 38's
-// Print Labels screen — full-language translation is a later task.
 export function BulkListOrderScreen(): React.JSX.Element {
+  const { t } = useTranslation()
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canManage = hasPermission('bulkListOrder.manage')
@@ -124,15 +124,15 @@ export function BulkListOrderScreen(): React.JSX.Element {
         window.api.bulkListOrder.reorderReminders(),
       ])
       if (oRes.success) setOrders((oRes.data as BulkListOrder[]) ?? [])
-      else toastError('Error', oRes.error?.message ?? 'Could not load bulk-list orders.')
+      else toastError(t('common.error'), oRes.error?.message ?? t('stationery.bulkListOrder.couldNotLoad'))
       if (pRes.success) setProducts((pRes.data as { products?: Product[] })?.products ?? [])
       if (rRes.success) setReminders((rRes.data as ReorderReminderRow[]) ?? [])
     } catch {
-      toastError('Error', 'Could not load bulk-list orders.')
+      toastError(t('common.error'), t('stationery.bulkListOrder.couldNotLoad'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { void load() }, [load])
 
@@ -158,9 +158,9 @@ export function BulkListOrderScreen(): React.JSX.Element {
 
   async function handleCreate() {
     setError('')
-    if (!customer && !customerName.trim()) { setError('Select a customer or enter an institution name.'); return }
-    if (!listName.trim()) { setError('List name is required.'); return }
-    if (lines.length === 0) { setError('Add at least one supply-list line.'); return }
+    if (!customer && !customerName.trim()) { setError(t('stationery.bulkListOrder.selectCustomerOrInstitution')); return }
+    if (!listName.trim()) { setError(t('stationery.bulkListOrder.listNameRequired')); return }
+    if (lines.length === 0) { setError(t('stationery.bulkListOrder.addAtLeastOneLine')); return }
     setSaving(true)
     try {
       const res = await window.api.bulkListOrder.create({
@@ -172,12 +172,12 @@ export function BulkListOrderScreen(): React.JSX.Element {
       })
       if (res.success) {
         const data = res.data as BulkListOrder
-        toastSuccess('Order created', data.orderNumber)
+        toastSuccess(t('stationery.bulkListOrder.orderCreatedTitle'), data.orderNumber)
         setShowForm(false)
         resetForm()
         await load()
       } else {
-        setError(res.error?.message ?? 'Could not create order.')
+        setError(res.error?.message ?? t('stationery.bulkListOrder.couldNotCreateOrder'))
       }
     } finally {
       setSaving(false)
@@ -193,7 +193,7 @@ export function BulkListOrderScreen(): React.JSX.Element {
     try {
       const res = await window.api.bulkListOrder.matchItem({ itemId, productId: d.productId, unitPrice })
       if (res.success) await load()
-      else toastError('Error', res.error?.message ?? 'Could not match item.')
+      else toastError(t('common.error'), res.error?.message ?? t('stationery.bulkListOrder.couldNotMatchItem'))
     } finally {
       setMatchingId(null)
     }
@@ -204,8 +204,8 @@ export function BulkListOrderScreen(): React.JSX.Element {
     try {
       const paymentMethod = (billPaymentMethod[orderId] ?? 'CREDIT') as 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'
       const res = await window.api.bulkListOrder.bill({ orderId, paymentMethod })
-      if (res.success) { toastSuccess('Order billed', 'Invoice generated for the full supply list.'); await load() }
-      else toastError('Error', res.error?.message ?? 'Could not bill order.')
+      if (res.success) { toastSuccess(t('stationery.bulkListOrder.orderBilledTitle'), t('stationery.bulkListOrder.orderBilledMessage')); await load() }
+      else toastError(t('common.error'), res.error?.message ?? t('stationery.bulkListOrder.couldNotBillOrder'))
     } finally {
       setBillingId(null)
     }
@@ -215,15 +215,15 @@ export function BulkListOrderScreen(): React.JSX.Element {
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><PackagePlus size={20} /> Bulk-List Orders</h2>
-          <p className="text-sm text-slate-400">Match a supply list to catalog products, then bill in one shot.</p>
+          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><PackagePlus size={20} /> {t('stationery.bulkListOrder.title')}</h2>
+          <p className="text-sm text-slate-400">{t('stationery.bulkListOrder.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => void load()} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-300 transition-colors">
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
           {canManage && (
-            <Button size="sm" onClick={() => setShowForm((s) => !s)} icon={<Plus size={14} />}>New Order</Button>
+            <Button size="sm" onClick={() => setShowForm((s) => !s)} icon={<Plus size={14} />}>{t('stationery.bulkListOrder.newOrder')}</Button>
           )}
         </div>
       </div>
@@ -234,14 +234,14 @@ export function BulkListOrderScreen(): React.JSX.Element {
           again, so the shop can proactively reach out. */}
       {reminders.length > 0 && (
         <Card padding="md" className="space-y-2 border-warning/30 bg-warning/5">
-          <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><BellRing size={16} className="text-warning" /> Annual Reorder Reminders</p>
+          <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><BellRing size={16} className="text-warning" /> {t('stationery.bulkListOrder.reorderRemindersTitle')}</p>
           <div className="space-y-1.5">
             {reminders.map(r => (
               <div key={r.lastOrderId} className="flex items-center justify-between text-sm gap-2">
                 <span className="text-dark dark:text-slate-200">{r.institutionName}</span>
                 <span className="flex items-center gap-2 text-xs text-slate-500 dark:text-slate-400 flex-shrink-0">
-                  Last order {r.lastOrderNumber} — {r.monthsSinceLastOrder} months ago
-                  <Badge variant={r.status === 'OVERDUE' ? 'danger' : 'warning'} size="sm">{r.status === 'OVERDUE' ? 'Overdue' : 'Due Soon'}</Badge>
+                  {t('stationery.bulkListOrder.lastOrderMonthsAgo', { orderNumber: r.lastOrderNumber, months: r.monthsSinceLastOrder })}
+                  <Badge variant={r.status === 'OVERDUE' ? 'danger' : 'warning'} size="sm">{r.status === 'OVERDUE' ? t('stationery.bulkListOrder.overdue') : t('stationery.bulkListOrder.dueSoon')}</Badge>
                 </span>
               </div>
             ))}
@@ -252,21 +252,21 @@ export function BulkListOrderScreen(): React.JSX.Element {
       {showForm && canManage && (
         <Card padding="md" className="space-y-3">
           {customer ? (
-            <CustomerPicker value={customer} onChange={setCustomer} label="Customer" />
+            <CustomerPicker value={customer} onChange={setCustomer} label={t('stationery.bulkListOrder.customerLabel')} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              <CustomerPicker value={customer} onChange={setCustomer} label="Customer (optional)" />
-              <Input label="Institution Name" placeholder="e.g. Delhi Public School" value={customerName} onChange={(e) => setCustomerName(e.target.value)} disabled={!!customer} />
+              <CustomerPicker value={customer} onChange={setCustomer} label={t('stationery.bulkListOrder.customerOptionalLabel')} />
+              <Input label={t('stationery.bulkListOrder.institutionNameLabel')} placeholder={t('stationery.bulkListOrder.institutionNamePlaceholder')} value={customerName} onChange={(e) => setCustomerName(e.target.value)} disabled={!!customer} />
             </div>
           )}
-          <Input label="List Name" placeholder="e.g. Grade 5 Booklist 2026-27" value={listName} onChange={(e) => setListName(e.target.value)} />
+          <Input label={t('stationery.bulkListOrder.listNameLabel')} placeholder={t('stationery.bulkListOrder.listNamePlaceholder')} value={listName} onChange={(e) => setListName(e.target.value)} />
 
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
-            <p className="text-xs font-semibold text-slate-500">Supply-List Lines</p>
+            <p className="text-xs font-semibold text-slate-500">{t('stationery.bulkListOrder.supplyListLines')}</p>
             <div className="grid grid-cols-6 gap-2 items-end">
-              <div className="col-span-4"><Input label="Item Label" placeholder="e.g. Notebook 200pg — 5 units" value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} /></div>
-              <Input label="Qty" type="number" min="1" step="1" value={draftQty} onChange={(e) => setDraftQty(e.target.value)} />
-              <Button size="sm" variant="secondary" onClick={addLine} disabled={!draftLabel.trim()}>Add</Button>
+              <div className="col-span-4"><Input label={t('stationery.bulkListOrder.itemLabel')} placeholder={t('stationery.bulkListOrder.itemLabelPlaceholder')} value={draftLabel} onChange={(e) => setDraftLabel(e.target.value)} /></div>
+              <Input label={t('stationery.bulkListOrder.qty')} type="number" min="1" step="1" value={draftQty} onChange={(e) => setDraftQty(e.target.value)} />
+              <Button size="sm" variant="secondary" onClick={addLine} disabled={!draftLabel.trim()}>{t('common.add')}</Button>
             </div>
             {lines.length > 0 && (
               <div className="divide-y divide-slate-100 dark:divide-slate-800">
@@ -280,21 +280,21 @@ export function BulkListOrderScreen(): React.JSX.Element {
             )}
           </div>
 
-          <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input label={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
           {error && <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-md px-3 py-2">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => { setShowForm(false); resetForm() }}>Cancel</Button>
-            <Button size="sm" onClick={() => void handleCreate()} loading={saving}>Create</Button>
+            <Button variant="secondary" size="sm" onClick={() => { setShowForm(false); resetForm() }}>{t('common.cancel')}</Button>
+            <Button size="sm" onClick={() => void handleCreate()} loading={saving}>{t('common.create')}</Button>
           </div>
         </Card>
       )}
 
       {loading ? (
-        <div className="text-center py-16 text-slate-400">Loading…</div>
+        <div className="text-center py-16 text-slate-400">{t('common.loading')}</div>
       ) : orders.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <PackagePlus size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No bulk-list orders yet.</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('stationery.bulkListOrder.empty')}</p>
         </Card>
       ) : (
         <div className="space-y-3">
@@ -309,18 +309,18 @@ export function BulkListOrderScreen(): React.JSX.Element {
                       <span className="font-semibold text-gray-900 text-sm dark:text-slate-100">{o.orderNumber}</span>
                       <Badge variant={o.status === 'BILLED' ? 'success' : o.status === 'CANCELLED' ? 'neutral' : 'warning'} size="sm">{o.status}</Badge>
                     </div>
-                    <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{o.listName} — {o.customer?.customerName ?? o.customerName ?? 'Walk-in'}</div>
+                    <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{o.listName} — {o.customer?.customerName ?? o.customerName ?? t('stationery.bulkListOrder.walkIn')}</div>
                   </div>
                   {o.status === 'DRAFT' && canManage && (
                     <div className="flex items-center gap-2">
                       <Select value={billPaymentMethod[o.id] ?? 'CREDIT'} onChange={(e) => setBillPaymentMethod(prev => ({ ...prev, [o.id]: e.target.value }))}>
-                        <option value="CREDIT">Credit</option>
-                        <option value="CASH">Cash</option>
-                        <option value="UPI">UPI</option>
-                        <option value="CARD">Card</option>
+                        <option value="CREDIT">{t('stationery.bulkListOrder.paymentCredit')}</option>
+                        <option value="CASH">{t('stationery.bulkListOrder.paymentCash')}</option>
+                        <option value="UPI">{t('stationery.bulkListOrder.paymentUpi')}</option>
+                        <option value="CARD">{t('stationery.bulkListOrder.paymentCard')}</option>
                       </Select>
                       <button onClick={() => void handleBill(o.id)} disabled={!allMatched || billingId === o.id} className="text-xs px-3 py-1.5 rounded-lg bg-brand/5 text-brand border border-brand/20 hover:bg-brand/10 flex items-center gap-1 font-medium disabled:opacity-40">
-                        <Receipt size={12} /> {billingId === o.id ? 'Billing…' : 'Bill Order'}
+                        <Receipt size={12} /> {billingId === o.id ? t('stationery.bulkListOrder.billing') : t('stationery.bulkListOrder.billOrder')}
                       </button>
                     </div>
                   )}
@@ -335,11 +335,11 @@ export function BulkListOrderScreen(): React.JSX.Element {
                         ) : o.status === 'DRAFT' && canManage ? (
                           <div className="mt-1 grid grid-cols-4 gap-2 items-end">
                             <div className="col-span-2"><ProductPicker products={products} value={matchDraft[item.id]?.productId ?? ''} onChange={(id, price) => setMatchDraft(prev => ({ ...prev, [item.id]: { productId: id, unitPrice: String(price) } }))} /></div>
-                            <Input placeholder="Price" type="number" min="0" step="0.01" value={matchDraft[item.id]?.unitPrice ?? ''} onChange={(e) => setMatchDraft(prev => ({ ...prev, [item.id]: { productId: prev[item.id]?.productId ?? '', unitPrice: e.target.value } }))} />
-                            <Button size="sm" variant="secondary" onClick={() => void handleMatch(item.id)} disabled={!matchDraft[item.id]?.productId || matchingId === item.id}>{matchingId === item.id ? 'Matching…' : 'Match'}</Button>
+                            <Input placeholder={t('common.price')} type="number" min="0" step="0.01" value={matchDraft[item.id]?.unitPrice ?? ''} onChange={(e) => setMatchDraft(prev => ({ ...prev, [item.id]: { productId: prev[item.id]?.productId ?? '', unitPrice: e.target.value } }))} />
+                            <Button size="sm" variant="secondary" onClick={() => void handleMatch(item.id)} disabled={!matchDraft[item.id]?.productId || matchingId === item.id}>{matchingId === item.id ? t('stationery.bulkListOrder.matching') : t('stationery.bulkListOrder.match')}</Button>
                           </div>
                         ) : (
-                          <span className="ms-2 text-xs text-slate-400">Not matched</span>
+                          <span className="ms-2 text-xs text-slate-400">{t('stationery.bulkListOrder.notMatched')}</span>
                         )}
                       </div>
                     </div>

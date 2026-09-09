@@ -1,4 +1,5 @@
 import { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useSearchParams } from 'react-router-dom'
 import { Plus, Search, Wrench, Clock, Truck, PackageCheck, RotateCcw, XCircle, History, ArrowRight, DollarSign } from 'lucide-react'
 import { type ColumnDef } from '@tanstack/react-table'
@@ -45,15 +46,18 @@ interface TicketRow {
   technician: { id: string; fullName: string } | null
 }
 
-const STATUS_LABELS: Record<RepairStatus, string> = {
-  RECEIVED: 'Received',
-  DIAGNOSED: 'Diagnosed',
-  SENT_TO_VENDOR: 'Sent to Vendor',
-  AWAITING_PARTS: 'Awaiting Parts',
-  REPAIRED: 'Repaired',
-  REPLACED: 'Replaced',
-  RETURNED_TO_CUSTOMER: 'Returned to Customer',
-  CANCELLED: 'Cancelled',
+// Translation keys for each status label — the map itself has to live inside
+// the component (STATUS_LABELS below) since t() isn't available at module
+// scope, but the RepairStatus -> key mapping is pure structure, not text.
+const STATUS_LABEL_KEYS: Record<RepairStatus, string> = {
+  RECEIVED: 'inventory.repairTickets.status.received',
+  DIAGNOSED: 'inventory.repairTickets.status.diagnosed',
+  SENT_TO_VENDOR: 'inventory.repairTickets.status.sentToVendor',
+  AWAITING_PARTS: 'inventory.repairTickets.status.awaitingParts',
+  REPAIRED: 'inventory.repairTickets.status.repaired',
+  REPLACED: 'inventory.repairTickets.status.replaced',
+  RETURNED_TO_CUSTOMER: 'inventory.repairTickets.status.returnedToCustomer',
+  CANCELLED: 'inventory.repairTickets.status.cancelled',
 }
 const STATUS_VARIANT: Record<RepairStatus, 'success' | 'warning' | 'danger' | 'info' | 'neutral' | 'brand'> = {
   RECEIVED: 'neutral',
@@ -84,19 +88,20 @@ const ALL_STATUSES: RepairStatus[] = ['RECEIVED', 'DIAGNOSED', 'SENT_TO_VENDOR',
 // only be opened against a unit that's actually been sold to a customer
 // (repair-ticket.service.ts enforces this server-side too).
 function SoldSerialPicker({ value, onChange }: { value: SerialLite & { productId: string; productName: string } | null; onChange: (s: (SerialLite & { productId: string; productName: string }) | null) => void }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<Array<SerialLite & { productId: string; productName: string }>>([])
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const res = await window.api.serials.list({ serialNumber: query.trim(), status: 'SOLD', limit: 10 })
       if (res.success && res.data) {
         const d = res.data as { serials: Array<SerialLite & { productId: string; productName: string }> }
         setResults(d.serials ?? [])
       }
     }, 250)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [query])
 
   if (value) {
@@ -106,7 +111,7 @@ function SoldSerialPicker({ value, onChange }: { value: SerialLite & { productId
           <p className="text-sm font-medium text-dark dark:text-slate-100 truncate">{value.productName}</p>
           <p className="text-sm font-mono text-slate-400">{value.serialNumber}{value.imeiNumber ? ` · IMEI ${value.imeiNumber}` : ''}</p>
         </div>
-        <button type="button" onClick={() => onChange(null)} className="text-slate-400 hover:text-danger shrink-0 text-sm">Change</button>
+        <button type="button" onClick={() => onChange(null)} className="text-slate-400 hover:text-danger shrink-0 text-sm">{t('inventory.repairTickets.change')}</button>
       </div>
     )
   }
@@ -118,7 +123,7 @@ function SoldSerialPicker({ value, onChange }: { value: SerialLite & { productId
         <input
           value={query}
           onChange={e => setQuery(e.target.value)}
-          placeholder="Search serial number or IMEI of a sold unit…"
+          placeholder={t('inventory.repairTickets.searchSoldSerialPlaceholder')}
           className="w-full h-11 ps-10 pe-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
       </div>
       {results.length > 0 && (
@@ -141,6 +146,7 @@ function SoldSerialPicker({ value, onChange }: { value: SerialLite & { productId
 // marking a ticket REPLACED (the new unit must be the same product and
 // currently AVAILABLE).
 function ReplacementSerialPicker({ productId, value, onChange }: { productId: string; value: string; onChange: (id: string, label: string) => void }) {
+  const { t } = useTranslation()
   const [options, setOptions] = useState<SerialLite[]>([])
   // Distinguishes "the lookup failed" from "there's genuinely no stock" —
   // previously both rendered the identical "no unit available" message,
@@ -156,29 +162,34 @@ function ReplacementSerialPicker({ productId, value, onChange }: { productId: st
   }, [productId])
 
   if (loadFailed) {
-    return <p className="text-sm text-danger">Could not load available units. Check your connection and try again.</p>
+    return <p className="text-sm text-danger">{t('inventory.repairTickets.loadUnitsFailed')}</p>
   }
   if (options.length === 0) {
-    return <p className="text-sm text-slate-500 dark:text-slate-400">No in-stock unit of this product is available to use as a replacement — add stock/serials first.</p>
+    return <p className="text-sm text-slate-500 dark:text-slate-400">{t('inventory.repairTickets.noAvailableUnit')}</p>
   }
   return (
     <Select value={value} onChange={e => {
       const s = options.find(o => o.id === e.target.value)
       onChange(e.target.value, s ? `${s.serialNumber}${s.imeiNumber ? ` (IMEI ${s.imeiNumber})` : ''}` : '')
     }}>
-      <option value="">Select a replacement unit…</option>
+      <option value="">{t('inventory.repairTickets.selectReplacementUnit')}</option>
       {options.map(o => <option key={o.id} value={o.id}>{o.serialNumber}{o.imeiNumber ? ` · IMEI ${o.imeiNumber}` : ''}</option>)}
     </Select>
   )
 }
 
 export function RepairTicketsScreen() {
+  const { t } = useTranslation()
+  const STATUS_LABELS = (Object.keys(STATUS_LABEL_KEYS) as RepairStatus[]).reduce((acc, k) => {
+    acc[k] = t(STATUS_LABEL_KEYS[k])
+    return acc
+  }, {} as Record<RepairStatus, string>)
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [searchParams, setSearchParams] = useSearchParams()
   const serialFilter = searchParams.get('serialId')
 
   const [tickets, setTickets] = useState<TicketRow[]>([])
-  const overdueCount = tickets.filter(t => t.isOverdue).length
+  const overdueCount = tickets.filter(tkt => tkt.isOverdue).length
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<RepairStatus | 'ALL'>('ALL')
@@ -230,14 +241,14 @@ export function RepairTicketsScreen() {
         setTickets(d.tickets ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError('Error', res.error?.message ?? 'Could not load repair tickets.')
+        toastError(t('inventory.repairTickets.errorTitle'), res.error?.message ?? t('inventory.repairTickets.loadFailedMessage'))
       }
     } catch {
-      toastError('Error', 'Could not load repair tickets.')
+      toastError(t('inventory.repairTickets.errorTitle'), t('inventory.repairTickets.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
-  }, [statusFilter, search, toastError])
+  }, [statusFilter, search, toastError, t])
 
   useEffect(() => { loadData() }, [loadData])
 
@@ -280,8 +291,8 @@ export function RepairTicketsScreen() {
   }
 
   async function handleCreate() {
-    if (!pickedSerial) { toastError('Missing Fields', 'Select the sold unit this ticket is for.'); return }
-    if (!issueDescription.trim()) { toastError('Missing Fields', 'Describe the issue.'); return }
+    if (!pickedSerial) { toastError(t('inventory.repairTickets.missingFieldsTitle'), t('inventory.repairTickets.selectSoldUnitMessage')); return }
+    if (!issueDescription.trim()) { toastError(t('inventory.repairTickets.missingFieldsTitle'), t('inventory.repairTickets.describeIssueMessage')); return }
     setCreating(true)
     try {
       const res = await window.api.repairTickets.create({
@@ -293,7 +304,7 @@ export function RepairTicketsScreen() {
       })
       if (res.success) {
         const d = res.data as { claimNumber: string }
-        toastSuccess('Ticket Created', `Claim ${d.claimNumber} opened.`)
+        toastSuccess(t('inventory.repairTickets.ticketCreatedTitle'), t('inventory.repairTickets.claimOpenedMessage', { claimNumber: d.claimNumber }))
         setShowCreate(false)
         loadData()
         if (serialFilter) {
@@ -302,26 +313,26 @@ export function RepairTicketsScreen() {
           })
         }
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not create repair ticket.')
+        toastError(t('inventory.repairTickets.failedTitle'), res.error?.message ?? t('inventory.repairTickets.createTicketFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not create repair ticket.')
+      toastError(t('inventory.repairTickets.failedTitle'), t('inventory.repairTickets.createTicketFailedMessage'))
     } finally {
       setCreating(false)
     }
   }
 
-  function openDetail(t: TicketRow) {
-    setSelected(t)
+  function openDetail(tkt: TicketRow) {
+    setSelected(tkt)
     setNextStatus(null)
-    setVendorId(t.vendor?.id ?? '')
-    setVendorRmaNumber(t.vendorRmaNumber ?? '')
+    setVendorId(tkt.vendor?.id ?? '')
+    setVendorRmaNumber(tkt.vendorRmaNumber ?? '')
     setReplacementSerialId('')
-    setRepairCost(t.repairCost != null ? String(t.repairCost) : '')
-    setNotes(t.notes ?? '')
-    setClaimAmountInput(t.vendorClaimAmount != null ? String(t.vendorClaimAmount) : '')
+    setRepairCost(tkt.repairCost != null ? String(tkt.repairCost) : '')
+    setNotes(tkt.notes ?? '')
+    setClaimAmountInput(tkt.vendorClaimAmount != null ? String(tkt.vendorClaimAmount) : '')
     setRecoveryAmountInput('')
-    setAssignedTechnicianId(t.technician?.id ?? '')
+    setAssignedTechnicianId(tkt.technician?.id ?? '')
   }
 
   async function handleAssignTechnician() {
@@ -334,13 +345,13 @@ export function RepairTicketsScreen() {
         technicianId: assignedTechnicianId || undefined,
       })
       if (res.success) {
-        toastSuccess('Saved', 'Technician assignment updated.')
+        toastSuccess(t('inventory.repairTickets.savedTitle'), t('inventory.repairTickets.technicianUpdatedMessage'))
         refreshSelected()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not assign technician.')
+        toastError(t('inventory.repairTickets.failedTitle'), res.error?.message ?? t('inventory.repairTickets.assignTechnicianFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not assign technician.')
+      toastError(t('inventory.repairTickets.failedTitle'), t('inventory.repairTickets.assignTechnicianFailedMessage'))
     } finally {
       setSavingTechnician(false)
     }
@@ -359,8 +370,8 @@ export function RepairTicketsScreen() {
     setSavingClaim(true)
     try {
       const res = await window.api.repairTickets.recordVendorClaim({ id: selected.id, amount: parseFloat(claimAmountInput) })
-      if (res.success) { toastSuccess('Claim Recorded', `${selected.claimNumber} — vendor claim updated`); await refreshSelected() }
-      else toastError('Failed', res.error?.message ?? 'Could not record vendor claim.')
+      if (res.success) { toastSuccess(t('inventory.repairTickets.claimRecordedTitle'), t('inventory.repairTickets.claimUpdatedMessage', { claimNumber: selected.claimNumber })); await refreshSelected() }
+      else toastError(t('inventory.repairTickets.failedTitle'), res.error?.message ?? t('inventory.repairTickets.recordClaimFailedMessage'))
     } finally { setSavingClaim(false) }
   }
 
@@ -369,8 +380,8 @@ export function RepairTicketsScreen() {
     setSavingClaim(true)
     try {
       const res = await window.api.repairTickets.recordVendorRecovery({ id: selected.id, amount: parseFloat(recoveryAmountInput) })
-      if (res.success) { toastSuccess('Recovery Recorded', `${selected.claimNumber} — payment received`); setRecoveryAmountInput(''); await refreshSelected() }
-      else toastError('Failed', res.error?.message ?? 'Could not record vendor recovery.')
+      if (res.success) { toastSuccess(t('inventory.repairTickets.recoveryRecordedTitle'), t('inventory.repairTickets.paymentReceivedMessage', { claimNumber: selected.claimNumber })); setRecoveryAmountInput(''); await refreshSelected() }
+      else toastError(t('inventory.repairTickets.failedTitle'), res.error?.message ?? t('inventory.repairTickets.recordRecoveryFailedMessage'))
     } finally { setSavingClaim(false) }
   }
 
@@ -379,15 +390,15 @@ export function RepairTicketsScreen() {
     setSavingClaim(true)
     try {
       const res = await window.api.repairTickets.writeOffVendorClaim({ id: selected.id })
-      if (res.success) { toastSuccess('Claim Closed', `${selected.claimNumber} — written off`); await refreshSelected() }
-      else toastError('Failed', res.error?.message ?? 'Could not write off vendor claim.')
+      if (res.success) { toastSuccess(t('inventory.repairTickets.claimClosedTitle'), t('inventory.repairTickets.writtenOffMessage', { claimNumber: selected.claimNumber })); await refreshSelected() }
+      else toastError(t('inventory.repairTickets.failedTitle'), res.error?.message ?? t('inventory.repairTickets.writeOffFailedMessage'))
     } finally { setSavingClaim(false) }
   }
 
   async function handleUpdateStatus() {
     if (!selected || !nextStatus) return
     if (nextStatus === 'REPLACED' && !replacementSerialId) {
-      toastError('Missing Fields', 'Select a replacement unit.')
+      toastError(t('inventory.repairTickets.missingFieldsTitle'), t('inventory.repairTickets.selectReplacementUnitMessage'))
       return
     }
     setUpdating(true)
@@ -402,7 +413,7 @@ export function RepairTicketsScreen() {
         notes: notes || undefined,
       })
       if (res.success) {
-        toastSuccess('Updated', `${selected.claimNumber} → ${STATUS_LABELS[nextStatus]}`)
+        toastSuccess(t('inventory.repairTickets.updatedTitle'), t('inventory.repairTickets.statusUpdatedMessage', { claimNumber: selected.claimNumber, status: STATUS_LABELS[nextStatus] }))
         setSelected(null)
         loadData()
         if (serialFilter) {
@@ -411,10 +422,10 @@ export function RepairTicketsScreen() {
           })
         }
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not update ticket.')
+        toastError(t('inventory.repairTickets.failedTitle'), res.error?.message ?? t('inventory.repairTickets.updateTicketFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not update ticket.')
+      toastError(t('inventory.repairTickets.failedTitle'), t('inventory.repairTickets.updateTicketFailedMessage'))
     } finally {
       setUpdating(false)
     }
@@ -423,7 +434,7 @@ export function RepairTicketsScreen() {
   const columns: ColumnDef<TicketRow, unknown>[] = [
     {
       id: 'claim',
-      header: () => 'Claim',
+      header: () => t('inventory.repairTickets.claimColumn'),
       cell: ({ row }) => (
         <div>
           <p className="font-semibold text-dark dark:text-slate-100">{row.original.claimNumber}</p>
@@ -434,28 +445,28 @@ export function RepairTicketsScreen() {
     },
     {
       id: 'customer',
-      header: () => 'Customer',
+      header: () => t('billing.customer'),
       cell: ({ row }) => row.original.customer
         ? <div><p className="text-base text-dark dark:text-slate-100">{row.original.customer.customerName}</p>{row.original.customer.phone && <p className="text-sm text-slate-400">{row.original.customer.phone}</p>}</div>
         : <span className="text-sm text-slate-400">—</span>
     },
     {
       id: 'status',
-      header: () => 'Status',
+      header: () => t('common.status'),
       cell: ({ row }) => <Badge variant={STATUS_VARIANT[row.original.status]}>{STATUS_LABELS[row.original.status]}</Badge>
     },
     {
       id: 'turnaround',
-      header: () => 'Turnaround',
+      header: () => t('inventory.repairTickets.turnaroundColumn'),
       cell: ({ row }) => (
         <div className="flex items-center gap-1.5 text-base text-slate-600 dark:text-slate-300">
-          <Clock size={13} className="text-slate-400" /> {row.original.turnaroundDays}d {row.original.deliveredDate ? '' : '(open)'}
+          <Clock size={13} className="text-slate-400" /> {row.original.turnaroundDays}d {row.original.deliveredDate ? '' : t('inventory.repairTickets.openSuffix')}
         </div>
       )
     },
     {
       id: 'vendor',
-      header: () => 'Vendor RMA',
+      header: () => t('inventory.repairTickets.vendorRmaColumn'),
       // Phase 67 §9.1 — Electronics: RMA SLA tracker. Overdue only while the
       // unit is still genuinely with the vendor (isOverdue already encodes
       // that server-side) — a returned-late ticket doesn't keep flashing red.
@@ -465,7 +476,7 @@ export function RepairTicketsScreen() {
             <p className="text-base text-dark dark:text-slate-100">{row.original.vendor.supplierName}</p>
             {row.original.vendorRmaNumber && <p className="text-sm font-mono text-slate-400">{row.original.vendorRmaNumber}</p>}
             {row.original.isOverdue && (
-              <Badge variant="danger" size="sm">Overdue — {row.original.daysWithVendor}d with vendor</Badge>
+              <Badge variant="danger" size="sm">{t('inventory.repairTickets.overdueWithVendor', { count: row.original.daysWithVendor })}</Badge>
             )}
           </div>
         )
@@ -473,7 +484,7 @@ export function RepairTicketsScreen() {
     },
     {
       accessorKey: 'receivedDate',
-      header: () => 'Received',
+      header: () => t('inventory.repairTickets.receivedColumn'),
       cell: ({ getValue }) => <span className="text-base text-slate-600 dark:text-slate-300">{formatDate(new Date(getValue() as string))}</span>
     },
     {
@@ -484,7 +495,7 @@ export function RepairTicketsScreen() {
           onClick={() => openDetail(row.original)}
           className="flex items-center gap-1 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400 border border-slate-200 dark:border-slate-700 rounded-lg hover:border-brand hover:text-brand transition-colors"
         >
-          View <ArrowRight size={12} />
+          {t('common.view')} <ArrowRight size={12} />
         </button>
       )
     }
@@ -498,15 +509,15 @@ export function RepairTicketsScreen() {
             <Wrench size={22} className="text-brand" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-dark dark:text-slate-100">Repair Tickets</h1>
+            <h1 className="text-xl font-bold text-dark dark:text-slate-100">{t('inventory.repairTickets.title')}</h1>
             <p className="text-sm text-slate-500 dark:text-slate-400">
-              {total} ticket(s)
-              {overdueCount > 0 && <span className="text-danger font-semibold"> · {overdueCount} overdue from vendor RMA</span>}
+              {t('inventory.repairTickets.ticketCount', { count: total })}
+              {overdueCount > 0 && <span className="text-danger font-semibold"> · {t('inventory.repairTickets.overdueFromVendorRma', { count: overdueCount })}</span>}
             </p>
           </div>
         </div>
         <Button size="md" onClick={() => openCreateForSerial()}>
-          <Plus size={16} className="me-1.5" /> New Repair Ticket
+          <Plus size={16} className="me-1.5" /> {t('inventory.repairTickets.newTicket')}
         </Button>
       </div>
 
@@ -514,18 +525,18 @@ export function RepairTicketsScreen() {
         <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
           <div className="flex items-center justify-between">
             <p className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2">
-              <History size={16} /> Service history for this unit ({history.length})
+              <History size={16} /> {t('inventory.repairTickets.serviceHistoryTitle', { count: history.length })}
             </p>
             <div className="flex gap-2">
               {historySerial && (
                 <Button size="sm" onClick={() => openCreateForSerial(historySerial)}>
-                  <Plus size={14} className="me-1" /> New Ticket for This Unit
+                  <Plus size={14} className="me-1" /> {t('inventory.repairTickets.newTicketForUnit')}
                 </Button>
               )}
-              <Button size="sm" variant="outline" onClick={() => setSearchParams({})}>Clear filter</Button>
+              <Button size="sm" variant="outline" onClick={() => setSearchParams({})}>{t('inventory.repairTickets.clearFilter')}</Button>
             </div>
           </div>
-          {history.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">No repair tickets yet for this unit.</p>}
+          {history.length === 0 && <p className="text-sm text-slate-500 dark:text-slate-400">{t('inventory.repairTickets.noHistoryForUnit')}</p>}
           {history.map(h => (
             <button key={h.id} onClick={() => openDetail(h)} className="w-full flex items-center justify-between bg-white dark:bg-slate-900 border border-slate-100 dark:border-slate-700 rounded-lg px-3 py-2 text-start hover:border-brand transition-colors">
               <span className="text-sm font-mono text-slate-500 dark:text-slate-400">{h.claimNumber}</span>
@@ -540,13 +551,13 @@ export function RepairTicketsScreen() {
         {(['ALL', ...ALL_STATUSES] as const).map(s => (
           <button key={s} onClick={() => setStatusFilter(s)}
             className={`px-4 py-2 rounded-lg text-base font-medium transition-colors ${statusFilter === s ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200'}`}>
-            {s === 'ALL' ? 'All' : STATUS_LABELS[s as RepairStatus]}
+            {s === 'ALL' ? t('common.all') : STATUS_LABELS[s as RepairStatus]}
           </button>
         ))}
         <div className="relative ms-auto w-64">
           <Search size={15} className="absolute start-3 top-1/2 -translate-y-1/2 text-slate-400" />
           <input value={search} onChange={e => setSearch(e.target.value)}
-            placeholder="Search claim, RMA, serial, customer…"
+            placeholder={t('inventory.repairTickets.searchPlaceholder')}
             className="w-full h-10 ps-9 pe-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
         </div>
       </div>
@@ -555,36 +566,36 @@ export function RepairTicketsScreen() {
         data={tickets}
         columns={columns}
         loading={loading}
-        emptyMessage="No repair tickets yet."
+        emptyMessage={t('inventory.repairTickets.emptyMessage')}
       />
 
       {/* Create modal */}
       {showCreate && (
         <div className="fixed inset-0 bg-black/40 z-40 flex items-center justify-center p-4">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-lg p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-xl font-bold text-dark dark:text-slate-100">New Repair Ticket</h2>
+            <h2 className="text-xl font-bold text-dark dark:text-slate-100">{t('inventory.repairTickets.newTicket')}</h2>
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Sold Unit</label>
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.soldUnitLabel')}</label>
               <SoldSerialPicker value={pickedSerial} onChange={setPickedSerial} />
             </div>
-            <CustomerPicker value={pickedCustomer} onChange={setPickedCustomer} label="Customer (optional)" />
+            <CustomerPicker value={pickedCustomer} onChange={setPickedCustomer} label={t('inventory.repairTickets.customerOptionalLabel')} />
             <div className="space-y-1">
-              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Issue Description</label>
+              <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.issueDescriptionLabel')}</label>
               <textarea value={issueDescription} onChange={e => setIssueDescription(e.target.value)}
-                rows={3} placeholder="What's wrong with the device?"
+                rows={3} placeholder={t('inventory.repairTickets.issuePlaceholder')}
                 className="w-full px-4 py-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand resize-none" />
             </div>
-            <Select label="Vendor (optional)" value={createVendorId} onChange={e => setCreateVendorId(e.target.value)}>
-              <option value="">— None yet —</option>
+            <Select label={t('inventory.repairTickets.vendorOptionalLabel')} value={createVendorId} onChange={e => setCreateVendorId(e.target.value)}>
+              <option value="">{t('inventory.repairTickets.noneYetOption')}</option>
               {vendors.map(v => <option key={v.id} value={v.id}>{v.supplierName}</option>)}
             </Select>
-            <Select label="Technician (optional)" value={createTechnicianId} onChange={e => setCreateTechnicianId(e.target.value)}>
-              <option value="">— Unassigned —</option>
+            <Select label={t('inventory.repairTickets.technicianOptionalLabel')} value={createTechnicianId} onChange={e => setCreateTechnicianId(e.target.value)}>
+              <option value="">{t('inventory.repairTickets.unassignedOption')}</option>
               {technicians.map(tech => <option key={tech.id} value={tech.id}>{tech.fullName}</option>)}
             </Select>
             <div className="flex gap-3 pt-2">
-              <Button size="md" className="flex-1" onClick={handleCreate} disabled={creating}>{creating ? 'Saving…' : 'Create Ticket'}</Button>
-              <Button size="md" variant="outline" onClick={() => setShowCreate(false)}>Cancel</Button>
+              <Button size="md" className="flex-1" onClick={handleCreate} disabled={creating}>{creating ? t('inventory.repairTickets.savingEllipsis') : t('inventory.repairTickets.createTicket')}</Button>
+              <Button size="md" variant="outline" onClick={() => setShowCreate(false)}>{t('common.cancel')}</Button>
             </div>
           </div>
         </div>
@@ -602,13 +613,13 @@ export function RepairTicketsScreen() {
               <p><span className="font-semibold text-dark dark:text-slate-100">{selected.product.productName}</span> — <span className="font-mono">{selected.serial.serialNumber}</span></p>
               {selected.customer && <p>{selected.customer.customerName} {selected.customer.phone && `· ${selected.customer.phone}`}</p>}
               <p className="text-slate-500 dark:text-slate-400">{selected.issueDescription}</p>
-              <p className="flex items-center gap-1.5 text-sm text-slate-400"><Clock size={13} /> {selected.turnaroundDays} day(s) {selected.deliveredDate ? `(delivered ${formatDate(new Date(selected.deliveredDate))})` : 'open'}</p>
-              {selected.replacementSerial && <p className="flex items-center gap-1.5 text-sm text-brand"><PackageCheck size={13} /> Replaced with {selected.replacementSerial.serialNumber}</p>}
+              <p className="flex items-center gap-1.5 text-sm text-slate-400"><Clock size={13} /> {selected.turnaroundDays} {t('inventory.repairTickets.daysSuffix')} {selected.deliveredDate ? t('inventory.repairTickets.deliveredOn', { date: formatDate(new Date(selected.deliveredDate)) }) : t('inventory.repairTickets.openStatus')}</p>
+              {selected.replacementSerial && <p className="flex items-center gap-1.5 text-sm text-brand"><PackageCheck size={13} /> {t('inventory.repairTickets.replacedWith', { serial: selected.replacementSerial.serialNumber })}</p>}
             </div>
 
             {NEXT_STATUSES[selected.status].length > 0 && (
               <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
-                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">Advance status</p>
+                <p className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.advanceStatus')}</p>
                 <div className="grid grid-cols-2 gap-2">
                   {NEXT_STATUSES[selected.status].map(s => (
                     <button key={s} onClick={() => setNextStatus(s)}
@@ -621,14 +632,14 @@ export function RepairTicketsScreen() {
 
                 {nextStatus === 'SENT_TO_VENDOR' && (
                   <div className="grid grid-cols-2 gap-3">
-                    <Select label="Vendor" value={vendorId} onChange={e => setVendorId(e.target.value)}>
-                      <option value="">Select vendor…</option>
+                    <Select label={t('inventory.repairTickets.vendorLabel')} value={vendorId} onChange={e => setVendorId(e.target.value)}>
+                      <option value="">{t('inventory.repairTickets.selectVendorOption')}</option>
                       {vendors.map(v => <option key={v.id} value={v.id}>{v.supplierName}</option>)}
                     </Select>
                     <div className="space-y-1">
-                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Vendor RMA #</label>
+                      <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.vendorRmaLabel')}</label>
                       <input value={vendorRmaNumber} onChange={e => setVendorRmaNumber(e.target.value)}
-                        placeholder="RMA-12345"
+                        placeholder={t('inventory.repairTickets.rmaPlaceholder')}
                         className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                     </div>
                   </div>
@@ -636,14 +647,14 @@ export function RepairTicketsScreen() {
 
                 {nextStatus === 'REPLACED' && (
                   <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Replacement Unit (same product, in-stock)</label>
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.replacementUnitLabel')}</label>
                     <ReplacementSerialPicker productId={selected.product.id} value={replacementSerialId} onChange={id => setReplacementSerialId(id)} />
                   </div>
                 )}
 
                 {(nextStatus === 'REPAIRED' || nextStatus === 'REPLACED') && (
                   <div className="space-y-1">
-                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Repair Cost (optional)</label>
+                    <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.repairCostLabel')}</label>
                     <input type="number" value={repairCost} onChange={e => setRepairCost(e.target.value)}
                       placeholder="0.00" min="0" step="0.01"
                       className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
@@ -651,13 +662,13 @@ export function RepairTicketsScreen() {
                 )}
 
                 <div className="space-y-1">
-                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">Notes (optional)</label>
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.repairTickets.notesOptionalLabel')}</label>
                   <textarea value={notes} onChange={e => setNotes(e.target.value)} rows={2}
                     className="w-full px-4 py-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand resize-none" />
                 </div>
 
                 <div className="flex gap-3 pt-1">
-                  <Button size="md" className="flex-1" onClick={handleUpdateStatus} disabled={updating || !nextStatus}>{updating ? 'Saving…' : 'Update Status'}</Button>
+                  <Button size="md" className="flex-1" onClick={handleUpdateStatus} disabled={updating || !nextStatus}>{updating ? t('inventory.repairTickets.savingEllipsis') : t('inventory.repairTickets.updateStatusButton')}</Button>
                 </div>
               </div>
             )}
@@ -668,12 +679,12 @@ export function RepairTicketsScreen() {
             <div className="space-y-2 border-t border-slate-100 dark:border-slate-800 pt-4">
               <div className="flex gap-2 items-end">
                 <div className="flex-1">
-                  <Select label="Technician" value={assignedTechnicianId} onChange={e => setAssignedTechnicianId(e.target.value)}>
-                    <option value="">— Unassigned —</option>
+                  <Select label={t('inventory.repairTickets.technicianLabel')} value={assignedTechnicianId} onChange={e => setAssignedTechnicianId(e.target.value)}>
+                    <option value="">{t('inventory.repairTickets.unassignedOption')}</option>
                     {technicians.map(tech => <option key={tech.id} value={tech.id}>{tech.fullName}</option>)}
                   </Select>
                 </div>
-                <Button size="md" variant="outline" onClick={handleAssignTechnician} disabled={savingTechnician}>Save</Button>
+                <Button size="md" variant="outline" onClick={handleAssignTechnician} disabled={savingTechnician}>{t('common.save')}</Button>
               </div>
             </div>
 
@@ -682,39 +693,39 @@ export function RepairTicketsScreen() {
                 claim can be recorded/tracked at any point once the shop has
                 already repaired or replaced the unit itself. */}
             <div className="space-y-3 border-t border-slate-100 dark:border-slate-800 pt-4">
-              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"><DollarSign size={14} /> Vendor Recovery</p>
+              <p className="text-sm font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-1.5"><DollarSign size={14} /> {t('inventory.repairTickets.vendorRecovery')}</p>
               {selected.vendorClaimAmount == null ? (
                 <div className="flex gap-2">
                   <input type="number" value={claimAmountInput} onChange={e => setClaimAmountInput(e.target.value)}
-                    placeholder="Claim amount" min="0" step="0.01"
+                    placeholder={t('inventory.repairTickets.claimAmountPlaceholder')} min="0" step="0.01"
                     className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
-                  <Button size="md" onClick={handleRecordClaim} disabled={savingClaim || !claimAmountInput}>Record Claim</Button>
+                  <Button size="md" onClick={handleRecordClaim} disabled={savingClaim || !claimAmountInput}>{t('inventory.repairTickets.recordClaim')}</Button>
                 </div>
               ) : (
                 <div className="space-y-3">
                   <div className="grid grid-cols-3 gap-2 text-center">
                     <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
-                      <p className="text-xs text-slate-400">Claimed</p>
+                      <p className="text-xs text-slate-400">{t('inventory.repairTickets.claimedLabel')}</p>
                       <p className="text-sm font-semibold text-dark dark:text-slate-100">{formatCurrency(selected.vendorClaimAmount)}</p>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
-                      <p className="text-xs text-slate-400">Recovered</p>
+                      <p className="text-xs text-slate-400">{t('inventory.repairTickets.recoveredLabel')}</p>
                       <p className="text-sm font-semibold text-success">{formatCurrency(selected.vendorRecoveredAmount)}</p>
                     </div>
                     <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
-                      <p className="text-xs text-slate-400">Outstanding</p>
+                      <p className="text-xs text-slate-400">{t('inventory.repairTickets.outstandingLabel')}</p>
                       <p className="text-sm font-semibold text-danger">{formatCurrency(selected.vendorClaimOutstanding ?? 0)}</p>
                     </div>
                   </div>
                   {selected.vendorClaimClosedAt ? (
-                    <Badge variant="success">Closed {formatDate(new Date(selected.vendorClaimClosedAt))}</Badge>
+                    <Badge variant="success">{t('inventory.repairTickets.closedOn', { date: formatDate(new Date(selected.vendorClaimClosedAt)) })}</Badge>
                   ) : (
                     <div className="flex gap-2">
                       <input type="number" value={recoveryAmountInput} onChange={e => setRecoveryAmountInput(e.target.value)}
-                        placeholder="Amount received" min="0" step="0.01"
+                        placeholder={t('inventory.repairTickets.amountReceivedPlaceholder')} min="0" step="0.01"
                         className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
-                      <Button size="md" onClick={handleRecordRecovery} disabled={savingClaim || !recoveryAmountInput}>Record Recovery</Button>
-                      <Button size="md" variant="outline" onClick={handleWriteOffClaim} disabled={savingClaim}>Write Off</Button>
+                      <Button size="md" onClick={handleRecordRecovery} disabled={savingClaim || !recoveryAmountInput}>{t('inventory.repairTickets.recordRecovery')}</Button>
+                      <Button size="md" variant="outline" onClick={handleWriteOffClaim} disabled={savingClaim}>{t('inventory.repairTickets.writeOff')}</Button>
                     </div>
                   )}
                 </div>
@@ -722,7 +733,7 @@ export function RepairTicketsScreen() {
             </div>
 
             <div className="flex gap-3 pt-2 border-t border-slate-100 dark:border-slate-800">
-              <Button size="md" variant="outline" className="flex-1" onClick={() => setSelected(null)}>Close</Button>
+              <Button size="md" variant="outline" className="flex-1" onClick={() => setSelected(null)}>{t('common.close')}</Button>
             </div>
           </div>
         </div>

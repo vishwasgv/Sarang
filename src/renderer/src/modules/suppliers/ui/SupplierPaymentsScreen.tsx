@@ -70,12 +70,12 @@ export function SupplierPaymentsScreen() {
         setPayments(d.payments)
         setTotal(d.total)
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not load payments.')
+        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('supplierPayments.loadFailed'))
       }
     } catch {
-      toastError('Failed', 'Could not load payments.')
+      toastError(t('bills.toasts.failedTitle'), t('supplierPayments.loadFailed'))
     } finally { setLoading(false) }
-  }, [search, methodFilter, dateFrom, dateTo, page, toastError])
+  }, [search, methodFilter, dateFrom, dateTo, page, toastError, t])
 
   useEffect(() => {
     const timer = setTimeout(fetchPayments, 200)
@@ -88,19 +88,19 @@ export function SupplierPaymentsScreen() {
   }
 
   async function handleReverse() {
-    if (!reversingId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reason for reversal.'); return }
+    if (!reversingId || !reverseReason.trim()) { toastError(t('bills.toasts.reasonRequiredTitle'), t('bills.toasts.enterReversalReason')); return }
     setReversing(true)
     try {
       const res = await window.api.supplierPayments.reverse({ paymentId: reversingId, reason: reverseReason.trim() })
       if (res.success) {
-        toastSuccess('Reversed', 'Payment has been reversed.')
+        toastSuccess(t('bills.toasts.reversedTitle'), t('bills.toasts.paymentReversedDesc'))
         setReversingId(null); setReverseReason('')
         fetchPayments()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not reverse payment.')
+        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.reverseFailed'))
       }
     } catch {
-      toastError('Failed', 'Could not reverse payment.')
+      toastError(t('bills.toasts.failedTitle'), t('bills.toasts.reverseFailed'))
     } finally {
       setReversing(false)
     }

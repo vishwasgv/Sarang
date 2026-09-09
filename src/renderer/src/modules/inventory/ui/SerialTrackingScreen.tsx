@@ -68,11 +68,11 @@ function ProductPicker({ value, onChange }: { value: string; onChange: (id: stri
 
   useEffect(() => {
     if (!query.trim()) { setResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const res = await window.api.products.search(query.trim())
       if (res.success && res.data) setResults(res.data as { id: string; productName: string }[])
     }, 250)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [query])
 
   return (
@@ -192,11 +192,11 @@ export function SerialTrackingScreen() {
         setImeiResult(res.data as SerialRow)
       } else {
         setImeiResult(null)
-        toastError('Not Found', 'No device found with this IMEI number.')
+        toastError(t('inventory.notFoundTitle'), t('inventory.imeiNotFoundMessage'))
       }
     } catch {
       setImeiResult(null)
-      toastError('Error', 'Could not search by IMEI. Check your connection and try again.')
+      toastError(t('common.error'), t('inventory.imeiSearchFailedMessage'))
     }
   }
 
@@ -242,7 +242,7 @@ export function SerialTrackingScreen() {
         serialId: warrantyResult.serial.id, customerId: warrantyCustomer.id, installationAddress: warrantyAddress.trim() || undefined
       })
       if (res.success) {
-        toastSuccess('Warranty Transferred', `Installation warranty for S/N ${warrantyResult.serial.serialNumber} now attributed to ${warrantyCustomer.customerName}.`)
+        toastSuccess(t('inventory.warrantyTransfer.transferredTitle'), t('inventory.warrantyTransfer.transferredMessage', { serialNumber: warrantyResult.serial.serialNumber, customerName: warrantyCustomer.customerName }))
         // Phase 69 §11 wow-feature closure (2026-09-01) — Plumbing's
         // Installation Warranty Transfer previously only re-attributed the
         // record; the "claimable WhatsApp warranty card" to the homeowner
@@ -250,16 +250,20 @@ export function SerialTrackingScreen() {
         // sits with the contractor who bought the unit) was never sent.
         if (warrantyCustomer.phone) {
           const installDate = new Date().toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-          const message = `Dear ${warrantyCustomer.customerName}, this is your warranty confirmation for ${warrantyResult.serial.productName} (S/N ${warrantyResult.serial.serialNumber})${warrantyAddress.trim() ? `, installed at ${warrantyAddress.trim()}` : ''} on ${installDate}. Keep this message — it is your claimable warranty card for any future service request. Thank you!`
+          const addressPart = warrantyAddress.trim() ? t('inventory.warrantyTransfer.installedAtSuffix', { address: warrantyAddress.trim() }) : ''
+          const message = t('inventory.warrantyTransfer.whatsAppMessage', {
+            customerName: warrantyCustomer.customerName, productName: warrantyResult.serial.productName,
+            serialNumber: warrantyResult.serial.serialNumber, addressPart, installDate
+          })
           const linkRes = await window.api.share.buildWhatsAppLink({ phone: warrantyCustomer.phone, message })
           if (linkRes.success && linkRes.data) {
             window.open(linkRes.data as string, '_blank')
-            toastInfo('Opening WhatsApp…', 'Send the warranty card to the customer.')
+            toastInfo(t('inventory.warrantyTransfer.openingWhatsApp'), t('inventory.warrantyTransfer.sendCardDesc'))
           }
         }
         setWarrantyResult(null); setWarrantySearch(''); setWarrantyCustomer(null); setWarrantyAddress('')
       } else {
-        toastError('Error', res.error?.message ?? 'Could not transfer warranty.')
+        toastError(t('common.error'), res.error?.message ?? t('inventory.warrantyTransfer.couldNotTransfer'))
       }
     } finally {
       setTransferring(false)
@@ -268,7 +272,7 @@ export function SerialTrackingScreen() {
 
   async function handleCreate() {
     if (!form.productId || !form.serialNumber) {
-      toastError('Missing Fields', 'Product and serial number are required.')
+      toastError(t('inventory.missingFieldsTitle'), t('inventory.serialMissingFieldsMessage'))
       return
     }
     setSaving(true)
@@ -283,15 +287,15 @@ export function SerialTrackingScreen() {
         unitCost: form.unitCost ? parseFloat(form.unitCost) : undefined
       })
       if (res.success) {
-        toastSuccess('Serial Added', `${form.serialNumber} has been recorded.`)
+        toastSuccess(t('inventory.serialAddedTitle'), t('inventory.serialAddedMessage', { serialNumber: form.serialNumber }))
         setShowForm(false)
         setForm({ productId: '', serialNumber: '', imeiNumber: '', imei2Number: '', warrantyMonths: '', purchaseDate: '', unitCost: '' })
         loadData()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not add serial.')
+        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotAddSerialMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not add serial.')
+      toastError(t('inventory.failedTitle'), t('inventory.couldNotAddSerialMessage'))
     } finally {
       setSaving(false)
     }
@@ -299,12 +303,12 @@ export function SerialTrackingScreen() {
 
   async function handleBulkImport() {
     if (!bulkProductId) {
-      toastError('Missing Product', 'Select a product before importing.')
+      toastError(t('inventory.missingProductTitle'), t('inventory.selectProductBeforeImportMessage'))
       return
     }
     const lines = bulkText.split('\n').map(l => l.trim()).filter(Boolean)
     if (lines.length === 0) {
-      toastError('No Data', 'Paste at least one serial number.')
+      toastError(t('inventory.noDataTitle'), t('inventory.pasteAtLeastOneSerialMessage'))
       return
     }
     setSaving(true)
@@ -325,15 +329,15 @@ export function SerialTrackingScreen() {
       })
       if (res.success) {
         const d = res.data as { created: number; skipped: number }
-        toastSuccess('Import Done', `${d.created} added, ${d.skipped} skipped.`)
+        toastSuccess(t('inventory.importDoneTitle'), t('inventory.importDoneMessage', { created: d.created, skipped: d.skipped }))
         setShowBulk(false)
         setBulkProductId(''); setBulkPurchaseDate(''); setBulkWarrantyMonths(''); setBulkText('')
         loadData()
       } else {
-        toastError('Import Failed', (res.error as { message: string })?.message ?? 'Could not import.')
+        toastError(t('inventory.importFailedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotImportMessage'))
       }
     } catch {
-      toastError('Import Failed', 'Could not import.')
+      toastError(t('inventory.importFailedTitle'), t('inventory.couldNotImportMessage'))
     } finally {
       setSaving(false)
     }
@@ -345,14 +349,14 @@ export function SerialTrackingScreen() {
     try {
       const res = await window.api.serials.updateStatus({ id: statusTarget.id, status: newStatus })
       if (res.success) {
-        toastSuccess('Status Updated', `${statusTarget.serialNumber} → ${newStatus}`)
+        toastSuccess(t('inventory.statusUpdatedTitle'), t('inventory.statusUpdatedMessage', { serialNumber: statusTarget.serialNumber, status: newStatus }))
         setStatusTarget(null)
         loadData()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update status.')
+        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotUpdateStatusMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not update status.')
+      toastError(t('inventory.failedTitle'), t('inventory.couldNotUpdateStatusMessage'))
     } finally {
       setSaving(false)
     }
@@ -543,39 +547,38 @@ export function SerialTrackingScreen() {
           Transfer. Re-attributes a sold unit's warranty to whoever the
           installation is actually for (often not the buyer — a contractor
           bought it on a job-site account, installs it at the homeowner's
-          site). English-only for now, same deliberate scope-fork convention
-          as the rest of Phase 69's new UI. */}
+          site). */}
       {jobSiteAccountsEnabled && (
         <div className="bg-slate-50 dark:bg-slate-800 border border-slate-200 dark:border-slate-700 rounded-xl p-4 space-y-3">
-          <p className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2"><History size={16} /> Installation Warranty Transfer</p>
+          <p className="text-base font-semibold text-slate-700 dark:text-slate-300 flex items-center gap-2"><History size={16} /> {t('inventory.warrantyTransfer.title')}</p>
           <div className="flex gap-3">
             <input value={warrantySearch} onChange={e => setWarrantySearch(e.target.value)}
               onKeyDown={e => e.key === 'Enter' && handleWarrantySearch()}
-              placeholder="Search by serial number"
+              placeholder={t('inventory.warrantyTransfer.searchPlaceholder')}
               className="flex-1 h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
             <Button size="md" variant="outline" onClick={handleWarrantySearch}>
               <Search size={16} className="me-1.5" /> {t('common.search')}
             </Button>
           </div>
-          {warrantyNotFound && <p className="text-sm text-danger">No unit found with this serial number.</p>}
+          {warrantyNotFound && <p className="text-sm text-danger">{t('inventory.warrantyTransfer.notFound')}</p>}
           {warrantyResult && (
             <div className="bg-white dark:bg-slate-900 border border-brand/30 rounded-lg p-4 space-y-3">
               <div className="space-y-1">
                 <p className="text-base font-semibold text-dark dark:text-slate-100">{warrantyResult.serial.productName}</p>
                 <p className="text-sm text-slate-500 dark:text-slate-400">S/N: {warrantyResult.serial.serialNumber}</p>
-                {warrantyResult.serial.warrantyExpiryDate && <p className="text-sm text-slate-500 dark:text-slate-400">Warranty until {formatDate(new Date(warrantyResult.serial.warrantyExpiryDate))}</p>}
-                {warrantyResult.purchase?.customerName && <p className="text-sm text-slate-500 dark:text-slate-400">Originally purchased by: {warrantyResult.purchase.customerName}</p>}
+                {warrantyResult.serial.warrantyExpiryDate && <p className="text-sm text-slate-500 dark:text-slate-400">{t('inventory.warrantyTransfer.warrantyUntil', { date: formatDate(new Date(warrantyResult.serial.warrantyExpiryDate)) })}</p>}
+                {warrantyResult.purchase?.customerName && <p className="text-sm text-slate-500 dark:text-slate-400">{t('inventory.warrantyTransfer.originallyPurchasedBy', { name: warrantyResult.purchase.customerName })}</p>}
               </div>
               {warrantyResult.serial.status !== 'SOLD' ? (
-                <p className="text-sm text-slate-400">Only a sold unit can have its installation warranty transferred.</p>
+                <p className="text-sm text-slate-400">{t('inventory.warrantyTransfer.onlySoldUnit')}</p>
               ) : (
                 <div className="border-t border-slate-100 dark:border-slate-800 pt-3 space-y-2">
-                  <CustomerPicker value={warrantyCustomer} onChange={setWarrantyCustomer} label="Transfer warranty to" />
+                  <CustomerPicker value={warrantyCustomer} onChange={setWarrantyCustomer} label={t('inventory.warrantyTransfer.transferTo')} />
                   <input value={warrantyAddress} onChange={e => setWarrantyAddress(e.target.value)}
-                    placeholder="Installation address (optional)"
+                    placeholder={t('inventory.warrantyTransfer.addressPlaceholder')}
                     className="w-full h-10 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                   <Button size="sm" onClick={handleTransferWarranty} loading={transferring} disabled={!warrantyCustomer}>
-                    Transfer Warranty
+                    {t('inventory.warrantyTransfer.transferButton')}
                   </Button>
                 </div>
               )}

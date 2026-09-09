@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { HardDrive, FolderOpen } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
@@ -18,6 +19,7 @@ interface BackupPromptScreenProps {
 // doesn't exist yet inside SetupWizard) — skippable, never blocks anyone,
 // matches this app's own "nudge, don't force" backup philosophy.
 export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
+  const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [saving, setSaving] = useState(false)
 
@@ -41,12 +43,12 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
       if (picked.success && picked.data) {
         const res = await api.backup.setDestination({ path: (picked.data as { folderPath: string }).folderPath })
         if (!res.success) {
-          toastError('Error', (res.error as { message?: string })?.message ?? 'Could not save backup location.')
+          toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('backup.promptSaveLocationFailed'))
           setSaving(false)
           return
         }
       } else if (!picked.success) {
-        toastError('Error', (picked.error as { message?: string })?.message ?? 'Could not open folder picker.')
+        toastError(t('common.error'), (picked.error as { message?: string })?.message ?? t('backup.promptFolderPickerFailed'))
         setSaving(false)
         return
       }
@@ -54,7 +56,7 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
       // dialog — not an error, just treat it the same as skipping.
       await finish()
     } catch {
-      toastError('Error', 'Could not save backup location.')
+      toastError(t('common.error'), t('backup.promptSaveLocationFailed'))
       setSaving(false)
     }
   }
@@ -78,18 +80,18 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
           <div className="w-16 h-16 rounded-2xl bg-white/20 flex items-center justify-center mx-auto mb-4">
             <HardDrive size={36} className="text-white" />
           </div>
-          <h1 className="text-2xl font-bold">Keep your backups safe</h1>
+          <h1 className="text-2xl font-bold">{t('backup.promptTitle')}</h1>
           <p className="text-brand-100 mt-1 text-base opacity-90 inline-flex items-center gap-1.5">
-            — by Aszurex <AszurexMark width={18} />
+            {t('backup.promptByAszurex')} <AszurexMark width={18} />
           </p>
         </div>
 
         <div className="px-8 py-6 space-y-4">
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            Sarang automatically backs up your data every day — but by default, those backups are saved on the <strong>same disk</strong> as your live data. If this computer's disk ever fails or is lost, the backups go with it.
+            {t('backup.promptWarningPre')} <strong>{t('backup.promptWarningEmphasis')}</strong> {t('backup.promptWarningPost')}
           </p>
           <p className="text-sm text-slate-600 dark:text-slate-300">
-            For real protection, choose a different location now — an external USB drive, a second disk, or a network folder. You can always change this later in Settings → Backup.
+            {t('backup.promptAdvice')}
           </p>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
@@ -99,7 +101,7 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
               icon={<FolderOpen size={16} />}
               className="flex-1"
             >
-              Choose a Backup Folder
+              {t('backup.promptChooseFolderButton')}
             </Button>
             <Button
               variant="secondary"
@@ -107,11 +109,11 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
               disabled={saving}
               className="flex-1"
             >
-              Skip for now
+              {t('backup.promptSkipButton')}
             </Button>
           </div>
           <p className="text-xs text-slate-400 text-center">
-            Skipping keeps backups on this computer's disk until you change it in Settings.
+            {t('backup.promptSkipHint')}
           </p>
         </div>
       </motion.div>

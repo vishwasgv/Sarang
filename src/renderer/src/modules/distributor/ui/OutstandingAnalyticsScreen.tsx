@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { motion } from 'framer-motion'
 import { Activity, RefreshCw, AlertCircle, TrendingDown, Users } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
@@ -24,6 +25,7 @@ interface AgingBuckets { current: number; days1to30: number; days31to60: number;
 const ZERO_AGING: AgingBuckets = { current: 0, days1to30: 0, days31to60: 0, days61to90: 0, days90plus: 0 }
 
 export function OutstandingAnalyticsScreen() {
+  const { t } = useTranslation()
   const profile = useBusinessStore(s => s.profile)
   const sym = profile?.currencySymbol ?? '₹'
   const navigate = useNavigate()
@@ -56,7 +58,7 @@ export function OutstandingAnalyticsScreen() {
       if (res.success && res.data) {
         setCustomers(res.data as OutstandingCustomer[])
       } else {
-        toastError('Failed to Load', (res.error as { message?: string })?.message ?? 'Could not load outstanding balances.')
+        toastError(t('distributor.outstandingAnalytics.failedToLoadTitle'), (res.error as { message?: string })?.message ?? t('distributor.outstandingAnalytics.couldNotLoad'))
       }
       // Degrades gracefully if this specific call is denied (a role could
       // hold customers.view without reports.outstanding) — aging is a bonus
@@ -67,7 +69,7 @@ export function OutstandingAnalyticsScreen() {
         setAgingTotals(report.customers.agingTotals)
       }
     } catch {
-      toastError('Failed to Load', 'Could not load outstanding balances.')
+      toastError(t('distributor.outstandingAnalytics.failedToLoadTitle'), t('distributor.outstandingAnalytics.couldNotLoad'))
     } finally {
       setLoading(false)
     }
@@ -80,27 +82,27 @@ export function OutstandingAnalyticsScreen() {
     <div className="p-6 max-w-5xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark">Outstanding Analytics</h2>
-          <p className="text-sm text-slate-400">{customers.length} customers with unpaid balances</p>
+          <h2 className="text-lg font-bold text-dark">{t('distributor.outstandingAnalytics.title')}</h2>
+          <p className="text-sm text-slate-400">{t('distributor.outstandingAnalytics.customersCount', { count: customers.length })}</p>
         </div>
         <button onClick={load} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-300 transition-colors">
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> {t('common.refresh')}
         </button>
       </div>
 
       {/* Summary cards */}
       <div className="grid grid-cols-3 gap-4">
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }}>
-          <KpiCard label="Total Outstanding" value={`${sym}${totalOutstanding.toFixed(0)}`} icon={<Activity size={16} />} color="danger" />
+          <KpiCard label={t('distributor.outstandingAnalytics.totalOutstanding')} value={`${sym}${totalOutstanding.toFixed(0)}`} icon={<Activity size={16} />} color="danger" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.05 }}>
-          <KpiCard label="Over Credit Limit" value={overLimit.length} icon={<AlertCircle size={16} />} color="warning" />
+          <KpiCard label={t('distributor.outstandingAnalytics.overCreditLimit')} value={overLimit.length} icon={<AlertCircle size={16} />} color="warning" />
         </motion.div>
 
         <motion.div initial={{ opacity: 0, y: 8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }}>
           <KpiCard
-            label="Avg. Outstanding"
+            label={t('distributor.outstandingAnalytics.avgOutstanding')}
             value={customers.length > 0 ? `${sym}${(totalOutstanding / customers.length).toFixed(0)}` : `${sym}0`}
             icon={<Users size={16} />}
             color="brand"
@@ -112,16 +114,16 @@ export function OutstandingAnalyticsScreen() {
       {(agingTotals.current + agingTotals.days1to30 + agingTotals.days31to60 + agingTotals.days61to90 + agingTotals.days90plus) > 0.01 && (
         <Card padding="none" className="overflow-hidden">
           <div className="px-5 py-3 border-b border-slate-100 dark:border-slate-800">
-            <p className="text-sm font-semibold text-dark dark:text-slate-100">Aging</p>
-            <p className="text-xs text-slate-400">How long each rupee has been outstanding, based on invoice due date</p>
+            <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('distributor.outstandingAnalytics.agingTitle')}</p>
+            <p className="text-xs text-slate-400">{t('distributor.outstandingAnalytics.agingSubtitle')}</p>
           </div>
           <div className="grid grid-cols-5 divide-x divide-slate-100 dark:divide-slate-800">
             {[
-              { label: 'Current', value: agingTotals.current, tone: 'text-slate-500 dark:text-slate-400' },
-              { label: '1–30 days', value: agingTotals.days1to30, tone: 'text-slate-500 dark:text-slate-400' },
-              { label: '31–60 days', value: agingTotals.days31to60, tone: 'text-warning' },
-              { label: '61–90 days', value: agingTotals.days61to90, tone: 'text-warning' },
-              { label: '90+ days', value: agingTotals.days90plus, tone: 'text-danger' },
+              { label: t('distributor.outstandingAnalytics.agingCurrent'), value: agingTotals.current, tone: 'text-slate-500 dark:text-slate-400' },
+              { label: t('distributor.outstandingAnalytics.aging1to30'), value: agingTotals.days1to30, tone: 'text-slate-500 dark:text-slate-400' },
+              { label: t('distributor.outstandingAnalytics.aging31to60'), value: agingTotals.days31to60, tone: 'text-warning' },
+              { label: t('distributor.outstandingAnalytics.aging61to90'), value: agingTotals.days61to90, tone: 'text-warning' },
+              { label: t('distributor.outstandingAnalytics.aging90plus'), value: agingTotals.days90plus, tone: 'text-danger' },
             ].map((b) => (
               <div key={b.label} className="px-4 py-3 text-center">
                 <p className={cn('text-sm font-semibold', b.tone)}>{sym}{b.value.toFixed(0)}</p>
@@ -136,7 +138,7 @@ export function OutstandingAnalyticsScreen() {
       {overLimit.length > 0 && (
         <div className="bg-danger/5 border border-danger/20 rounded-xl px-4 py-3 flex items-center gap-3 text-sm text-danger">
           <AlertCircle size={14} className="shrink-0" />
-          {overLimit.length} customer{overLimit.length !== 1 ? 's' : ''} {overLimit.length !== 1 ? 'are' : 'is'} over their credit limit: {overLimit.map(c => c.customerName).join(', ')}
+          {t('distributor.outstandingAnalytics.overLimitWarning', { count: overLimit.length, names: overLimit.map(c => c.customerName).join(', ') })}
         </div>
       )}
 
@@ -148,18 +150,18 @@ export function OutstandingAnalyticsScreen() {
       ) : customers.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <TrendingDown size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No outstanding balances</p>
-          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">All customers are up to date</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('distributor.outstandingAnalytics.emptyTitle')}</p>
+          <p className="text-xs text-slate-400 dark:text-slate-500 mt-1">{t('distributor.outstandingAnalytics.emptySubtitle')}</p>
         </Card>
       ) : (
         <Card padding="none" className="overflow-hidden">
           <div className="grid grid-cols-12 gap-4 px-5 py-3 border-b border-slate-100 dark:border-slate-800 text-xs font-semibold text-slate-400 uppercase">
-            <div className="col-span-3">Customer</div>
-            <div className="col-span-2">Code</div>
-            <div className="col-span-2">Phone</div>
-            <div className="col-span-2 text-end">Credit Limit</div>
-            <div className="col-span-2 text-end">Outstanding</div>
-            <div className="col-span-1 text-end">90+ Days</div>
+            <div className="col-span-3">{t('distributor.outstandingAnalytics.columnCustomer')}</div>
+            <div className="col-span-2">{t('distributor.outstandingAnalytics.columnCode')}</div>
+            <div className="col-span-2">{t('distributor.outstandingAnalytics.columnPhone')}</div>
+            <div className="col-span-2 text-end">{t('distributor.outstandingAnalytics.columnCreditLimit')}</div>
+            <div className="col-span-2 text-end">{t('distributor.outstandingAnalytics.columnOutstanding')}</div>
+            <div className="col-span-1 text-end">{t('distributor.outstandingAnalytics.column90Plus')}</div>
           </div>
           <div className="divide-y divide-slate-50 dark:divide-slate-800">
             {customers.map((c, i) => {
@@ -173,7 +175,7 @@ export function OutstandingAnalyticsScreen() {
                   onClick={() => navigate(`/customers/${c.id}`)}>
                   <div className="col-span-3">
                     <p className={cn('text-sm font-medium', isOver ? 'text-danger' : 'text-dark')}>{c.customerName}</p>
-                    {isOver && <p className="text-xs text-danger/70">Over credit limit</p>}
+                    {isOver && <p className="text-xs text-danger/70">{t('distributor.outstandingAnalytics.overCreditLimitLabel')}</p>}
                     {c.creditLimit > 0 && (
                       <div className="mt-1 h-1 bg-slate-100 rounded-full overflow-hidden w-24">
                         <div className={cn('h-full rounded-full', isOver ? 'bg-danger' : pct > 80 ? 'bg-warning' : 'bg-success')}
@@ -201,7 +203,7 @@ export function OutstandingAnalyticsScreen() {
             })}
           </div>
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-sm font-semibold">
-            <span className="text-slate-500 dark:text-slate-400">Total</span>
+            <span className="text-slate-500 dark:text-slate-400">{t('common.total')}</span>
             <span className="text-dark dark:text-slate-100">{sym}{totalOutstanding.toFixed(2)}</span>
           </div>
         </Card>

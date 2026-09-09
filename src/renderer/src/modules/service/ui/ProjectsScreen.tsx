@@ -136,7 +136,7 @@ export function ProjectsScreen() {
         setForm({ ...BLANK_FORM })
         load()
       } else {
-        toastError((res.error as any)?.message ?? 'Could not create project')
+        toastError((res.error as any)?.message ?? t('service.couldNotCreateProject'))
       }
     } catch {
       toastError(t('common.error'))
@@ -174,7 +174,7 @@ export function ProjectsScreen() {
         setConfirmDelete(false)
         setProjects(prev => prev.filter(p => p.id !== projectId))
       } else {
-        toastError((res.error as any)?.message ?? 'Could not delete project')
+        toastError((res.error as any)?.message ?? t('service.couldNotDeleteProject'))
       }
     } catch {
       toastError(t('common.error'))
@@ -189,11 +189,11 @@ export function ProjectsScreen() {
       const res = await api.projects.generateInvoice({ id: projectId })
       if (res.success) {
         const data = res.data as { invoiceId: string }
-        toastSuccess('Invoice generated')
+        toastSuccess(t('service.invoiceGenerated'))
         setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
         setProjects(prev => prev.map(p => p.id === projectId ? { ...p, invoiceId: data.invoiceId } : p))
       } else {
-        toastError((res.error as any)?.message ?? 'Could not generate invoice')
+        toastError((res.error as any)?.message ?? t('service.couldNotGenerateInvoice'))
       }
     } catch {
       toastError(t('common.error'))
@@ -504,7 +504,7 @@ export function ProjectsScreen() {
         }}
         loading={statusUpdating}
         title={t(STATUS_LABEL_KEY.CANCELLED)}
-        message="Mark this project as cancelled? You can still view its history, but it will no longer be tracked as active work."
+        message={t('service.confirmCancelProject')}
         confirmLabel={t(STATUS_LABEL_KEY.CANCELLED)}
       />
     </div>

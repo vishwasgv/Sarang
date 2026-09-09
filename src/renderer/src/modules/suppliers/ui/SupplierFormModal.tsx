@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -53,6 +54,7 @@ interface SupplierFormModalProps {
 }
 
 export function SupplierFormModal({ open, onClose, onSaved, supplier }: SupplierFormModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const isEdit = !!supplier
 
@@ -101,17 +103,17 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         : await window.api.suppliers.create({ ...payload, openingBalance: openingBalance ?? 0 })
 
       if (!response.success) {
-        toastError('Error', response.error?.message ?? 'Failed to save supplier.')
+        toastError(t('common.error'), response.error?.message ?? t('suppliers.saveFailedMessage'))
         return
       }
-      toastSuccess(isEdit ? 'Supplier Updated' : 'Supplier Created', `${values.supplierName} has been saved.`)
+      toastSuccess(isEdit ? t('suppliers.updatedTitle') : t('suppliers.createdTitle'), t('suppliers.savedMessage', { name: values.supplierName }))
       // Extra arg — existing callers using `() => {...}` simply ignore it;
       // new callers (e.g. the inline "+ Add New Supplier" on the PO/Bill
       // forms) use it to auto-select the just-created supplier.
       onSaved(response.data as { id: string; supplierName: string })
       onClose()
     } catch {
-      toastError('Error', 'Something went wrong. Please try again.')
+      toastError(t('common.error'), t('common.somethingWentWrong'))
     }
   }
 
@@ -119,61 +121,61 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Edit Supplier' : 'Add Supplier'}
+      title={isEdit ? t('suppliers.editSupplier') : t('suppliers.addSupplier')}
       size="lg"
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
           <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-            {isEdit ? 'Save Changes' : 'Add Supplier'}
+            {isEdit ? t('common.saveChanges') : t('suppliers.addSupplier')}
           </Button>
         </>
       }
     >
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
-        <Input label="Supplier Name *" placeholder="e.g. ABC Distributors" {...register('supplierName')} error={errors.supplierName?.message} />
+        <Input label={`${t('suppliers.supplierName')} *`} placeholder={t('suppliers.supplierNamePlaceholder')} {...register('supplierName')} error={errors.supplierName?.message} />
         <div className="grid grid-cols-2 gap-4">
-          <Input label="Phone" placeholder="+91 98765 43210" {...register('phone')} error={errors.phone?.message} />
-          <Input label="Email" type="email" placeholder="supplier@example.com" {...register('email')} error={errors.email?.message} />
+          <Input label={t('common.phone')} placeholder={t('common.phonePlaceholder')} {...register('phone')} error={errors.phone?.message} />
+          <Input label={t('common.email')} type="email" placeholder={t('suppliers.emailPlaceholder')} {...register('email')} error={errors.email?.message} />
         </div>
-        <Input label="Address" placeholder="Street address" {...register('address')} />
+        <Input label={t('common.address')} placeholder={t('common.streetAddressPlaceholder')} {...register('address')} />
         <div className="grid grid-cols-3 gap-4">
-          <Input label="City" placeholder="Pune" {...register('city')} />
-          <Input label="State" placeholder="Maharashtra" {...register('state')} />
-          <Input label="Country" placeholder="India" {...register('country')} />
+          <Input label={t('suppliers.city')} placeholder={t('suppliers.cityPlaceholder')} {...register('city')} />
+          <Input label={t('suppliers.state')} placeholder={t('common.statePlaceholder')} {...register('state')} />
+          <Input label={t('common.country')} placeholder={t('common.countryPlaceholder')} {...register('country')} />
         </div>
-        <Input label="Tax Number" placeholder="GST / PAN / VAT" {...register('taxNumber')} />
+        <Input label={t('common.taxNumber')} placeholder={t('common.taxNumberPlaceholder')} {...register('taxNumber')} />
         {priceLists.length > 0 && (
-          <Select label="Price List" {...register('priceListId')}>
-            <option value="">None — normal purchase price</option>
+          <Select label={t('common.priceList')} {...register('priceListId')}>
+            <option value="">{t('suppliers.priceListNonePurchase')}</option>
             {priceLists.map((pl) => (
               <option key={pl.id} value={pl.id}>{pl.name}</option>
             ))}
           </Select>
         )}
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">Bank & Compliance Details</p>
+          <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide mb-3">{t('suppliers.bankComplianceHeading')}</p>
           <div className="grid grid-cols-2 gap-4 mb-4">
-            <Input label="Bank Account Number" placeholder="For making payments" {...register('bankAccountNumber')} />
-            <Input label="IFSC Code" placeholder="e.g. HDFC0001234" {...register('bankIfscCode')} />
+            <Input label={t('suppliers.bankAccountNumberLabel')} placeholder={t('suppliers.bankAccountNumberPlaceholder')} {...register('bankAccountNumber')} />
+            <Input label={t('suppliers.ifscCodeLabel')} placeholder={t('suppliers.ifscCodePlaceholder')} {...register('bankIfscCode')} />
           </div>
           <div className="grid grid-cols-2 gap-4">
-            <Input label="Bank Name" placeholder="e.g. HDFC Bank" {...register('bankName')} />
-            <Input label="PAN Number" placeholder="For TDS/compliance" {...register('panNumber')} />
+            <Input label={t('suppliers.bankNameLabel')} placeholder={t('suppliers.bankNamePlaceholder')} {...register('bankName')} />
+            <Input label={t('suppliers.panNumberLabel')} placeholder={t('suppliers.panNumberPlaceholder')} {...register('panNumber')} />
           </div>
         </div>
         {!isEdit && (
           <Input
-            label="Opening Balance"
+            label={t('suppliers.openingBalanceLabel')}
             type="number" min="0" step="0.01"
-            placeholder="Amount already owed to this supplier, if any"
+            placeholder={t('suppliers.openingBalancePlaceholder')}
             {...register('openingBalance')}
             error={errors.openingBalance?.message}
           />
         )}
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Notes</label>
-          <textarea {...register('notes')} rows={2} placeholder="Optional notes…"
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('common.notes')}</label>
+          <textarea {...register('notes')} rows={2} placeholder={t('common.optionalNotesPlaceholder')}
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400" />
         </div>
         <CustomFieldsEditor entityType="SUPPLIER" values={customFieldValues} onChange={setCustomFieldValues} />

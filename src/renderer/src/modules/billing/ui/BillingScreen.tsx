@@ -599,7 +599,7 @@ export function BillingScreen() {
   // Product search with debounce
   useEffect(() => {
     if (!productQuery.trim()) { setProductResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       setProductSearching(true)
       try {
         // Phase 38: a 13-digit query is what a barcode scanner produces (real
@@ -646,19 +646,16 @@ export function BillingScreen() {
           // certainly a scanned barcode with no matching product — the spec
           // requires a clear message here, not a silent empty dropdown.
           if (looksLikeScan && results.length === 0) {
-            toastError('Barcode Not Found', `No product matches the scanned code "${productQuery.trim()}".`)
+            toastError(t('billing.barcodeNotFoundTitle'), t('billing.barcodeNotFoundMessage', { code: productQuery.trim() }))
           }
         } else {
-          // NOTE: `t` (i18next) is shadowed inside this setTimeout callback by
-          // the `const t = setTimeout(...)` timer-id variable below — plain
-          // strings only here, never t(...).
-          toastError('Search Failed', res.error?.message ?? 'Could not search products.')
+          toastError(t('billing.searchFailedTitle'), res.error?.message ?? t('billing.couldNotSearchProducts'))
         }
       } catch {
-        toastError('Search Failed', 'Could not search products. Check your connection and try again.')
+        toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchProductsRetry'))
       } finally { setProductSearching(false) }
     }, 200)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [productQuery])
 
   // Close customer dropdown on outside click
@@ -675,18 +672,16 @@ export function BillingScreen() {
   // Customer search with debounce
   useEffect(() => {
     if (!customerQuery.trim()) { setCustomerResults([]); return }
-    const t = setTimeout(async () => {
-      // NOTE: `t` (i18next) is shadowed here by the timer-id `t` above — plain
-      // strings only in this callback, never t(...).
+    const timer = setTimeout(async () => {
       try {
         const res = await window.api.customers.search(customerQuery)
         if (res.success) setCustomerResults(res.data as Customer[])
-        else toastError('Search Failed', res.error?.message ?? 'Could not search customers.')
+        else toastError(t('billing.searchFailedTitle'), res.error?.message ?? t('billing.couldNotSearchCustomers'))
       } catch {
-        toastError('Search Failed', 'Could not search customers.')
+        toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchCustomers'))
       }
     }, 200)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [customerQuery])
 
   // Phase 67 §9.1 — Agri Inputs item 1: load defined crop seasons once
@@ -720,17 +715,17 @@ export function BillingScreen() {
   }
 
   async function handleCreateCropSeason() {
-    if (!newSeasonName.trim()) { toastError('Name Required', 'Enter a season name.'); return }
+    if (!newSeasonName.trim()) { toastError(t('billing.seasonNameRequiredTitle'), t('billing.enterSeasonName')); return }
     const res = await window.api.cropSeason.create({ name: newSeasonName.trim(), harvestMonth: newSeasonMonth, harvestDay: newSeasonDay })
-    if (!res.success) { toastError('Could Not Save', res.error?.message ?? 'Could not save the crop season.'); return }
+    if (!res.success) { toastError(t('billing.couldNotSaveTitle'), res.error?.message ?? t('billing.couldNotSaveCropSeason')); return }
     setNewSeasonName(''); setNewSeasonMonth(1); setNewSeasonDay(1)
     await reloadCropSeasons()
-    toastSuccess('Season Saved', `"${newSeasonName.trim()}" saved.`)
+    toastSuccess(t('billing.seasonSavedTitle'), t('billing.seasonSavedMessage', { name: newSeasonName.trim() }))
   }
 
   async function handleDeleteCropSeason(id: string) {
     const res = await window.api.cropSeason.delete({ id })
-    if (!res.success) { toastError('Could Not Delete', res.error?.message ?? 'Could not delete the crop season.'); return }
+    if (!res.success) { toastError(t('billing.couldNotDeleteTitle'), res.error?.message ?? t('billing.couldNotDeleteCropSeason')); return }
     if (cropSeasonId === id) setCropSeasonId('')
     await reloadCropSeasons()
   }
@@ -827,9 +822,9 @@ export function BillingScreen() {
   async function handleConfirmService() {
     const qty = Number(serviceQty)
     const price = Number(servicePrice)
-    if (!serviceName.trim()) { toastError(t('common.error'), 'Enter a service name.'); return }
-    if (!Number.isFinite(qty) || qty <= 0) { toastError(t('common.error'), 'Enter a valid quantity.'); return }
-    if (!Number.isFinite(price) || price < 0) { toastError(t('common.error'), 'Enter a valid price.'); return }
+    if (!serviceName.trim()) { toastError(t('common.error'), t('billing.enterServiceName')); return }
+    if (!Number.isFinite(qty) || qty <= 0) { toastError(t('common.error'), t('billing.enterValidQuantity')); return }
+    if (!Number.isFinite(price) || price < 0) { toastError(t('common.error'), t('billing.enterValidPrice')); return }
     setAddingService(true)
     try {
       const res = await window.api.billing.getOrCreateServiceProduct({ name: serviceName.trim() })
@@ -867,7 +862,7 @@ export function BillingScreen() {
   async function recordTrialAndMaybeAddToCart(purchasedVariantId: string | null) {
     if (!variantPickProduct) return
     if (triedVariantIds.length < 2) {
-      toastError('Select at Least Two', 'Mark at least two pairs as tried on before recording a trial session.')
+      toastError(t('billing.selectAtLeastTwoTitle'), t('billing.selectAtLeastTwoMessage'))
       return
     }
     const product = variantPickProduct
@@ -878,7 +873,7 @@ export function BillingScreen() {
       customerId: customer?.id ?? null
     })
     if (!res.success) {
-      toastError('Could Not Record Trial', res.error?.message ?? 'Please try again.')
+      toastError(t('billing.couldNotRecordTrialTitle'), res.error?.message ?? t('common.somethingWentWrong'))
       return
     }
     setTrialMode(false)
@@ -887,7 +882,7 @@ export function BillingScreen() {
       const purchased = variantPickList.find(v => v.id === purchasedVariantId)
       if (purchased) addToCartDirect(product, purchased)
     } else {
-      toastSuccess('Trial Recorded', `${triedVariantIds.length} pairs tried, no purchase made.`)
+      toastSuccess(t('billing.trialRecordedTitle'), t('billing.trialRecordedMessage', { count: triedVariantIds.length }))
       setVariantPickProduct(null)
       setVariantPickList([])
     }
@@ -958,10 +953,10 @@ export function BillingScreen() {
       }]
     })
     if (isLoose) {
-      toastSuccess('Loose Item Added', `${product.productName} added at 1 ${product.weightUnit} — adjust the quantity to the actual weight before checkout.`)
+      toastSuccess(t('billing.looseItemAddedTitle'), t('billing.looseItemAddedMessage', { productName: product.productName, unit: product.weightUnit }))
     }
     if (isLengthSold) {
-      toastSuccess('Length Item Added', `${product.productName} added at 1 ${product.lengthUnit} — adjust the quantity to the actual length before checkout.`)
+      toastSuccess(t('billing.lengthItemAddedTitle'), t('billing.lengthItemAddedMessage', { productName: product.productName, unit: product.lengthUnit }))
     }
     if (isJewellery) {
       void loadJewelleryPriceForCartLine(product, cartKey)
@@ -1140,8 +1135,8 @@ export function BillingScreen() {
     const alreadyInCart = cart.some(i => i.scannedBarcode === decoded.barcode)
     if (alreadyInCart) {
       toastError(
-        'Label already scanned',
-        `This exact label was already added to this bill. If you're weighing a second parcel of the same item, weigh and print a new label instead of re-scanning this one.`
+        t('billing.labelAlreadyScannedTitle'),
+        t('billing.labelAlreadyScannedMessage')
       )
       // Still add it — staff may genuinely be re-scanning after removing a
       // line, or intentionally selling two identical labels together — but
@@ -1164,8 +1159,12 @@ export function BillingScreen() {
     }])
     if (decoded.priceIsStale) {
       toastError(
-        'Price may be outdated',
-        `This label was printed at ${formatCurrency(decoded.pricePerWeightUnitAtPrint)}/${decoded.weightUnit}, but the current price is ${formatCurrency(decoded.currentPricePerWeightUnit)}/${decoded.weightUnit}. The label price was charged. Reprint remaining labels for this product.`
+        t('billing.priceMayBeOutdatedTitle'),
+        t('billing.priceMayBeOutdatedMessage', {
+          printedPrice: formatCurrency(decoded.pricePerWeightUnitAtPrint),
+          currentPrice: formatCurrency(decoded.currentPricePerWeightUnit),
+          unit: decoded.weightUnit
+        })
       )
     }
     setProductQuery('')
@@ -1247,7 +1246,7 @@ export function BillingScreen() {
       if (cash <= 0 && upi <= 0) { toastError(t('billing.splitPayment'), t('billing.splitPayment')); return }
       const total = computeTotals(cart, effectiveGlobalDiscount).totalAmount
       if (Math.abs(cash + upi - total) > 0.05) {
-        toastError('Split Payment', `Cash (${formatCurrency(cash)}) + UPI (${formatCurrency(upi)}) must equal the invoice total (${formatCurrency(total)}).`)
+        toastError(t('billing.splitPayment'), t('billing.splitPaymentMismatchMessage', { cash: formatCurrency(cash), upi: formatCurrency(upi), total: formatCurrency(total) }))
         return
       }
     }
@@ -1350,16 +1349,16 @@ export function BillingScreen() {
             const splitRes = await window.api.payments.recordSplit({ invoiceId: inv.id, legs })
             if (!splitRes.success) {
               toastError(
-                'Split Payment Failed',
-                `Invoice ${inv.invoiceNumber} was created but payments could not be recorded: ${splitRes.error?.message ?? 'Unknown error'}. Go to the invoice and record payments manually.`
+                t('billing.splitPaymentFailedTitle'),
+                t('billing.splitPaymentFailedMessage', { invoiceNumber: inv.invoiceNumber, error: splitRes.error?.message ?? t('billing.unknownError') })
               )
               navigate(`/billing/${inv.id}`)
               return
             }
           } catch {
             toastError(
-              'Split Payment Failed',
-              `Invoice ${inv.invoiceNumber} was created but payments could not be recorded due to a connection error. Go to the invoice and record payments manually.`
+              t('billing.splitPaymentFailedTitle'),
+              t('billing.splitPaymentConnectionErrorMessage', { invoiceNumber: inv.invoiceNumber })
             )
             navigate(`/billing/${inv.id}`)
             return

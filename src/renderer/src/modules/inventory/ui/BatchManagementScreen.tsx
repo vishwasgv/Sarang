@@ -138,11 +138,11 @@ export function BatchManagementScreen() {
 
   useEffect(() => {
     if (!productQuery.trim()) { setProductResults([]); return }
-    const t = setTimeout(async () => {
+    const timer = setTimeout(async () => {
       const res = await window.api.products.search(productQuery.trim())
       if (res.success && res.data) setProductResults(res.data as { id: string; productName: string }[])
     }, 250)
-    return () => clearTimeout(t)
+    return () => clearTimeout(timer)
   }, [productQuery])
 
   function openEdit(batch: BatchRow) {
@@ -157,14 +157,14 @@ export function BatchManagementScreen() {
 
   async function handleCreate() {
     if (!form.productId || !form.batchNumber || !form.expiryDate || !form.quantityReceived) {
-      toastError('Missing Fields', 'Product, batch number, expiry date, and quantity are required.')
+      toastError(t('inventory.missingFieldsTitle'), t('inventory.batchMissingFieldsMessage'))
       return
     }
     setSaving(true)
     try {
       const qty = parseFloat(form.quantityReceived)
       if (!qty || qty <= 0) {
-        toastError('Invalid Quantity', 'Quantity received must be greater than zero.')
+        toastError(t('inventory.invalidQuantityTitle'), t('inventory.qtyReceivedMustBePositiveMessage'))
         setSaving(false)
         return
       }
@@ -178,16 +178,16 @@ export function BatchManagementScreen() {
         supplierId: form.supplierId || undefined
       })
       if (res.success) {
-        toastSuccess('Batch Added', `Batch ${form.batchNumber} has been recorded.`)
+        toastSuccess(t('inventory.batchAddedTitle'), t('inventory.batchAddedMessage', { batchNumber: form.batchNumber }))
         setShowForm(false)
         setForm({ productId: '', batchNumber: '', expiryDate: '', mfgDate: '', quantityReceived: '', unitCost: '', supplierId: '' })
         setProductName(''); setProductQuery(''); setProductResults([])
         loadData()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not add batch.')
+        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotAddBatchMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not add batch.')
+      toastError(t('inventory.failedTitle'), t('inventory.couldNotAddBatchMessage'))
     } finally {
       setSaving(false)
     }
@@ -197,9 +197,9 @@ export function BatchManagementScreen() {
     if (!editTarget) return
     if (editForm.quantityRemaining) {
       const remaining = parseFloat(editForm.quantityRemaining)
-      if (remaining < 0) { toastError('Invalid Quantity', 'Remaining quantity cannot be negative.'); return }
+      if (remaining < 0) { toastError(t('inventory.invalidQuantityTitle'), t('inventory.remainingQtyNegativeMessage')); return }
       if (remaining > editTarget.quantityReceived) {
-        toastError('Invalid Quantity', `Remaining (${remaining}) cannot exceed received (${editTarget.quantityReceived}).`)
+        toastError(t('inventory.invalidQuantityTitle'), t('inventory.remainingExceedsReceivedMessage', { remaining, received: editTarget.quantityReceived }))
         return
       }
     }
@@ -213,14 +213,14 @@ export function BatchManagementScreen() {
         unitCost: editForm.unitCost ? parseFloat(editForm.unitCost) : undefined
       })
       if (res.success) {
-        toastSuccess('Batch Updated', 'Changes saved.')
+        toastSuccess(t('inventory.batchUpdatedTitle'), t('inventory.changesSavedMessage'))
         setEditTarget(null)
         loadData()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not update batch.')
+        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotUpdateBatchMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not update batch.')
+      toastError(t('inventory.failedTitle'), t('inventory.couldNotUpdateBatchMessage'))
     } finally {
       setSaving(false)
     }
@@ -232,14 +232,14 @@ export function BatchManagementScreen() {
     try {
       const res = await window.api.batches.delete({ id: deleteTarget.id })
       if (res.success) {
-        toastSuccess('Batch Removed', `Batch ${deleteTarget.batchNumber} has been deactivated.`)
+        toastSuccess(t('inventory.batchRemovedTitle'), t('inventory.batchDeactivatedMessage', { batchNumber: deleteTarget.batchNumber }))
         setDeleteTarget(null)
         loadData()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not remove batch.')
+        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotRemoveBatchMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not remove batch.')
+      toastError(t('inventory.failedTitle'), t('inventory.couldNotRemoveBatchMessage'))
     } finally {
       setDeleting(false)
     }

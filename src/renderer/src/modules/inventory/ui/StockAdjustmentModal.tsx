@@ -1,4 +1,5 @@
 import React, { useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -37,12 +38,12 @@ interface InventoryItem {
 }
 
 const REASON_CATEGORIES = [
-  { value: '', label: 'None / general' },
-  { value: 'RECOUNT', label: 'Physical Recount' },
-  { value: 'DAMAGE', label: 'Damaged / Broken' },
-  { value: 'THEFT', label: 'Theft / Loss' },
-  { value: 'EXPIRY', label: 'Expired' },
-  { value: 'OTHER', label: 'Other' },
+  { value: '', labelKey: 'inventory.reasonNone' },
+  { value: 'RECOUNT', labelKey: 'inventory.reasonRecount' },
+  { value: 'DAMAGE', labelKey: 'inventory.reasonDamage' },
+  { value: 'THEFT', labelKey: 'inventory.reasonTheft' },
+  { value: 'EXPIRY', labelKey: 'inventory.reasonExpiry' },
+  { value: 'OTHER', labelKey: 'inventory.reasonOther' },
 ]
 
 interface StockAdjustmentModalProps {
@@ -53,6 +54,7 @@ interface StockAdjustmentModalProps {
 }
 
 export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: StockAdjustmentModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [saving, setSaving] = useState(false)
   const [reasonCategory, setReasonCategory] = useState('')
@@ -95,13 +97,13 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
         ...(isIncrease && values.unitCost !== undefined ? { unitCost: values.unitCost } : {})
       })
       if (res.success) {
-        toastSuccess('Stock Adjusted', `${inventoryItem.product.productName} stock updated to ${values.quantity} ${inventoryItem.product.unit}.`)
+        toastSuccess(t('inventory.stockAdjustedTitle'), t('inventory.stockAdjustedMessage', { productName: inventoryItem.product.productName, quantity: values.quantity, unit: inventoryItem.product.unit }))
         onSaved()
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to adjust stock.')
+        toastError(t('common.error'), res.error?.message ?? t('inventory.adjustStockFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to adjust stock.')
+      toastError(t('common.error'), t('inventory.adjustStockFailed'))
     } finally {
       setSaving(false)
     }
@@ -111,12 +113,12 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
     <Modal
       open={open}
       onClose={onClose}
-      title="Adjust Stock"
+      title={t('inventory.adjustStock')}
       size="sm"
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={saving}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={saving} disabled={isNoChange}>Save Adjustment</Button>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={saving}>{t('common.cancel')}</Button>
+          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={saving} disabled={isNoChange}>{t('inventory.saveAdjustment')}</Button>
         </>
       }
     >
@@ -125,9 +127,9 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
           <div className="flex-1">
             <p className="text-sm font-semibold text-dark dark:text-slate-100">{inventoryItem.product.productName}</p>
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
-              Current stock: <span className="font-medium text-dark dark:text-slate-100">{inventoryItem.quantity} {inventoryItem.product.unit}</span>
+              {t('inventory.currentStockInline')} <span className="font-medium text-dark dark:text-slate-100">{inventoryItem.quantity} {inventoryItem.product.unit}</span>
               {inventoryItem.averageCost !== undefined && (
-                <span className="ms-2 text-slate-400">· Avg cost: {inventoryItem.averageCost.toFixed(2)}</span>
+                <span className="ms-2 text-slate-400">{t('inventory.avgCostLabel')} {inventoryItem.averageCost.toFixed(2)}</span>
               )}
             </p>
           </div>
@@ -135,28 +137,28 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
 
         {canUsePacks && (
           <div className="flex items-center gap-2 text-xs">
-            <span className="text-slate-500">Enter as:</span>
+            <span className="text-slate-500">{t('inventory.enterAs')}</span>
             <button type="button" onClick={() => setEntryMode('units')}
               className={`px-2.5 py-1 rounded-full font-medium ${entryMode === 'units' ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
               {inventoryItem.product.unit}
             </button>
             <button type="button" onClick={() => setEntryMode('packs')}
               className={`px-2.5 py-1 rounded-full font-medium ${entryMode === 'packs' ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>
-              {inventoryItem.product.packUnit} received
+              {inventoryItem.product.packUnit} {t('inventory.received')}
             </button>
           </div>
         )}
 
         {canUsePacks && entryMode === 'packs' ? (
           <Input
-            label={`${inventoryItem.product.packUnit}s received (× ${inventoryItem.product.unitsPerPack} ${inventoryItem.product.unit} each)`}
+            label={t('inventory.packsReceivedLabel', { packUnit: inventoryItem.product.packUnit, unitsPerPack: inventoryItem.product.unitsPerPack, unit: inventoryItem.product.unit })}
             type="number" min="0" step="1"
             value={packsInput}
             onChange={(e) => handlePacksChange(e.target.value)}
           />
         ) : (
           <Input
-            label={`New Quantity (${inventoryItem.product.unit})`}
+            label={t('inventory.newQuantityLabel', { unit: inventoryItem.product.unit })}
             type="number"
             step="1"
             {...register('quantity')}
@@ -166,23 +168,23 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
 
         {!isNaN(difference) && difference !== 0 && (
           <div className={`flex items-center gap-2 px-3 py-2 rounded-lg text-sm ${difference > 0 ? 'bg-success/10 text-success' : 'bg-danger/10 text-danger'}`}>
-            {difference > 0 ? '+' : ''}{difference} {inventoryItem.product.unit} will be {difference > 0 ? 'added' : 'removed'}
+            {difference > 0 ? '+' : ''}{difference} {inventoryItem.product.unit} {t(difference > 0 ? 'inventory.willBeAdded' : 'inventory.willBeRemoved')}
           </div>
         )}
 
         {isNoChange && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 text-sm">
-            No change — enter a different quantity to record an adjustment.
+            {t('inventory.noChangeHint')}
           </div>
         )}
 
         {isIncrease && (
           <Input
-            label="Cost per unit for the added stock (optional)"
+            label={t('inventory.costPerUnitLabel')}
             type="number"
             min="0"
             step="0.01"
-            placeholder="e.g. what you paid per unit — used for inventory valuation"
+            placeholder={t('inventory.costPerUnitPlaceholder')}
             {...register('unitCost')}
             error={errors.unitCost?.message}
           />
@@ -191,21 +193,21 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
         {isLow && Number(newQty) >= 0 && (
           <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-warning/10 text-warning text-sm">
             <AlertTriangle size={14} />
-            This quantity is at or below the reorder level ({inventoryItem.reorderLevel} {inventoryItem.product.unit}).
+            {t('inventory.atOrBelowReorderLevel', { level: inventoryItem.reorderLevel, unit: inventoryItem.product.unit })}
           </div>
         )}
 
         <div>
-          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Reason Category</label>
+          <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{t('inventory.reasonCategoryLabel')}</label>
           <select value={reasonCategory} onChange={(e) => setReasonCategory(e.target.value)}
             className="w-full h-11 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100">
-            {REASON_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{c.label}</option>)}
+            {REASON_CATEGORIES.map((c) => <option key={c.value} value={c.value}>{t(c.labelKey)}</option>)}
           </select>
         </div>
 
         <Input
-          label="Reason *"
-          placeholder="e.g. Physical stock count, Damaged goods, Opening balance"
+          label={`${t('common.reason')} *`}
+          placeholder={t('inventory.reasonPlaceholder')}
           {...register('reason')}
           error={errors.reason?.message}
         />

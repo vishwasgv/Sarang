@@ -59,11 +59,11 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       } else {
         const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotLoad')
         setError(msg)
-        toastError('Error', msg)
+        toastError(t('common.error'), msg)
       }
     } catch {
       setError(t('documents.couldNotLoad'))
-      toastError('Error', t('documents.couldNotLoad'))
+      toastError(t('common.error'), t('documents.couldNotLoad'))
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       if (!picked.success) {
         const msg = (picked.error as { message?: string })?.message ?? t('documents.couldNotOpenPicker')
         setError(msg)
-        toastError('Error', msg)
+        toastError(t('common.error'), msg)
         return
       }
       if (!picked.data) return // user cancelled the file dialog — not an error
@@ -89,11 +89,11 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       } else {
         const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotAttach')
         setError(msg)
-        toastError('Error', msg)
+        toastError(t('common.error'), msg)
       }
     } catch {
       setError(t('documents.couldNotAttach'))
-      toastError('Error', t('documents.couldNotAttach'))
+      toastError(t('common.error'), t('documents.couldNotAttach'))
     } finally {
       setAttaching(false)
     }
@@ -110,11 +110,11 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       } else {
         const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotDelete')
         setError(msg)
-        toastError('Error', msg)
+        toastError(t('common.error'), msg)
       }
     } catch {
       setError(t('documents.couldNotDelete'))
-      toastError('Error', t('documents.couldNotDelete'))
+      toastError(t('common.error'), t('documents.couldNotDelete'))
     } finally {
       setDeletingId(null)
     }
@@ -126,11 +126,11 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       if (!res.success) {
         const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotOpen')
         setError(msg)
-        toastError('Error', msg)
+        toastError(t('common.error'), msg)
       }
     } catch {
       setError(t('documents.couldNotOpen'))
-      toastError('Error', t('documents.couldNotOpen'))
+      toastError(t('common.error'), t('documents.couldNotOpen'))
     }
   }
 

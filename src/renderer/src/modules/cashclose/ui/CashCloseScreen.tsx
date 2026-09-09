@@ -116,7 +116,7 @@ export function CashCloseScreen() {
 
   function handleSubmit() {
     const cash = parseFloat(actualCash)
-    if (isNaN(cash) || cash < 0) { toastError('Invalid Amount', 'Enter a valid cash amount.'); return }
+    if (isNaN(cash) || cash < 0) { toastError(t('cashClose.invalidAmountTitle'), t('cashClose.enterValidCashAmount')); return }
     // Resubmitting for a date that already has a recorded close overwrites
     // that day's actualCash/variance — confirm before silently replacing an
     // already-closed financial record.
@@ -132,14 +132,14 @@ export function CashCloseScreen() {
     try {
       const res = await window.api.cashClose.create({ date, actualCash: cash, notes: notes.trim() || undefined })
       if (res.success) {
-        toastSuccess('Cash Close Recorded', `Day close for ${date} saved successfully.`)
+        toastSuccess(t('cashClose.recordedTitle'), t('cashClose.recordedMessage', { date }))
         await loadSummary()
         await loadHistory()
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to record cash close.')
+        toastError(t('common.error'), res.error?.message ?? t('cashClose.recordFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to record cash close.')
+      toastError(t('common.error'), t('cashClose.recordFailed'))
     } finally {
       setSubmitting(false)
       setConfirmOverwrite(false)
@@ -325,7 +325,7 @@ export function CashCloseScreen() {
         onConfirm={() => doSubmit(parseFloat(actualCash) || 0)}
         loading={submitting}
         title={t('cashClose.updateClose')}
-        message={`A cash close for ${date} is already recorded. Recording again will overwrite the previous actual cash and variance for that day. Continue?`}
+        message={t('cashClose.overwriteConfirmMessage', { date })}
         confirmLabel={t('cashClose.updateClose')}
         confirmVariant="danger"
       />

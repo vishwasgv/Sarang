@@ -170,6 +170,7 @@ const SECTIONS: SettingsSection[] = [
 ]
 
 function TutorialSection() {
+  const { t } = useTranslation()
   const myBusinessType = useBusinessStore((s) => s.profile?.businessType)
   const { error: toastError } = useNotificationStore()
   const [restarting, setRestarting] = useState(false)
@@ -180,12 +181,12 @@ function TutorialSection() {
     try {
       const res = await api.tutorial.start({ businessType: myBusinessType ?? 'GENERAL' })
       if (res.success === false) {
-        toastError('Error', res.error?.message ?? 'Could not start the tutorial.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.tutorial.startFailed'))
         setRestarting(false)
       }
       // On success the app relaunches into the tutorial — nothing more to do here.
     } catch {
-      toastError('Error', 'Could not start the tutorial.')
+      toastError(t('common.error'), t('settings.tutorial.startFailed'))
       setRestarting(false)
     }
   }
@@ -515,6 +516,7 @@ interface BPProfile {
 }
 
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
+  const { t } = useTranslation()
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -593,15 +595,15 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         setForm(f => ({ ...f, logoPath: res.data as string }))
         setError(null)
       } else if (!res.success) {
-        setError(res.error?.message ?? 'Could not select logo.')
+        setError(res.error?.message ?? t('settings.profile.logoSelectFailed'))
       }
     } catch {
-      setError('Could not select logo.')
+      setError(t('settings.profile.logoSelectFailed'))
     }
   }
 
   async function save() {
-    if (!form.businessName.trim()) { setError('Business name is required.'); return }
+    if (!form.businessName.trim()) { setError(t('settings.profile.nameRequired')); return }
     setSaving(true); setError(null)
     try {
       const res = await window.api.businessProfile.update({
@@ -640,14 +642,14 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         const freshRes = await window.api.businessProfile.get()
         if (freshRes.success && freshRes.data) setProfile(freshRes.data as Parameters<typeof setProfile>[0])
         setEditing(false)
-        toastSuccess('Saved', 'Business profile updated.')
+        toastSuccess(t('common.saved'), t('settings.profile.updated'))
       } else {
-        setError(res.error?.message ?? 'Failed to save.')
-        toastError('Error', res.error?.message ?? 'Failed to save.')
+        setError(res.error?.message ?? t('settings.profile.saveFailed'))
+        toastError(t('common.error'), res.error?.message ?? t('settings.profile.saveFailed'))
       }
     } catch {
-      setError('Failed to save.')
-      toastError('Error', 'Failed to save.')
+      setError(t('settings.profile.saveFailed'))
+      toastError(t('common.error'), t('settings.profile.saveFailed'))
     } finally { setSaving(false) }
   }
 
@@ -937,6 +939,7 @@ interface TaxConfig {
 const TAX_TYPES = ['GST', 'VAT', 'SALES_TAX', 'CUSTOM', 'NONE'] as const
 
 function TaxConfigurationSection() {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [taxes, setTaxes] = useState<TaxConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -952,9 +955,9 @@ function TaxConfigurationSection() {
     try {
       const res = await window.api.tax.list()
       if (res.success) setTaxes(res.data as TaxConfig[])
-      else toastError('Error', res.error?.message ?? 'Failed to load tax rates.')
+      else toastError(t('common.error'), res.error?.message ?? t('settings.tax.loadFailed'))
     } catch {
-      toastError('Error', 'Failed to load tax rates.')
+      toastError(t('common.error'), t('settings.tax.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -977,7 +980,7 @@ function TaxConfigurationSection() {
   async function handleSave() {
     const rate = parseFloat(form.rate)
     if (!form.taxName.trim() || isNaN(rate) || rate < 0 || rate > 100) {
-      toastError('Validation Error', 'Please enter a valid name and rate (0–100).')
+      toastError(t('settings.tax.validationTitle'), t('settings.tax.validationMessage'))
       return
     }
     setSaving(true)
@@ -987,14 +990,14 @@ function TaxConfigurationSection() {
         ? await window.api.tax.update({ id: editId, ...payload })
         : await window.api.tax.create(payload)
       if (res.success) {
-        toastSuccess(editId ? 'Tax Updated' : 'Tax Created', `"${form.taxName.trim()}" has been saved.`)
+        toastSuccess(editId ? t('settings.tax.updatedTitle') : t('settings.tax.createdTitle'), t('settings.tax.savedDesc', { name: form.taxName.trim() }))
         resetForm()
         loadTaxes()
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to save.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.tax.saveFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to save.')
+      toastError(t('common.error'), t('settings.tax.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -1006,14 +1009,14 @@ function TaxConfigurationSection() {
     try {
       const res = await window.api.tax.delete(deleteTarget.id)
       if (res.success) {
-        toastSuccess('Tax Deleted', `"${deleteTarget.taxName}" has been removed.`)
+        toastSuccess(t('settings.tax.deletedTitle'), t('settings.tax.deletedDesc', { name: deleteTarget.taxName }))
         setDeleteTarget(null)
         loadTaxes()
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to delete.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.tax.deleteFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to delete.')
+      toastError(t('common.error'), t('settings.tax.deleteFailed'))
     } finally {
       setDeleting(false)
     }
@@ -1115,9 +1118,9 @@ function TaxConfigurationSection() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         loading={deleting}
-        title="Delete Tax Rate"
-        message={`Delete "${deleteTarget?.taxName}"? This will deactivate the rate. Existing invoices are not affected.`}
-        confirmLabel="Delete"
+        title={t('settings.tax.deleteConfirmTitle')}
+        message={t('settings.tax.deleteConfirmMessage', { name: deleteTarget?.taxName })}
+        confirmLabel={t('common.delete')}
         confirmVariant="danger"
       />
     </div>
@@ -1132,6 +1135,7 @@ interface Role { id: string; roleName: string }
 const EMPTY_USER_FORM = { fullName: '', username: '', password: '', roleId: '', email: '', phone: '' }
 
 function UsersManagementSection() {
+  const { t } = useTranslation()
   const [users, setUsers] = useState<User[]>([])
   const [roles, setRoles] = useState<Role[]>([])
   const [loading, setLoading] = useState(true)
@@ -1159,10 +1163,10 @@ function UsersManagementSection() {
       if (uRes.success) setUsers(uRes.data as User[])
       if (rRes.success) setRoles((rRes.data as Role[]))
       if (!uRes.success || !rRes.success) {
-        toastError('Error', (uRes.error ?? rRes.error)?.message ?? 'Failed to load users.')
+        toastError(t('common.error'), (uRes.error ?? rRes.error)?.message ?? t('settings.usersMgmt.loadFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to load users.')
+      toastError(t('common.error'), t('settings.usersMgmt.loadFailed'))
     } finally { setLoading(false) }
   }, [toastError])
 
@@ -1185,19 +1189,19 @@ function UsersManagementSection() {
   }
 
   const save = async () => {
-    if (!form.fullName.trim()) { setError('Full name is required.'); return }
-    if (!editUser && !form.username.trim()) { setError('Username is required.'); return }
-    if (!editUser && form.password.length < 6) { setError('Password must be at least 6 characters.'); return }
-    if (!form.roleId) { setError('Please select a role.'); return }
+    if (!form.fullName.trim()) { setError(t('settings.usersMgmt.fullNameRequired')); return }
+    if (!editUser && !form.username.trim()) { setError(t('settings.usersMgmt.usernameRequired')); return }
+    if (!editUser && form.password.length < 6) { setError(t('settings.usersMgmt.passwordMinLength')); return }
+    if (!form.roleId) { setError(t('settings.usersMgmt.roleRequired')); return }
     setSaving(true); setError(null)
     try {
       const res = editUser
         ? await window.api.users.update({ id: editUser.id, fullName: form.fullName.trim(), roleId: form.roleId, email: form.email || undefined, phone: form.phone || undefined })
         : await window.api.users.create({ fullName: form.fullName.trim(), username: form.username.trim(), password: form.password, roleId: form.roleId, email: form.email || undefined, phone: form.phone || undefined })
       if (res.success) { setShowModal(false); loadData() }
-      else setError(res.error?.message ?? 'Failed to save user.')
+      else setError(res.error?.message ?? t('settings.usersMgmt.saveFailed'))
     } catch {
-      setError('Failed to save user.')
+      setError(t('settings.usersMgmt.saveFailed'))
     } finally { setSaving(false) }
   }
 
@@ -1206,9 +1210,9 @@ function UsersManagementSection() {
     try {
       const res = await window.api.users.deactivate({ userId: u.id })
       if (res.success) { setDeactivateTarget(null); loadData() }
-      else toastError('Error', res.error?.message ?? 'Failed to deactivate user.')
+      else toastError(t('common.error'), res.error?.message ?? t('settings.usersMgmt.deactivateFailed'))
     } catch {
-      toastError('Error', 'Failed to deactivate user.')
+      toastError(t('common.error'), t('settings.usersMgmt.deactivateFailed'))
     } finally {
       setDeactivating(false)
     }
@@ -1220,14 +1224,14 @@ function UsersManagementSection() {
 
   const doResetPassword = async () => {
     if (!resetTarget) return
-    if (resetPwd.length < 6) { setResetError('Password must be at least 6 characters.'); return }
+    if (resetPwd.length < 6) { setResetError(t('settings.usersMgmt.passwordMinLength')); return }
     setResetSaving(true); setResetError(null)
     try {
       const res = await window.api.users.adminResetPassword({ userId: resetTarget.id, newPassword: resetPwd })
       if (res.success) { setResetTarget(null) }
-      else { setResetError(res.error?.message ?? 'Failed to reset password.') }
+      else { setResetError(res.error?.message ?? t('settings.usersMgmt.resetPasswordFailed')) }
     } catch {
-      setResetError('Failed to reset password.')
+      setResetError(t('settings.usersMgmt.resetPasswordFailed'))
     } finally {
       setResetSaving(false)
     }
@@ -1380,9 +1384,9 @@ function UsersManagementSection() {
         onClose={() => setDeactivateTarget(null)}
         onConfirm={() => deactivateTarget && deactivate(deactivateTarget)}
         loading={deactivating}
-        title="Deactivate User"
-        message={deactivateTarget ? `Deactivate "${deactivateTarget.fullName}"? They will no longer be able to log in.` : ''}
-        confirmLabel="Deactivate"
+        title={t('settings.usersMgmt.deactivateConfirmTitle')}
+        message={deactivateTarget ? t('settings.usersMgmt.deactivateConfirmMessage', { name: deactivateTarget.fullName }) : ''}
+        confirmLabel={t('settings.usersMgmt.deactivateAction')}
       />
     </div>
   )
@@ -1445,6 +1449,7 @@ function DiskEncryptionNotice() {
 }
 
 function SecuritySection() {
+  const { t } = useTranslation()
   const [oldPwd, setOldPwd] = useState('')
   const [newPwd, setNewPwd] = useState('')
   const [confirmPwd, setConfirmPwd] = useState('')
@@ -1462,10 +1467,10 @@ function SecuritySection() {
 
   async function handleChangePassword() {
     setError(null); setSuccess(false)
-    if (!oldPwd) { setError('Current password is required.'); return }
-    if (newPwd.length < minLen) { setError(`New password must be at least ${minLen} characters.`); return }
-    if (newPwd !== confirmPwd) { setError('New passwords do not match.'); return }
-    if (!currentUser?.id) { setError('Session error. Please log in again.'); return }
+    if (!oldPwd) { setError(t('settings.security.currentPasswordRequired')); return }
+    if (newPwd.length < minLen) { setError(t('settings.security.newPasswordMinLength', { minLen })); return }
+    if (newPwd !== confirmPwd) { setError(t('settings.security.passwordsDontMatch')); return }
+    if (!currentUser?.id) { setError(t('settings.security.sessionError')); return }
     setSaving(true)
     try {
       const res = await window.api.auth.changePassword({ userId: currentUser.id, oldPassword: oldPwd, newPassword: newPwd })
@@ -1473,10 +1478,10 @@ function SecuritySection() {
         setOldPwd(''); setNewPwd(''); setConfirmPwd('')
         setSuccess(true)
       } else {
-        setError(res.error?.message ?? 'Failed to change password.')
+        setError(res.error?.message ?? t('settings.security.changePasswordFailed'))
       }
     } catch {
-      setError('Failed to change password.')
+      setError(t('settings.security.changePasswordFailed'))
     } finally {
       setSaving(false)
     }
@@ -1540,6 +1545,7 @@ function SecuritySection() {
 // the current password before rotating, since this replaces the one secret
 // that can reset any account's password.
 function RecoveryCodeCard() {
+  const { t } = useTranslation()
   const [currentPwd, setCurrentPwd] = useState('')
   const [showPwd, setShowPwd] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -1549,7 +1555,7 @@ function RecoveryCodeCard() {
 
   async function handleRegenerate() {
     setError(null)
-    if (!currentPwd) { setError('Enter your current password to continue.'); return }
+    if (!currentPwd) { setError(t('settings.recovery.currentPasswordRequired')); return }
     setSaving(true)
     try {
       const res = await window.api.auth.regenerateRecoveryCode({ currentPassword: currentPwd })
@@ -1557,10 +1563,10 @@ function RecoveryCodeCard() {
         setNewCode((res.data as { recoveryCode: string }).recoveryCode)
         setCurrentPwd('')
       } else {
-        setError(res.error?.message ?? 'Failed to generate a new recovery code.')
+        setError(res.error?.message ?? t('settings.recovery.generateFailed'))
       }
     } catch {
-      setError('Failed to generate a new recovery code.')
+      setError(t('settings.recovery.generateFailed'))
     } finally {
       setSaving(false)
     }
@@ -1619,6 +1625,7 @@ function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
   minLen: number; expiryDays: number; historyCount: number
   onSaved: (values: { password_min_length: string; password_expiry_days: string; password_history_count: string }) => void
 }) {
+  const { t } = useTranslation()
   const [value, setValue] = useState(String(minLen))
   const [expiryValue, setExpiryValue] = useState(String(expiryDays))
   const [historyValue, setHistoryValue] = useState(String(historyCount))
@@ -1630,17 +1637,17 @@ function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
     setError(null); setSuccess(false)
     const parsed = parseInt(value, 10)
     if (!Number.isFinite(parsed) || parsed < 4 || parsed > 64) {
-      setError('Minimum length must be a number between 4 and 64.')
+      setError(t('settings.passwordPolicy.minLenInvalid'))
       return
     }
     const parsedExpiry = parseInt(expiryValue, 10)
     if (!Number.isFinite(parsedExpiry) || parsedExpiry < 0 || parsedExpiry > 3650) {
-      setError('Password expiry must be 0 (never) or a number of days up to 3650.')
+      setError(t('settings.passwordPolicy.expiryInvalid'))
       return
     }
     const parsedHistory = parseInt(historyValue, 10)
     if (!Number.isFinite(parsedHistory) || parsedHistory < 0 || parsedHistory > 24) {
-      setError('Password history must be 0 (off) or a number between 1 and 24.')
+      setError(t('settings.passwordPolicy.historyInvalid'))
       return
     }
     setSaving(true)
@@ -1655,10 +1662,10 @@ function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
         setSuccess(true)
         onSaved({ password_min_length: String(parsed), password_expiry_days: String(parsedExpiry), password_history_count: String(parsedHistory) })
       } else {
-        setError(failed.error?.message ?? 'Failed to save.')
+        setError(failed.error?.message ?? t('settings.passwordPolicy.saveFailed'))
       }
     } catch {
-      setError('Failed to save.')
+      setError(t('settings.passwordPolicy.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -1710,6 +1717,7 @@ const NUMBER_FORMATS = [
 ]
 
 function CurrencyLocaleSection() {
+  const { t } = useTranslation()
   const { profile, getSetting } = useBusinessStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [currencyCode, setCurrencyCode] = useState(profile?.currencyCode ?? 'INR')
@@ -1727,10 +1735,10 @@ function CurrencyLocaleSection() {
         api.settings.set({ key: 'number_format', value: numberFormat }),
         api.settings.set({ key: 'decimal_places', value: decimalPlaces })
       ])
-      if (profileRes.success && fmtRes.success && decRes.success) toastSuccess('Currency & locale settings saved')
-      else toastError('Failed to save settings')
+      if (profileRes.success && fmtRes.success && decRes.success) toastSuccess(t('settings.currencyLocale.saved'))
+      else toastError(t('settings.currencyLocale.saveFailed'))
     } catch {
-      toastError('Failed to save settings')
+      toastError(t('settings.currencyLocale.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -1889,6 +1897,7 @@ function LanguageSection() {
 }
 
 function AppearanceSection() {
+  const { t } = useTranslation()
   const { isDark, toggleTheme } = useThemeStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const getSetting = useBusinessStore(s => s.getSetting)
@@ -1907,14 +1916,14 @@ function AppearanceSection() {
     try {
       const res = await window.api.settings.set({ key: 'print_type', value })
       if (res.success) {
-        toastSuccess('Print type saved')
+        toastSuccess(t('settings.print.typeSaved'))
       } else {
         setPrintType(previous)
-        toastError('Error', res.error?.message ?? 'Failed to save print type.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.print.typeSaveFailed'))
       }
     } catch {
       setPrintType(previous)
-      toastError('Error', 'Failed to save print type.')
+      toastError(t('common.error'), t('settings.print.typeSaveFailed'))
     }
   }
 
@@ -1964,10 +1973,10 @@ function AppearanceSection() {
     setKdBusy(true)
     try {
       const res = await window.api.kitchenDisplay.open(displayId !== undefined ? { displayId } : undefined)
-      if (res.success) toastSuccess('Kitchen Display opened')
-      else toastError('Error', res.error?.message ?? 'Could not open Kitchen Display.')
+      if (res.success) toastSuccess(t('settings.print.kitchenDisplayOpened'))
+      else toastError(t('common.error'), res.error?.message ?? t('settings.print.kitchenDisplayOpenFailed'))
     } catch {
-      toastError('Error', 'Could not open Kitchen Display.')
+      toastError(t('common.error'), t('settings.print.kitchenDisplayOpenFailed'))
     } finally {
       setKdBusy(false)
       refreshKitchenDisplayWindowState()
@@ -1978,9 +1987,9 @@ function AppearanceSection() {
     setKdBusy(true)
     try {
       const res = await window.api.kitchenDisplay.close()
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not close Kitchen Display.')
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('settings.print.kitchenDisplayCloseFailed'))
     } catch {
-      toastError('Error', 'Could not close Kitchen Display.')
+      toastError(t('common.error'), t('settings.print.kitchenDisplayCloseFailed'))
     } finally {
       setKdBusy(false)
       refreshKitchenDisplayWindowState()
@@ -1995,14 +2004,14 @@ function AppearanceSection() {
     try {
       const res = await window.api.settings.set({ key: 'kot_printer_name', value })
       if (res.success) {
-        toastSuccess('Kitchen printer saved')
+        toastSuccess(t('settings.print.kitchenPrinterSaved'))
       } else {
         setKotPrinter(previous)
-        toastError('Error', res.error?.message ?? 'Failed to save kitchen printer.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.print.kitchenPrinterSaveFailed'))
       }
     } catch {
       setKotPrinter(previous)
-      toastError('Error', 'Failed to save kitchen printer.')
+      toastError(t('common.error'), t('settings.print.kitchenPrinterSaveFailed'))
     }
   }
 
@@ -2134,6 +2143,7 @@ function AppearanceSection() {
 // port 8421 — separate from the customer-ordering server on 8420, no shared
 // routes or secrets between the two).
 function KitchenDisplayWebSection() {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const kdWebEnabled = enabledModules.includes('kitchen_display_web')
@@ -2162,12 +2172,12 @@ function KitchenDisplayWebSection() {
     try {
       const next = on ? [...enabledModules, 'kitchen_display_web'] : enabledModules.filter(m => m !== 'kitchen_display_web')
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update Kitchen Display setting.')
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('settings.kitchenDisplayWeb.updateFailed'))
       await loadStatus()
       setQr(null)
       setShowQr(false)
     } catch {
-      toastError('Error', 'Could not update Kitchen Display setting.')
+      toastError(t('common.error'), t('settings.kitchenDisplayWeb.updateFailed'))
     } finally {
       setToggling(false)
     }
@@ -2179,9 +2189,9 @@ function KitchenDisplayWebSection() {
     try {
       const res = await window.api.restaurant.generateKitchenDisplayQr()
       if (res.success && res.data) setQr(res.data)
-      else toastError('Error', res.error?.message ?? 'Could not generate QR code.')
+      else toastError(t('common.error'), res.error?.message ?? t('settings.kitchenDisplayWeb.qrGenerateFailed'))
     } catch {
-      toastError('Error', 'Could not generate QR code.')
+      toastError(t('common.error'), t('settings.kitchenDisplayWeb.qrGenerateFailed'))
     } finally {
       setQrLoading(false)
     }
@@ -2192,15 +2202,15 @@ function KitchenDisplayWebSection() {
     try {
       const res = await window.api.restaurant.regenerateKitchenDisplayToken()
       if (res.success) {
-        toastSuccess('Access code regenerated', 'Old Kitchen Display links/QR codes no longer work.')
+        toastSuccess(t('settings.kitchenDisplayWeb.accessCodeRegeneratedTitle'), t('settings.kitchenDisplayWeb.accessCodeRegeneratedDesc'))
         setQr(null)
         await loadStatus()
         if (showQr) await loadQr()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not regenerate access code.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.kitchenDisplayWeb.regenerateFailed'))
       }
     } catch {
-      toastError('Error', 'Could not regenerate access code.')
+      toastError(t('common.error'), t('settings.kitchenDisplayWeb.regenerateFailed'))
     } finally {
       setRegenerating(false)
       setConfirmRegenerate(false)
@@ -2254,9 +2264,9 @@ function KitchenDisplayWebSection() {
         onClose={() => setConfirmRegenerate(false)}
         onConfirm={regenerate}
         loading={regenerating}
-        title="Regenerate access code?"
-        message="Every phone/laptop currently using the Kitchen Display link or QR code will stop working immediately. You'll need to re-share the new one."
-        confirmLabel="Regenerate"
+        title={t('settings.kitchenDisplayWeb.regenerateConfirmTitle')}
+        message={t('settings.kitchenDisplayWeb.regenerateConfirmMessage')}
+        confirmLabel={t('settings.kitchenDisplayWeb.regenerateAction')}
       />
     </Card>
   )
@@ -2269,6 +2279,7 @@ function KitchenDisplayWebSection() {
 // (field-order-server.ts, port 8422 — separate from qr-order-server.ts's
 // 8420 and kitchen-display-server.ts's 8421).
 function FieldOrderCaptureSection() {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const focEnabled = enabledModules.includes('field_order_capture')
@@ -2296,12 +2307,12 @@ function FieldOrderCaptureSection() {
     try {
       const next = on ? [...enabledModules, 'field_order_capture'] : enabledModules.filter(m => m !== 'field_order_capture')
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (!res.success) toastError('Error', res.error?.message ?? 'Could not update Field Order Capture setting.')
+      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('settings.fieldOrderCapture.updateFailed'))
       await loadStatus()
       setQr(null)
       setShowQr(false)
     } catch {
-      toastError('Error', 'Could not update Field Order Capture setting.')
+      toastError(t('common.error'), t('settings.fieldOrderCapture.updateFailed'))
     } finally {
       setToggling(false)
     }
@@ -2313,9 +2324,9 @@ function FieldOrderCaptureSection() {
     try {
       const res = await window.api.distributor.generateFieldOrderQr()
       if (res.success && res.data) setQr(res.data)
-      else toastError('Error', res.error?.message ?? 'Could not generate QR code.')
+      else toastError(t('common.error'), res.error?.message ?? t('settings.fieldOrderCapture.qrGenerateFailed'))
     } catch {
-      toastError('Error', 'Could not generate QR code.')
+      toastError(t('common.error'), t('settings.fieldOrderCapture.qrGenerateFailed'))
     } finally {
       setQrLoading(false)
     }
@@ -2326,15 +2337,15 @@ function FieldOrderCaptureSection() {
     try {
       const res = await window.api.distributor.regenerateFieldOrderToken()
       if (res.success) {
-        toastSuccess('Access code regenerated', 'Old field order links/QR codes no longer work.')
+        toastSuccess(t('settings.fieldOrderCapture.accessCodeRegeneratedTitle'), t('settings.fieldOrderCapture.accessCodeRegeneratedDesc'))
         setQr(null)
         await loadStatus()
         if (showQr) await loadQr()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not regenerate access code.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.fieldOrderCapture.regenerateFailed'))
       }
     } catch {
-      toastError('Error', 'Could not regenerate access code.')
+      toastError(t('common.error'), t('settings.fieldOrderCapture.regenerateFailed'))
     } finally {
       setRegenerating(false)
       setConfirmRegenerate(false)
@@ -2388,9 +2399,9 @@ function FieldOrderCaptureSection() {
         onClose={() => setConfirmRegenerate(false)}
         onConfirm={regenerate}
         loading={regenerating}
-        title="Regenerate access code?"
-        message="Every phone/laptop currently using the field order link or QR code will stop working immediately. You'll need to re-share the new one."
-        confirmLabel="Regenerate"
+        title={t('settings.fieldOrderCapture.regenerateConfirmTitle')}
+        message={t('settings.fieldOrderCapture.regenerateConfirmMessage')}
+        confirmLabel={t('settings.fieldOrderCapture.regenerateAction')}
       />
     </Card>
   )
@@ -2412,6 +2423,7 @@ function FieldOrderCaptureSection() {
 // Pricing/Outstanding Analytics are purely additive UI, unused unless a
 // product or workflow actually needs them.
 function BusinessFeaturesSection() {
+  const { t } = useTranslation()
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [saving, setSaving] = useState<string | null>(null)
@@ -2446,10 +2458,10 @@ function BusinessFeaturesSection() {
     try {
       const next = on ? [...enabledModules, key as never] : enabledModules.filter(m => m !== key)
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (res.success) toastSuccess(on ? 'Enabled' : 'Disabled', on ? 'Feature turned on.' : 'Feature turned off. Existing data is unaffected.')
-      else toastError('Error', res.error?.message ?? 'Could not update.')
+      if (res.success) toastSuccess(on ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), on ? t('settings.features.turnedOn') : t('settings.features.turnedOff'))
+      else toastError(t('common.error'), res.error?.message ?? t('settings.features.updateFailed'))
     } catch {
-      toastError('Error', 'Could not update.')
+      toastError(t('common.error'), t('settings.features.updateFailed'))
     } finally {
       setSaving(null)
     }
@@ -2462,10 +2474,10 @@ function BusinessFeaturesSection() {
         ? [...enabledModules, ...LOGISTICS_BUNDLE.filter(k => !enabledModules.includes(k as never))] as never[]
         : enabledModules.filter(m => !(LOGISTICS_BUNDLE as readonly string[]).includes(m))
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (res.success) toastSuccess(on ? 'Enabled' : 'Disabled', on ? 'Logistics & Supply Chain turned on.' : 'Logistics & Supply Chain turned off. Existing data is unaffected.')
-      else toastError('Error', res.error?.message ?? 'Could not update.')
+      if (res.success) toastSuccess(on ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), on ? t('settings.features.logisticsTurnedOn') : t('settings.features.logisticsTurnedOff'))
+      else toastError(t('common.error'), res.error?.message ?? t('settings.features.updateFailed'))
     } catch {
-      toastError('Error', 'Could not update.')
+      toastError(t('common.error'), t('settings.features.updateFailed'))
     } finally {
       setSaving(null)
     }
@@ -2550,6 +2562,7 @@ interface InvoiceTemplateRow {
 // over print.service.ts's single shared HTML skeleton (accent color/footer
 // text/density only) — see invoice-template.service.ts's own comment.
 function InvoiceTemplatesSection() {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
   const canManage = hasPermission('invoiceTemplates.manage')
@@ -2579,14 +2592,14 @@ function InvoiceTemplatesSection() {
         window.api.businessProfile.get()
       ])
       if (tRes.success) setTemplates((tRes.data as InvoiceTemplateRow[]) ?? [])
-      else toastError('Error', tRes.error?.message ?? 'Could not load invoice templates.')
+      else toastError(t('common.error'), tRes.error?.message ?? t('settings.invoiceTemplates.loadFailed'))
       if (pRes.success) setBusinessDefaultId((pRes.data as { defaultInvoiceTemplateId: string | null }).defaultInvoiceTemplateId ?? null)
     } catch {
-      toastError('Error', 'Could not load invoice templates.')
+      toastError(t('common.error'), t('settings.invoiceTemplates.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { load() }, [load])
 
@@ -2615,7 +2628,7 @@ function InvoiceTemplatesSection() {
   }
 
   async function handleSave() {
-    if (!formName.trim()) { toastError('Missing Name', 'Enter a template name.'); return }
+    if (!formName.trim()) { toastError(t('settings.invoiceTemplates.nameRequiredTitle'), t('settings.invoiceTemplates.nameRequiredMessage')); return }
     setSaving(true)
     try {
       const config = {
@@ -2626,14 +2639,14 @@ function InvoiceTemplatesSection() {
         ? await window.api.invoiceTemplates.update({ id: editTarget.id, name: formName.trim(), config })
         : await window.api.invoiceTemplates.create({ name: formName.trim(), config })
       if (res.success) {
-        toastSuccess(editTarget ? 'Template Updated' : 'Template Created', formName.trim())
+        toastSuccess(editTarget ? t('settings.invoiceTemplates.updatedTitle') : t('settings.invoiceTemplates.createdTitle'), formName.trim())
         setShowForm(false)
         load()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not save template.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.invoiceTemplates.saveFailed'))
       }
     } catch {
-      toastError('Error', 'Could not save template.')
+      toastError(t('common.error'), t('settings.invoiceTemplates.saveFailed'))
     } finally {
       setSaving(false)
     }
@@ -2645,12 +2658,12 @@ function InvoiceTemplatesSection() {
       const res = await window.api.invoiceTemplates.setBusinessDefault({ id: tpl.id })
       if (res.success) {
         setBusinessDefaultId(tpl.id)
-        toastSuccess('Default Template Set', tpl.name)
+        toastSuccess(t('settings.invoiceTemplates.defaultSetTitle'), tpl.name)
       } else {
-        toastError('Error', res.error?.message ?? 'Could not set default template.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.invoiceTemplates.setDefaultFailed'))
       }
     } catch {
-      toastError('Error', 'Could not set default template.')
+      toastError(t('common.error'), t('settings.invoiceTemplates.setDefaultFailed'))
     } finally {
       setSettingDefaultId(null)
     }
@@ -2660,10 +2673,10 @@ function InvoiceTemplatesSection() {
     if (!deleteTarget) return
     try {
       const res = await window.api.invoiceTemplates.delete(deleteTarget.id)
-      if (res.success) { toastSuccess('Template Deleted', deleteTarget.name); load() }
-      else toastError('Error', res.error?.message ?? 'Could not delete template.')
+      if (res.success) { toastSuccess(t('settings.invoiceTemplates.deletedTitle'), deleteTarget.name); load() }
+      else toastError(t('common.error'), res.error?.message ?? t('settings.invoiceTemplates.deleteFailed'))
     } catch {
-      toastError('Error', 'Could not delete template.')
+      toastError(t('common.error'), t('settings.invoiceTemplates.deleteFailed'))
     } finally {
       setDeleteTarget(null)
     }
@@ -2784,15 +2797,16 @@ function InvoiceTemplatesSection() {
         open={!!deleteTarget}
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
-        title="Delete Template"
-        message={`Delete "${deleteTarget?.name}"? Invoices already printed with it are unaffected.`}
-        confirmLabel="Delete"
+        title={t('settings.invoiceTemplates.deleteConfirmTitle')}
+        message={t('settings.invoiceTemplates.deleteConfirmMessage', { name: deleteTarget?.name })}
+        confirmLabel={t('common.delete')}
       />
     </div>
   )
 }
 
 function BarcodeSection() {
+  const { t } = useTranslation()
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const getSetting = useBusinessStore(s => s.getSetting)
@@ -2826,10 +2840,10 @@ function BarcodeSection() {
     try {
       const next = on ? [...enabledModules, key as never] : enabledModules.filter(m => m !== key)
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (res.success) toastSuccess(on ? 'Enabled' : 'Disabled', on ? 'Feature turned on.' : 'Feature turned off. Your existing barcodes and loose-billed products are unaffected.')
-      else toastError('Error', res.error?.message ?? 'Could not update.')
+      if (res.success) toastSuccess(on ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), on ? t('settings.features.turnedOn') : t('settings.barcode.featureTurnedOff'))
+      else toastError(t('common.error'), res.error?.message ?? t('settings.features.updateFailed'))
     } catch {
-      toastError('Error', 'Could not update.')
+      toastError(t('common.error'), t('settings.features.updateFailed'))
     } finally {
       setSaving(null)
     }
@@ -2842,12 +2856,12 @@ function BarcodeSection() {
         window.api.settings.set({ key: 'label_height_mm', value: labelHeight })
       ])
       if (widthRes.success && heightRes.success) {
-        toastSuccess('Label size saved')
+        toastSuccess(t('settings.barcode.labelSizeSaved'))
       } else {
-        toastError('Error', (widthRes.error ?? heightRes.error)?.message ?? 'Failed to save label size.')
+        toastError(t('common.error'), (widthRes.error ?? heightRes.error)?.message ?? t('settings.barcode.labelSizeSaveFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to save label size.')
+      toastError(t('common.error'), t('settings.barcode.labelSizeSaveFailed'))
     }
   }
 
@@ -2857,14 +2871,14 @@ function BarcodeSection() {
     try {
       const res = await window.api.settings.set({ key: 'label_printer_name', value })
       if (res.success) {
-        toastSuccess('Label printer saved')
+        toastSuccess(t('settings.barcode.labelPrinterSaved'))
       } else {
         setLabelPrinter(previous)
-        toastError('Error', res.error?.message ?? 'Failed to save label printer.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.barcode.labelPrinterSaveFailed'))
       }
     } catch {
       setLabelPrinter(previous)
-      toastError('Error', 'Failed to save label printer.')
+      toastError(t('common.error'), t('settings.barcode.labelPrinterSaveFailed'))
     }
   }
 
@@ -2875,13 +2889,13 @@ function BarcodeSection() {
       const res = await window.api.products.bulkGenerateMissingBarcodes()
       if (res.success) {
         const { generated, totalMissing } = res.data as { generated: number; totalMissing: number }
-        setBackfillResult(`Generated ${generated} of ${totalMissing} missing barcodes.`)
-        toastSuccess('Barcodes Generated', `${generated} product${generated === 1 ? '' : 's'} updated.`)
+        setBackfillResult(t('settings.barcode.backfillResult', { generated, totalMissing }))
+        toastSuccess(t('settings.barcode.barcodesGeneratedTitle'), t('settings.barcode.barcodesGeneratedDesc', { count: generated }))
       } else {
-        toastError('Error', res.error?.message ?? 'Could not generate barcodes.')
+        toastError(t('common.error'), res.error?.message ?? t('settings.barcode.generateFailed'))
       }
     } catch {
-      toastError('Error', 'Could not generate barcodes.')
+      toastError(t('common.error'), t('settings.barcode.generateFailed'))
     } finally {
       setBackfilling(false)
     }
@@ -2983,6 +2997,7 @@ function BarcodeSection() {
 // Deliberately never names the underlying model/runtime here or anywhere
 // else user-facing — "Sarang AI Assistant" only.
 function AiAssistantSection() {
+  const { t } = useTranslation()
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [saving, setSaving] = useState(false)
@@ -2996,10 +3011,10 @@ function AiAssistantSection() {
     try {
       const updated = next ? [...enabledModules, 'ai_assistant' as never] : enabledModules.filter((m) => m !== 'ai_assistant')
       const res = await updateEnabledModules(updated as typeof enabledModules)
-      if (res.success) toastSuccess(next ? 'Enabled' : 'Disabled', next ? 'AI Assistant is now available from the sidebar.' : 'AI Assistant turned off.')
-      else toastError('Error', res.error?.message ?? 'Could not update.')
+      if (res.success) toastSuccess(next ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), next ? t('settings.aiAssistant.enabledDesc') : t('settings.aiAssistant.disabledDesc'))
+      else toastError(t('common.error'), res.error?.message ?? t('settings.aiAssistant.updateFailed'))
     } catch {
-      toastError('Error', 'Could not update.')
+      toastError(t('common.error'), t('settings.aiAssistant.updateFailed'))
     } finally {
       setSaving(false)
     }
@@ -3009,10 +3024,10 @@ function AiAssistantSection() {
     setClearing(true)
     try {
       const res = await window.api.ai.clearHistory()
-      if (res.success) toastSuccess('Cleared', 'AI question history has been cleared.')
-      else toastError('Error', res.error?.message ?? 'Could not clear history.')
+      if (res.success) toastSuccess(t('settings.aiAssistant.clearedTitle'), t('settings.aiAssistant.clearedDesc'))
+      else toastError(t('common.error'), res.error?.message ?? t('settings.aiAssistant.clearFailed'))
     } catch {
-      toastError('Error', 'Could not clear history.')
+      toastError(t('common.error'), t('settings.aiAssistant.clearFailed'))
     } finally {
       setClearing(false)
       setShowClearConfirm(false)
@@ -3062,9 +3077,9 @@ function AiAssistantSection() {
         onClose={() => setShowClearConfirm(false)}
         onConfirm={clearHistory}
         loading={clearing}
-        title="Clear AI Question History"
-        message="This permanently deletes the local record of every question asked. This cannot be undone."
-        confirmLabel="Clear History"
+        title={t('settings.aiAssistant.clearConfirmTitle')}
+        message={t('settings.aiAssistant.clearConfirmMessage')}
+        confirmLabel={t('settings.aiAssistant.clearConfirmAction')}
       />
     </div>
   )

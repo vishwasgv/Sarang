@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
+import { useTranslation } from 'react-i18next'
 import { CreditCard, Search, RefreshCw, RotateCcw } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { SkeletonTable } from '@shared/ui/Skeleton'
@@ -34,6 +35,7 @@ const METHOD_VARIANT: Record<string, 'success' | 'brand' | 'info' | 'warning' | 
 const METHOD_TABS = ['ALL', 'CASH', 'UPI', 'CARD', 'WALLET']
 
 export function PaymentHistoryScreen() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
@@ -70,16 +72,16 @@ export function PaymentHistoryScreen() {
         setPayments(d.payments)
         setTotal(d.total)
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not load payments.')
+        toastError(t('billing.paymentHistory.loadFailedTitle'), res.error?.message ?? t('billing.paymentHistory.loadFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not load payments.')
+      toastError(t('billing.paymentHistory.loadFailedTitle'), t('billing.paymentHistory.loadFailedMessage'))
     } finally { setLoading(false) }
-  }, [search, methodFilter, dateFrom, dateTo, page, toastError])
+  }, [search, methodFilter, dateFrom, dateTo, page, toastError, t])
 
   useEffect(() => {
-    const t = setTimeout(fetchPayments, 200)
-    return () => clearTimeout(t)
+    const timer = setTimeout(fetchPayments, 200)
+    return () => clearTimeout(timer)
   }, [fetchPayments])
 
   function handleMethodFilterChange(m: string) {
@@ -90,19 +92,19 @@ export function PaymentHistoryScreen() {
   }
 
   async function handleReverse() {
-    if (!reversingId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reason for reversal.'); return }
+    if (!reversingId || !reverseReason.trim()) { toastError(t('billing.paymentHistory.reasonRequiredTitle'), t('billing.paymentHistory.reasonRequiredMessage')); return }
     setReversing(true)
     try {
       const res = await window.api.payments.reverse({ paymentId: reversingId, reason: reverseReason.trim() })
       if (res.success) {
-        toastSuccess('Reversed', 'Payment has been reversed.')
+        toastSuccess(t('billing.paymentHistory.reversedTitle'), t('billing.paymentHistory.reversedMessage'))
         setReversingId(null); setReverseReason('')
         fetchPayments()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not reverse payment.')
+        toastError(t('billing.paymentHistory.loadFailedTitle'), res.error?.message ?? t('billing.paymentHistory.reverseFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not reverse payment.')
+      toastError(t('billing.paymentHistory.loadFailedTitle'), t('billing.paymentHistory.reverseFailedMessage'))
     } finally {
       setReversing(false)
     }
@@ -120,11 +122,11 @@ export function PaymentHistoryScreen() {
               <CreditCard size={18} className="text-brand" />
             </div>
             <div>
-              <h1 className="text-lg font-bold text-dark dark:text-slate-100">Payment History</h1>
-              <p className="text-xs text-slate-400">{total} total payments</p>
+              <h1 className="text-lg font-bold text-dark dark:text-slate-100">{t('billing.paymentHistory.title')}</h1>
+              <p className="text-xs text-slate-400">{t('billing.paymentHistory.totalPaymentsCount', { count: total })}</p>
             </div>
           </div>
-          <button onClick={fetchPayments} aria-label="Refresh payments" className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand transition-colors">
+          <button onClick={fetchPayments} aria-label={t('billing.paymentHistory.refreshAriaLabel')} className="w-9 h-9 rounded-xl border border-slate-200 dark:border-slate-700 flex items-center justify-center text-slate-400 hover:text-brand hover:border-brand transition-colors">
             <RefreshCw size={14} className={cn(loading && 'animate-spin')} />
           </button>
         </div>
@@ -136,28 +138,28 @@ export function PaymentHistoryScreen() {
             <input
               value={search}
               onChange={e => { setSearch(e.target.value); setPage(1) }}
-              placeholder="Search invoice, customer, or reference…"
+              placeholder={t('billing.paymentHistory.searchPlaceholder')}
               className="w-full h-9 ps-9 pe-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
             />
           </div>
           <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 shrink-0">From</label>
+            <label className="text-xs font-semibold text-slate-500 shrink-0">{t('common.from')}</label>
             <input type="date" value={dateFrom} onChange={e => { setDateFrom(e.target.value); setPage(1) }}
               className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
           </div>
           <div className="flex items-center gap-1.5">
-            <label className="text-xs font-semibold text-slate-500 shrink-0">To</label>
+            <label className="text-xs font-semibold text-slate-500 shrink-0">{t('common.to')}</label>
             <input type="date" value={dateTo} onChange={e => { setDateTo(e.target.value); setPage(1) }}
               className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand" />
           </div>
           {(dateFrom || dateTo) && (
             <button onClick={() => { setDateFrom(''); setDateTo(''); setPage(1) }}
               className="text-xs text-slate-400 hover:text-danger transition-colors px-2 py-1">
-              Clear dates
+              {t('billing.paymentHistory.clearDates')}
             </button>
           )}
           <Tabs
-            tabs={METHOD_TABS.map(m => ({ id: m, label: m === 'ALL' ? 'All' : m }))}
+            tabs={METHOD_TABS.map(m => ({ id: m, label: m === 'ALL' ? t('common.all') : m }))}
             active={methodFilter}
             onChange={handleMethodFilterChange}
           />
@@ -174,23 +176,23 @@ export function PaymentHistoryScreen() {
           <div className="flex flex-col items-center justify-center h-64 gap-2 text-slate-400">
             <CreditCard size={40} className="opacity-30" />
             <p className="text-sm font-medium text-slate-500 dark:text-slate-400">
-              {search || dateFrom || dateTo || methodFilter !== 'ALL' ? 'No payments match these filters.' : 'No payment records found.'}
+              {search || dateFrom || dateTo || methodFilter !== 'ALL' ? t('billing.paymentHistory.noMatchFilters') : t('billing.paymentHistory.noPaymentsFound')}
             </p>
             <p className="text-xs text-slate-400">
-              {search || dateFrom || dateTo || methodFilter !== 'ALL' ? 'Try adjusting the search, dates, or method filter.' : 'Payments will appear here once invoices are paid.'}
+              {search || dateFrom || dateTo || methodFilter !== 'ALL' ? t('billing.paymentHistory.tryAdjustingFiltersHint') : t('billing.paymentHistory.paymentsWillAppear')}
             </p>
           </div>
         ) : (
           <table className="w-full text-sm">
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
-                <th className="text-start px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Date</th>
-                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Invoice</th>
-                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Customer</th>
-                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Method</th>
-                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Reference</th>
-                <th className="text-end px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Amount</th>
-                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">Recorded By</th>
+                <th className="text-start px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.date')}</th>
+                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.paymentHistory.invoiceColumn')}</th>
+                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.customer')}</th>
+                <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.paymentHistory.methodColumn')}</th>
+                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.reference')}</th>
+                <th className="text-end px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.amount')}</th>
+                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('billing.paymentHistory.recordedByColumn')}</th>
                 <th className="px-4 py-3" />
               </tr>
             </thead>
@@ -207,7 +209,7 @@ export function PaymentHistoryScreen() {
                     ) : <span className="text-slate-400">—</span>}
                   </td>
                   <td className="px-4 py-3 text-slate-600 dark:text-slate-300">
-                    {pmt.customer ? pmt.customer.customerName : <span className="text-slate-400 italic">Walk-in</span>}
+                    {pmt.customer ? pmt.customer.customerName : <span className="text-slate-400 italic">{t('billing.paymentHistory.walkIn')}</span>}
                   </td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant={METHOD_VARIANT[pmt.paymentMethod] ?? 'neutral'} size="sm">{pmt.paymentMethod}</Badge>
@@ -219,7 +221,7 @@ export function PaymentHistoryScreen() {
                     <span className={cn('font-semibold', pmt.isReversed ? 'text-slate-400 line-through' : 'text-success')}>
                       {formatCurrency(pmt.amount)}
                     </span>
-                    {pmt.isReversed && <span className="ms-2 text-xs text-danger font-semibold">REVERSED</span>}
+                    {pmt.isReversed && <span className="ms-2 text-xs text-danger font-semibold">{t('billing.paymentHistory.reversedBadge')}</span>}
                   </td>
                   <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-400">
                     {pmt.recordedBy?.fullName ?? '—'}
@@ -227,8 +229,8 @@ export function PaymentHistoryScreen() {
                   <td className="px-4 py-3 text-end">
                     {!pmt.isReversed && canReverse && (
                       <button onClick={() => { setReversingId(pmt.id); setReverseReason('') }}
-                        title="Reverse payment"
-                        aria-label="Reverse this payment"
+                        title={t('billing.paymentHistory.reversePaymentTitle')}
+                        aria-label={t('billing.paymentHistory.reverseAriaLabel')}
                         className="w-7 h-7 flex items-center justify-center rounded-lg text-slate-300 hover:text-danger hover:bg-danger/10 transition-colors ms-auto">
                         <RotateCcw size={13} />
                       </button>
@@ -244,16 +246,16 @@ export function PaymentHistoryScreen() {
       {/* Pagination */}
       {totalPages > 1 && (
         <div className="px-6 py-3 border-t border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center justify-between">
-          <p className="text-xs text-slate-400">Showing {(page - 1) * limit + 1}–{Math.min(page * limit, total)} of {total}</p>
+          <p className="text-xs text-slate-400">{t('common.showingRange', { from: (page - 1) * limit + 1, to: Math.min(page * limit, total), total })}</p>
           <div className="flex items-center gap-2">
             <button onClick={() => setPage(p => Math.max(1, p - 1))} disabled={page === 1}
               className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 dark:text-slate-300 disabled:opacity-40 hover:border-brand hover:text-brand transition-colors">
-              Previous
+              {t('common.previous')}
             </button>
-            <span className="text-xs text-slate-500 dark:text-slate-400">Page {page} of {totalPages}</span>
+            <span className="text-xs text-slate-500 dark:text-slate-400">{t('billing.paymentHistory.pageOf', { page, totalPages })}</span>
             <button onClick={() => setPage(p => Math.min(totalPages, p + 1))} disabled={page === totalPages}
               className="px-3 py-1.5 text-xs rounded-lg border border-slate-200 dark:border-slate-700 dark:text-slate-300 disabled:opacity-40 hover:border-brand hover:text-brand transition-colors">
-              Next
+              {t('common.next')}
             </button>
           </div>
         </div>
@@ -263,18 +265,18 @@ export function PaymentHistoryScreen() {
       {reversingId && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-5 max-h-[90vh] overflow-y-auto">
-            <h2 className="text-lg font-bold text-dark dark:text-slate-100">Reverse Payment</h2>
+            <h2 className="text-lg font-bold text-dark dark:text-slate-100">{t('billing.paymentHistory.reverseModalTitle')}</h2>
             <div>
-              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">Reason *</label>
+              <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.paymentHistory.reasonLabel')}</label>
               <input value={reverseReason} onChange={e => setReverseReason(e.target.value)}
-                placeholder="Enter reason for reversal"
+                placeholder={t('billing.paymentHistory.reasonPlaceholder')}
                 className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 autoFocus
               />
             </div>
             <div className="flex gap-3">
-              <Button variant="outline" className="flex-1" onClick={() => { setReversingId(null); setReverseReason('') }} disabled={reversing}>Cancel</Button>
-              <Button variant="danger" className="flex-1" onClick={handleReverse} loading={reversing}>Reverse</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setReversingId(null); setReverseReason('') }} disabled={reversing}>{t('common.cancel')}</Button>
+              <Button variant="danger" className="flex-1" onClick={handleReverse} loading={reversing}>{t('billing.paymentHistory.reverseButton')}</Button>
             </div>
           </div>
         </div>

@@ -153,9 +153,9 @@ export function InvoiceDetailScreen() {
     try {
       const res = await window.api.billing.getInvoice(id)
       if (res.success) setInvoice(res.data as Invoice)
-      else toastError('Error', res.error?.message ?? 'Could not load invoice.')
+      else toastError(t('common.error'), res.error?.message ?? t('billing.couldNotLoadInvoice'))
     } catch {
-      toastError('Error', 'Could not load invoice.')
+      toastError(t('common.error'), t('billing.couldNotLoadInvoice'))
     } finally { setLoading(false) }
   }
 
@@ -164,7 +164,7 @@ export function InvoiceDetailScreen() {
   async function handleRecordPayment() {
     if (!invoice) return
     const amount = parseFloat(paymentAmount)
-    if (!amount || amount <= 0) { toastError('Invalid Amount', 'Enter a valid payment amount.'); return }
+    if (!amount || amount <= 0) { toastError(t('billing.invalidAmountTitle'), t('billing.enterValidPaymentAmount')); return }
     setRecordingPayment(true)
     try {
       const res = await window.api.payments.record({
@@ -175,15 +175,15 @@ export function InvoiceDetailScreen() {
         remarks: paymentRemarks.trim() || undefined
       })
       if (res.success) {
-        toastSuccess('Payment Recorded', `${formatCurrency(amount)} recorded for ${invoice.invoiceNumber}.`)
+        toastSuccess(t('billing.paymentRecordedTitle'), t('billing.paymentRecordedMessage', { amount: formatCurrency(amount), invoiceNumber: invoice.invoiceNumber }))
         setShowPaymentModal(false)
         setPaymentAmount(''); setPaymentRef(''); setPaymentRemarks('')
         loadInvoice()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not record payment.')
+        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.couldNotRecordPayment'))
       }
     } catch {
-      toastError('Failed', 'Could not record payment.')
+      toastError(t('billing.failedTitle'), t('billing.couldNotRecordPayment'))
     } finally { setRecordingPayment(false) }
   }
 
@@ -191,8 +191,8 @@ export function InvoiceDetailScreen() {
     if (!invoice) return
     const foreignAmount = parseFloat(fxForeignAmount)
     const settlementRate = parseFloat(fxSettlementRate)
-    if (!foreignAmount || foreignAmount <= 0) { toastError('Invalid Amount', 'Enter the foreign-currency amount received.'); return }
-    if (!settlementRate || settlementRate <= 0) { toastError('Invalid Rate', 'Enter the exchange rate at settlement.'); return }
+    if (!foreignAmount || foreignAmount <= 0) { toastError(t('billing.invalidAmountTitle'), t('billing.enterForeignAmount')); return }
+    if (!settlementRate || settlementRate <= 0) { toastError(t('billing.invalidRateTitle'), t('billing.enterSettlementRate')); return }
     setFxSettling(true)
     try {
       const res = await window.api.payments.recordForeignCurrencySettlement({
@@ -204,32 +204,32 @@ export function InvoiceDetailScreen() {
         remarks: paymentRemarks.trim() || undefined
       })
       if (res.success) {
-        toastSuccess('Invoice Settled', `${invoice.foreignCurrencyCode} ${foreignAmount.toFixed(2)} recorded for ${invoice.invoiceNumber}.`)
+        toastSuccess(t('billing.invoiceSettledTitle'), t('billing.invoiceSettledMessage', { code: invoice.foreignCurrencyCode, amount: foreignAmount.toFixed(2), invoiceNumber: invoice.invoiceNumber }))
         setShowPaymentModal(false)
         setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
         loadInvoice()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not settle invoice.')
+        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.couldNotSettleInvoice'))
       }
     } catch {
-      toastError('Failed', 'Could not settle invoice.')
+      toastError(t('billing.failedTitle'), t('billing.couldNotSettleInvoice'))
     } finally { setFxSettling(false) }
   }
 
   async function handleCancel() {
-    if (!invoice || !cancelReason.trim()) { toastError('Reason Required', 'Enter a cancellation reason.'); return }
+    if (!invoice || !cancelReason.trim()) { toastError(t('billing.reasonRequiredTitle'), t('billing.enterCancellationReason')); return }
     setCancelling(true)
     try {
       const res = await window.api.billing.cancelInvoice({ invoiceId: invoice.id, reason: cancelReason.trim() })
       if (res.success) {
-        toastSuccess('Cancelled', `Invoice ${invoice.invoiceNumber} has been cancelled.`)
+        toastSuccess(t('billing.status.cancelled'), t('billing.invoiceCancelledMessage', { invoiceNumber: invoice.invoiceNumber }))
         setShowCancelModal(false)
         loadInvoice()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not cancel invoice.')
+        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.couldNotCancelInvoice'))
       }
     } catch {
-      toastError('Failed', 'Could not cancel invoice.')
+      toastError(t('billing.failedTitle'), t('billing.couldNotCancelInvoice'))
     } finally { setCancelling(false) }
   }
 
@@ -376,19 +376,19 @@ export function InvoiceDetailScreen() {
   }
 
   async function handleReversePayment() {
-    if (!reversingPaymentId || !reverseReason.trim()) { toastError('Reason Required', 'Enter a reversal reason.'); return }
+    if (!reversingPaymentId || !reverseReason.trim()) { toastError(t('billing.reasonRequiredTitle'), t('billing.enterReversalReason')); return }
     setReversingPayment(true)
     try {
       const res = await window.api.payments.reverse({ paymentId: reversingPaymentId, reason: reverseReason.trim() })
       if (res.success) {
-        toastSuccess('Reversed', 'Payment has been reversed.')
+        toastSuccess(t('billing.paymentHistory.reversedTitle'), t('billing.paymentHistory.reversedMessage'))
         setReversingPaymentId(null); setReverseReason('')
         loadInvoice()
       } else {
-        toastError('Failed', res.error?.message ?? 'Could not reverse payment.')
+        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.paymentHistory.reverseFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not reverse payment.')
+      toastError(t('billing.failedTitle'), t('billing.paymentHistory.reverseFailedMessage'))
     } finally {
       setReversingPayment(false)
     }
@@ -400,13 +400,13 @@ export function InvoiceDetailScreen() {
     try {
       const res = await api.restaurant.createKOT({ invoiceId: invoice.id, tableId: invoice.tableId ?? undefined })
       if (res.success) {
-        toastSuccess('Sent to Kitchen', `KOT created for ${invoice.invoiceNumber}.`)
+        toastSuccess(t('billing.kotSentTitle'), t('billing.kotSentMessage', { invoiceNumber: invoice.invoiceNumber }))
         loadInvoice()
       } else {
-        toastError('Failed', (res.error as { message?: string })?.message ?? 'Could not send to kitchen.')
+        toastError(t('billing.failedTitle'), (res.error as { message?: string })?.message ?? t('billing.couldNotSendToKitchen'))
       }
     } catch {
-      toastError('Failed', 'Could not send to kitchen.')
+      toastError(t('billing.failedTitle'), t('billing.couldNotSendToKitchen'))
     } finally { setSendingToKitchen(false) }
   }
 
@@ -421,10 +421,10 @@ export function InvoiceDetailScreen() {
       if (res.success) {
         setPreviewHtml(res.data as string)
       } else {
-        toastError('Preview Failed', res.error?.message ?? 'Could not generate preview.')
+        toastError(t('billing.previewFailedTitle'), res.error?.message ?? t('billing.previewFailedMessage'))
       }
     } catch {
-      toastError('Preview Failed', 'Could not generate preview.')
+      toastError(t('billing.previewFailedTitle'), t('billing.previewFailedMessage'))
     } finally { setPreviewLoading(false) }
   }
 
@@ -435,10 +435,10 @@ export function InvoiceDetailScreen() {
       const res = previewIsReceipt
         ? await window.api.print.receipt({ invoiceId: invoice.id })
         : await window.api.print.invoice({ invoiceId: invoice.id })
-      if (!res.success) toastError('Print Failed', res.error?.message ?? 'Could not print.')
+      if (!res.success) toastError(t('billing.printFailedTitle'), res.error?.message ?? t('billing.couldNotPrint'))
       else setPreviewHtml(null)
     } catch {
-      toastError('Print Failed', 'Could not print.')
+      toastError(t('billing.printFailedTitle'), t('billing.couldNotPrint'))
     } finally { setPrinting(false) }
   }
 

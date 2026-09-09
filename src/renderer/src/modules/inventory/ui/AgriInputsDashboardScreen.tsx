@@ -1,4 +1,5 @@
 import { useEffect, useState } from 'react'
+import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { Sprout, Wrench, AlertTriangle, PackageX, ShieldAlert, ArrowRight, Boxes, CalendarClock, Send } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
@@ -27,6 +28,7 @@ interface EquipmentDueForServiceRow {
 // screens (Batch Tracking, Serial Tracking) with no single "what needs my
 // attention today" view across both product families.
 export function AgriInputsDashboardScreen() {
+  const { t } = useTranslation()
   const navigate = useNavigate()
   const { error: toastError } = useNotificationStore()
   const [loading, setLoading] = useState(true)
@@ -56,38 +58,38 @@ export function AgriInputsDashboardScreen() {
         setExpiring(d.expiring ?? [])
         setExpired(d.expired ?? [])
       } else if (!alertsRes.success) {
-        toastError('Error', alertsRes.error?.message ?? 'Could not load expiry alerts.')
+        toastError(t('common.error'), alertsRes.error?.message ?? t('inventory.agriInputsDashboard.couldNotLoadExpiryAlerts'))
       }
       if (lowStockRes.success && lowStockRes.data) {
         setLowStockCount((lowStockRes.data as { total: number }).total ?? 0)
       } else if (!lowStockRes.success) {
-        toastError('Error', lowStockRes.error?.message ?? 'Could not load low-stock count.')
+        toastError(t('common.error'), lowStockRes.error?.message ?? t('inventory.agriInputsDashboard.couldNotLoadLowStockCount'))
       }
       if (serialsRes.success && serialsRes.data) {
         setSerials((serialsRes.data as { serials: SerialRow[] }).serials ?? [])
       } else if (!serialsRes.success) {
-        toastError('Error', serialsRes.error?.message ?? 'Could not load equipment records.')
+        toastError(t('common.error'), serialsRes.error?.message ?? t('inventory.agriInputsDashboard.couldNotLoadEquipment'))
       }
       if (dueRes.success) setServiceDue((dueRes.data as EquipmentDueForServiceRow[]) ?? [])
     }).catch(() => {
       // This is an alerting dashboard (expiring stock/warranties) — a thrown
       // IPC/connection error must not silently render as "nothing needs your
       // attention" (all-zero KPIs), which is what happened before this catch existed.
-      toastError('Error', 'Could not load the dashboard. Check your connection and try again.')
+      toastError(t('common.error'), t('inventory.agriInputsDashboard.couldNotLoadDashboard'))
     }).finally(() => setLoading(false))
-  }, [toastError])
+  }, [toastError, t])
 
   async function handleSetServiceDate() {
-    if (!setServiceForId || !setServiceDate) { toastError('Error', 'Pick equipment and a date.'); return }
+    if (!setServiceForId || !setServiceDate) { toastError(t('common.error'), t('inventory.agriInputsDashboard.pickEquipmentAndDate')); return }
     const res = await window.api.serials.updateServiceInfo({ id: setServiceForId, nextServiceDueDate: setServiceDate })
-    if (!res.success) { toastError('Error', res.error?.message ?? 'Could not save the service date.'); return }
+    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('inventory.agriInputsDashboard.couldNotSaveServiceDate')); return }
     setSetServiceForId(''); setSetServiceDate('')
     await loadServiceDue()
   }
 
   async function handleSendReminder(serialId: string) {
     const res = await window.api.serials.scheduleServiceReminder({ serialId })
-    if (!res.success) { toastError('Error', res.error?.message ?? 'Could not schedule the reminder.'); return }
+    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('inventory.agriInputsDashboard.couldNotScheduleReminder')); return }
   }
 
   const now = Date.now()
@@ -105,29 +107,29 @@ export function AgriInputsDashboardScreen() {
           <Sprout size={22} className="text-brand" />
         </div>
         <div>
-          <h1 className="text-xl font-bold text-dark dark:text-slate-100">Agri Inputs Dashboard</h1>
-          <p className="text-sm text-slate-500 dark:text-slate-400">Consumables and equipment, at a glance</p>
+          <h1 className="text-xl font-bold text-dark dark:text-slate-100">{t('inventory.agriInputsDashboard.title')}</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">{t('inventory.agriInputsDashboard.subtitle')}</p>
         </div>
       </div>
 
       <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
-        <KpiCard label="Low Stock Consumables" value={loading ? '—' : lowStockCount} icon={<PackageX size={18} />} color={lowStockCount > 0 ? 'warning' : 'neutral'} />
-        <KpiCard label="Expiring in 30 Days" value={loading ? '—' : expiring.length} icon={<AlertTriangle size={18} />} color={expiring.length > 0 ? 'warning' : 'neutral'} />
-        <KpiCard label="Expired Consumables" value={loading ? '—' : expired.length} icon={<PackageX size={18} />} color={expired.length > 0 ? 'danger' : 'neutral'} />
-        <KpiCard label="Equipment on File" value={loading ? '—' : serials.length} icon={<Wrench size={18} />} color="brand" />
-        <KpiCard label="Warranty Expiring Soon" value={loading ? '—' : warrantyExpiringSoon.length} icon={<ShieldAlert size={18} />} color={warrantyExpiringSoon.length > 0 ? 'warning' : 'neutral'} />
+        <KpiCard label={t('inventory.agriInputsDashboard.lowStockConsumables')} value={loading ? '—' : lowStockCount} icon={<PackageX size={18} />} color={lowStockCount > 0 ? 'warning' : 'neutral'} />
+        <KpiCard label={t('inventory.agriInputsDashboard.expiringIn30Days')} value={loading ? '—' : expiring.length} icon={<AlertTriangle size={18} />} color={expiring.length > 0 ? 'warning' : 'neutral'} />
+        <KpiCard label={t('inventory.agriInputsDashboard.expiredConsumables')} value={loading ? '—' : expired.length} icon={<PackageX size={18} />} color={expired.length > 0 ? 'danger' : 'neutral'} />
+        <KpiCard label={t('inventory.agriInputsDashboard.equipmentOnFile')} value={loading ? '—' : serials.length} icon={<Wrench size={18} />} color="brand" />
+        <KpiCard label={t('inventory.agriInputsDashboard.warrantyExpiringSoon')} value={loading ? '—' : warrantyExpiringSoon.length} icon={<ShieldAlert size={18} />} color={warrantyExpiringSoon.length > 0 ? 'warning' : 'neutral'} />
       </div>
 
       {/* Phase 67 §9.1 — Agri Inputs item 5: equipment AMC/service reminders. */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
         <KpiCard
-          label="Overdue for Service"
+          label={t('inventory.agriInputsDashboard.overdueForService')}
           value={loading ? '—' : serviceDue.filter(s => s.overdue).length}
           icon={<CalendarClock size={18} />}
           color={serviceDue.some(s => s.overdue) ? 'danger' : 'neutral'}
         />
         <KpiCard
-          label="Due for Service Soon"
+          label={t('inventory.agriInputsDashboard.dueForServiceSoon')}
           value={loading ? '—' : serviceDue.filter(s => s.dueForService && !s.overdue).length}
           icon={<CalendarClock size={18} />}
           color={serviceDue.some(s => s.dueForService && !s.overdue) ? 'warning' : 'neutral'}
@@ -135,39 +137,39 @@ export function AgriInputsDashboardScreen() {
       </div>
 
       <Card padding="md" className="space-y-3">
-        <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><CalendarClock size={16} /> Equipment Service Due</h2>
-        {loading && <p className="text-xs text-slate-400">Loading…</p>}
+        <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><CalendarClock size={16} /> {t('inventory.agriInputsDashboard.equipmentServiceDue')}</h2>
+        {loading && <p className="text-xs text-slate-400">{t('common.loading')}</p>}
         {!loading && serviceDue.length === 0 && (
-          <p className="text-xs text-slate-400">No equipment has an upcoming service date set.</p>
+          <p className="text-xs text-slate-400">{t('inventory.agriInputsDashboard.noUpcomingServiceDate')}</p>
         )}
         {serviceDue.map(s => (
           <div key={s.serialId} className="flex items-center justify-between text-xs border-b border-slate-50 dark:border-slate-800 pb-1.5">
             <div>
               <p className="font-medium text-dark dark:text-slate-100">{s.productName}</p>
-              <p className="text-slate-400 font-mono">{s.serialNumber} · next service {formatDate(new Date(s.nextServiceDueDate))}</p>
+              <p className="text-slate-400 font-mono">{t('inventory.agriInputsDashboard.serialNextService', { serial: s.serialNumber, date: formatDate(new Date(s.nextServiceDueDate)) })}</p>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={s.overdue ? 'danger' : 'warning'} size="sm">{s.overdue ? 'Overdue' : 'Due soon'}</Badge>
+              <Badge variant={s.overdue ? 'danger' : 'warning'} size="sm">{s.overdue ? t('inventory.agriInputsDashboard.overdueBadge') : t('inventory.agriInputsDashboard.dueSoonBadge')}</Badge>
               <button
                 onClick={() => handleSendReminder(s.serialId)}
                 className="text-brand hover:underline flex items-center gap-1"
-                title="Send a WhatsApp reminder to the customer"
+                title={t('inventory.agriInputsDashboard.sendReminderTooltip')}
               >
-                <Send size={12} /> Remind
+                <Send size={12} /> {t('inventory.agriInputsDashboard.remind')}
               </button>
             </div>
           </div>
         ))}
 
         <div className="pt-2 border-t border-slate-100 dark:border-slate-800">
-          <p className="text-xs font-semibold text-slate-500 mb-1.5">Set a Service Date</p>
+          <p className="text-xs font-semibold text-slate-500 mb-1.5">{t('inventory.agriInputsDashboard.setServiceDate')}</p>
           <div className="flex items-center gap-2 flex-wrap">
             <select
               value={setServiceForId}
               onChange={e => setSetServiceForId(e.target.value)}
               className="h-8 px-2 rounded-lg border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand"
             >
-              <option value="">Select equipment</option>
+              <option value="">{t('inventory.agriInputsDashboard.selectEquipment')}</option>
               {serials.map(s => (
                 <option key={s.id} value={s.id}>{s.productName} — {s.serialNumber}</option>
               ))}
@@ -181,7 +183,7 @@ export function AgriInputsDashboardScreen() {
               onClick={handleSetServiceDate}
               className="h-8 px-3 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand-dark"
             >
-              Save
+              {t('common.save')}
             </button>
           </div>
         </div>
@@ -191,31 +193,31 @@ export function AgriInputsDashboardScreen() {
         {/* Consumables panel */}
         <Card padding="md" className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Boxes size={16} /> Consumables</h2>
+            <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Boxes size={16} /> {t('inventory.agriInputsDashboard.consumables')}</h2>
             <button onClick={() => navigate('/pharmacy/batches')} className="text-xs text-brand flex items-center gap-1 hover:underline">
-              View all <ArrowRight size={12} />
+              {t('inventory.agriInputsDashboard.viewAll')} <ArrowRight size={12} />
             </button>
           </div>
-          {loading && <p className="text-xs text-slate-400">Loading…</p>}
+          {loading && <p className="text-xs text-slate-400">{t('common.loading')}</p>}
           {!loading && expired.length === 0 && expiring.length === 0 && (
-            <p className="text-xs text-slate-400">No expiring or expired batches right now.</p>
+            <p className="text-xs text-slate-400">{t('inventory.agriInputsDashboard.noExpiringOrExpiredBatches')}</p>
           )}
           {expired.slice(0, 3).map(b => (
             <div key={b.id} className="flex items-center justify-between text-xs border-b border-slate-50 dark:border-slate-800 pb-1.5">
               <div>
                 <p className="font-medium text-dark dark:text-slate-100">{b.productName}</p>
-                <p className="text-slate-400 font-mono">{b.batchNumber} · {b.quantityRemaining} left</p>
+                <p className="text-slate-400 font-mono">{t('inventory.agriInputsDashboard.batchQtyLeft', { batchNumber: b.batchNumber, qty: b.quantityRemaining })}</p>
               </div>
-              <Badge variant="danger" size="sm">Expired {formatDate(new Date(b.expiryDate))}</Badge>
+              <Badge variant="danger" size="sm">{t('inventory.agriInputsDashboard.expiredOn', { date: formatDate(new Date(b.expiryDate)) })}</Badge>
             </div>
           ))}
           {expiring.slice(0, 5).map(b => (
             <div key={b.id} className="flex items-center justify-between text-xs border-b border-slate-50 dark:border-slate-800 pb-1.5">
               <div>
                 <p className="font-medium text-dark dark:text-slate-100">{b.productName}</p>
-                <p className="text-slate-400 font-mono">{b.batchNumber} · {b.quantityRemaining} left</p>
+                <p className="text-slate-400 font-mono">{t('inventory.agriInputsDashboard.batchQtyLeft', { batchNumber: b.batchNumber, qty: b.quantityRemaining })}</p>
               </div>
-              <Badge variant="warning" size="sm">{b.daysToExpiry}d left</Badge>
+              <Badge variant="warning" size="sm">{t('inventory.agriInputsDashboard.daysLeft', { days: b.daysToExpiry })}</Badge>
             </div>
           ))}
         </Card>
@@ -223,14 +225,14 @@ export function AgriInputsDashboardScreen() {
         {/* Equipment panel */}
         <Card padding="md" className="space-y-3">
           <div className="flex items-center justify-between">
-            <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Wrench size={16} /> Equipment</h2>
+            <h2 className="text-sm font-bold text-dark dark:text-slate-100 flex items-center gap-2"><Wrench size={16} /> {t('inventory.agriInputsDashboard.equipment')}</h2>
             <button onClick={() => navigate('/electronics/serials')} className="text-xs text-brand flex items-center gap-1 hover:underline">
-              View all <ArrowRight size={12} />
+              {t('inventory.agriInputsDashboard.viewAll')} <ArrowRight size={12} />
             </button>
           </div>
-          {loading && <p className="text-xs text-slate-400">Loading…</p>}
+          {loading && <p className="text-xs text-slate-400">{t('common.loading')}</p>}
           {!loading && warrantyExpired.length === 0 && warrantyExpiringSoon.length === 0 && (
-            <p className="text-xs text-slate-400">No warranty items expiring soon.</p>
+            <p className="text-xs text-slate-400">{t('inventory.agriInputsDashboard.noWarrantyExpiringSoon')}</p>
           )}
           {warrantyExpired.slice(0, 3).map(s => (
             <div key={s.id} className="flex items-center justify-between text-xs border-b border-slate-50 dark:border-slate-800 pb-1.5">
@@ -238,7 +240,7 @@ export function AgriInputsDashboardScreen() {
                 <p className="font-medium text-dark dark:text-slate-100">{s.productName}</p>
                 <p className="text-slate-400 font-mono">{s.serialNumber}</p>
               </div>
-              <Badge variant="danger" size="sm">Warranty expired</Badge>
+              <Badge variant="danger" size="sm">{t('inventory.agriInputsDashboard.warrantyExpired')}</Badge>
             </div>
           ))}
           {warrantyExpiringSoon.slice(0, 5).map(s => (

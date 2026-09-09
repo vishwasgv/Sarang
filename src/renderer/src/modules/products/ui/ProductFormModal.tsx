@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslation } from 'react-i18next'
 import { ImagePlus, X, Barcode as BarcodeIcon, Search, Plus, Wand2 } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
@@ -173,6 +174,7 @@ function KitComponentProductPicker({ products, value, onChange }: {
   value: string
   onChange: (productId: string) => void
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -201,13 +203,13 @@ function KitComponentProductPicker({ products, value, onChange }: {
           value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
           onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
           onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder="Search a product…"
+          placeholder={t('products.form.searchProductPlaceholder')}
           className="w-full h-9 ps-6 pe-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
         />
       </div>
       {open && (
         <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
-          {results.length === 0 && <div className="px-3 py-2 text-xs text-slate-400">No products found.</div>}
+          {results.length === 0 && <div className="px-3 py-2 text-xs text-slate-400">{t('products.form.noProductsFound')}</div>}
           {results.map(p => (
             <button
               type="button"
@@ -239,6 +241,7 @@ interface ProductFormModalProps {
 const UNITS = ['PCS', 'KG', 'G', 'L', 'ML', 'M', 'CM', 'SQFT', 'SQM', 'BOX', 'DOZEN', 'PACKET', 'PAIR', 'SET', 'BOTTLE', 'BAG', 'ROLL', 'HOUR', 'SERVICE']
 
 export function ProductFormModal({ open, onClose, onSaved, product, categories }: ProductFormModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
   // Phase 38: opt-in, off by default for every business type — see
@@ -350,9 +353,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
     setSuggestingKit(true)
     try {
       const res = await window.api.products.suggestKitComponents({ anchorProductId: product.id, limit: 8 })
-      if (!res.success) { toastError('Error', res.error?.message ?? 'Could not fetch suggestions.'); return }
+      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('products.form.kitSuggestFailedMessage')); return }
       const suggestions = (res.data as { suggestions: Array<{ productId: string; suggestedQuantity: number }> }).suggestions
-      if (suggestions.length === 0) { toastError('No Suggestions', 'No past orders paired this product with anything else yet.'); return }
+      if (suggestions.length === 0) { toastError(t('products.form.noSuggestionsTitle'), t('products.form.noSuggestionsMessage')); return }
       setKitRows(prev => {
         const existingIds = new Set(prev.map(r => r.componentProductId))
         const merged = prev.filter(r => r.componentProductId)
@@ -362,7 +365,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         return merged
       })
     } catch {
-      toastError('Error', 'Could not fetch suggestions.')
+      toastError(t('common.error'), t('products.form.kitSuggestFailedMessage'))
     } finally {
       setSuggestingKit(false)
     }
@@ -377,13 +380,13 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         ? await window.api.products.setKitComponents({ kitProductId: product.id, components: valid })
         : await window.api.products.clearKit(product.id)
       if (res.success) {
-        toastSuccess('Kit Updated', valid.length > 0 ? 'Kit components saved.' : 'This product is no longer a kit.')
+        toastSuccess(t('products.form.kitUpdatedTitle'), valid.length > 0 ? t('products.form.kitComponentsSavedMessage') : t('products.form.kitRemovedMessage'))
         onSaved()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not save kit components.')
+        toastError(t('common.error'), res.error?.message ?? t('products.form.saveKitFailedMessage'))
       }
     } catch {
-      toastError('Error', 'Could not save kit components.')
+      toastError(t('common.error'), t('products.form.saveKitFailedMessage'))
     } finally {
       setSavingKit(false)
     }
@@ -490,12 +493,12 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
       const res = await window.api.products.generateBarcode({ productId: product.id })
       if (res.success) {
         setValue('barcode', (res.data as { barcode: string }).barcode)
-        toastSuccess('Barcode Generated', 'A new barcode has been assigned to this product.')
+        toastSuccess(t('products.form.barcodeGeneratedTitle'), t('products.form.barcodeGeneratedMessage'))
       } else {
-        toastError('Error', res.error?.message ?? 'Could not generate a barcode.')
+        toastError(t('common.error'), res.error?.message ?? t('products.form.generateBarcodeFailedMessage'))
       }
     } catch {
-      toastError('Error', 'Could not generate a barcode.')
+      toastError(t('common.error'), t('products.form.generateBarcodeFailedMessage'))
     } finally {
       setGeneratingBarcode(false)
     }
@@ -504,14 +507,14 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   async function pickImage() {
     setImagePickerLoading(true)
     try {
-      const res = await window.api.dialog.openFile({ title: 'Select Product Image', accept: ['.jpg', '.jpeg', '.png', '.webp'] })
+      const res = await window.api.dialog.openFile({ title: t('products.form.selectImageDialogTitle'), accept: ['.jpg', '.jpeg', '.png', '.webp'] })
       if (res.success && res.data) {
         setValue('imagePath', res.data as string)
       } else if (!res.success) {
-        toastError('Error', res.error?.message ?? 'Could not open file picker.')
+        toastError(t('common.error'), res.error?.message ?? t('products.form.openFilePickerFailedMessage'))
       }
     } catch {
-      toastError('Error', 'Could not open file picker.')
+      toastError(t('common.error'), t('products.form.openFilePickerFailedMessage'))
     } finally {
       setImagePickerLoading(false)
     }
@@ -525,7 +528,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         : await window.api.products.create(payload)
 
       if (!response.success) {
-        toastError('Error', response.error?.message ?? 'Failed to save product.')
+        toastError(t('common.error'), response.error?.message ?? t('products.form.saveFailedMessage'))
         return
       }
       // Phase 38: if barcode_generation is on and the owner didn't type one,
@@ -536,15 +539,15 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
       const savedProduct = response.data as { barcode?: string | null } | null
       const autoGenerated = !isEdit && !values.barcode && savedProduct?.barcode
       toastSuccess(
-        isEdit ? 'Product Updated' : 'Product Created',
+        isEdit ? t('products.form.updatedTitle') : t('products.form.createdTitle'),
         autoGenerated
-          ? `${values.productName} has been saved. Barcode auto-generated: ${savedProduct!.barcode}`
-          : `${values.productName} has been saved.`
+          ? t('products.form.savedWithBarcodeMessage', { productName: values.productName, barcode: savedProduct!.barcode })
+          : t('products.form.savedMessage', { productName: values.productName })
       )
       onSaved()
       onClose()
     } catch {
-      toastError('Error', 'Something went wrong. Please try again.')
+      toastError(t('common.error'), t('common.somethingWentWrong'))
     }
   }
 
@@ -552,13 +555,13 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? 'Edit Product' : 'Add Product'}
+      title={isEdit ? t('products.editProduct') : t('products.addProduct')}
       size="xl"
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
           <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-            {isEdit ? 'Save Changes' : 'Add Product'}
+            {isEdit ? t('common.saveChanges') : t('products.addProduct')}
           </Button>
         </>
       }
@@ -567,23 +570,23 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">
           <div className="col-span-2">
-            <Input label="Product Name *" placeholder="e.g. Masala Chai Powder" {...register('productName')} error={errors.productName?.message} />
+            <Input label={t('products.form.productNameRequired')} placeholder={t('products.form.productNamePlaceholder')} {...register('productName')} error={errors.productName?.message} />
           </div>
           <div>
-            <Select label="Category" {...register('categoryId')}>
-              <option value="">No Category</option>
+            <Select label={t('products.category')} {...register('categoryId')}>
+              <option value="">{t('products.form.noCategoryOption')}</option>
               {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
             </Select>
           </div>
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Type *</label>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('products.form.typeRequired')}</label>
             <Controller name="productType" control={control} render={({ field }) => (
               <div className="flex rounded-lg border border-slate-200 dark:border-slate-700 overflow-hidden">
-                {(['STANDARD', 'SERVICE'] as const).map(t => (
-                  <button type="button" key={t} onClick={() => field.onChange(t)}
-                    className={`flex-1 py-2 text-xs font-medium transition-colors ${field.value === t ? 'bg-brand text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
+                {(['STANDARD', 'SERVICE'] as const).map(ptype => (
+                  <button type="button" key={ptype} onClick={() => field.onChange(ptype)}
+                    className={`flex-1 py-2 text-xs font-medium transition-colors ${field.value === ptype ? 'bg-brand text-white' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-50 dark:hover:bg-slate-700'}`}
                   >
-                    {t === 'STANDARD' ? 'Goods' : 'Service'}
+                    {ptype === 'STANDARD' ? t('products.physical') : t('products.service')}
                   </button>
                 ))}
               </div>
@@ -593,48 +596,48 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
 
         {/* Identifiers */}
         <div className="grid grid-cols-3 gap-4">
-          <Input label="SKU" placeholder="e.g. MCP-001" {...register('sku')} error={errors.sku?.message} />
+          <Input label={t('products.sku')} placeholder={t('products.form.skuPlaceholder')} {...register('sku')} error={errors.sku?.message} />
           <div>
             <div className="flex items-end gap-2">
               <div className="flex-1">
-                <Input label="Barcode" placeholder="Scan or enter" {...register('barcode')} error={errors.barcode?.message} />
+                <Input label={t('products.barcode')} placeholder={t('products.form.barcodePlaceholder')} {...register('barcode')} error={errors.barcode?.message} />
               </div>
               {barcodeGenerationEnabled && isEdit && !currentBarcode && (
-                <Button type="button" variant="secondary" size="sm" onClick={generateBarcodeNow} loading={generatingBarcode} className="mb-0.5" title="Generate a barcode for this product">
+                <Button type="button" variant="secondary" size="sm" onClick={generateBarcodeNow} loading={generatingBarcode} className="mb-0.5" title={t('products.form.generateBarcodeTitle')}>
                   <BarcodeIcon size={14} />
                 </Button>
               )}
             </div>
           </div>
           <div>
-            <Select label="Unit" required {...register('unit')}>
+            <Select label={t('products.unit')} required {...register('unit')}>
               {UNITS.map(u => <option key={u} value={u}>{u}</option>)}
             </Select>
           </div>
-          <Input label="HSN/SAC Code" placeholder="e.g. 8471" {...register('hsnCode')} error={errors.hsnCode?.message} />
+          <Input label={t('products.form.hsnSacCodeLabel')} placeholder={t('products.form.hsnPlaceholder')} {...register('hsnCode')} error={errors.hsnCode?.message} />
           {variantTrackingEnabled && (
             <div>
-              <Select label="Gender" {...register('gender')}>
-                <option value="">Not specified</option>
-                <option value="MENS">Men's</option>
-                <option value="WOMENS">Women's</option>
-                <option value="UNISEX">Unisex</option>
+              <Select label={t('products.form.genderLabel')} {...register('gender')}>
+                <option value="">{t('products.form.notSpecifiedOption')}</option>
+                <option value="MENS">{t('products.form.gender.mens')}</option>
+                <option value="WOMENS">{t('products.form.gender.womens')}</option>
+                <option value="UNISEX">{t('products.form.gender.unisex')}</option>
               </Select>
             </div>
           )}
           {variantTrackingEnabled && (
-            <Input label="Season / Collection" placeholder="e.g. Summer 2026" {...register('season')} error={errors.season?.message} />
+            <Input label={t('products.form.seasonLabel')} placeholder={t('products.form.seasonPlaceholder')} {...register('season')} error={errors.season?.message} />
           )}
           {isAgriInputs && (
-            <Input label="Recommended Crop" placeholder="e.g. Wheat" {...register('recommendedCrop')} error={errors.recommendedCrop?.message} />
+            <Input label={t('products.form.recommendedCropLabel')} placeholder={t('products.form.recommendedCropPlaceholder')} {...register('recommendedCrop')} error={errors.recommendedCrop?.message} />
           )}
           {foodDietTypeEnabled && (
             <div>
-              <Select label="Diet Type" {...register('foodType')}>
-                <option value="">Not specified</option>
-                <option value="VEG">Veg</option>
-                <option value="EGG">Egg</option>
-                <option value="NON_VEG">Non-Veg</option>
+              <Select label={t('products.form.dietTypeLabel')} {...register('foodType')}>
+                <option value="">{t('products.form.notSpecifiedOption')}</option>
+                <option value="VEG">{t('products.form.dietType.veg')}</option>
+                <option value="EGG">{t('products.form.dietType.egg')}</option>
+                <option value="NON_VEG">{t('products.form.dietType.nonVeg')}</option>
               </Select>
             </div>
           )}
@@ -642,11 +645,11 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
 
         {/* Pricing */}
         <div className="grid grid-cols-4 gap-4">
-          <Input label="Cost Price *" type="number" step="0.01" min="0" {...register('costPrice')} error={errors.costPrice?.message} />
-          <Input label="Selling Price *" type="number" step="0.01" min="0" {...register('sellingPrice')} error={errors.sellingPrice?.message} />
-          <Input label="MRP (optional)" type="number" step="0.01" min="0" {...register('mrp')} error={errors.mrp?.message} />
+          <Input label={t('products.form.costPriceRequired')} type="number" step="0.01" min="0" {...register('costPrice')} error={errors.costPrice?.message} />
+          <Input label={t('products.form.sellingPriceRequired')} type="number" step="0.01" min="0" {...register('sellingPrice')} error={errors.sellingPrice?.message} />
+          <Input label={t('products.mrp')} type="number" step="0.01" min="0" {...register('mrp')} error={errors.mrp?.message} />
           <div>
-            <Input label="Tax Rate %" type="number" step="0.5" min="0" max="100" {...register('taxRate')} error={errors.taxRate?.message} />
+            <Input label={t('products.form.taxRatePercentLabel')} type="number" step="0.5" min="0" max="100" {...register('taxRate')} error={errors.taxRate?.message} />
             {taxConfigs.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
                 {taxConfigs.map((tc) => (
@@ -655,7 +658,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                     type="button"
                     onClick={() => setValue('taxRate', tc.rate, { shouldValidate: true })}
                     className="text-xs px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors"
-                    title={`Apply ${tc.taxName} (${tc.rate}%)`}
+                    title={t('products.form.applyTaxRateTitle', { taxName: tc.taxName, rate: tc.rate })}
                   >
                     {tc.taxName} {tc.rate}%{tc.isDefault ? ' •' : ''}
                   </button>
@@ -672,21 +675,21 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" {...register('sellByWeight')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Sell this product loose / by weight</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('products.form.sellLooseByWeight')}</span>
             </label>
-            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. rice sold per kg instead of by the packet. Stock for this product is tracked directly in the unit below.</p>
+            <p className="text-xs text-slate-400 mt-1 ms-6">{t('products.form.sellLooseByWeightHint')}</p>
             {sellByWeight && (
               <div className="grid grid-cols-2 gap-4 mt-3 ms-6">
                 <div>
-                  <Select label="Unit *" {...register('weightUnit')} error={errors.weightUnit?.message}>
-                    <option value="">Select…</option>
+                  <Select label={t('products.form.unitRequiredLabel')} {...register('weightUnit')} error={errors.weightUnit?.message}>
+                    <option value="">{t('products.form.selectEllipsisOption')}</option>
                     <option value="kg">kg</option>
                     <option value="g">g</option>
                     <option value="L">L</option>
                     <option value="mL">mL</option>
                   </Select>
                 </div>
-                <Input label="Price per Unit *" type="number" step="0.01" min="0" placeholder="e.g. 80 for ₹80/kg" {...register('pricePerWeightUnit')} error={errors.pricePerWeightUnit?.message} />
+                <Input label={t('products.form.pricePerUnitRequired')} type="number" step="0.01" min="0" placeholder={t('products.form.pricePerKgPlaceholder')} {...register('pricePerWeightUnit')} error={errors.pricePerWeightUnit?.message} />
               </div>
             )}
           </div>
@@ -699,19 +702,19 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" {...register('sellByLength')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Sell this product by length, off a coil</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('products.form.sellByLengthLabel')}</span>
             </label>
-            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. wire or pipe sold per metre instead of by the reel. Stock for this product is tracked directly in the unit below.</p>
+            <p className="text-xs text-slate-400 mt-1 ms-6">{t('products.form.sellByLengthHint')}</p>
             {sellByLength && (
               <div className="grid grid-cols-2 gap-4 mt-3 ms-6">
                 <div>
-                  <Select label="Unit *" {...register('lengthUnit')} error={errors.lengthUnit?.message}>
-                    <option value="">Select…</option>
+                  <Select label={t('products.form.unitRequiredLabel')} {...register('lengthUnit')} error={errors.lengthUnit?.message}>
+                    <option value="">{t('products.form.selectEllipsisOption')}</option>
                     <option value="M">m</option>
                     <option value="FT">ft</option>
                   </Select>
                 </div>
-                <Input label="Price per Unit *" type="number" step="0.01" min="0" placeholder="e.g. 25 for ₹25/m" {...register('pricePerLengthUnit')} error={errors.pricePerLengthUnit?.message} />
+                <Input label={t('products.form.pricePerUnitRequired')} type="number" step="0.01" min="0" placeholder={t('products.form.pricePerMeterPlaceholder')} {...register('pricePerLengthUnit')} error={errors.pricePerLengthUnit?.message} />
               </div>
             )}
           </div>
@@ -725,23 +728,23 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" {...register('sellByPack')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">Received in cartons/boxes, sold as individual pieces</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('products.form.sellByPackLabel')}</span>
             </label>
-            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. a box of 50 screws — stock stays tracked in the unit above, this just converts pack quantity to pieces when receiving stock.</p>
+            <p className="text-xs text-slate-400 mt-1 ms-6">{t('products.form.sellByPackHint')}</p>
             {sellByPack && (
               <div className="mt-3 ms-6 space-y-3">
                 <div className="grid grid-cols-2 gap-4">
-                  <Input label="Pack Unit *" placeholder="e.g. BOX, CARTON" {...register('packUnit')} error={errors.packUnit?.message} />
-                  <Input label="Units per Pack *" type="number" step="1" min="1" placeholder="e.g. 50" {...register('unitsPerPack')} error={errors.unitsPerPack?.message} />
+                  <Input label={t('products.form.packUnitRequired')} placeholder={t('products.form.packUnitPlaceholder')} {...register('packUnit')} error={errors.packUnit?.message} />
+                  <Input label={t('products.form.unitsPerPackRequired')} type="number" step="1" min="1" placeholder={t('products.form.unitsPerPackPlaceholder')} {...register('unitsPerPack')} error={errors.unitsPerPack?.message} />
                 </div>
                 {/* Phase 64 — floating/variable UoM: the actual yield of a purchase
                     lot can vary (a nominal 50kg bag that weighs 49.2kg this
                     delivery) — distinct from the fixed ratio above. */}
                 <label className="flex items-center gap-2 cursor-pointer">
                   <input type="checkbox" {...register('floatingUnitConversion')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-                  <span className="text-sm text-slate-700 dark:text-slate-200">The actual conversion can vary per delivery (e.g. real weighed quantity, not always exactly {watch('unitsPerPack') || 'N'} per pack)</span>
+                  <span className="text-sm text-slate-700 dark:text-slate-200">{t('products.form.floatingConversionLabel', { units: watch('unitsPerPack') || 'N' })}</span>
                 </label>
-                <p className="text-xs text-slate-400 ms-6">When on, receiving a shipment (GRN) lets you enter the real measured quantity received instead of assuming the fixed ratio above.</p>
+                <p className="text-xs text-slate-400 ms-6">{t('products.form.floatingConversionHint')}</p>
               </div>
             )}
           </div>
@@ -753,15 +756,15 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         {productType === 'STANDARD' && (
           <div className="grid grid-cols-2 gap-4">
             <div>
-              <Select label="Stock Valuation Method" {...register('valuationMethod')}>
-                <option value="WEIGHTED_AVERAGE">Weighted Average (default)</option>
-                <option value="FIFO">FIFO (First In, First Out)</option>
-                <option value="STANDARD_COST">Standard Cost (manually set)</option>
+              <Select label={t('products.form.valuationMethodLabel')} {...register('valuationMethod')}>
+                <option value="WEIGHTED_AVERAGE">{t('products.form.weightedAverageOption')}</option>
+                <option value="FIFO">{t('products.form.fifoOption')}</option>
+                <option value="STANDARD_COST">{t('products.form.standardCostOption')}</option>
               </Select>
-              <p className="text-xs text-slate-400 mt-1">Controls how this product's cost is calculated for profit reports and inventory valuation.</p>
+              <p className="text-xs text-slate-400 mt-1">{t('products.form.valuationMethodHint')}</p>
             </div>
             {valuationMethod === 'STANDARD_COST' && (
-              <Input label="Standard Cost" type="number" step="0.01" min="0" placeholder="Falls back to Cost Price if left blank" {...register('standardCost')} error={errors.standardCost?.message} />
+              <Input label={t('products.form.standardCostLabel')} type="number" step="0.01" min="0" placeholder={t('products.form.standardCostPlaceholder')} {...register('standardCost')} error={errors.standardCost?.message} />
             )}
           </div>
         )}
@@ -777,9 +780,9 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                 setKitEnabled(e.target.checked)
                 if (e.target.checked && kitRows.length === 0) setKitRows([{ componentProductId: '', quantity: 1 }])
               }} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">This is a kit — bundle other products together as one sellable item</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('products.form.kitCheckboxLabel')}</span>
             </label>
-            <p className="text-xs text-slate-400 mt-1 ms-6">e.g. a "Diwali Hamper" made of 5 individual products. This product carries its own price above; selling it deducts real stock from each component below, one level deep only.</p>
+            <p className="text-xs text-slate-400 mt-1 ms-6">{t('products.form.kitHint')}</p>
             {kitEnabled && (
               <div className="mt-3 ms-6 space-y-2">
                 {kitRows.map((row, i) => (
@@ -802,16 +805,16 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                 <div className="flex items-center justify-between pt-1">
                   <div className="flex items-center gap-3">
                     <button type="button" onClick={addKitRow} className="flex items-center gap-1 text-xs text-brand hover:underline">
-                      <Plus size={12} /> Add component
+                      <Plus size={12} /> {t('products.form.addComponent')}
                     </button>
                     {lengthBillingEnabled && (
                       <button type="button" onClick={suggestKitFromHistory} disabled={suggestingKit} className="flex items-center gap-1 text-xs text-brand hover:underline disabled:opacity-50">
-                        <Wand2 size={12} /> {suggestingKit ? 'Suggesting…' : 'Suggest from past orders'}
+                        <Wand2 size={12} /> {suggestingKit ? t('products.form.suggesting') : t('products.form.suggestFromHistory')}
                       </button>
                     )}
                   </div>
                   <Button type="button" variant="secondary" size="sm" onClick={saveKitComponents} loading={savingKit}>
-                    Save Kit Components
+                    {t('products.form.saveKitComponents')}
                   </Button>
                 </div>
               </div>
@@ -825,22 +828,22 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50">
             <label className="flex items-center gap-2 cursor-pointer">
               <input type="checkbox" {...register('isRentable')} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">This item can be rented out</span>
+              <span className="text-sm font-medium text-slate-700 dark:text-slate-200">{t('products.form.rentableCheckboxLabel')}</span>
             </label>
             {isRentable && (
               <div className="mt-3 ms-6 space-y-3">
-                <Select label="Tracking Type *" {...register('rentalTrackingType')} error={errors.rentalTrackingType?.message}>
-                  <option value="">Select…</option>
-                  <option value="UNIT">Individual units (e.g. a specific car, bike, or villa)</option>
-                  <option value="BULK">Bulk quantity (e.g. 50 chairs, 20 tents)</option>
+                <Select label={t('products.form.trackingTypeRequired')} {...register('rentalTrackingType')} error={errors.rentalTrackingType?.message}>
+                  <option value="">{t('products.form.selectEllipsisOption')}</option>
+                  <option value="UNIT">{t('products.form.unitTrackingOption')}</option>
+                  <option value="BULK">{t('products.form.bulkTrackingOption')}</option>
                 </Select>
                 {rentalTrackingType === 'UNIT' && (
-                  <p className="text-xs text-slate-400">Add the individual units for this item from the Rental Units screen after saving.</p>
+                  <p className="text-xs text-slate-400">{t('products.form.unitTrackingHint')}</p>
                 )}
 
                 <div>
-                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">Rental Rates</p>
-                  {rateLines.length === 0 && <p className="text-xs text-slate-400 mb-2">No rates added yet.</p>}
+                  <p className="text-sm font-medium text-slate-700 dark:text-slate-200 mb-1">{t('products.form.rentalRatesLabel')}</p>
+                  {rateLines.length === 0 && <p className="text-xs text-slate-400 mb-2">{t('products.form.noRatesYet')}</p>}
                   {rateLines.map((r, i) => (
                     <div key={r.basis} className="flex items-center gap-2 mb-2">
                       <span className="w-20 text-xs text-slate-500">{r.basis}</span>
@@ -850,11 +853,11 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
                     </div>
                   ))}
                   {rateLines.length < RATE_BASIS_OPTIONS.length && (
-                    <Button type="button" variant="secondary" size="sm" onClick={addRateLine}>+ Add Rate</Button>
+                    <Button type="button" variant="secondary" size="sm" onClick={addRateLine}>{t('products.form.addRateButton')}</Button>
                   )}
                 </div>
 
-                <Input label="Security Deposit" type="number" step="0.01" min="0" {...register('rentalSecurityDeposit')} error={errors.rentalSecurityDeposit?.message} />
+                <Input label={t('products.form.securityDepositLabel')} type="number" step="0.01" min="0" {...register('rentalSecurityDeposit')} error={errors.rentalSecurityDeposit?.message} />
               </div>
             )}
           </div>
@@ -867,41 +870,41 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             unset means "not a metal item," Selling Price above is used as-is. */}
         {jewelleryEnabled && productType === 'STANDARD' && (
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800/50 space-y-3">
-            <Select label="Metal Type" {...register('metalType')}>
-              <option value="">Not a metal item — use Selling Price above</option>
-              <option value="GOLD">Gold</option>
-              <option value="SILVER">Silver</option>
-              <option value="PLATINUM">Platinum</option>
+            <Select label={t('products.form.metalTypeLabel')} {...register('metalType')}>
+              <option value="">{t('products.form.notMetalItemOption')}</option>
+              <option value="GOLD">{t('products.form.metal.gold')}</option>
+              <option value="SILVER">{t('products.form.metal.silver')}</option>
+              <option value="PLATINUM">{t('products.form.metal.platinum')}</option>
             </Select>
             {metalType && (
               <>
                 <p className="text-xs text-slate-500 dark:text-slate-400">
-                  The real sale price is computed at billing time from today's metal rate — Selling Price above is ignored for this item. Set today's rates in Jewellery → Metal Rates.
+                  {t('products.form.metalPriceHint')}
                 </p>
                 <div className="grid grid-cols-2 gap-4">
-                  <Input label="Purity *" placeholder='e.g. "22K", "18K", "999"' {...register('purity')} error={errors.purity?.message} />
-                  <Input label="Hallmark / HUID Number" placeholder="BIS hallmark number" {...register('hallmarkNumber')} />
+                  <Input label={t('products.form.purityRequired')} placeholder={t('products.form.purityPlaceholder')} {...register('purity')} error={errors.purity?.message} />
+                  <Input label={t('products.form.hallmarkLabel')} placeholder={t('products.form.hallmarkPlaceholder')} {...register('hallmarkNumber')} />
                 </div>
                 <div className="grid grid-cols-3 gap-4">
-                  <Input label="Gross Weight (g) *" type="number" step="0.001" min="0" {...register('grossWeight')} error={errors.grossWeight?.message} />
-                  <Input label="Stone Weight (g)" type="number" step="0.001" min="0" {...register('stoneWeight')} error={errors.stoneWeight?.message} />
+                  <Input label={t('products.form.grossWeightRequired')} type="number" step="0.001" min="0" {...register('grossWeight')} error={errors.grossWeight?.message} />
+                  <Input label={t('products.form.stoneWeightLabel')} type="number" step="0.001" min="0" {...register('stoneWeight')} error={errors.stoneWeight?.message} />
                   <div>
-                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Net Weight (g)</label>
+                    <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('products.form.netWeightLabel')}</label>
                     <div className="h-11 px-3 flex items-center rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-900 text-sm text-slate-500 dark:text-slate-400">
                       {Math.max(0, (grossWeight ?? 0) - (stoneWeight ?? 0)).toFixed(3)}
                     </div>
                   </div>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
-                  <Select label="Making Charge Type" {...register('makingChargeType')}>
-                    <option value="">No making charge</option>
-                    <option value="FIXED">Fixed amount</option>
-                    <option value="PER_GRAM">Per gram (of net weight)</option>
-                    <option value="PERCENTAGE">Percentage of metal value</option>
+                  <Select label={t('products.form.makingChargeTypeLabel')} {...register('makingChargeType')}>
+                    <option value="">{t('products.form.noMakingChargeOption')}</option>
+                    <option value="FIXED">{t('products.form.fixedAmountOption')}</option>
+                    <option value="PER_GRAM">{t('products.form.perGramOption')}</option>
+                    <option value="PERCENTAGE">{t('products.form.percentageOption')}</option>
                   </Select>
                   {makingChargeType && (
                     <Input
-                      label={makingChargeType === 'PERCENTAGE' ? 'Making Charge (%)' : makingChargeType === 'PER_GRAM' ? 'Making Charge (per gram)' : 'Making Charge (fixed)'}
+                      label={makingChargeType === 'PERCENTAGE' ? t('products.form.makingCharge.percentage') : makingChargeType === 'PER_GRAM' ? t('products.form.makingCharge.perGram') : t('products.form.makingCharge.fixed')}
                       type="number" step="0.01" min="0" {...register('makingChargeValue')} error={errors.makingChargeValue?.message}
                     />
                   )}
@@ -914,14 +917,14 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         {/* Reorder (physical only) */}
         {productType === 'STANDARD' && (
           <div className="grid grid-cols-3 gap-4">
-            <Input label="Reorder Level" type="number" min="0" {...register('reorderLevel')} error={errors.reorderLevel?.message} />
-            <Input label="Reorder Quantity" type="number" min="0" {...register('reorderQuantity')} error={errors.reorderQuantity?.message} />
+            <Input label={t('products.reorderLevel')} type="number" min="0" {...register('reorderLevel')} error={errors.reorderLevel?.message} />
+            <Input label={t('products.form.reorderQuantityLabel')} type="number" min="0" {...register('reorderQuantity')} error={errors.reorderQuantity?.message} />
             <div>
-              <Select label="Default Supplier" {...register('defaultSupplierId')}>
-                <option value="">Not set</option>
+              <Select label={t('products.form.defaultSupplierLabel')} {...register('defaultSupplierId')}>
+                <option value="">{t('products.form.notSetOption')}</option>
                 {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplierName}</option>)}
               </Select>
-              <p className="text-xs text-slate-400 mt-1">Used to auto-draft a reorder PO when stock runs low.</p>
+              <p className="text-xs text-slate-400 mt-1">{t('products.form.defaultSupplierHint')}</p>
             </div>
           </div>
         )}
@@ -932,8 +935,8 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             than the pharmacy-shaped 30-day default). */}
         {expiryTrackingEnabled && productType === 'STANDARD' && (
           <div>
-            <Input label="Expiry Alert Lead Time (days)" type="number" min="1" placeholder="30 (default)" {...register('expiryAlertLeadDays')} error={errors.expiryAlertLeadDays?.message} />
-            <p className="text-xs text-slate-400 mt-1">How many days before the expiry date to start flagging this item. Leave blank to use the default (30 days) — set higher for items like seeds/fertilizer whose quality can decline well before the hard expiry date.</p>
+            <Input label={t('products.form.expiryAlertLeadLabel')} type="number" min="1" placeholder={t('products.form.expiryAlertPlaceholder')} {...register('expiryAlertLeadDays')} error={errors.expiryAlertLeadDays?.message} />
+            <p className="text-xs text-slate-400 mt-1">{t('products.form.expiryAlertHint')}</p>
           </div>
         )}
 
@@ -945,7 +948,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
           <div className="p-3 rounded-lg border border-slate-200 dark:border-slate-700 space-y-2">
             <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
               <input type="checkbox" {...register('isPrescriptionRequired')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
-              Prescription Required (Schedule H / H1)
+              {t('products.form.prescriptionRequiredLabel')}
             </label>
             {/* Phase 67 §9.1 — Pharmacy item 1: Schedule H1/X narcotic register.
                 A stricter subcategory — only shown once the broader
@@ -954,7 +957,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             {isPrescriptionRequiredWatch && (
               <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200 pl-6">
                 <input type="checkbox" {...register('isScheduleH1X')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
-                Schedule H1/X (narcotic/psychotropic — requires a dedicated register)
+                {t('products.form.scheduleH1XLabel')}
               </label>
             )}
           </div>
@@ -964,26 +967,26 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         {productType === 'STANDARD' && !isEdit && (
           <div>
             <Input
-              label="Opening Stock Quantity"
+              label={t('products.form.openingStockLabel')}
               type="number" min="0" step="1"
-              placeholder="How many do you already have on hand?"
+              placeholder={t('products.form.openingStockPlaceholder')}
               {...register('openingQuantity')}
               error={errors.openingQuantity?.message}
             />
             <p className="text-xs text-slate-400 mt-1">
-              Valued at the Cost Price above. Leave at 0 if you have none yet — you can add stock later via Adjust Stock or a Purchase Order.
+              {t('products.form.openingStockHint')}
             </p>
           </div>
         )}
 
         {/* Image */}
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Product Image</label>
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('products.form.productImageLabel')}</label>
           {imagePath ? (
             <div className="flex items-center gap-3 p-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-slate-50 dark:bg-slate-800">
-              <img src={`file://${imagePath}`} alt="Product" className="w-12 h-12 object-cover rounded-md border border-slate-200 dark:border-slate-700 shrink-0" />
+              <img src={`file://${imagePath}`} alt={t('products.form.productImageAlt')} className="w-12 h-12 object-cover rounded-md border border-slate-200 dark:border-slate-700 shrink-0" />
               <p className="text-xs text-slate-500 dark:text-slate-400 flex-1 truncate">{imagePath.split(/[\\/]/).pop()}</p>
-              <button type="button" onClick={() => setValue('imagePath', undefined)} className="p-1 text-slate-400 hover:text-danger transition-colors" title="Remove image">
+              <button type="button" onClick={() => setValue('imagePath', undefined)} className="p-1 text-slate-400 hover:text-danger transition-colors" title={t('products.form.removeImageTitle')}>
                 <X size={14} />
               </button>
             </div>
@@ -991,15 +994,15 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             <button type="button" onClick={pickImage} disabled={imagePickerLoading}
               className="flex items-center gap-2 px-4 py-2.5 rounded-lg border border-dashed border-slate-300 text-sm text-slate-500 hover:border-brand hover:text-brand transition-colors w-full justify-center disabled:opacity-50">
               <ImagePlus size={16} />
-              {imagePickerLoading ? 'Opening…' : 'Choose Image'}
+              {imagePickerLoading ? t('products.form.openingEllipsis') : t('products.form.chooseImage')}
             </button>
           )}
         </div>
 
         {/* Description */}
         <div>
-          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">Description</label>
-          <textarea {...register('description')} rows={2} placeholder="Optional product description…"
+          <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('products.description')}</label>
+          <textarea {...register('description')} rows={2} placeholder={t('products.form.descriptionPlaceholder')}
             className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-800 focus:outline-none focus:ring-2 focus:ring-brand resize-none text-slate-700 dark:text-slate-200 placeholder-slate-400" />
         </div>
 

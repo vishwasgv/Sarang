@@ -133,7 +133,7 @@ export function ServiceTicketsScreen() {
         setForm({ ...BLANK_FORM })
         load()
       } else {
-        toastError((res.error as any)?.message ?? 'Could not create ticket')
+        toastError((res.error as any)?.message ?? t('service.couldNotCreateTicket'))
       }
     } catch {
       toastError(t('common.error'))
@@ -174,7 +174,7 @@ export function ServiceTicketsScreen() {
         setConfirmDelete(false)
         setTickets(prev => prev.filter(t => t.id !== ticketId))
       } else {
-        toastError((res.error as any)?.message ?? 'Could not delete ticket')
+        toastError((res.error as any)?.message ?? t('service.couldNotDeleteTicket'))
       }
     } catch {
       toastError(t('common.error'))
@@ -185,18 +185,18 @@ export function ServiceTicketsScreen() {
 
   async function handleGenerateInvoice(ticketId: string) {
     const amount = Number(invoiceAmount)
-    if (!amount || amount <= 0) { toastError('Enter a billable amount greater than zero.'); return }
+    if (!amount || amount <= 0) { toastError(t('service.enterValidBillableAmount')); return }
     setGeneratingInvoice(true)
     try {
       const res = await api.tickets.generateInvoice({ id: ticketId, amount })
       if (res.success) {
         const data = res.data as { invoiceId: string }
-        toastSuccess('Invoice generated')
+        toastSuccess(t('service.invoiceGenerated'))
         setDetail(prev => prev ? { ...prev, invoiceId: data.invoiceId } : prev)
         setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, invoiceId: data.invoiceId } : t))
         setInvoiceAmount('')
       } else {
-        toastError((res.error as any)?.message ?? 'Could not generate invoice')
+        toastError((res.error as any)?.message ?? t('service.couldNotGenerateInvoice'))
       }
     } catch {
       toastError(t('common.error'))

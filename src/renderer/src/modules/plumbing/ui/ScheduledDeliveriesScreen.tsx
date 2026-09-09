@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Truck, RefreshCw, ArrowRight, XCircle } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -30,10 +31,8 @@ const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'info' | 'neutral'>
   CANCELLED: 'neutral',
 }
 
-// Phase 69 — Plumbing vertical, scheduled delivery for fragile sanitaryware.
-// English-only for now, same deliberate scope-fork convention as Phase 38's
-// Print Labels screen — full-language translation is a later task.
 export function ScheduledDeliveriesScreen(): React.JSX.Element {
+  const { t } = useTranslation()
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canManage = hasPermission('billing.createInvoice')
@@ -47,13 +46,13 @@ export function ScheduledDeliveriesScreen(): React.JSX.Element {
     try {
       const res = await window.api.billing.listScheduledDeliveries()
       if (res.success) setDeliveries((res.data as DeliveryInvoice[]) ?? [])
-      else toastError('Error', res.error?.message ?? 'Could not load scheduled deliveries.')
+      else toastError(t('common.error'), res.error?.message ?? t('plumbing.scheduledDeliveries.couldNotLoad'))
     } catch {
-      toastError('Error', 'Could not load scheduled deliveries.')
+      toastError(t('common.error'), t('plumbing.scheduledDeliveries.couldNotLoad'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { void load() }, [load])
 
@@ -62,7 +61,7 @@ export function ScheduledDeliveriesScreen(): React.JSX.Element {
     try {
       const res = await window.api.billing.updateDeliveryStatus({ invoiceId: id, status })
       if (res.success) await load()
-      else toastError('Error', res.error?.message ?? 'Could not update delivery status.')
+      else toastError(t('common.error'), res.error?.message ?? t('plumbing.scheduledDeliveries.couldNotUpdateStatus'))
     } finally {
       setUpdatingId(null)
     }
@@ -72,20 +71,20 @@ export function ScheduledDeliveriesScreen(): React.JSX.Element {
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><Truck size={20} /> Scheduled Deliveries</h2>
-          <p className="text-sm text-slate-400">Fragile sanitaryware deliveries booked at billing time.</p>
+          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><Truck size={20} /> {t('plumbing.scheduledDeliveries.title')}</h2>
+          <p className="text-sm text-slate-400">{t('plumbing.scheduledDeliveries.subtitle')}</p>
         </div>
         <button onClick={() => void load()} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-300 transition-colors">
-          <RefreshCw size={14} /> Refresh
+          <RefreshCw size={14} /> {t('common.refresh')}
         </button>
       </div>
 
       {loading ? (
-        <div className="text-center py-16 text-slate-400">Loading…</div>
+        <div className="text-center py-16 text-slate-400">{t('common.loading')}</div>
       ) : deliveries.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <Truck size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No scheduled deliveries yet.</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('plumbing.scheduledDeliveries.empty')}</p>
         </Card>
       ) : (
         <Card padding="none" className="overflow-hidden">
@@ -99,9 +98,9 @@ export function ScheduledDeliveriesScreen(): React.JSX.Element {
                       <span className="font-semibold text-gray-900 text-sm dark:text-slate-100">{d.invoiceNumber}</span>
                       <Badge variant={STATUS_VARIANT[d.deliveryStatus] ?? 'neutral'} size="sm">{d.deliveryStatus.replace(/_/g, ' ')}</Badge>
                     </div>
-                    <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{d.customer?.customerName ?? 'Walk-in'}{d.deliveryAddress ? ` — ${d.deliveryAddress}` : ''}</div>
+                    <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{d.customer?.customerName ?? t('plumbing.scheduledDeliveries.walkIn')}{d.deliveryAddress ? ` — ${d.deliveryAddress}` : ''}</div>
                     <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
-                      <span>Scheduled {new Date(d.scheduledDeliveryDate).toLocaleDateString()}</span>
+                      <span>{t('plumbing.scheduledDeliveries.scheduledOn', { date: new Date(d.scheduledDeliveryDate).toLocaleDateString() })}</span>
                       <span className="font-semibold text-dark dark:text-slate-100">{formatCurrency(d.totalAmount)}</span>
                     </div>
                   </div>

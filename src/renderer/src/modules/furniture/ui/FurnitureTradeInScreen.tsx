@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Repeat, Plus, RefreshCw, Trash2, CheckCircle2 } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
@@ -27,10 +28,9 @@ interface FurnitureTradeIn {
 
 // Phase 69 — Furniture vertical. Mirrors MetalExchangeScreen.tsx's UI pattern
 // exactly (jewellery.ts's exchange screen), swapping the metal-rate-derived
-// value for a direct shop-assessed figure. English-only for now, same
-// deliberate scope-fork convention as Phase 38's Print Labels screen —
-// full-language translation is a later task.
+// value for a direct shop-assessed figure.
 export function FurnitureTradeInScreen(): React.JSX.Element {
+  const { t } = useTranslation()
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const sym = useBusinessStore((s) => s.profile?.currencySymbol ?? '₹')
   const { success: toastSuccess, error: toastError } = useNotificationStore()
@@ -58,13 +58,13 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
     try {
       const res = await window.api.furnitureTradeIn.list()
       if (res.success) setTradeIns((res.data as FurnitureTradeIn[]) ?? [])
-      else toastError('Error', res.error?.message ?? 'Could not load trade-ins.')
+      else toastError(t('furniture.tradeIn.errorTitle'), res.error?.message ?? t('furniture.tradeIn.couldNotLoadTradeIns'))
     } catch {
-      toastError('Error', 'Could not load trade-ins.')
+      toastError(t('furniture.tradeIn.errorTitle'), t('furniture.tradeIn.couldNotLoadTradeIns'))
     } finally {
       setLoading(false)
     }
-  }, [toastError])
+  }, [toastError, t])
 
   useEffect(() => { void load() }, [load])
 
@@ -80,10 +80,10 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
 
   async function handleCreate() {
     setError('')
-    if (!pickedCustomer && !walkInName.trim()) { setError('Select a customer or enter a walk-in name.'); return }
-    if (!itemDescription.trim()) { setError('Item description is required.'); return }
+    if (!pickedCustomer && !walkInName.trim()) { setError(t('furniture.tradeIn.selectCustomerOrWalkInError')); return }
+    if (!itemDescription.trim()) { setError(t('furniture.tradeIn.itemDescriptionRequiredError')); return }
     const value = Number(tradeInValue)
-    if (!Number.isFinite(value) || value <= 0) { setError('Enter a valid trade-in value greater than zero.'); return }
+    if (!Number.isFinite(value) || value <= 0) { setError(t('furniture.tradeIn.invalidValueError')); return }
     setSaving(true)
     try {
       const res = await window.api.furnitureTradeIn.create({
@@ -96,12 +96,12 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
       })
       if (res.success) {
         const data = res.data as FurnitureTradeIn
-        toastSuccess('Trade-in recorded', `${data.tradeInNumber} — ${formatCurrency(data.tradeInValue)} credit`)
+        toastSuccess(t('furniture.tradeIn.tradeInRecordedTitle'), t('furniture.tradeIn.tradeInRecordedMessage', { number: data.tradeInNumber, amount: formatCurrency(data.tradeInValue) }))
         setShowForm(false)
         resetForm()
         await load()
       } else {
-        setError(res.error?.message ?? 'Could not record trade-in.')
+        setError(res.error?.message ?? t('furniture.tradeIn.couldNotRecordTradeIn'))
       }
     } finally {
       setSaving(false)
@@ -113,8 +113,8 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
     setDeleting(true)
     try {
       const res = await window.api.furnitureTradeIn.delete({ id: deleteTarget.id })
-      if (res.success) { toastSuccess('Deleted', 'Trade-in deleted.'); setDeleteTarget(null); await load() }
-      else toastError('Error', res.error?.message ?? 'Could not delete trade-in.')
+      if (res.success) { toastSuccess(t('furniture.tradeIn.deletedTitle'), t('furniture.tradeIn.deletedMessage')); setDeleteTarget(null); await load() }
+      else toastError(t('furniture.tradeIn.errorTitle'), res.error?.message ?? t('furniture.tradeIn.couldNotDeleteTradeIn'))
     } finally {
       setDeleting(false)
     }
@@ -126,12 +126,12 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
     try {
       const res = await window.api.furnitureTradeIn.linkToInvoice({ tradeInId: linkTarget.id, invoiceId: linkInvoiceNumber.trim() })
       if (res.success) {
-        toastSuccess('Linked', 'Trade-in linked to invoice.')
+        toastSuccess(t('furniture.tradeIn.linkedTitle'), t('furniture.tradeIn.linkedMessage'))
         setLinkTarget(null)
         setLinkInvoiceNumber('')
         await load()
       } else {
-        toastError('Error', res.error?.message ?? 'Could not link trade-in.')
+        toastError(t('furniture.tradeIn.errorTitle'), res.error?.message ?? t('furniture.tradeIn.couldNotLinkTradeIn'))
       }
     } finally {
       setLinking(false)
@@ -142,15 +142,15 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
     <div className="p-6 max-w-4xl mx-auto space-y-5">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><Repeat size={20} /> Furniture Trade-Ins</h2>
-          <p className="text-sm text-slate-400">Old-item trade-ins credited against a new purchase.</p>
+          <h2 className="text-lg font-bold text-dark flex items-center gap-2"><Repeat size={20} /> {t('furniture.tradeIn.title')}</h2>
+          <p className="text-sm text-slate-400">{t('furniture.tradeIn.subtitle')}</p>
         </div>
         <div className="flex items-center gap-2">
           <button onClick={() => void load()} className="flex items-center gap-2 px-3 py-2 rounded-xl border border-slate-200 text-sm text-slate-500 hover:border-slate-300 transition-colors">
-            <RefreshCw size={14} /> Refresh
+            <RefreshCw size={14} /> {t('common.refresh')}
           </button>
           {canManage && (
-            <Button size="sm" onClick={() => setShowForm((s) => !s)} icon={<Plus size={14} />}>Record Trade-In</Button>
+            <Button size="sm" onClick={() => setShowForm((s) => !s)} icon={<Plus size={14} />}>{t('furniture.tradeIn.recordTradeIn')}</Button>
           )}
         </div>
       </div>
@@ -158,45 +158,45 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
       {showForm && canManage && (
         <Card padding="md" className="space-y-3">
           {pickedCustomer ? (
-            <CustomerPicker value={pickedCustomer} onChange={setPickedCustomer} label="Customer" />
+            <CustomerPicker value={pickedCustomer} onChange={setPickedCustomer} label={t('furniture.tradeIn.customerLabel')} />
           ) : (
             <div className="grid grid-cols-2 gap-3">
-              <CustomerPicker value={pickedCustomer} onChange={setPickedCustomer} label="Customer (optional)" />
-              <Input label="Walk-In Name" placeholder="Walk-in customer" value={walkInName} onChange={(e) => setWalkInName(e.target.value)} disabled={!!pickedCustomer} />
+              <CustomerPicker value={pickedCustomer} onChange={setPickedCustomer} label={t('furniture.tradeIn.customerOptionalLabel')} />
+              <Input label={t('furniture.tradeIn.walkInNameLabel')} placeholder={t('furniture.tradeIn.walkInNamePlaceholder')} value={walkInName} onChange={(e) => setWalkInName(e.target.value)} disabled={!!pickedCustomer} />
             </div>
           )}
           <div className="grid grid-cols-2 gap-3">
-            <Input label="Item Description" placeholder="e.g. 3-seater sofa, teak finish" value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} />
-            <Input label="Condition" placeholder="e.g. Good — minor wear on left arm" value={condition} onChange={(e) => setCondition(e.target.value)} />
+            <Input label={t('furniture.tradeIn.itemDescriptionLabel')} placeholder={t('furniture.tradeIn.itemDescriptionPlaceholder')} value={itemDescription} onChange={(e) => setItemDescription(e.target.value)} />
+            <Input label={t('furniture.tradeIn.conditionLabel')} placeholder={t('furniture.tradeIn.conditionPlaceholder')} value={condition} onChange={(e) => setCondition(e.target.value)} />
           </div>
-          <Input label={`Trade-In Value (${sym})`} type="number" step="0.01" min="0" value={tradeInValue} onChange={(e) => setTradeInValue(e.target.value)} />
-          <Input label="Notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+          <Input label={t('furniture.tradeIn.tradeInValueLabel', { sym })} type="number" step="0.01" min="0" value={tradeInValue} onChange={(e) => setTradeInValue(e.target.value)} />
+          <Input label={t('common.notes')} value={notes} onChange={(e) => setNotes(e.target.value)} />
           {error && <p className="text-xs text-danger bg-red-50 border border-red-100 rounded-md px-3 py-2">{error}</p>}
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => { setShowForm(false); resetForm() }}>Cancel</Button>
-            <Button size="sm" onClick={() => void handleCreate()} loading={saving}>Record</Button>
+            <Button variant="secondary" size="sm" onClick={() => { setShowForm(false); resetForm() }}>{t('common.cancel')}</Button>
+            <Button size="sm" onClick={() => void handleCreate()} loading={saving}>{t('furniture.tradeIn.record')}</Button>
           </div>
         </Card>
       )}
 
       {linkTarget && (
         <Card padding="md" className="space-y-3 border-brand/40">
-          <p className="text-sm font-semibold text-dark">Mark {linkTarget.tradeInNumber} as applied</p>
-          <Input label="Invoice ID" placeholder="Invoice ID this trade-in was applied to" value={linkInvoiceNumber} onChange={(e) => setLinkInvoiceNumber(e.target.value)} />
-          <p className="text-xs text-slate-400">Credits {formatCurrency(linkTarget.tradeInValue)} against that invoice's global discount.</p>
+          <p className="text-sm font-semibold text-dark">{t('furniture.tradeIn.markAppliedTitle', { number: linkTarget.tradeInNumber })}</p>
+          <Input label={t('furniture.tradeIn.invoiceIdLabel')} placeholder={t('furniture.tradeIn.invoiceIdPlaceholder')} value={linkInvoiceNumber} onChange={(e) => setLinkInvoiceNumber(e.target.value)} />
+          <p className="text-xs text-slate-400">{t('furniture.tradeIn.creditsAgainstInvoice', { amount: formatCurrency(linkTarget.tradeInValue) })}</p>
           <div className="flex justify-end gap-2">
-            <Button variant="secondary" size="sm" onClick={() => setLinkTarget(null)} disabled={linking}>Cancel</Button>
-            <Button size="sm" onClick={() => void handleLink()} loading={linking}>Link</Button>
+            <Button variant="secondary" size="sm" onClick={() => setLinkTarget(null)} disabled={linking}>{t('common.cancel')}</Button>
+            <Button size="sm" onClick={() => void handleLink()} loading={linking}>{t('furniture.tradeIn.link')}</Button>
           </div>
         </Card>
       )}
 
       {loading ? (
-        <div className="text-center py-16 text-slate-400">Loading…</div>
+        <div className="text-center py-16 text-slate-400">{t('common.loading')}</div>
       ) : tradeIns.length === 0 ? (
         <Card padding="lg" className="text-center py-12">
           <Repeat size={32} className="text-slate-300 dark:text-slate-600 mx-auto mb-3" />
-          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">No trade-ins recorded yet.</p>
+          <p className="text-sm font-medium text-slate-500 dark:text-slate-400">{t('furniture.tradeIn.emptyTitle')}</p>
         </Card>
       ) : (
         <Card padding="none" className="overflow-hidden">
@@ -207,22 +207,22 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
                   <div className="flex items-center gap-2 flex-wrap">
                     <span className="font-semibold text-gray-900 text-sm dark:text-slate-100">{x.tradeInNumber}</span>
                     {x.invoiceId ? (
-                      <Badge variant="success" size="sm">Applied to {x.invoiceId}</Badge>
+                      <Badge variant="success" size="sm">{t('furniture.tradeIn.appliedTo', { invoiceId: x.invoiceId })}</Badge>
                     ) : (
-                      <Badge variant="warning" size="sm">Not yet applied</Badge>
+                      <Badge variant="warning" size="sm">{t('furniture.tradeIn.notYetApplied')}</Badge>
                     )}
                   </div>
-                  <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{x.customer?.customerName ?? x.customerName ?? 'Walk-in'}</div>
+                  <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{x.customer?.customerName ?? x.customerName ?? t('furniture.tradeIn.walkIn')}</div>
                   <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
                     <span>{x.itemDescription}{x.condition ? ` — ${x.condition}` : ''}</span>
-                    <span className="font-semibold text-dark dark:text-slate-100">{formatCurrency(x.tradeInValue)} credit</span>
+                    <span className="font-semibold text-dark dark:text-slate-100">{t('furniture.tradeIn.amountCredit', { amount: formatCurrency(x.tradeInValue) })}</span>
                     <span>{new Date(x.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>
                 <div className="flex items-center gap-2 flex-shrink-0">
                   {!x.invoiceId && canManage && (
                     <button onClick={() => { setLinkTarget(x); setLinkInvoiceNumber('') }} className="text-xs px-3 py-1.5 rounded-lg bg-brand/5 text-brand border border-brand/20 hover:bg-brand/10 flex items-center gap-1 font-medium">
-                      <CheckCircle2 size={12} /> Mark Applied
+                      <CheckCircle2 size={12} /> {t('furniture.tradeIn.markApplied')}
                     </button>
                   )}
                   {!x.invoiceId && canManage && (
@@ -240,9 +240,9 @@ export function FurnitureTradeInScreen(): React.JSX.Element {
         onClose={() => setDeleteTarget(null)}
         onConfirm={handleDelete}
         loading={deleting}
-        title="Delete Trade-In"
-        message="This trade-in record will be permanently deleted. This cannot be undone."
-        confirmLabel="Delete"
+        title={t('furniture.tradeIn.deleteTitle')}
+        message={t('furniture.tradeIn.deleteMessage')}
+        confirmLabel={t('common.delete')}
       />
     </div>
   )

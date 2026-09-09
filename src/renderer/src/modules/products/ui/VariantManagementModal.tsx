@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, Save, Grid3x3, Barcode, RefreshCw, TrendingUp } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -36,6 +37,7 @@ function emptyRow(): VariantRow {
 }
 
 export function VariantManagementModal({ open, productId, productName, onClose }: VariantManagementModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   // Phase 67 §9.1 — Footwear item 1: half-size/width matrix. Width is
   // FOOTWEAR's own real differentiator, deliberately not shown for
@@ -90,17 +92,17 @@ export function VariantManagementModal({ open, productId, productName, onClose }
           setRows([emptyRow()])
         }
       } else {
-        toastError('Failed', (res.error as { message?: string })?.message ?? 'Could not load variants.')
+        toastError(t('products.variantManagement.failedTitle'), (res.error as { message?: string })?.message ?? t('products.variantManagement.loadVariantsFailedMessage'))
       }
       const sumRes = await window.api.variants.summary({ productId })
       if (sumRes.success) setSummary(sumRes.data as typeof summary)
-      else toastError('Failed', (sumRes.error as { message?: string })?.message ?? 'Could not load variant summary.')
+      else toastError(t('products.variantManagement.failedTitle'), (sumRes.error as { message?: string })?.message ?? t('products.variantManagement.loadSummaryFailedMessage'))
     } catch {
-      toastError('Failed', 'Could not load variants.')
+      toastError(t('products.variantManagement.failedTitle'), t('products.variantManagement.loadVariantsFailedMessage'))
     } finally {
       setLoading(false)
     }
-  }, [productId, toastError])
+  }, [productId, toastError, t])
 
   useEffect(() => {
     if (open && productId) {
@@ -134,7 +136,8 @@ export function VariantManagementModal({ open, productId, productName, onClose }
     // original 2D behavior whenever widths is empty.
     const widths = matrixWidths.split(',').map(w => w.trim()).filter(Boolean)
     if (sizes.length === 0 && colors.length === 0 && widths.length === 0) {
-      toastError('Nothing to Generate', `Enter at least one size, ${isFootwear ? 'width, ' : ''}or colour, comma-separated.`)
+      const widthPart = isFootwear ? t('products.variantManagement.widthCommaFragment') : ''
+      toastError(t('products.variantManagement.nothingToGenerateTitle'), t('products.variantManagement.nothingToGenerateMessage', { widthPart }))
       return
     }
     const sizeList = sizes.length ? sizes : ['']
@@ -144,7 +147,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
       sizeList.flatMap(s => widthList.flatMap(w => colorList.map(c => ({ size: s, width: w, color: c }))))
 
     if (combos.length > MAX_MATRIX_COMBOS) {
-      toastError('Too Many Combinations', `That would generate ${combos.length} variants at once — split into smaller batches (max ${MAX_MATRIX_COMBOS}).`)
+      toastError(t('products.variantManagement.tooManyTitle'), t('products.variantManagement.tooManyMessage', { count: combos.length, max: MAX_MATRIX_COMBOS }))
       return
     }
 
@@ -155,7 +158,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
     const skipped = combos.length - newRows.length
 
     if (newRows.length === 0) {
-      toastError('Nothing New', 'Every one of those combinations already exists.')
+      toastError(t('products.variantManagement.nothingNewTitle'), t('products.variantManagement.nothingNewMessage'))
       return
     }
 
@@ -165,7 +168,10 @@ export function VariantManagementModal({ open, productId, productName, onClose }
       const base = prev.length === 1 && !prev[0].id && !prev[0].size && !prev[0].color ? [] : prev
       return [...base, ...newRows]
     })
-    toastSuccess('Variants Generated', `${newRows.length} variant${newRows.length === 1 ? '' : 's'} added${skipped > 0 ? ` (${skipped} already existed, skipped)` : ''}. Review below, then Save.`)
+    const base = t('products.variantManagement.variantsGeneratedBase', { count: newRows.length })
+    const skippedPart = skipped > 0 ? t('products.variantManagement.variantsGeneratedSkipped', { skipped }) : ''
+    const suffix = t('products.variantManagement.variantsGeneratedSuffix')
+    toastSuccess(t('products.variantManagement.variantsGeneratedTitle'), `${base}${skippedPart}${suffix}`)
     setMatrixSizes(''); setMatrixColors(''); setMatrixWidths('')
   }
 
@@ -178,10 +184,10 @@ export function VariantManagementModal({ open, productId, productName, onClose }
       if (res.success && res.data) {
         setReorderSuggestion(res.data as typeof reorderSuggestion)
       } else {
-        toastError('Could Not Suggest', (res.error as { message?: string })?.message ?? 'Could not compute a reorder suggestion.')
+        toastError(t('products.variantManagement.couldNotSuggestTitle'), (res.error as { message?: string })?.message ?? t('products.variantManagement.couldNotSuggestMessage'))
       }
     } catch {
-      toastError('Could Not Suggest', 'Could not compute a reorder suggestion.')
+      toastError(t('products.variantManagement.couldNotSuggestTitle'), t('products.variantManagement.couldNotSuggestMessage'))
     } finally {
       setLoadingSuggestion(false)
     }
@@ -190,7 +196,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
   async function generateBarcodeForRow(idx: number) {
     const row = rows[idx]
     if (!row.id) {
-      toastError('Save First', 'Save this variant before generating a barcode for it.')
+      toastError(t('products.variantManagement.saveFirstTitle'), t('products.variantManagement.saveFirstMessage'))
       return
     }
     setGeneratingBarcodeFor(idx)
@@ -198,12 +204,12 @@ export function VariantManagementModal({ open, productId, productName, onClose }
       const res = await window.api.variants.generateBarcode({ variantId: row.id })
       if (res.success && res.data) {
         updateRow(idx, 'barcode', (res.data as { barcode: string }).barcode)
-        toastSuccess('Barcode Generated', 'Save to keep this change.')
+        toastSuccess(t('products.variantManagement.barcodeGeneratedTitle'), t('products.variantManagement.saveToKeepMessage'))
       } else {
-        toastError('Failed', (res.error as { message?: string })?.message ?? 'Could not generate a barcode.')
+        toastError(t('products.variantManagement.failedTitle'), (res.error as { message?: string })?.message ?? t('products.variantManagement.generateBarcodeFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not generate a barcode.')
+      toastError(t('products.variantManagement.failedTitle'), t('products.variantManagement.generateBarcodeFailedMessage'))
     } finally {
       setGeneratingBarcodeFor(null)
     }
@@ -212,7 +218,8 @@ export function VariantManagementModal({ open, productId, productName, onClose }
   async function handleSave() {
     const valid = rows.filter(r => r.size || r.color || r.width)
     if (valid.length === 0) {
-      toastError('No Variants', `Add at least one variant with a size, colour${isFootwear ? ',' : ' or'} width.`)
+      const connector = isFootwear ? t('products.variantManagement.colourConnectorComma') : t('products.variantManagement.colourConnectorOr')
+      toastError(t('products.variantManagement.noVariantsTitle'), t('products.variantManagement.noVariantsMessage', { connector }))
       return
     }
     setSaving(true)
@@ -234,18 +241,18 @@ export function VariantManagementModal({ open, productId, productName, onClose }
         for (const id of deletedIds) {
           const delRes = await window.api.variants.delete({ id })
           if (!delRes.success) {
-            toastError('Failed', (delRes.error as { message?: string })?.message ?? 'Could not delete a removed variant.')
+            toastError(t('products.variantManagement.failedTitle'), (delRes.error as { message?: string })?.message ?? t('products.variantManagement.deleteVariantFailedMessage'))
             return
           }
         }
-        toastSuccess('Variants Saved', `${valid.length} variant${valid.length > 1 ? 's' : ''} saved for ${productName}.`)
+        toastSuccess(t('products.variantManagement.variantsSavedTitle'), t('products.variantManagement.variantsSavedMessage', { count: valid.length, productName }))
         setDeletedIds([])
         onClose()
       } else {
-        toastError('Failed', (res.error as { message: string })?.message ?? 'Could not save variants.')
+        toastError(t('products.variantManagement.failedTitle'), (res.error as { message: string })?.message ?? t('products.variantManagement.saveVariantsFailedMessage'))
       }
     } catch {
-      toastError('Failed', 'Could not save variants.')
+      toastError(t('products.variantManagement.failedTitle'), t('products.variantManagement.saveVariantsFailedMessage'))
     } finally {
       setSaving(false)
     }
@@ -258,46 +265,46 @@ export function VariantManagementModal({ open, productId, productName, onClose }
       <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-2xl w-full max-w-3xl p-6 flex flex-col max-h-[90vh]">
         <div className="flex items-center justify-between mb-5">
           <div>
-            <h2 className="text-xl font-bold text-dark dark:text-slate-100">Manage Variants</h2>
+            <h2 className="text-xl font-bold text-dark dark:text-slate-100">{t('products.manageVariants')}</h2>
             <p className="text-sm text-slate-500 dark:text-slate-400">{productName}</p>
           </div>
           {summary && (
             <div className="text-end">
-              <p className="text-base font-semibold text-dark dark:text-slate-100">{summary.totalVariants} variants</p>
-              <p className="text-sm text-slate-500 dark:text-slate-400">Total stock: {summary.totalStock}</p>
+              <p className="text-base font-semibold text-dark dark:text-slate-100">{t('products.variantManagement.variantsCountLabel', { count: summary.totalVariants })}</p>
+              <p className="text-sm text-slate-500 dark:text-slate-400">{t('products.variantManagement.totalStockLabel', { total: summary.totalStock })}</p>
             </div>
           )}
         </div>
 
         {loading ? (
-          <p className="text-base text-slate-500 dark:text-slate-400 py-8 text-center">Loading…</p>
+          <p className="text-base text-slate-500 dark:text-slate-400 py-8 text-center">{t('common.loading')}</p>
         ) : (
           <>
             {/* Phase 58 §2 — bulk/matrix generation: e.g. Sizes "S, M, L" ×
                 Colours "Black, Red" generates 6 variants in one go. */}
             <div className="mb-4 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
-              <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><Grid3x3 size={15} /> Generate Size{isFootwear ? ' × Width' : ''} × Colour Matrix</p>
+              <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><Grid3x3 size={15} /> {t('products.variantManagement.generateMatrixTitle', { widthPart: isFootwear ? t('products.variantManagement.widthTimesFragment') : '' })}</p>
               <div className="flex gap-2 flex-wrap items-end">
                 <div className="flex-1 min-w-[180px]">
-                  <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Sizes (comma-separated)</label>
-                  <input value={matrixSizes} onChange={e => setMatrixSizes(e.target.value)} placeholder="S, M, L, XL"
+                  <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('products.variantManagement.sizesLabel')}</label>
+                  <input value={matrixSizes} onChange={e => setMatrixSizes(e.target.value)} placeholder={t('products.variantManagement.sizesPlaceholder')}
                     className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
                 {isFootwear && (
                   <div className="flex-1 min-w-[180px]">
-                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Widths (comma-separated)</label>
-                    <input value={matrixWidths} onChange={e => setMatrixWidths(e.target.value)} placeholder="Regular, Wide"
+                    <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('products.variantManagement.widthsLabel')}</label>
+                    <input value={matrixWidths} onChange={e => setMatrixWidths(e.target.value)} placeholder={t('products.variantManagement.widthsPlaceholder')}
                       className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                   </div>
                 )}
                 <div className="flex-1 min-w-[180px]">
-                  <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Colours (comma-separated)</label>
-                  <input value={matrixColors} onChange={e => setMatrixColors(e.target.value)} placeholder="Black, Red, Blue"
+                  <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('products.variantManagement.coloursLabel')}</label>
+                  <input value={matrixColors} onChange={e => setMatrixColors(e.target.value)} placeholder={t('products.variantManagement.coloursPlaceholder')}
                     className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
-                <Button size="sm" variant="secondary" onClick={generateMatrix}>Generate</Button>
+                <Button size="sm" variant="secondary" onClick={generateMatrix}>{t('products.variantManagement.generateButton')}</Button>
               </div>
-              <p className="text-xs text-slate-400">Leave a field blank to skip that dimension (e.g. sizes only, no colours{isFootwear ? '/widths' : ''}). Generated rows still need Save below.</p>
+              <p className="text-xs text-slate-400">{t('products.variantManagement.matrixHint', { widthsSuffix: isFootwear ? t('products.variantManagement.widthsSuffixFragment') : '' })}</p>
             </div>
 
             {/* Phase 67 §9.1 — Clothing: size-curve reorder suggestion.
@@ -306,28 +313,28 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                 Orders, informed by this split. */}
             <div className="mb-4 p-3 rounded-xl border border-dashed border-slate-200 dark:border-slate-700 space-y-2">
               <button type="button" onClick={() => setShowReorderSuggestion(s => !s)} className="w-full flex items-center justify-between text-start">
-                <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><TrendingUp size={15} /> Suggested Reorder Split</p>
-                <span className="text-xs text-slate-400">{showReorderSuggestion ? 'Hide' : 'Show'}</span>
+                <p className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-1.5"><TrendingUp size={15} /> {t('products.variantManagement.suggestedReorderSplitTitle')}</p>
+                <span className="text-xs text-slate-400">{showReorderSuggestion ? t('products.variantManagement.hide') : t('products.variantManagement.show')}</span>
               </button>
               {showReorderSuggestion && (
                 <div className="space-y-3 pt-1">
-                  <p className="text-xs text-slate-400">Weights a reorder quantity toward the sizes/colours that actually sold in the last {reorderSuggestion?.lookbackDays ?? 90} days, instead of splitting evenly — so you stop over-ordering the slow sizes.</p>
+                  <p className="text-xs text-slate-400">{t('products.variantManagement.reorderSuggestionHint', { days: reorderSuggestion?.lookbackDays ?? 90 })}</p>
                   <div className="flex gap-2 items-end">
                     <div className="flex-1 min-w-[180px]">
-                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">Total quantity to reorder</label>
-                      <input value={reorderQtyInput} onChange={e => setReorderQtyInput(e.target.value)} type="number" min="1" placeholder="Uses this product's own reorder quantity if left blank"
+                      <label className="block text-xs text-slate-500 dark:text-slate-400 mb-1">{t('products.variantManagement.totalQtyToReorderLabel')}</label>
+                      <input value={reorderQtyInput} onChange={e => setReorderQtyInput(e.target.value)} type="number" min="1" placeholder={t('products.variantManagement.totalQtyPlaceholder')}
                         className="w-full h-9 px-3 text-sm border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
                     </div>
-                    <Button size="sm" variant="secondary" onClick={handleSuggestReorder} loading={loadingSuggestion}>Suggest Split</Button>
+                    <Button size="sm" variant="secondary" onClick={handleSuggestReorder} loading={loadingSuggestion}>{t('products.variantManagement.suggestSplitButton')}</Button>
                   </div>
                   {reorderSuggestion && (
                     <div className="border border-slate-100 dark:border-slate-800 rounded-lg overflow-hidden">
                       <table className="w-full text-sm">
                         <thead className="bg-slate-50 dark:bg-slate-800">
                           <tr>
-                            <th className="text-start px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Variant</th>
-                            <th className="text-end px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Sold Recently</th>
-                            <th className="text-end px-3 py-2 font-medium text-slate-500 dark:text-slate-400">Suggested Qty</th>
+                            <th className="text-start px-3 py-2 font-medium text-slate-500 dark:text-slate-400">{t('products.variantManagement.variantColumn')}</th>
+                            <th className="text-end px-3 py-2 font-medium text-slate-500 dark:text-slate-400">{t('products.variantManagement.soldRecentlyColumn')}</th>
+                            <th className="text-end px-3 py-2 font-medium text-slate-500 dark:text-slate-400">{t('products.variantManagement.suggestedQtyColumn')}</th>
                           </tr>
                         </thead>
                         <tbody>
@@ -350,13 +357,13 @@ export function VariantManagementModal({ open, productId, productName, onClose }
               <table className="w-full text-base">
                 <thead>
                   <tr className="text-sm font-semibold text-slate-500 dark:text-slate-400 border-b border-slate-100 dark:border-slate-800">
-                    <th className="py-3 pe-3 text-start">Size</th>
-                    {isFootwear && <th className="py-3 pe-3 text-start">Width</th>}
-                    <th className="py-3 pe-3 text-start">Colour</th>
-                    <th className="py-3 pe-3 text-start">SKU</th>
-                    <th className="py-3 pe-3 text-start">Barcode</th>
-                    <th className="py-3 pe-3 text-start">+Price</th>
-                    <th className="py-3 pe-3 text-start">Stock</th>
+                    <th className="py-3 pe-3 text-start">{t('products.variantManagement.sizeColumn')}</th>
+                    {isFootwear && <th className="py-3 pe-3 text-start">{t('products.variantManagement.widthColumn')}</th>}
+                    <th className="py-3 pe-3 text-start">{t('products.variantManagement.colourColumn')}</th>
+                    <th className="py-3 pe-3 text-start">{t('products.sku')}</th>
+                    <th className="py-3 pe-3 text-start">{t('products.barcode')}</th>
+                    <th className="py-3 pe-3 text-start">{t('products.variantManagement.plusPriceColumn')}</th>
+                    <th className="py-3 pe-3 text-start">{t('products.stock')}</th>
                     <th className="py-3"></th>
                   </tr>
                 </thead>
@@ -368,7 +375,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           list={`sizes-${idx}`}
                           value={row.size}
                           onChange={e => updateRow(idx, 'size', e.target.value)}
-                          placeholder="M, L, 32…"
+                          placeholder={t('products.variantManagement.sizeInputPlaceholder')}
                           className="w-full h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                         />
                         <datalist id={`sizes-${idx}`}>
@@ -381,7 +388,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                             list={`widths-${idx}`}
                             value={row.width}
                             onChange={e => updateRow(idx, 'width', e.target.value)}
-                            placeholder="Regular, Wide…"
+                            placeholder={t('products.variantManagement.widthInputPlaceholder')}
                             className="w-full h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                           />
                           <datalist id={`widths-${idx}`}>
@@ -394,7 +401,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           list={`colors-${idx}`}
                           value={row.color}
                           onChange={e => updateRow(idx, 'color', e.target.value)}
-                          placeholder="Black, Red…"
+                          placeholder={t('products.variantManagement.colourInputPlaceholder')}
                           className="w-full h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                         />
                         <datalist id={`colors-${idx}`}>
@@ -405,7 +412,7 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                         <input
                           value={row.sku}
                           onChange={e => updateRow(idx, 'sku', e.target.value)}
-                          placeholder="Optional"
+                          placeholder={t('common.optional')}
                           className="w-full h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                         />
                       </td>
@@ -414,14 +421,14 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                           <input
                             value={row.barcode}
                             onChange={e => updateRow(idx, 'barcode', e.target.value)}
-                            placeholder="Optional"
+                            placeholder={t('common.optional')}
                             className="w-32 h-10 px-3 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand"
                           />
                           {!row.barcode && (
                             <button
                               onClick={() => generateBarcodeForRow(idx)}
                               disabled={generatingBarcodeFor === idx}
-                              title={row.id ? 'Generate a barcode for this variant' : 'Save this variant first'}
+                              title={row.id ? t('products.variantManagement.generateBarcodeTitle') : t('products.variantManagement.saveVariantFirstTitle')}
                               className="p-2 text-slate-400 hover:text-brand hover:bg-brand/10 rounded-lg transition-colors disabled:opacity-50"
                             >
                               {generatingBarcodeFor === idx ? <RefreshCw size={15} className="animate-spin" /> : <Barcode size={15} />}
@@ -468,15 +475,15 @@ export function VariantManagementModal({ open, productId, productName, onClose }
                 onClick={addRow}
                 className="flex items-center gap-2 text-base font-medium text-brand hover:underline"
               >
-                <Plus size={16} /> Add Row
+                <Plus size={16} /> {t('products.variantManagement.addRowButton')}
               </button>
 
               <div className="flex gap-3">
                 <Button size="md" className="flex-1" onClick={handleSave} disabled={saving}>
                   <Save size={16} className="me-1.5" />
-                  {saving ? 'Saving…' : 'Save Variants'}
+                  {saving ? t('products.variantManagement.savingEllipsis') : t('products.variantManagement.saveVariantsButton')}
                 </Button>
-                <Button size="md" variant="outline" onClick={onClose}>Cancel</Button>
+                <Button size="md" variant="outline" onClick={onClose}>{t('common.cancel')}</Button>
               </div>
             </div>
           </>

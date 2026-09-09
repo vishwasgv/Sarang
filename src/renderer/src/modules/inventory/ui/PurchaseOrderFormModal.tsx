@@ -2,6 +2,7 @@ import React, { useEffect, useRef, useState } from 'react'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
+import { useTranslation } from 'react-i18next'
 import { Plus, Trash2, Search } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
@@ -47,6 +48,7 @@ function ProductPicker({ products, value, onChange, error }: {
   onChange: (productId: string) => void
   error?: string
 }) {
+  const { t } = useTranslation()
   const [query, setQuery] = useState('')
   const [open, setOpen] = useState(false)
   const wrapRef = useRef<HTMLDivElement>(null)
@@ -75,14 +77,14 @@ function ProductPicker({ products, value, onChange, error }: {
           value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
           onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
           onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder="Search product…"
+          placeholder={t('purchaseOrders.searchProductPlaceholder')}
           className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
         />
       </div>
       {open && (
         <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
           {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">No products match.</p>
+            <p className="px-3 py-2 text-xs text-slate-400">{t('purchaseOrders.noProductsMatch')}</p>
           ) : (
             results.map(p => (
               <button
@@ -92,7 +94,7 @@ function ProductPicker({ products, value, onChange, error }: {
                 className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}
               >
                 <p className="text-dark dark:text-slate-100">{p.productName}</p>
-                {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
+                {p.sku && <p className="text-xs text-slate-400">{t('purchaseOrders.skuPrefix', { sku: p.sku })}</p>}
               </button>
             ))
           )}
@@ -104,6 +106,7 @@ function ProductPicker({ products, value, onChange, error }: {
 }
 
 export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrderFormModalProps) {
+  const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
@@ -132,7 +135,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
       const d = sRes.data as { suppliers: Supplier[] }
       setSuppliers(d.suppliers ?? [])
     } else {
-      toastError('Error', sRes.error?.message ?? 'Failed to load suppliers.')
+      toastError(t('common.error'), sRes.error?.message ?? t('purchaseOrders.loadSuppliersFailed'))
     }
   }
 
@@ -151,11 +154,11 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           const d = pRes.data as { products: Product[] }
           setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
         } else {
-          toastError('Error', pRes.error?.message ?? 'Failed to load products.')
+          toastError(t('common.error'), pRes.error?.message ?? t('purchaseOrders.loadProductsFailed'))
         }
         if (cRes.success) setCustomers((cRes.data as { customers: Customer[] }).customers ?? [])
       } catch {
-        toastError('Error', 'Failed to load suppliers or products.')
+        toastError(t('common.error'), t('purchaseOrders.loadDataFailed'))
       } finally {
         setLoadingData(false)
       }
@@ -216,13 +219,13 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
       const res = await window.api.purchaseOrders.create(payload)
       if (res.success) {
         const po = res.data as { id: string; poNumber: string }
-        toastSuccess('PO Created', `Purchase order ${po.poNumber} has been saved as draft.`)
+        toastSuccess(t('purchaseOrders.poCreatedTitle'), t('purchaseOrders.poCreatedMessage', { poNumber: po.poNumber }))
         onSaved(po.id)
       } else {
-        toastError('Error', res.error?.message ?? 'Failed to create purchase order.')
+        toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.createFailed'))
       }
     } catch {
-      toastError('Error', 'Failed to create purchase order.')
+      toastError(t('common.error'), t('purchaseOrders.createFailed'))
     }
   }
 
@@ -230,12 +233,12 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
     <Modal
       open={open}
       onClose={onClose}
-      title="New Purchase Order"
+      title={t('purchaseOrders.newOrder')}
       size="xl"
       footer={
         <>
-          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>Cancel</Button>
-          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>Save as Draft</Button>
+          <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
+          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>{t('purchaseOrders.saveAsDraft')}</Button>
         </>
       }
     >
@@ -252,48 +255,48 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
                 const supplierField = register('supplierId')
                 return (
                   <Select
-                    label="Supplier" required error={errors.supplierId?.message}
+                    label={t('purchaseOrders.supplier')} required error={errors.supplierId?.message}
                     {...supplierField}
                     onChange={(e) => {
                       if (e.target.value === '__NEW__') { setSupplierFormOpen(true); return }
                       supplierField.onChange(e)
                     }}
                   >
-                    <option value="">Select supplier…</option>
-                    <option value="__NEW__">+ Add New Supplier…</option>
+                    <option value="">{t('purchaseOrders.selectSupplierPlaceholder')}</option>
+                    <option value="__NEW__">{t('purchaseOrders.addNewSupplierOption')}</option>
                     {suppliers.map(s => <option key={s.id} value={s.id}>{s.supplierName} ({s.supplierCode})</option>)}
                   </Select>
                 )
               })()}
             </div>
-            <Input label="Expected Delivery Date" type="date" {...register('expectedDate')} />
+            <Input label={t('purchaseOrders.expectedDeliveryDate')} type="date" {...register('expectedDate')} />
           </div>
 
           {/* Drop-ship — receive this PO directly at a customer's address
               instead of your own warehouse, linked to a Sales Order you're
               fulfilling straight from the supplier. */}
-          <Select label="Drop-Ship To Customer (optional)" {...register('dropShipToCustomerId')}>
-            <option value="">Deliver to my own location (default)</option>
+          <Select label={t('purchaseOrders.dropShipToCustomerOptional')} {...register('dropShipToCustomerId')}>
+            <option value="">{t('purchaseOrders.deliverToOwnLocation')}</option>
             {customers.map(c => <option key={c.id} value={c.id}>{c.customerName} ({c.customerCode})</option>)}
           </Select>
 
           {/* Line items */}
           <div>
             <div className="flex items-center justify-between mb-2">
-              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">Items</p>
+              <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">{t('purchaseOrders.items')}</p>
               <button type="button" onClick={() => append({ productId: '', quantity: 1, unitCost: 0, taxRate: 0 })}
                 className="flex items-center gap-1 text-xs font-medium text-brand hover:text-brand/80 transition-colors">
-                <Plus size={12} /> Add Item
+                <Plus size={12} /> {t('purchaseOrders.addItem')}
               </button>
             </div>
 
             <div className="space-y-2">
               {/* Header */}
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 px-2">
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Product</span>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Qty</span>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Unit Cost</span>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">Tax %</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.product')}</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.qty')}</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('purchaseOrders.unitCost')}</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('purchaseOrders.taxPercent')}</span>
                 <span />
               </div>
 
@@ -341,23 +344,23 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           {/* Totals */}
           <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-1.5 text-sm">
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
-              <span>Subtotal</span>
+              <span>{t('common.subtotal')}</span>
               <span>{subtotal.toFixed(2)}</span>
             </div>
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
-              <span>Tax</span>
+              <span>{t('common.tax')}</span>
               <span>{taxAmount.toFixed(2)}</span>
             </div>
             <div className="flex justify-between font-semibold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
-              <span>Total</span>
+              <span>{t('common.total')}</span>
               <span>{totalAmount.toFixed(2)}</span>
             </div>
           </div>
 
           {/* Notes */}
           <div>
-            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">Notes (optional)</label>
-            <textarea {...register('notes')} rows={2} placeholder="Internal notes…"
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1.5">{t('purchaseOrders.notesOptional')}</label>
+            <textarea {...register('notes')} rows={2} placeholder={t('purchaseOrders.internalNotesPlaceholder')}
               className="w-full px-3 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand resize-none text-slate-700 dark:text-slate-300 placeholder-slate-400" />
           </div>
         </form>
