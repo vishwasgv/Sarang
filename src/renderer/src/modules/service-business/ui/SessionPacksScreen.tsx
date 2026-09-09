@@ -13,6 +13,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 interface SessionPack {
   id: string
@@ -80,7 +81,7 @@ export function SessionPacksScreen() {
   const [showNewPack, setShowNewPack] = useState(false)
   const [pickedCustomer, setPickedCustomer] = useState<CustomerLite | null>(null)
   const [form, setForm] = useState({
-    packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0],
+    packName: '', totalSessions: 10, purchaseDate: toLocalISODate(new Date()),
     expiryDate: '', pricePerPack: 0, taxRate: 18, assignedTrainerId: '',
   })
   const [saving, setSaving] = useState(false)
@@ -107,7 +108,7 @@ export function SessionPacksScreen() {
 
   function resetForm() {
     setPickedCustomer(null)
-    setForm({ packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0], expiryDate: '', pricePerPack: 0, taxRate: 18, assignedTrainerId: '' })
+    setForm({ packName: '', totalSessions: 10, purchaseDate: toLocalISODate(new Date()), expiryDate: '', pricePerPack: 0, taxRate: 18, assignedTrainerId: '' })
     setFormError(null)
   }
 

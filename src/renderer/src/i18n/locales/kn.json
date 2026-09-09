@@ -5319,8 +5319,8 @@
       "set": "ಬಟ್ಟೆಯನ್ನು ಹೊಂದಿಸಿ"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} ಆರ್ಡರ್‌ಗಳು ಹಳೆಯ ಅಳತೆಗಳನ್ನು ಬಳಸುತ್ತಿರಬಹುದು",
+      "row": "{{orderNumber}} — {{customerName}}: ಆರ್ಡರ್ {{orderDate}} ದಿನಾಂಕದ ಅಳತೆಗಳನ್ನು ಬಳಸಿದೆ, ಆದರೆ {{latestDate}} ದಿನಾಂಕದ ಹೊಸ ದಾಖಲೆ ಲಭ್ಯವಿದೆ"
     }
   },
   "rental": {

@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listPets(filters?: {
   customerId?: string
@@ -104,7 +105,7 @@ export async function createPet(payload: {
         petName: payload.petName,
         species: payload.species,
         breed: payload.breed ?? null,
-        dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth) : null,
+        dateOfBirth: payload.dateOfBirth ? parseLocalDateStart(payload.dateOfBirth) : null,
         gender: payload.gender ?? null,
         color: payload.color ?? null,
         weight: payload.weight ?? null,
@@ -142,7 +143,7 @@ export async function updatePet(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(dateOfBirth !== undefined ? { dateOfBirth: dateOfBirth ? new Date(dateOfBirth) : null } : {}),
+        ...(dateOfBirth !== undefined ? { dateOfBirth: dateOfBirth ? parseLocalDateStart(dateOfBirth) : null } : {}),
       },
     })
     await db.auditLog.create({

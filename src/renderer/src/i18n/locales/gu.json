@@ -5319,8 +5319,8 @@
       "set": "ફેબ્રિક સેટ કરો"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} ઓર્ડર જૂના માપનો ઉપયોગ કરી રહ્યા હોઈ શકે છે",
+      "row": "{{orderNumber}} — {{customerName}}: ઓર્ડરમાં {{orderDate}} ના માપનો ઉપયોગ થયો, પરંતુ {{latestDate}} નો નવો રેકોર્ડ ઉપલબ્ધ છે"
     }
   },
   "rental": {

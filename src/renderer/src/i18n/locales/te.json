@@ -5319,8 +5319,8 @@
       "set": "ఫాబ్రిక్ సెట్ చేయండి"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} ఆర్డర్లు పాత కొలతలను ఉపయోగిస్తూ ఉండవచ్చు",
+      "row": "{{orderNumber}} — {{customerName}}: ఆర్డర్ {{orderDate}} నాటి కొలతలను ఉపయోగించింది, కానీ {{latestDate}} నాటి కొత్త రికార్డు అందుబాటులో ఉంది"
     }
   },
   "rental": {

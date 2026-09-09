@@ -17,6 +17,7 @@ import { cn } from '@shared/utils/cn'
 import { AszurexMark } from '@shared/ui/atoms/Brand'
 import { DocumentWatermark, documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
 import { useNotificationStore } from '@app/store/notification.store'
+import { toLocalISODate } from '@shared/utils/locale.util'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -361,7 +362,7 @@ interface TreatmentTabProps {
 }
 
 function TreatmentTab({ phases, patientId, canWrite, showNewPhase, showClosePhase, expandedPhase, setShowNewPhase, setShowClosePhase, setExpandedPhase, onRefresh }: TreatmentTabProps) {
-  const [newPhaseForm, setNewPhaseForm] = useState({ phase: 'ASSESSMENT', title: '', startDate: new Date().toISOString().split('T')[0], goals: '' })
+  const [newPhaseForm, setNewPhaseForm] = useState({ phase: 'ASSESSMENT', title: '', startDate: toLocalISODate(new Date()), goals: '' })
   const [closeOutcome, setCloseOutcome] = useState('')
   const [editingPhase, setEditingPhase] = useState<string | null>(null)
   const [editForm, setEditForm] = useState({ phase: 'ASSESSMENT', title: '', startDate: '', goals: '' })
@@ -376,7 +377,7 @@ function TreatmentTab({ phases, patientId, canWrite, showNewPhase, showClosePhas
       if (!res.success) { setError(res.error?.message ?? 'Could not create phase.'); return }
       setError(null)
       setShowNewPhase(false)
-      setNewPhaseForm({ phase: 'ASSESSMENT', title: '', startDate: new Date().toISOString().split('T')[0], goals: '' })
+      setNewPhaseForm({ phase: 'ASSESSMENT', title: '', startDate: toLocalISODate(new Date()), goals: '' })
       onRefresh()
     } catch {
       setError('Could not create phase.')
@@ -431,7 +432,7 @@ function TreatmentTab({ phases, patientId, canWrite, showNewPhase, showClosePhas
     setEditForm({
       phase: phase.phase,
       title: phase.title,
-      startDate: new Date(phase.startDate).toISOString().split('T')[0],
+      startDate: toLocalISODate(new Date(phase.startDate)),
       goals: phase.goals ?? '',
     })
   }
@@ -748,7 +749,7 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
   const [form, setForm] = useState({
     packName: '',
     totalSessions: 10,
-    purchaseDate: new Date().toISOString().split('T')[0],
+    purchaseDate: toLocalISODate(new Date()),
     expiryDate: '',
     pricePerPack: 0,
     taxRate: 18,
@@ -782,7 +783,7 @@ function SessionPacksTab({ packs, activePack, patientId, canBilling, currSym, sh
       })
       if (res.success) {
         setShowNewPack(false)
-        setForm({ packName: '', totalSessions: 10, purchaseDate: new Date().toISOString().split('T')[0], expiryDate: '', pricePerPack: 0, taxRate: 18, sacCode: '', notes: '', assignedTrainerId: '' })
+        setForm({ packName: '', totalSessions: 10, purchaseDate: toLocalISODate(new Date()), expiryDate: '', pricePerPack: 0, taxRate: 18, sacCode: '', notes: '', assignedTrainerId: '' })
         onRefresh()
       } else {
         setError(res.error?.message ?? 'Could not create pack.')

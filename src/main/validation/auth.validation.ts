@@ -2,7 +2,13 @@ import { z } from 'zod'
 
 export const LoginSchema = z.object({
   username: z.string().min(1, 'Username is required').max(50),
-  password: z.string().min(1, 'Password is required')
+  password: z.string().min(1, 'Password is required'),
+  // Real bug found+fixed: this schema never declared rememberMe, so Zod's
+  // default "strip unknown keys" behavior silently dropped it from
+  // parsed.data even when the renderer sent it — auth.handler.ts's
+  // p.rememberMe was always undefined, permanently defaulting to false
+  // regardless of what the LoginScreen checkbox sent.
+  rememberMe: z.boolean().optional()
 })
 
 export const ChangePasswordSchema = z.object({

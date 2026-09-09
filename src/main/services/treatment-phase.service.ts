@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function listTreatmentPhases(patientId: string) {
   try {
@@ -36,7 +37,7 @@ export async function createTreatmentPhase(payload: {
         patientId: payload.patientId,
         phase: resolvedPhase,
         title: payload.title,
-        startDate: new Date(payload.startDate),
+        startDate: parseLocalDateStart(payload.startDate),
         goals: payload.goals || null,
         isActive: true,
         createdById: payload.createdById ?? null,
@@ -70,7 +71,7 @@ export async function updateTreatmentPhase(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(startDate !== undefined ? { startDate: new Date(startDate) } : {}),
+        ...(startDate !== undefined ? { startDate: parseLocalDateStart(startDate) } : {}),
       },
     })
 

@@ -4,6 +4,7 @@ import { scheduleShipmentDispatchNotification, scheduleShipmentDelayedNotificati
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import { roundCurrency } from './currency.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 const VALID_TRANSITIONS: Record<string, string[]> = {
   PENDING:          ['READY', 'CANCELLED'],
@@ -152,8 +153,8 @@ export async function createShipment(payload: {
           freightAmount: payload.freightAmount ?? 0, freightPaidBy: payload.freightPaidBy ?? 'SENDER',
           weight: payload.weight ?? null, weightUnit: payload.weightUnit ?? 'KG',
           packages: payload.packages ?? 1,
-          scheduledDate: payload.scheduledDate ? new Date(payload.scheduledDate) : null,
-          expectedDelivery: payload.expectedDelivery ? new Date(payload.expectedDelivery) : null,
+          scheduledDate: payload.scheduledDate ? parseLocalDateStart(payload.scheduledDate) : null,
+          expectedDelivery: payload.expectedDelivery ? parseLocalDateStart(payload.expectedDelivery) : null,
           challanNumber: payload.challanNumber?.trim() || null,
           ewayBillNumber: payload.ewayBillNumber?.trim() || null,
           notes: payload.notes?.trim() || null,
@@ -235,8 +236,8 @@ export async function updateShipment(payload: {
           ...(payload.freightPaidBy && { freightPaidBy: payload.freightPaidBy }),
           ...(payload.weight !== undefined && { weight: payload.weight }),
           ...(payload.packages !== undefined && { packages: payload.packages }),
-          ...(payload.scheduledDate !== undefined && { scheduledDate: payload.scheduledDate ? new Date(payload.scheduledDate) : null }),
-          ...(payload.expectedDelivery !== undefined && { expectedDelivery: payload.expectedDelivery ? new Date(payload.expectedDelivery) : null }),
+          ...(payload.scheduledDate !== undefined && { scheduledDate: payload.scheduledDate ? parseLocalDateStart(payload.scheduledDate) : null }),
+          ...(payload.expectedDelivery !== undefined && { expectedDelivery: payload.expectedDelivery ? parseLocalDateStart(payload.expectedDelivery) : null }),
           ...(payload.challanNumber !== undefined && { challanNumber: payload.challanNumber?.trim() || null }),
           ...(payload.ewayBillNumber !== undefined && { ewayBillNumber: payload.ewayBillNumber?.trim() || null }),
           ...(payload.notes !== undefined && { notes: payload.notes?.trim() || null }),

@@ -18,7 +18,8 @@ import { ForgotPasswordModal } from './ForgotPasswordModal'
 
 const schema = z.object({
   username: z.string().min(1, 'Username is required'),
-  password: z.string().min(1, 'Password is required')
+  password: z.string().min(1, 'Password is required'),
+  rememberMe: z.boolean().optional()
 })
 
 type FormValues = z.infer<typeof schema>
@@ -146,13 +147,23 @@ export function LoginScreen() {
                 </button>
               </div>
               {errors.password && <p className="text-sm text-danger">{errors.password.message}</p>}
-              <button
-                type="button"
-                onClick={() => setForgotOpen(true)}
-                className="self-end text-sm text-brand font-medium hover:underline"
-              >
-                {t('auth.forgotPasswordLink')}
-              </button>
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 cursor-pointer select-none">
+                  <input
+                    type="checkbox"
+                    className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand"
+                    {...register('rememberMe')}
+                  />
+                  {t('auth.rememberMe')}
+                </label>
+                <button
+                  type="button"
+                  onClick={() => setForgotOpen(true)}
+                  className="text-sm text-brand font-medium hover:underline"
+                >
+                  {t('auth.forgotPasswordLink')}
+                </button>
+              </div>
             </div>
 
             {serverError && (

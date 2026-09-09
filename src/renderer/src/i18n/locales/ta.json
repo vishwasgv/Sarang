@@ -5319,8 +5319,8 @@
       "set": "துணியை அமை"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} ஆர்டர்கள் பழைய அளவுகளைப் பயன்படுத்தி இருக்கலாம்",
+      "row": "{{orderNumber}} — {{customerName}}: ஆர்டர் {{orderDate}} தேதியிட்ட அளவுகளைப் பயன்படுத்தியது, ஆனால் {{latestDate}} தேதியிட்ட புதிய பதிவு உள்ளது"
     }
   },
   "rental": {

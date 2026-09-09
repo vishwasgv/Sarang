@@ -6,6 +6,7 @@ import { supplierLedgerService } from './supplier-ledger.service'
 import { ServiceError } from '../errors/service-error'
 import { logAction } from './audit.service'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 const GRN_EDITABLE_STATUSES = ['DRAFT', 'VERIFIED']
 
@@ -56,7 +57,7 @@ export async function listGRNs(payload?: { status?: string; supplierId?: string;
         ...(payload.toDate ? { lte: new Date(payload.toDate + 'T23:59:59.999') } : {}),
       }
     }
-    const take = Math.min(payload?.limit ?? 500, 500)
+    const take = payload?.limit ?? 500
     const skip = payload?.offset ?? 0
     const [rows, total] = await Promise.all([
       db.goodsReceiptNote.findMany({ where, include: { items: true }, orderBy: { receivedDate: 'desc' }, skip, take }),
@@ -102,8 +103,8 @@ export async function createGRN(payload: {
           purchaseOrderId: payload.purchaseOrderId ?? null,
           shipmentId: payload.shipmentId ?? null,
           invoiceNumber: payload.invoiceNumber?.trim() || null,
-          invoiceDate: payload.invoiceDate ? new Date(payload.invoiceDate) : null,
-          receivedDate: payload.receivedDate ? new Date(payload.receivedDate) : new Date(),
+          invoiceDate: payload.invoiceDate ? parseLocalDateStart(payload.invoiceDate) : null,
+          receivedDate: payload.receivedDate ? parseLocalDateStart(payload.receivedDate) : new Date(),
           totalValue, notes: payload.notes?.trim() || null,
           items: {
             create: payload.items.map(i => ({
@@ -113,7 +114,7 @@ export async function createGRN(payload: {
               unit: i.unit ?? 'PCS', unitCost: i.unitCost ?? 0,
               totalCost: roundCurrency(i.receivedQty * (i.unitCost ?? 0)),
               batchNumber: i.batchNumber ?? null,
-              expiryDate: i.expiryDate ? new Date(i.expiryDate) : null,
+              expiryDate: i.expiryDate ? parseLocalDateEnd(i.expiryDate) : null,
               notes: i.notes ?? null,
               purchaseUnitQty: i.purchaseUnitQty ?? null,
             }))
@@ -162,8 +163,8 @@ export async function updateGRN(payload: {
           ...(payload.status && !revertToDraft && { status: payload.status }),
           ...(payload.supplierName && { supplierName: payload.supplierName.trim() }),
           ...(payload.invoiceNumber !== undefined && { invoiceNumber: payload.invoiceNumber?.trim() || null }),
-          ...(payload.invoiceDate !== undefined && { invoiceDate: payload.invoiceDate ? new Date(payload.invoiceDate) : null }),
-          ...(payload.receivedDate && { receivedDate: new Date(payload.receivedDate) }),
+          ...(payload.invoiceDate !== undefined && { invoiceDate: payload.invoiceDate ? parseLocalDateStart(payload.invoiceDate) : null }),
+          ...(payload.receivedDate && { receivedDate: parseLocalDateStart(payload.receivedDate) }),
           ...(payload.notes !== undefined && { notes: payload.notes?.trim() || null }),
           ...(totalValue !== undefined && { totalValue }),
           ...(payload.items !== undefined && {
@@ -180,7 +181,7 @@ export async function updateGRN(payload: {
                 unit: i.unit ?? 'PCS', unitCost: i.unitCost ?? 0,
                 totalCost: roundCurrency(i.receivedQty * (i.unitCost ?? 0)),
                 batchNumber: i.batchNumber ?? null,
-                expiryDate: i.expiryDate ? new Date(i.expiryDate) : null,
+                expiryDate: i.expiryDate ? parseLocalDateEnd(i.expiryDate) : null,
                 notes: i.notes ?? null,
                 purchaseUnitQty: i.purchaseUnitQty ?? null,
               }))

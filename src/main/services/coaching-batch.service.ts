@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
+import { sumCurrency } from './currency.service'
 
 // CoachingBatch.feePerMonth is a Prisma Decimal field — Electron's IPC
 // (structured clone) cannot serialize a Decimal instance and throws "An
@@ -134,6 +135,8 @@ export async function getBatchKPIs() {
     }),
   ])
   const totalEnrolled = activeEnrollments.length
-  const totalMonthlyRevenue = activeEnrollments.reduce((s, e) => s + Number(e.effectiveFee), 0)
+  // Plain `+=` float accumulation drifts across many enrollments — same bug
+  // class already fixed for billing/coaching-fee/rental/job-card totals.
+  const totalMonthlyRevenue = sumCurrency(activeEnrollments.map((e) => Number(e.effectiveFee)))
   return { success: true, data: { totalBatches, activeBatches, totalEnrolled, totalMonthlyRevenue } }
 }

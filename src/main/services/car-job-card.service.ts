@@ -276,14 +276,17 @@ export async function generateCarJobInvoice(id: string) {
     // productId (not in the catalog) fall back to the old lumped generic line,
     // same as every job card created before this change.
     const partItems = parsePartItems(card.partsItems)
-    let unlinkedPartsTotal = 0
+    const unlinkedAmounts: number[] = []
     for (const part of partItems) {
       if (part.productId) {
         items.push({ productId: part.productId, quantity: part.quantity, unitPrice: part.unitPrice })
       } else {
-        unlinkedPartsTotal += part.quantity * part.unitPrice
+        unlinkedAmounts.push(part.quantity * part.unitPrice)
       }
     }
+    // Same float-drift bug class as laborTotal/partsTotal above — plain `+=`
+    // accumulation across parts loses cents; sumCurrency is Decimal-backed.
+    const unlinkedPartsTotal = sumCurrency(unlinkedAmounts)
 
     if (unlinkedPartsTotal > 0) {
       let partsProduct = await db.product.findFirst({ where: { hsnCode: '87089990', isActive: true } })

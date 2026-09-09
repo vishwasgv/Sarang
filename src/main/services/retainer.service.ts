@@ -356,7 +356,10 @@ export async function getRetainerHoursUsage(retainerId: string, period?: string)
       where: { retainerId, date: { gte: periodStart, lte: periodEnd } },
       select: { hours: true },
     })
-    const hoursUsed = entries.reduce((s, e) => s + Number(e.hours), 0)
+    // Rounded to 2dp: summing float hours (e.g. several 0.1/0.25 entries) can
+    // land hoursRemaining a hair off zero (e.g. 1.8e-15) instead of exactly 0,
+    // which fails RetainersScreen.tsx's `hoursRemaining === 0` exhausted check.
+    const hoursUsed = Math.round(entries.reduce((s, e) => s + Number(e.hours), 0) * 100) / 100
     const hoursPerMonth = retainer.hoursPerMonth == null ? null : Number(retainer.hoursPerMonth)
 
     return {
@@ -365,7 +368,7 @@ export async function getRetainerHoursUsage(retainerId: string, period?: string)
         period: targetPeriod,
         hoursPerMonth,
         hoursUsed,
-        hoursRemaining: hoursPerMonth == null ? null : Math.max(0, hoursPerMonth - hoursUsed),
+        hoursRemaining: hoursPerMonth == null ? null : Math.max(0, Math.round((hoursPerMonth - hoursUsed) * 100) / 100),
       },
     }
   } catch (err) {

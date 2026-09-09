@@ -3,7 +3,7 @@ import { billingService } from './billing.service'
 import { generateWhatsAppLink } from './notification-queue.service'
 import { logAction } from './audit.service'
 import { roundCurrency } from './currency.service'
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -190,7 +190,7 @@ export async function createDonor(payload: {
           fullName: payload.fullName.trim(),
           phone: payload.phone,
           email: payload.email,
-          dateOfBirth: payload.dateOfBirth ? new Date(payload.dateOfBirth) : null,
+          dateOfBirth: payload.dateOfBirth ? parseLocalDateStart(payload.dateOfBirth) : null,
           gender: payload.gender,
           bloodGroup: payload.bloodGroup,
           weightKg: payload.weightKg,
@@ -267,7 +267,7 @@ export async function updateDonor(payload: {
         address: payload.address,
         isDeferred: payload.isDeferred,
         deferralReason: payload.deferralReason,
-        deferredUntil: payload.deferredUntil ? new Date(payload.deferredUntil) : payload.deferredUntil,
+        deferredUntil: payload.deferredUntil ? parseLocalDateEnd(payload.deferredUntil) : payload.deferredUntil,
         notes: payload.notes,
       },
     })
@@ -342,7 +342,7 @@ export async function createDonationCamp(payload: { campName: string; location?:
   try {
     if (!payload.campName?.trim()) return { success: false, error: { code: 'BB-010', message: 'Camp name is required.' } }
     const camp = await db.donationCamp.create({
-      data: { campName: payload.campName.trim(), location: payload.location, campDate: new Date(payload.campDate), organizer: payload.organizer, notes: payload.notes },
+      data: { campName: payload.campName.trim(), location: payload.location, campDate: parseLocalDateStart(payload.campDate), organizer: payload.organizer, notes: payload.notes },
     })
     await logAction(userId, 'DONATION_CAMP_CREATED', 'DonationCamp', camp.id)
     return { success: true, data: camp }

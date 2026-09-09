@@ -42,8 +42,8 @@ export async function upsertRecall(payload: {
 }) {
   try {
     const db = getPrisma()
-    const lastVisit = new Date(payload.lastVisitDate)
-    const nextRecall = new Date(payload.nextRecallDate)
+    const lastVisit = parseLocalDateStart(payload.lastVisitDate)
+    const nextRecall = parseLocalDateStart(payload.nextRecallDate)
     const now = new Date()
 
     // Clear old pending recall notifications for this patient so we don't double-fire

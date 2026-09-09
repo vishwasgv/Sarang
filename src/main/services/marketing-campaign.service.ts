@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
+import { sumCurrency } from './currency.service'
 
 // Phase 58 §2 — Marketing Agency: real campaign performance data entry
 // (impressions/clicks/conversions/actual spend per period) and a real
@@ -131,7 +132,9 @@ export async function getCampaignPerformanceSummary(projectId: string): Promise<
     const totalImpressions = entries.reduce((s, e) => s + (e.impressions ?? 0), 0)
     const totalClicks = entries.reduce((s, e) => s + (e.clicks ?? 0), 0)
     const totalConversions = entries.reduce((s, e) => s + (e.conversions ?? 0), 0)
-    const totalActualSpend = entries.reduce((s, e) => s + Number(e.actualSpend ?? 0), 0)
+    // Plain `+=` float accumulation drifts across many periods — same bug
+    // class already fixed for billing/coaching-fee/rental/job-card totals.
+    const totalActualSpend = sumCurrency(entries.map((e) => Number(e.actualSpend ?? 0)))
 
     return {
       success: true,

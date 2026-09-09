@@ -82,7 +82,7 @@ export async function createSerial(payload: {
     if (!product) return { success: false, error: { code: 'SER-002', message: 'Product not found.' } }
 
     const warrantyExpiry = payload.warrantyMonths && payload.purchaseDate
-      ? new Date(new Date(payload.purchaseDate).setMonth(new Date(payload.purchaseDate).getMonth() + payload.warrantyMonths))
+      ? new Date(new Date(parseLocalDateStart(payload.purchaseDate)).setMonth(parseLocalDateStart(payload.purchaseDate).getMonth() + payload.warrantyMonths))
       : payload.warrantyMonths
         ? new Date(new Date().setMonth(new Date().getMonth() + payload.warrantyMonths))
         : null
@@ -96,7 +96,7 @@ export async function createSerial(payload: {
           imei2Number: payload.imei2Number?.trim() ?? null,
           warrantyMonths: payload.warrantyMonths ?? null,
           warrantyExpiryDate: warrantyExpiry,
-          purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : null,
+          purchaseDate: payload.purchaseDate ? parseLocalDateStart(payload.purchaseDate) : null,
           unitCost: payload.unitCost ?? 0,
           status: 'AVAILABLE'
         },
@@ -136,7 +136,7 @@ export async function bulkCreateSerials(payload: {
     let skipped = 0
     const errors: string[] = []
 
-    const purchaseDateObj = payload.purchaseDate ? new Date(payload.purchaseDate) : new Date()
+    const purchaseDateObj = payload.purchaseDate ? parseLocalDateStart(payload.purchaseDate) : new Date()
 
     for (const s of payload.serials) {
       try {
@@ -152,7 +152,7 @@ export async function bulkCreateSerials(payload: {
             imei2Number: s.imei2Number?.trim() ?? null,
             warrantyMonths: s.warrantyMonths ?? null,
             warrantyExpiryDate: warrantyExpiry,
-            purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : null,
+            purchaseDate: payload.purchaseDate ? parseLocalDateStart(payload.purchaseDate) : null,
             unitCost: s.unitCost ?? 0,
             status: 'AVAILABLE'
           }
@@ -205,12 +205,22 @@ export async function updateSerialStatus(payload: {
       const existing = await tx.productSerial.findUnique({ where: { id: payload.id } })
       if (!existing) throw new ServiceError('SER-006', 'Serial not found.')
 
+      // Real bug found live: soldDate is a moment-in-time timestamp (it's
+      // read back via `.toISOString()` in toRecord below), not a
+      // date-only field like purchaseDate/warrantyExpiryDate elsewhere in
+      // this file — parseLocalDateStart expects a bare "YYYY-MM-DD" string
+      // and naively splits on "-", so a real ISO timestamp (e.g.
+      // `new Date().toISOString()`, containing "T"/":" in the time part)
+      // silently produces an Invalid Date, which Prisma then rejects
+      // outright. Parse it as a plain timestamp instead, with a validity
+      // guard so a genuinely malformed value can't crash the write.
+      const parsedSoldDate = payload.soldDate ? new Date(payload.soldDate) : null
       await tx.productSerial.update({
         where: { id: payload.id },
         data: {
           status: payload.status,
           invoiceId: payload.invoiceId ?? existing.invoiceId,
-          soldDate: payload.soldDate ? new Date(payload.soldDate) : (payload.status === 'SOLD' ? new Date() : existing.soldDate)
+          soldDate: parsedSoldDate && !isNaN(parsedSoldDate.getTime()) ? parsedSoldDate : (payload.status === 'SOLD' ? new Date() : existing.soldDate)
         }
       })
 

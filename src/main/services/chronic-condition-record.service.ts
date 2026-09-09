@@ -1,6 +1,21 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
+
+// diagnosedDate/lastVisitDate/nextRecallDate are pure calendar-date fields but
+// were returned as raw Prisma Date instances across IPC (structured clone
+// preserves a Date without throwing) -- ChronicRecallListScreen.tsx's openEdit
+// calls `r.diagnosedDate.slice(0, 10)` assuming an ISO string, crashing on
+// every edit of a record with a diagnosedDate set. Same bug class already
+// fixed in engagement/retainer/legal-case/visit-note/driving services.
+function serializeRecord<T extends { diagnosedDate: Date | null; lastVisitDate: Date; nextRecallDate: Date }>(r: T): T {
+  return {
+    ...r,
+    diagnosedDate: (r.diagnosedDate ? toLocalDateOnlyIso(r.diagnosedDate) : null) as unknown as Date,
+    lastVisitDate: toLocalDateOnlyIso(r.lastVisitDate) as unknown as Date,
+    nextRecallDate: toLocalDateOnlyIso(r.nextRecallDate) as unknown as Date,
+  }
+}
 
 export async function listChronicConditions(filters?: {
   patientId?: string
@@ -19,7 +34,7 @@ export async function listChronicConditions(filters?: {
       include: { patient: { select: { id: true, customerName: true, phone: true } } },
       orderBy: { nextRecallDate: 'asc' },
     })
-    return { success: true, data: records }
+    return { success: true, data: records.map(serializeRecord) }
   } catch (err) {
     return { success: false, error: { code: 'CCR-001', message: err instanceof Error ? err.message : 'Could not list chronic condition records.' } }
   }
@@ -37,8 +52,8 @@ export async function upsertChronicCondition(payload: {
 }) {
   try {
     const db = getPrisma()
-    const lastVisit = new Date(payload.lastVisitDate)
-    const nextRecall = new Date(payload.nextRecallDate)
+    const lastVisit = parseLocalDateStart(payload.lastVisitDate)
+    const nextRecall = parseLocalDateStart(payload.nextRecallDate)
 
     const record = await db.$transaction(async (tx) => {
       // If updating an existing record, snapshot the recall period being closed
@@ -60,7 +75,7 @@ export async function upsertChronicCondition(payload: {
             where: { id: payload.id },
             data: {
               conditionName: payload.conditionName,
-              diagnosedDate: payload.diagnosedDate ? new Date(payload.diagnosedDate) : null,
+              diagnosedDate: payload.diagnosedDate ? parseLocalDateStart(payload.diagnosedDate) : null,
               lastVisitDate: lastVisit,
               nextRecallDate: nextRecall,
               isActive: payload.isActive ?? true,
@@ -73,7 +88,7 @@ export async function upsertChronicCondition(payload: {
         data: {
           patientId: payload.patientId,
           conditionName: payload.conditionName,
-          diagnosedDate: payload.diagnosedDate ? new Date(payload.diagnosedDate) : null,
+          diagnosedDate: payload.diagnosedDate ? parseLocalDateStart(payload.diagnosedDate) : null,
           lastVisitDate: lastVisit,
           nextRecallDate: nextRecall,
           isActive: payload.isActive ?? true,
@@ -84,7 +99,7 @@ export async function upsertChronicCondition(payload: {
 
     await logAction({ action: payload.id ? 'UPDATE' : 'CREATE', entityType: 'ChronicConditionRecord', entityId: record.id, newValue: { conditionName: record.conditionName, nextRecallDate: payload.nextRecallDate } }).catch(() => {})
 
-    return { success: true, data: record }
+    return { success: true, data: serializeRecord(record) }
   } catch (err) {
     return { success: false, error: { code: 'CCR-002', message: err instanceof Error ? err.message : 'Could not save chronic condition record.' } }
   }

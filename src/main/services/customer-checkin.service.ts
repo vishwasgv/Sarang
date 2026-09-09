@@ -20,20 +20,30 @@ export async function checkInCustomer(customerId: string, notes?: string, userId
     // Guard against a double check-in: if this customer already has an open
     // (not checked-out) visit, don't silently create a second one — the
     // caller almost certainly meant to check them OUT, not open a second
-    // concurrent visit.
-    const openCheckIn = await db.customerCheckIn.findFirst({
-      where: { customerId, checkOutTime: null },
-      orderBy: { checkInTime: 'desc' },
+    // concurrent visit. The read-then-create runs in one transaction so two
+    // near-simultaneous check-in calls (e.g. a double-click, or two reception
+    // staff both checking in the same walk-in) can't both pass the open-visit
+    // check and each create their own open check-in row.
+    const result = await db.$transaction(async (tx): Promise<{ status: 'already-open' } | { status: 'ok'; row: Awaited<ReturnType<typeof tx.customerCheckIn.create>> }> => {
+      const openCheckIn = await tx.customerCheckIn.findFirst({
+        where: { customerId, checkOutTime: null },
+        orderBy: { checkInTime: 'desc' },
+      })
+      if (openCheckIn) return { status: 'already-open' }
+
+      const row = await tx.customerCheckIn.create({
+        data: { customerId, notes: notes || null },
+      })
+      return { status: 'ok', row }
     })
-    if (openCheckIn) return { success: false, error: { code: 'CCI-002', message: 'This customer is already checked in. Check them out first.' } }
 
-    const row = await db.customerCheckIn.create({
-      data: { customerId, notes: notes || null },
-    })
+    if (result.status === 'already-open') {
+      return { success: false, error: { code: 'CCI-002', message: 'This customer is already checked in. Check them out first.' } }
+    }
 
-    await logAction({ userId, action: 'CUSTOMER_CHECKED_IN', entityType: 'CustomerCheckIn', entityId: row.id, newValue: { customerId } })
+    await logAction({ userId, action: 'CUSTOMER_CHECKED_IN', entityType: 'CustomerCheckIn', entityId: result.row.id, newValue: { customerId } })
 
-    return { success: true, data: row }
+    return { success: true, data: result.row }
   } catch (err) {
     return { success: false, error: { code: 'CCI-003', message: err instanceof Error ? err.message : 'Could not check in.' } }
   }

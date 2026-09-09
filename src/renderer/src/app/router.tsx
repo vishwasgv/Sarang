@@ -389,7 +389,7 @@ export function AppRouter() {
         <Route path="/service/work-tracking" element={<ProtectedRoute permission="sales.view"><WorkTrackingScreen /></ProtectedRoute>} />
         <Route path="/service/customer-history" element={<ProtectedRoute permission="customers.view"><CustomerHistoryScreen /></ProtectedRoute>} />
         {/* Phase 11 — Document Management */}
-        <Route path="/documents" element={<ProtectedRoute permission="settings.view"><DocumentsScreen /></ProtectedRoute>} />
+        <Route path="/documents" element={<ProtectedRoute permission="documents.view"><DocumentsScreen /></ProtectedRoute>} />
         {/* Phase 17 — HR & Attendance */}
         <Route path="/hr/employees" element={<ProtectedRoute permission="hr.view"><EmployeesScreen /></ProtectedRoute>} />
         <Route path="/hr/attendance" element={<ProtectedRoute permission="hr.attendance"><AttendanceScreen /></ProtectedRoute>} />

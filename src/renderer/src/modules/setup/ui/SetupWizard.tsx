@@ -72,6 +72,8 @@ const SERVICE_TEMPLATES = [
   { value: 'TAILOR_BOUTIQUE', label: 'Tailor / Boutique', icon: '✂️', group: 'Trade' },
   { value: 'PEST_CONTROL', label: 'Pest Control Service', icon: '🪲', group: 'Trade' },
   { value: 'PLACEMENT_AGENCY', label: 'Placement / Recruitment Agency', icon: '🤝', group: 'Trade' },
+  // Hospitality
+  { value: 'HOTEL_LODGE', label: 'Hotel / Lodge', icon: '🏨', group: 'Hospitality' },
 ]
 
 const TAX_MODELS = [
@@ -418,7 +420,7 @@ function BusinessTypeStep() {
           <span>&larr;</span> Back to business categories
         </button>
         <h2 className="text-base font-semibold text-dark dark:text-slate-100 mb-1">Select your service type</h2>
-        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">All 24 templates are English-only and include appointment booking, service catalog, and WhatsApp notifications.</p>
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3">All {SERVICE_TEMPLATES.length} templates are English-only and include appointment booking, service catalog, and WhatsApp notifications.</p>
         <div className="max-h-72 overflow-y-auto pe-1 space-y-3">
           {serviceGroups.map((group) => (
             <div key={group}>

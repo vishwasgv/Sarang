@@ -4,6 +4,7 @@ import { generateSequenceNumber, SequenceContendedError } from './sequence.servi
 import { billingService } from './billing.service'
 import { inventoryService } from './inventory.service'
 import { parseLocalDateStart } from '../utils/date.util'
+import { sumCurrency } from './currency.service'
 
 export interface JobCardRecord {
   id: string
@@ -559,22 +560,27 @@ export async function getPartsVarianceSummary() {
       select: { quotedPartsTotal: true, parts: { select: { quantity: true, unitPrice: true } } },
     })
     let comparedCount = 0; let totalQuoted = 0; let totalActual = 0; let overQuoteCount = 0
+    const quotedAmounts: number[] = []
+    const actualAmounts: number[] = []
     for (const c of cards) {
-      const actual = c.parts.reduce((s, p) => s + p.quantity * p.unitPrice, 0)
+      const actual = sumCurrency(c.parts.map((p) => p.quantity * p.unitPrice))
       if (actual <= 0 || c.quotedPartsTotal == null) continue
       comparedCount++
-      totalQuoted += c.quotedPartsTotal
-      totalActual += actual
+      quotedAmounts.push(c.quotedPartsTotal)
+      actualAmounts.push(actual)
       if (actual > c.quotedPartsTotal) overQuoteCount++
     }
-    const round1 = (n: number) => Math.round(n * 10) / 10
+    // Same float-drift bug class already fixed elsewhere (plain `+=`
+    // accumulation across many records loses cents) — sumCurrency instead.
+    totalQuoted = sumCurrency(quotedAmounts, 1)
+    totalActual = sumCurrency(actualAmounts, 1)
     return {
       success: true,
       data: {
         comparedCount,
-        totalQuoted: round1(totalQuoted),
-        totalActual: round1(totalActual),
-        totalVariance: round1(totalActual - totalQuoted),
+        totalQuoted,
+        totalActual,
+        totalVariance: sumCurrency([totalActual, -totalQuoted], 1),
         overQuoteCount,
       },
     }

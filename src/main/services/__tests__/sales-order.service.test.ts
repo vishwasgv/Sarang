@@ -51,6 +51,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     },
     salesOrderItem: {
       update: vi.fn().mockResolvedValue({}),
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
       findMany: vi.fn().mockResolvedValue([{ id: 'soi-1', quantity: 10, invoicedQty: 10 }])
     },
     invoice: { create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv-1', invoiceNumber: 'INV-00001', ...data })) },
@@ -241,6 +242,7 @@ describe('salesOrderService.createInvoiceFromSalesOrder', () => {
     const db = makeDb({
       salesOrderItem: {
         update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
         // After this partial invoice, one line still has remaining qty.
         findMany: vi.fn().mockResolvedValue([{ id: 'soi-1', quantity: 10, invoicedQty: 5 }])
       }
@@ -269,7 +271,7 @@ describe('salesOrderService.createInvoiceFromSalesOrder', () => {
   it('a free-text service line resolves to the shared __MISC_ITEM__ product, not a nullable productId', async () => {
     const db = makeDb({
       salesOrder: { findUnique: vi.fn().mockResolvedValue(makeSO({ items: [{ id: 'soi-2', productId: null, serviceDescription: 'Consulting', quantity: 1, invoicedQty: 0, unitPrice: 2000, taxRate: 18 }] })), update: vi.fn().mockResolvedValue({}) },
-      salesOrderItem: { update: vi.fn().mockResolvedValue({}), findMany: vi.fn().mockResolvedValue([{ id: 'soi-2', quantity: 1, invoicedQty: 1 }]) }
+      salesOrderItem: { update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }), findMany: vi.fn().mockResolvedValue([{ id: 'soi-2', quantity: 1, invoicedQty: 1 }]) }
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -301,6 +303,21 @@ describe('salesOrderService.createInvoiceFromSalesOrder', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('LIC-002')
+  })
+
+  it('rejects atomically when a concurrent invoice already consumed the remaining quantity (updateMany guard)', async () => {
+    // Simulates the race this fix closes: the pre-transaction snapshot still
+    // shows room (invoicedQty: 0 on the SO passed into findUnique), but the
+    // atomic conditional updateMany reports 0 rows matched, as it would if a
+    // concurrent transaction already committed an increment first.
+    const db = makeDb({ salesOrderItem: { update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 0 }), findMany: vi.fn().mockResolvedValue([{ id: 'soi-1', quantity: 10, invoicedQty: 10 }]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await salesOrderService.createInvoiceFromSalesOrder({ salesOrderId: 'so-1', lines: [{ salesOrderItemId: 'soi-1', quantity: 5 }] }, 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SO-009')
+    expect(db.invoiceItem.create).not.toHaveBeenCalled()
   })
 
   it('posts a real CustomerLedger debit for the invoiced amount', async () => {

@@ -36,6 +36,17 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     user: { findUnique: vi.fn().mockResolvedValue({ roleId: 'role-mgr' }) },
     ...overrides
   } as Record<string, any>
+  db.$transaction = vi.fn((arg: unknown) => (typeof arg === 'function' ? arg(db) : Promise.all(arg as unknown[])))
+  // actOnStep now recomputes allApproved from a live findMany (not the
+  // pre-write instance.actions snapshot) to close a real approval-race bug —
+  // mirror that here so it reflects the base actions plus anything created.
+  const createdActions: Record<string, unknown>[] = []
+  const originalCreate = db.approvalAction.create
+  db.approvalAction.create = vi.fn().mockImplementation((args: { data: Record<string, unknown> }) => { createdActions.push(args.data); return originalCreate(args) })
+  db.approvalAction.findMany = vi.fn().mockImplementation(async () => {
+    const inst = await db.approvalInstance.findUnique({} as never)
+    return [...(inst?.actions ?? []), ...createdActions]
+  })
   return db
 }
 

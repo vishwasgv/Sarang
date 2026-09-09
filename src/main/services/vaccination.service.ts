@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 // 2026-09-03 — this file used to carry its own duplicate copy of
 // buildWhatsAppLink (DIAL_CODES included), independently drifting from the
 // shared one in notification-queue.service.ts. Consolidated onto the shared
@@ -60,9 +61,9 @@ export async function createVaccinationRecord(payload: {
         vaccineType: payload.vaccineType ?? null,
         batchNumber: payload.batchNumber ?? null,
         manufacturer: payload.manufacturer ?? null,
-        administeredAt: new Date(payload.administeredAt),
+        administeredAt: parseLocalDateStart(payload.administeredAt),
         administeredBy: payload.administeredBy ?? null,
-        nextDueDate: payload.nextDueDate ? new Date(payload.nextDueDate) : null,
+        nextDueDate: payload.nextDueDate ? parseLocalDateStart(payload.nextDueDate) : null,
         notes: payload.notes ?? null,
       },
     })
@@ -103,8 +104,8 @@ export async function updateVaccinationRecord(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(administeredAt ? { administeredAt: new Date(administeredAt) } : {}),
-        ...(nextDueDate !== undefined ? { nextDueDate: nextDueDate ? new Date(nextDueDate) : null } : {}),
+        ...(administeredAt ? { administeredAt: parseLocalDateStart(administeredAt) } : {}),
+        ...(nextDueDate !== undefined ? { nextDueDate: nextDueDate ? parseLocalDateStart(nextDueDate) : null } : {}),
       },
     })
 

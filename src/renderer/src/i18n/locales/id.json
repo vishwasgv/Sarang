@@ -5319,8 +5319,8 @@
       "set": "Atur Kain"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} pesanan mungkin menggunakan ukuran yang sudah usang",
+      "row": "{{orderNumber}} — {{customerName}}: pesanan menggunakan ukuran dari {{orderDate}}, tetapi ada catatan terbaru dari {{latestDate}}"
     }
   },
   "rental": {

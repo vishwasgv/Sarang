@@ -328,6 +328,21 @@ export const salesOrderService = {
         })
 
         for (const row of invoiceLineRows) {
+          // Atomic conditional increment, not a plain update() off the
+          // pre-transaction `row.soItem.invoicedQty` snapshot: two concurrent
+          // createInvoiceFromSalesOrder calls for the same line both used to
+          // read the same stale invoicedQty and each overwrite it with their
+          // own absolute total, silently discarding whichever committed
+          // first (lost update) and letting the combined quantity invoiced
+          // exceed what was actually ordered.
+          const guarded = await tx.salesOrderItem.updateMany({
+            where: { id: row.soItem.id, invoicedQty: { lte: roundCurrency(row.soItem.quantity - row.quantity) } },
+            data: { invoicedQty: { increment: row.quantity } }
+          })
+          if (guarded.count === 0) {
+            throw new ServiceError('SO-009', `Cannot invoice ${row.quantity} of a line — the remaining quantity changed since this request started.`)
+          }
+
           await tx.invoiceItem.create({
             data: {
               invoiceId: inv.id,
@@ -348,11 +363,6 @@ export const salesOrderService = {
               `Invoice ${invoiceNumber} (from Sales Order ${so.soNumber})`, 'INVOICE', inv.id, userId
             )
           }
-
-          await tx.salesOrderItem.update({
-            where: { id: row.soItem.id },
-            data: { invoicedQty: roundCurrency(row.soItem.invoicedQty + row.quantity) }
-          })
         }
 
         await customerLedgerService.addEntry({

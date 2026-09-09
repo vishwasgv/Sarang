@@ -67,7 +67,7 @@ export function AboutScreen() {
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-1">Version {appInfo.version}</p>
         <p className="text-base text-slate-600 dark:text-slate-300 mt-4 max-w-md mx-auto leading-relaxed">
           Sarang exists so small businesses can run their day-to-day operations without an expensive,
-          feature-gated subscription. It&apos;s built by Aszurex, free for your first 12 months, kept entirely
+          feature-gated subscription. It&apos;s built by Aszurex, free for your first 100 days, kept entirely
           on your device — and after that, one small annual license, stated plainly here and at setup, not
           buried in the fine print.
         </p>

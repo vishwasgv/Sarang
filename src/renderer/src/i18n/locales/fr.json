@@ -5319,8 +5319,8 @@
       "set": "Définir le Tissu"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} commande(s) pourraient utiliser des mesures obsolètes",
+      "row": "{{orderNumber}} — {{customerName}} : la commande a utilisé des mesures du {{orderDate}}, mais un enregistrement plus récent existe du {{latestDate}}"
     }
   },
   "rental": {

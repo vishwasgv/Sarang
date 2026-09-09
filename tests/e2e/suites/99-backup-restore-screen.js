@@ -42,7 +42,13 @@ async function run() {
       r.log('captured-backup-count-before', true, `count=${countBefore}`)
 
       await page.getByRole('button', { name: 'Create Backup', exact: true }).click()
-      await page.waitForTimeout(2000) // real file I/O — zip + checksum a full DB copy
+      // Real bug found live: a fixed 2s wait for "zip + checksum a full DB
+      // copy" was fine when this suite was written, but the dev DB this
+      // runs against has grown enormously over months of testing — the
+      // real file I/O can now genuinely take longer than 2s, so the next
+      // step's DB read raced an unfinished backup and undercounted rows.
+      // Wait for the actual success toast instead of guessing a delay.
+      await page.getByText('Backup created successfully').first().waitFor({ timeout: 15000 }).catch(() => {})
       r.log('create-backup-no-crash', !(await h.hasErrorBoundary(page)))
     })
 
@@ -85,8 +91,14 @@ async function run() {
       await deleteBtn.click()
       await page.waitForTimeout(400)
       const confirmModal = h.topModal(page)
-      await confirmModal.getByRole('button', { name: 'Delete', exact: true }).click()
-      await page.waitForTimeout(1000)
+      const confirmDeleteBtn = confirmModal.getByRole('button', { name: 'Delete', exact: true })
+      await confirmDeleteBtn.click()
+      // Real bug found live: a fixed 1s wait raced the real delete (file +
+      // DB row) on this suite's now much-larger dev DB, same class as the
+      // create-backup wait above. The confirm modal unmounts only once
+      // handleDelete's async call has fully resolved (its `finally` clears
+      // deleteTarget) — wait for that instead of guessing a delay.
+      await confirmDeleteBtn.waitFor({ state: 'hidden', timeout: 15000 }).catch(() => {})
       r.log('delete-no-crash', !(await h.hasErrorBoundary(page)))
     })
 

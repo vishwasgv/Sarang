@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { serializeEnrollment } from './coaching-batch-enrollment.service'
 import { billingService } from './billing.service'
 import { calculateTax, roundCurrency, sumCurrency } from './currency.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // CoachingFeeRecord has 5 Prisma Decimal fields (baseAmount, taxRate,
 // taxAmount, amountDue, amountReceived) — Electron's IPC (structured clone)
@@ -144,7 +145,7 @@ export async function updateFeeRecord(payload: {
 
   const paidDate =
     payload.paidDate !== undefined
-      ? payload.paidDate ? new Date(payload.paidDate) : null
+      ? payload.paidDate ? parseLocalDateStart(payload.paidDate) : null
       : status === 'PAID' && existing.status !== 'PAID'
       ? new Date()
       : existing.paidDate

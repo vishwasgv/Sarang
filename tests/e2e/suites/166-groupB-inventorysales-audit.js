@@ -319,4 +319,14 @@ async function run() {
   if (s.fail > 0) process.exitCode = 1
 }
 
-run().catch((e) => { console.error(e); process.exitCode = 1 })
+// Guarded on require.main — without this, run-all.js's own `require()` of
+// every suite file (including standalone-only ones it means to SKIP) kicks
+// off this whole run() as a side effect: a full, hidden extra Electron
+// launch + real DB writes on every single full-suite run, right alongside
+// the legitimate suites. Same real bug already found and fixed once for
+// 60-tutorial-mode.js (see its own comment) and for the sibling
+// 165-groupA-financial-audit.js — this standalone script was added later
+// and missed that lesson too.
+if (require.main === module) {
+  run().catch((e) => { console.error(e); process.exitCode = 1 })
+}

@@ -254,7 +254,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Cash Close', i18nKey: 'nav.cashClose', path: '/cash-close', icon: Landmark, permissionKey: 'billing.createInvoice' },
   { label: 'Expenses', i18nKey: 'nav.expenses', path: '/expenses', icon: DollarSign, permissionKey: 'expenses.view' },
   { label: 'Reports', i18nKey: 'nav.reports', path: '/reports', icon: BarChart3, permissionKey: 'reports.sales' },
-  { label: 'Documents', i18nKey: 'nav.documents', path: '/documents', icon: Paperclip, permissionKey: 'settings.view' },
+  { label: 'Documents', i18nKey: 'nav.documents', path: '/documents', icon: Paperclip, permissionKey: 'documents.view' },
   { label: 'Import', i18nKey: 'nav.import', path: '/import', icon: Upload, permissionKey: 'import.execute' },
   { label: 'Backup', i18nKey: 'nav.backup', path: '/backup', icon: HardDrive, permissionKey: 'backup.view' },
   { label: 'Audit Log', i18nKey: 'nav.auditLog', path: '/audit', icon: ScrollText, permissionKey: 'audit.view' },

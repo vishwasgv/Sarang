@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
+import { roundCurrency } from './currency.service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -408,16 +409,24 @@ export async function getMonthlySummaries(payload: {
       const weekOff = count('WEEK_OFF')
       const effectiveDays = present + halfDay * 0.5
       const allowances = parseAllowances(emp.allowances)
-      const totalAllowances = allowances.reduce((s, a) => s + a.amount, 0)
-      const grossSalary = emp.basicSalary + totalAllowances
+      // Money rounding: this codebase's own convention (currency.service.ts's
+      // roundCurrency) is used for every other money computation, including
+      // this exact record's own updateSalaryPayment/markSalaryPaid — but this
+      // function, the actual SOURCE of a payslip's basicSalary/netPayable
+      // (generatePayrollForPeriod persists these values verbatim), left the
+      // DAILY/HOURLY/MONTHLY division and float-sum below unrounded, so a
+      // part-day/part-month prorate could persist a repeating-decimal amount
+      // (e.g. 9666.666666666666) straight into SalaryPayment.netPayable.
+      const totalAllowances = roundCurrency(allowances.reduce((s, a) => s + a.amount, 0))
+      const grossSalary = roundCurrency(emp.basicSalary + totalAllowances)
 
       let netPayable: number
       if (emp.salaryType === 'DAILY') {
         // basicSalary is a per-day rate; allowances are fixed monthly additions
-        netPayable = emp.basicSalary * effectiveDays + totalAllowances
+        netPayable = roundCurrency(emp.basicSalary * effectiveDays + totalAllowances)
       } else if (emp.salaryType === 'HOURLY') {
         // basicSalary is per-hour; assume 8-hour workday as reference
-        netPayable = emp.basicSalary * effectiveDays * 8 + totalAllowances
+        netPayable = roundCurrency(emp.basicSalary * effectiveDays * 8 + totalAllowances)
       } else {
         // REAL BUG found+fixed in this session's pre-release audit: this used
         // to pro-rate by `effectiveDays` (present + halfDay*0.5) over
@@ -433,7 +442,7 @@ export async function getMonthlySummaries(payload: {
         // WEEK_OFF, HOLIDAY, LEAVE, and PRESENT all now correctly leave a
         // MONTHLY employee's pay untouched; only ABSENT/HALF_DAY dock it.
         const payableDays = daysInMonth - absent - halfDay * 0.5
-        netPayable = daysInMonth > 0 ? (grossSalary * payableDays) / daysInMonth : 0
+        netPayable = daysInMonth > 0 ? roundCurrency((grossSalary * payableDays) / daysInMonth) : 0
       }
 
       return {

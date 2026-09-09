@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { logAction } from './audit.service'
 import { billingService } from './billing.service'
 import { billService } from './bill.service'
@@ -11,6 +11,19 @@ import type { CreateRecurringProfilePayload, UpdateRecurringProfilePayload } fro
 // generateInvoiceForRetainer) rather than building real cron, since no
 // scheduler infrastructure exists in this codebase. Evaluated on demand from
 // the existing hourly setInterval in src/main/index.ts.
+
+// RecurringProfile.startDate/endDate are non-nullable/nullable Prisma
+// DateTimes. Returning the raw row lets a real Date instance cross the
+// contextBridge IPC boundary (structured clone preserves Date, it doesn't
+// coerce it to a string) — RecurringProfilesScreen.tsx's EditScheduleModal
+// does `profile.endDate.slice(0, 10)`, assuming a string, matching this
+// codebase's own recurring bug class (see expense.service.ts's
+// serializeExpenseDate / customer.service.ts's serializeCustomer for the
+// identical fix already applied elsewhere) — so opening Edit on any profile
+// with an end date already set threw `TypeError: ...slice is not a function`.
+function serializeProfileDates<T extends { startDate: Date; endDate: Date | null }>(row: T): Omit<T, 'startDate' | 'endDate'> & { startDate: string; endDate: string | null } {
+  return { ...row, startDate: toLocalDateOnlyIso(row.startDate), endDate: row.endDate ? toLocalDateOnlyIso(row.endDate) : null }
+}
 
 function getISOWeek(date: Date): { year: number; week: number } {
   const d = new Date(Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()))
@@ -132,7 +145,7 @@ export const recurringProfileService = {
         },
         orderBy: { createdAt: 'desc' }
       })
-      return { success: true, data: profiles }
+      return { success: true, data: profiles.map(serializeProfileDates) }
     } catch (err) {
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to list recurring profiles.' } }
     }
@@ -149,7 +162,7 @@ export const recurringProfileService = {
         }
       })
       if (!profile) return { success: false, error: { code: 'RP-001', message: 'Recurring profile not found.' } }
-      return { success: true, data: profile }
+      return { success: true, data: serializeProfileDates(profile) }
     } catch (err) {
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to fetch recurring profile.' } }
     }

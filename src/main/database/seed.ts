@@ -210,6 +210,17 @@ const PERMISSIONS = [
   // day-to-day operational actions, not Admin-only settings.
   { permissionKey: 'customDocuments.view', permissionName: 'View Custom Documents' },
   { permissionKey: 'customDocuments.manage', permissionName: 'Manage Custom Documents' },
+  // Real bug found+fixed in this session's pre-release audit: the generic
+  // file-attachment system (document.handler.ts — attach/list/open/delete a
+  // file on an Invoice, Customer, Rental booking, etc.) was gated on
+  // settings.view/settings.modify instead of its own permission, unlike
+  // every sibling feature above. Cashier/Staff hold neither settings key, so
+  // opening e.g. an Invoice Detail screen as Cashier triggered a spurious
+  // permission-denied toast the instant DocumentPanel tried to list its
+  // (possibly zero) attachments — settings access has nothing to do with
+  // attaching a file to a record you can already view.
+  { permissionKey: 'documents.view', permissionName: 'View Attached Documents' },
+  { permissionKey: 'documents.manage', permissionName: 'Attach & Delete Documents' },
   // Phase 63 — editable invoice template system, a branding/settings-level
   // decision, same Manager trust tier as the rest of this phase's own
   // pricing/catalog management permissions.
@@ -629,6 +640,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'priceMarkdowns.view', 'priceMarkdowns.manage',
     'loyaltyProgram.view', 'loyaltyProgram.manage',
     'customDocuments.view', 'customDocuments.manage',
+    'documents.view', 'documents.manage',
     'invoiceTemplates.view', 'invoiceTemplates.manage',
     // approvalWorkflows.manage (configuring workflows) stays Admin-only —
     // not granted here, see the permission definitions' own comment above.
@@ -735,6 +747,11 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     // stock/issue history — but cannot record a screening result or issue
     // units to a recipient (bloodBank.manage stays Manager+, same rationale).
     'bloodBank.view', 'bloodBank.create',
+    // Attaching a file (e.g. a signed invoice scan, a rental condition photo)
+    // to a record Cashier can already view/create is the same bounded,
+    // per-transaction trust level as billing.createInvoice/rental.manage —
+    // see documents.view/manage's own definition-site comment for the bug this closes.
+    'documents.view', 'documents.manage',
     // Booking/checkout/return at a rental counter is the same trust level as
     // billing.createInvoice, which Cashier already has.
     'rental.view', 'rental.manage',
@@ -789,6 +806,9 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'customers.view',
     'products.view',
     'inventory.view',
+    // View-only, matching every other Staff grant — can see documents already
+    // attached to a record it can view (e.g. a rental booking) but not attach/delete.
+    'documents.view',
     'analytics.viewDashboard',
     'purchaseOrders.view', 'purchaseOrders.receive',
     'rental.view',

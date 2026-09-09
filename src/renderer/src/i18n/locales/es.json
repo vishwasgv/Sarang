@@ -5510,8 +5510,8 @@
       "createOrder": "Crear Pedido"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} pedido(s) pueden estar usando medidas desactualizadas",
+      "row": "{{orderNumber}} — {{customerName}}: el pedido usó medidas del {{orderDate}}, pero existe un registro más reciente del {{latestDate}}"
     }
   },
   "rental": {

@@ -42,7 +42,7 @@ export async function listVehicles(payload?: { status?: string; ownerType?: stri
     if (payload?.status) where.status = payload.status
     if (payload?.ownerType) where.ownerType = payload.ownerType
 
-    const take = Math.min(payload?.limit ?? 500, 500)
+    const take = payload?.limit ?? 500
     const skip = payload?.offset ?? 0
     const [rows, total] = await Promise.all([
       db.vehicle.findMany({ where, orderBy: { vehicleNumber: 'asc' }, skip, take }),

@@ -77,11 +77,19 @@ async function main() {
   // without losing already-verified progress, not part of the normal flow.
   const resumeAfter = process.env.SARANG_E2E_RESUME_AFTER || null
 
-  const files = fs.readdirSync(SUITES_DIR)
+  // Optional batch-size cap (env var, same rationale as resumeAfter above) —
+  // stops this process after N suites so a marathon run can be split into
+  // several shorter background windows, avoiding the leaked-electron.exe
+  // memory ceiling a single 150+ suite continuous run hits on constrained
+  // hardware. Combine with SARANG_E2E_RESUME_AFTER to walk through batches.
+  const maxSuites = process.env.SARANG_E2E_MAX_SUITES ? Number(process.env.SARANG_E2E_MAX_SUITES) : null
+
+  let files = fs.readdirSync(SUITES_DIR)
     .filter((f) => f.endsWith('.js'))
     .filter((f) => !filterArg || f.includes(filterArg))
     .sort()
     .filter((f) => !resumeAfter || f >= resumeAfter)
+  if (maxSuites) files = files.slice(0, maxSuites)
 
   const allResults = []
   for (const file of files) {

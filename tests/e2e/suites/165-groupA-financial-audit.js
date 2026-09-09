@@ -282,4 +282,13 @@ async function run() {
   return summary
 }
 
-run().then((s) => process.exit(s.fail > 0 ? 1 : 0)).catch((e) => { console.error(e); process.exit(1) })
+// Guarded on require.main — without this, run-all.js's own `require()` of
+// every suite file (including standalone-only ones it means to SKIPPED)
+// kicks off this whole run() as a side effect, and this file's own
+// process.exit() then tears down the entire run-all.js process mid-loop,
+// silently losing every suite queued after this one. Same real bug already
+// found and fixed once for 60-tutorial-mode.js (see its own comment) —
+// this standalone script was added later and missed that lesson.
+if (require.main === module) {
+  run().then((s) => process.exit(s.fail > 0 ? 1 : 0)).catch((e) => { console.error(e); process.exit(1) })
+}

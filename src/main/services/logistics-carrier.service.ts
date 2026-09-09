@@ -31,7 +31,7 @@ export async function listCarriers(payload?: { activeOnly?: boolean; offset?: nu
     const db = getPrisma()
     const where: Record<string, unknown> = {}
     if (payload?.activeOnly) where.isActive = true
-    const take = Math.min(payload?.limit ?? 500, 500)
+    const take = payload?.limit ?? 500
     const skip = payload?.offset ?? 0
     const [rows, total] = await Promise.all([
       db.carrier.findMany({ where, orderBy: { name: 'asc' }, skip, take }),

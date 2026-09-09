@@ -4,6 +4,7 @@ import { logAction } from './audit.service'
 import { inventoryService } from './inventory.service'
 import { ServiceError } from '../errors/service-error'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // DeliveryChallan schema: challanNumber, challanType (DELIVERY/RETURNABLE/BRANCH_TRANSFER),
 // customerId?, customerName (required), customerAddress?, shipmentId?, invoiceId?, vehicleId?,
@@ -66,7 +67,7 @@ export async function listChallans(payload?: { status?: string; challanType?: st
     if (payload?.status && payload.status !== 'ALL') where.status = payload.status
     if (payload?.challanType) where.challanType = payload.challanType
     if (payload?.customerId) where.customerId = payload.customerId
-    const take = Math.min(payload?.limit ?? 200, 200)
+    const take = payload?.limit ?? 200
     const skip = payload?.offset ?? 0
     const [rows, total] = await Promise.all([
       db.deliveryChallan.findMany({ where, include: INCLUDE, orderBy: { createdAt: 'desc' }, skip, take }),
@@ -115,8 +116,8 @@ export async function createChallan(payload: {
           vehicleId: payload.vehicleId ?? null,
           driverName: payload.driverName?.trim() || null,
           driverPhone: payload.driverPhone?.trim() || null,
-          dispatchDate: payload.dispatchDate ? new Date(payload.dispatchDate) : null,
-          expectedReturn: payload.expectedReturn ? new Date(payload.expectedReturn) : null,
+          dispatchDate: payload.dispatchDate ? parseLocalDateStart(payload.dispatchDate) : null,
+          expectedReturn: payload.expectedReturn ? parseLocalDateStart(payload.expectedReturn) : null,
           totalValue, notes: payload.notes?.trim() || null,
           items: {
             create: payload.items.map(i => ({
@@ -223,8 +224,8 @@ export async function updateChallan(payload: {
           ...(payload.vehicleId !== undefined && { vehicleId: payload.vehicleId }),
           ...(payload.driverName !== undefined && { driverName: payload.driverName?.trim() || null }),
           ...(payload.driverPhone !== undefined && { driverPhone: payload.driverPhone?.trim() || null }),
-          ...(payload.dispatchDate !== undefined && { dispatchDate: payload.dispatchDate ? new Date(payload.dispatchDate) : null }),
-          ...(payload.expectedReturn !== undefined && { expectedReturn: payload.expectedReturn ? new Date(payload.expectedReturn) : null }),
+          ...(payload.dispatchDate !== undefined && { dispatchDate: payload.dispatchDate ? parseLocalDateStart(payload.dispatchDate) : null }),
+          ...(payload.expectedReturn !== undefined && { expectedReturn: payload.expectedReturn ? parseLocalDateStart(payload.expectedReturn) : null }),
           ...(payload.notes !== undefined && { notes: payload.notes?.trim() || null }),
           ...(totalValue !== undefined && { totalValue }),
           ...(payload.items !== undefined && {

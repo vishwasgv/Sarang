@@ -137,7 +137,7 @@ const SECTIONS: SettingsSection[] = [
   {
     id: 'license',
     label: 'License',
-    description: 'Free for your first 12 months — status, activation, and renewal',
+    description: 'Free for your first 100 days — status, activation, and renewal',
     icon: <BadgeDollarSign size={18} />,
     // 2026-08-03: was settings.view (Manager holds this) — see license.handler.ts.
     permission: 'settings.manageLicense',

@@ -55,9 +55,19 @@ async function run() {
       await page.waitForTimeout(700)
       r.log('audit-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
       await page.getByRole('button', { name: 'Verify Integrity' }).click()
-      await page.waitForTimeout(1500)
+      // A fixed short wait was flaky on this dev DB — months of accumulated
+      // testing have grown the audit log to 45k+ rows, and fetch+verify+
+      // render for that many rows can genuinely take longer than 1.5s,
+      // especially under concurrent system load. Wait for the actual result
+      // text instead of a guessed delay.
+      await page.getByText(/chain intact|chain breaks/i).first().waitFor({ timeout: 10000 }).catch(() => {})
       const bodyText = await page.locator('body').innerText()
-      r.log('audit-chain-reports-intact', /chain/i.test(bodyText) && !/broken/i.test(bodyText))
+      // Real failure text is "Tampering detected — the chain breaks at
+      // record ..." (see audit.chainBroken in en.json). The success text
+      // ("...no tampering detected.") also contains "tampering detected" as
+      // a substring, so that phrase can't be used as the negative check —
+      // "chain breaks" is the only substring unique to the failure message.
+      r.log('audit-chain-reports-intact', /chain/i.test(bodyText) && !/chain breaks/i.test(bodyText))
       await h.shot(page, 'audit-verify')
 
       // Also confirm via the raw IPC result directly (the UI text depends

@@ -5319,8 +5319,8 @@
       "set": "തുണി സജ്ജമാക്കുക"
     },
     "staleMeasurements": {
-      "title": "{{count}} order(s) may be using outdated measurements",
-      "row": "{{orderNumber}} — {{customerName}}: order used measurements from {{orderDate}}, but a newer record exists from {{latestDate}}"
+      "title": "{{count}} ഓർഡറുകൾ പഴയ അളവുകൾ ഉപയോഗിക്കുന്നുണ്ടാകാം",
+      "row": "{{orderNumber}} — {{customerName}}: ഓർഡറിൽ {{orderDate}} തീയതിയിലെ അളവുകൾ ഉപയോഗിച്ചു, എന്നാൽ {{latestDate}} തീയതിയിലെ പുതിയ രേഖ ലഭ്യമാണ്"
     }
   },
   "rental": {
