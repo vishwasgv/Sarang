@@ -445,7 +445,10 @@ describe('job-card.service.createJobCard — repeat-fault flag', () => {
 
   it('flags a repeat fault when the same customer had the same item delivered within 30 days', async () => {
     const db = makeCreateMockDbWithRepeatFault([
-      { id: 'jc-old', customerId: 'cust-1', itemDescription: 'Laptop Screen', jobNumber: 'JC-00099', deliveredDate: new Date('2026-08-11T00:00:00') },
+      // 10 days ago, computed relative to "now" so this test doesn't rot into
+      // a false failure as the calendar rolls forward (see job-card date-bomb
+      // fix — a hardcoded near-boundary date used to flip pass->fail).
+      { id: 'jc-old', customerId: 'cust-1', itemDescription: 'Laptop Screen', jobNumber: 'JC-00099', deliveredDate: new Date(Date.now() - 10 * 86400000) },
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -458,7 +461,7 @@ describe('job-card.service.createJobCard — repeat-fault flag', () => {
 
   it('matches itemDescription case-insensitively', async () => {
     const db = makeCreateMockDbWithRepeatFault([
-      { id: 'jc-old', customerId: 'cust-1', itemDescription: '  laptop screen  ', jobNumber: 'JC-00099', deliveredDate: new Date('2026-08-11T00:00:00') },
+      { id: 'jc-old', customerId: 'cust-1', itemDescription: '  laptop screen  ', jobNumber: 'JC-00099', deliveredDate: new Date(Date.now() - 10 * 86400000) },
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 

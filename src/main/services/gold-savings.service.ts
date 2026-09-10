@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { roundCurrency } from './currency.service'
 import { parseLocalDateStart } from '../utils/date.util'
+import { ServiceError } from '../errors/service-error'
 
 // Phase 67 §9.1 — Jewellery item 1: Gold savings scheme (chit) ledger, "the
 // single most-requested feature in Indian jewellery retail" per the source
@@ -118,27 +119,33 @@ export async function redeemGoldSavingsScheme(payload: { schemeId: string; bonus
     const bonusAmount = payload.bonusAmount ?? 0
     if (bonusAmount < 0) return { success: false, error: { code: 'GSS-010', message: 'Bonus amount cannot be negative.' } }
     const db = getPrisma()
-    const scheme = await db.goldSavingsScheme.findUnique({ where: { id: payload.schemeId } })
-    if (!scheme) return { success: false, error: { code: 'GSS-007', message: 'Scheme not found.' } }
-    if (scheme.status !== 'ACTIVE') return { success: false, error: { code: 'GSS-011', message: `This scheme is already ${scheme.status.toLowerCase()}.` } }
 
-    const redeemedAmount = roundCurrency(scheme.totalDeposited + bonusAmount)
-    // Atomically claim the ACTIVE->REDEEMED transition — same "conditional
-    // update, not a plain unconditional one" shape checkoutBooking/
-    // returnBooking already established for rental, so two near-simultaneous
-    // redemptions of the same scheme can't both succeed.
-    const claim = await db.goldSavingsScheme.updateMany({
-      where: { id: payload.schemeId, status: 'ACTIVE' },
-      data: { status: 'REDEEMED', bonusAmount, redeemedAmount, redeemedAt: new Date() },
+    // Real bug: totalDeposited used to be read (for redeemedAmount) OUTSIDE
+    // any transaction, then the status claim ran separately — a
+    // recordInstallment landing in between would commit its increment, but
+    // this redemption would still lock in the stale, now-too-low
+    // totalDeposited it already read, permanently losing that installment's
+    // value. Re-reading fresh INSIDE the same transaction that claims the
+    // status closes the window: SQLite serializes writers, so nothing can
+    // land between this read and the update below.
+    const redeemedAmount = await db.$transaction(async (tx) => {
+      const scheme = await tx.goldSavingsScheme.findUnique({ where: { id: payload.schemeId } })
+      if (!scheme) throw new ServiceError('GSS-007', 'Scheme not found.')
+      if (scheme.status !== 'ACTIVE') throw new ServiceError('GSS-011', `This scheme is already ${scheme.status.toLowerCase()}.`)
+      const redeemedAmount = roundCurrency(scheme.totalDeposited + bonusAmount)
+      const claim = await tx.goldSavingsScheme.updateMany({
+        where: { id: payload.schemeId, status: 'ACTIVE' },
+        data: { status: 'REDEEMED', bonusAmount, redeemedAmount, redeemedAt: new Date() },
+      })
+      if (claim.count === 0) throw new ServiceError('GSS-011', 'This scheme was already redeemed by another action.')
+      return redeemedAmount
     })
-    if (claim.count === 0) {
-      return { success: false, error: { code: 'GSS-011', message: 'This scheme was already redeemed by another action.' } }
-    }
 
     await logAction({ userId: payload.userId, action: 'GOLD_SAVINGS_SCHEME_REDEEMED', entityType: 'GoldSavingsScheme', entityId: payload.schemeId, newValue: { redeemedAmount } })
     const updated = await db.goldSavingsScheme.findUnique({ where: { id: payload.schemeId }, include: { customer: { select: customerSelect }, installments: true } })
     return { success: true, data: updated }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'GSS-012', message: err instanceof Error ? err.message : 'Could not redeem scheme.' } }
   }
 }

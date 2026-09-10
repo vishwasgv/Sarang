@@ -82,6 +82,11 @@ describe('adjustVariantStock', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       inventory: { upsert: vi.fn().mockResolvedValue({}) },
+      // Real bug: adjustVariantStock used to update Inventory.quantity
+      // directly without keeping LocationStock in sync — same gap already
+      // fixed for every other direct-Inventory-mutation call site.
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) },
     }
     db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
     return db
@@ -299,7 +304,12 @@ describe('upsertVariants — width field', () => {
         }),
         findMany: vi.fn().mockResolvedValue([{ stockQty: 10 }])
       },
-      inventory: { upsert: vi.fn().mockResolvedValue({}) },
+      inventory: { findUnique: vi.fn().mockResolvedValue(null), upsert: vi.fn().mockResolvedValue({}) },
+      // Real bug: upsertVariants used to set Inventory.quantity to an
+      // absolute total without keeping LocationStock in sync — same gap
+      // already fixed for every other direct-Inventory-mutation call site.
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) },
       __created: created,
       __updated: updated
     }

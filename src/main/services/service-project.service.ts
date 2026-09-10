@@ -186,7 +186,12 @@ export async function updateServiceProject(payload: {
         ...(projectName !== undefined ? { projectName: projectName.trim() } : {}),
         ...(startDate !== undefined       ? { startDate:       startDate       ? parseLocalDateStart(startDate)       : null } : {}),
         ...(expectedEndDate !== undefined ? { expectedEndDate: expectedEndDate ? parseLocalDateStart(expectedEndDate) : null } : {}),
-        ...(completedDate !== undefined        ? { completedDate: completedDate ? new Date(completedDate) : null } : {}),
+        // Manual completedDate override (a date-only "YYYY-MM-DD" string, same
+        // as startDate/expectedEndDate above) must anchor at LOCAL midnight,
+        // not UTC — a bare `new Date(str)` parse would land one calendar day
+        // early in any negative-UTC-offset timezone. The auto-managed path
+        // below still stamps a real time-of-day via `new Date()`.
+        ...(completedDate !== undefined        ? { completedDate: completedDate ? parseLocalDateStart(completedDate) : null } : {}),
         ...(autoCompletedDate !== undefined    ? { completedDate: autoCompletedDate } : {}),
         ...(stageUpdatedAt !== undefined       ? { stageUpdatedAt } : {}),
       },

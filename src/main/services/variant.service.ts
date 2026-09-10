@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
-import { getAllowNegative } from './inventory.service'
+import { getAllowNegative, applyLocationDeltaTx } from './inventory.service'
 
 export interface VariantRecord {
   id: string
@@ -94,11 +94,19 @@ export async function upsertVariants(payload: {
       // Sync total variant stock to the inventory table
       const allVariants = await tx.productVariant.findMany({ where: { productId: payload.productId, isActive: true } })
       const totalStock = allVariants.reduce((sum, v) => sum + v.stockQty, 0)
+      // Same LocationStock sync gap already fixed elsewhere for every other
+      // direct-Inventory-mutation call site (e.g. completeProductionOrder,
+      // product.service's opening-quantity path) — this sets an absolute
+      // quantity, so the location delta is the change from whatever
+      // Inventory.quantity was before this upsert, not totalStock itself.
+      const existingInv = await tx.inventory.findUnique({ where: { productId: payload.productId }, select: { quantity: true } })
+      const delta = totalStock - (existingInv?.quantity ?? 0)
       await tx.inventory.upsert({
         where: { productId: payload.productId },
         create: { productId: payload.productId, quantity: totalStock },
         update: { quantity: totalStock }
       })
+      if (delta !== 0) await applyLocationDeltaTx(tx, payload.productId, delta)
 
       return saved
     })
@@ -128,6 +136,7 @@ export async function deleteVariant(id: string, userId?: string): Promise<{ succ
           create: { productId: existing.productId, quantity: 0 },
           update: { quantity: { decrement: existing.stockQty } }
         })
+        await applyLocationDeltaTx(tx, existing.productId, -existing.stockQty)
       }
     })
     await logAction(userId, 'VARIANT_DELETED', 'ProductVariant', id)
@@ -171,6 +180,7 @@ export async function adjustVariantStock(payload: {
         create: { productId: variant.productId, quantity: Math.max(0, newQty) },
         update: { quantity: { increment: payload.quantityDelta } }
       })
+      await applyLocationDeltaTx(tx, variant.productId, payload.quantityDelta)
       return { previousQty: variant.stockQty, newQty }
     })
     // logAction always uses its own getPrisma() connection, not `tx` — every

@@ -2,6 +2,28 @@ import { getPrisma } from '../database/db'
 import type { ApiResponse } from '../ipc/channels'
 import { LICENSE_INTERNAL_SETTING_KEYS } from './license.service'
 
+// Security-critical Setting rows with their own dedicated, re-authenticated
+// write path — same threat class as LICENSE_INTERNAL_SETTING_KEYS above, just
+// discovered later. Real gap found+fixed: this generic setter was only ever
+// blocking license-internal keys, so a settings.modify-holder (the same
+// permission auth:regenerateRecoveryCode itself reuses — see that handler's
+// comment) could call settings:set with key 'recovery_code_hash' to plant an
+// attacker-known bcrypt hash directly, silently bypassing
+// regenerateRecoveryCode()'s explicit "must re-enter your CURRENT password"
+// re-auth requirement and its audit-log entry — turning a momentarily
+// unlocked/hijacked Admin session into a permanent password-reset backdoor
+// with no trace. audit_log_chain_tip/audit_log_last_failure_at are
+// audit.service.ts's own internal bookkeeping (never meant to be
+// user-writable at all) and ratelimit_* rows back the brute-force lockout in
+// auth.service.ts — writable here, an Admin session could zero out anyone's
+// lockout counter and defeat AUTH-004 outright.
+const OTHER_INTERNAL_SETTING_KEYS: ReadonlySet<string> = new Set([
+  'recovery_code_hash',
+  'audit_log_chain_tip',
+  'audit_log_last_failure_at'
+])
+const INTERNAL_SETTING_KEY_PREFIXES = ['ratelimit_']
+
 export async function getSetting(key: string): Promise<ApiResponse> {
   try {
     const db = getPrisma()
@@ -22,6 +44,9 @@ export async function setSetting(key: string, value: string): Promise<ApiRespons
   // Admin/business-owner always holds. See license.service.ts's
   // LICENSE_INTERNAL_SETTING_KEYS doc comment for the full threat this closes.
   if (LICENSE_INTERNAL_SETTING_KEYS.has(key)) {
+    return { success: false, error: { code: 'LIC-003', message: 'This setting is managed internally and cannot be changed directly.' } }
+  }
+  if (OTHER_INTERNAL_SETTING_KEYS.has(key) || INTERNAL_SETTING_KEY_PREFIXES.some(prefix => key.startsWith(prefix))) {
     return { success: false, error: { code: 'LIC-003', message: 'This setting is managed internally and cannot be changed directly.' } }
   }
   try {

@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export interface WorkLogRecord {
   id: string
@@ -90,7 +91,12 @@ export async function createWorkLog(payload: {
         title: payload.title,
         description: payload.description ?? null,
         hours: payload.hours,
-        logDate: payload.logDate ? new Date(payload.logDate) : new Date(),
+        // logDate is a bare "YYYY-MM-DD" string from an <input type="date">
+        // (WorkTrackingScreen.tsx) — a raw `new Date(str)` parses as UTC
+        // midnight, one calendar day early in any negative-UTC-offset
+        // timezone, and would silently land outside report.service.ts's
+        // local-midnight-anchored WorkLog date-range filters.
+        logDate: payload.logDate ? parseLocalDateStart(payload.logDate) : new Date(),
         billable: payload.billable ?? true
       },
       include: { user: { select: { fullName: true } } }

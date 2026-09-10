@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
+import { applyLocationDeltaTx } from './inventory.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export interface BatchRecord {
@@ -138,10 +139,48 @@ export async function createBatch(payload: {
           supplier: { select: { supplierName: true } }
         }
       })
+
+      // Real bug found in this session's audit: this used to be a bare
+      // Inventory.quantity upsert with no averageCost recalculation, no
+      // InventoryMovement record, and no LocationStock sync — the three
+      // invariants every other stock-in path (addStockTx) keeps together.
+      // Manual batch entry is a real stock-in event (pharmacy/grocery/
+      // bakery/blood-bank receive most of their stock this way), so
+      // Inventory.averageCost — which both the Inventory screen's own
+      // "Total Value" tile and the dashboard KPI read directly — was
+      // silently frozen at whatever it happened to be (often 0) forever,
+      // and a multi-location business's LocationStock breakdown drifted
+      // from the aggregate with every batch received.
+      const existingInventory = await tx.inventory.findUnique({ where: { productId: payload.productId } })
+      const currentQty = existingInventory?.quantity ?? 0
+      const currentAvgCost = existingInventory?.averageCost ?? 0
+      const unitCost = payload.unitCost ?? 0
+      const totalValue = (currentQty * currentAvgCost) + (payload.quantityReceived * unitCost)
+      const totalQty = currentQty + payload.quantityReceived
+      const newAvgCost = totalQty > 0 ? totalValue / totalQty : unitCost
+
       await tx.inventory.upsert({
         where: { productId: payload.productId },
-        create: { productId: payload.productId, quantity: payload.quantityReceived },
-        update: { quantity: { increment: payload.quantityReceived } }
+        create: { productId: payload.productId, quantity: payload.quantityReceived, averageCost: newAvgCost },
+        update: { quantity: { increment: payload.quantityReceived }, averageCost: newAvgCost }
+      })
+      await tx.inventoryMovement.create({
+        data: {
+          productId: payload.productId,
+          movementType: 'ADDITION',
+          quantity: payload.quantityReceived,
+          referenceType: 'PRODUCT_BATCH',
+          referenceId: created.id,
+          remarks: `Batch ${created.batchNumber} received`,
+          createdById: userId ?? null
+        }
+      })
+      await applyLocationDeltaTx(tx, payload.productId, payload.quantityReceived)
+      await tx.productCostHistory.create({
+        data: {
+          productId: payload.productId, unitCost, quantity: payload.quantityReceived,
+          sourceType: 'PRODUCT_BATCH', sourceId: created.id
+        }
       })
       return created
     })
@@ -233,6 +272,13 @@ export async function updateBatch(payload: {
             create: { productId: fresh.productId, quantity: Math.max(0, delta) },
             update: { quantity: { increment: delta } }
           })
+          // Real bug found in this session's audit: this Inventory.quantity
+          // correction never kept LocationStock in sync (applyLocationDeltaTx
+          // is the invariant every other direct-Inventory-mutation call site
+          // already uses) — a multi-location business correcting a batch
+          // count here would see the per-location breakdown silently drift
+          // away from the aggregate.
+          await applyLocationDeltaTx(tx, fresh.productId, delta)
         }
       }
       return fresh
@@ -281,6 +327,11 @@ export async function deleteBatch(id: string, userId?: string): Promise<{ succes
           create: { productId: batch.productId, quantity: 0 },
           update: { quantity: { decrement: batch.quantityRemaining } }
         })
+        // Same LocationStock-sync gap as updateBatch above — a deleted
+        // batch's quantity must come off the same location its Inventory
+        // aggregate came off, or a multi-location business's per-location
+        // breakdown silently overstates what's actually on hand.
+        await applyLocationDeltaTx(tx, batch.productId, -batch.quantityRemaining)
       }
       return { alreadyDeleted: false }
     })

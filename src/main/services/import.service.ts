@@ -6,6 +6,7 @@ import { getPrisma } from '../database/db'
 import { ensureRecentBackup } from './backup.service'
 import { logAction } from './audit.service'
 import { roundCurrency } from './currency.service'
+import { applyLocationDeltaTx } from './inventory.service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -863,6 +864,15 @@ export async function executeImport(
                 create: { productId, quantity: qty, averageCost: newAvgCost },
                 update: { quantity: { increment: qty }, averageCost: newAvgCost }
               })
+              // Real bug found in this session's audit: a bulk inventory
+              // import previously never kept LocationStock in sync with this
+              // Inventory.quantity increment (the same invariant every other
+              // direct-Inventory-mutation call site keeps) — a multi-location
+              // business bulk-importing opening stock would see the default
+              // Location's LocationStock miss every imported row entirely,
+              // breaking Transfer Stock's own "Available" figure right after
+              // the import that's supposed to seed it.
+              await applyLocationDeltaTx(tx, productId, qty)
             })
 
             imported++

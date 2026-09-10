@@ -1321,7 +1321,7 @@ model ProductCostHistory {
   productId  String
   unitCost   Float
   quantity   Float
-  sourceType String // 'PURCHASE_ORDER' | 'BILL' | 'GOODS_RECEIPT_NOTE' | 'PRODUCTION_ORDER'
+  sourceType String // 'PURCHASE_ORDER' | 'BILL' | 'GOODS_RECEIPT_NOTE' | 'PRODUCTION_ORDER' | 'PRODUCT_BATCH'
   sourceId   String
   recordedAt DateTime @default(now())
 

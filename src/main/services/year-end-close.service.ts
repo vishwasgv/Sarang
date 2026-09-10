@@ -35,7 +35,12 @@ export const yearEndCloseService = {
     const db = getPrisma()
     try {
       const closingDate = parseLocalDateStart(payload.closingDate)
-      const openingDate = new Date(closingDate.getTime() + 86400000)
+      // Was closingDate.getTime() + 86400000 — epoch-ms arithmetic assumes every
+      // day is exactly 24 real hours, which is false across a DST transition in
+      // any timezone that observes one (a 23- or 25-hour day would land the
+      // "next day" boundary at 1am/11pm instead of local midnight). Built from
+      // Y/M/D components instead, same convention as parseLocalDateStart/End.
+      const openingDate = new Date(closingDate.getFullYear(), closingDate.getMonth(), closingDate.getDate() + 1)
 
       const profile = await db.businessProfile.findFirst()
       if (!profile) return { success: false, error: { code: 'BP-001', message: 'Business profile not found.' } }

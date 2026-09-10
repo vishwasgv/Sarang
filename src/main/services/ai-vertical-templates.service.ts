@@ -1171,18 +1171,22 @@ export async function executeVerticalTemplate(template: string, params: Record<s
     // never acts on it.
     case 'electronics.rmaOverdueSummary': {
       const db = getPrisma()
+      // Real bug found in this pass: `take: 5` on this query used to cap the
+      // reported overdue `count` at 5 too, since count was just `.length` of
+      // the same limited result. Fetch the full set (RMA-overdue backlogs are
+      // small) and only slice(0, 5) for the details list, same pattern as
+      // every other ad-hoc list+count query in this file.
       const overdue = await db.repairTicket.findMany({
         where: { status: { in: ['SENT_TO_VENDOR', 'AWAITING_PARTS'] }, vendorSlaDueDate: { lt: new Date() } },
         select: { claimNumber: true, product: { select: { productName: true } }, sentToVendorDate: true },
-        orderBy: { sentToVendorDate: 'asc' },
-        take: 5
+        orderBy: { sentToVendorDate: 'asc' }
       })
       const count = overdue.length
       return {
         headline: count > 0
           ? `${count} unit${count === 1 ? ' is' : 's are'} overdue from vendor RMA (past the 30-day SLA)`
           : 'No RMA units are currently overdue',
-        details: overdue.map(t => `${t.claimNumber} — ${t.product.productName}, sent ${t.sentToVendorDate ? t.sentToVendorDate.toISOString().slice(0, 10) : ''}`),
+        details: overdue.slice(0, 5).map(t => `${t.claimNumber} — ${t.product.productName}, sent ${t.sentToVendorDate ? toLocalISODate(t.sentToVendorDate) : ''}`),
         isEmpty: count === 0
       }
     }
@@ -1195,9 +1199,9 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       const r = await reportService.generateVendorRecoveryLedgerReport()
       return {
         headline: r.summary.openCount > 0
-          ? `₹${r.summary.totalOutstanding.toFixed(0)} outstanding across ${r.summary.openCount} open vendor claim${r.summary.openCount === 1 ? '' : 's'}`
+          ? `${formatAmountForSpeech(r.summary.totalOutstanding, sym)} outstanding across ${r.summary.openCount} open vendor claim${r.summary.openCount === 1 ? '' : 's'}`
           : 'No open vendor warranty claims',
-        details: r.rows.filter(row => !row.isClosed).slice(0, 5).map(row => `${row.claimNumber} — ${row.productName}: ₹${row.outstandingAmount.toFixed(0)} outstanding`),
+        details: r.rows.filter(row => !row.isClosed).slice(0, 5).map(row => `${row.claimNumber} — ${row.productName}: ${formatAmountForSpeech(row.outstandingAmount, sym)} outstanding`),
         isEmpty: r.rows.length === 0
       }
     }
@@ -1230,7 +1234,7 @@ export async function executeVerticalTemplate(template: string, params: Record<s
       if (!res.success || !res.data) return { headline: '', details: [], isEmpty: true }
       const { serial, purchase, tickets } = res.data
       const purchaseLine = purchase
-        ? `Sold on ${purchase.invoiceNumber} (${purchase.invoiceDate.slice(0, 10)})${purchase.customerName ? ` to ${purchase.customerName}` : ''}`
+        ? `Sold on ${purchase.invoiceNumber} (${toLocalISODate(new Date(purchase.invoiceDate))})${purchase.customerName ? ` to ${purchase.customerName}` : ''}`
         : 'Never sold — still in stock'
       return {
         headline: `${serial.productName} (${serial.serialNumber}) — ${tickets.length} repair ticket${tickets.length === 1 ? '' : 's'} on record`,

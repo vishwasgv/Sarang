@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { sumCurrency, roundCurrency } from './currency.service'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -81,6 +81,12 @@ async function reverseEntryTx(tx: TxClient, original: { id: string; entryNumber:
   const reversedLines: EntryLine[] = original.lines.map((l) => ({
     accountId: l.accountId,
     bankAccountId: l.bankAccountId,
+    // Was dropped here, always landing null on the reversal line regardless
+    // of the original's tag — silently orphaned generateCostCentreTreemapReport's
+    // net-to-zero-on-reversal invariant (the original's revenue/expense stayed
+    // tagged to its cost centre while the offsetting reversal fell into
+    // "untagged"), corrupting the cost centre report after any cancellation.
+    costCentreId: l.costCentreId,
     debitAmount: l.creditAmount,
     creditAmount: l.debitAmount,
     remarks: l.remarks
@@ -194,7 +200,10 @@ export const journalEntryService = {
       if (filters?.dateFrom || filters?.dateTo) {
         where.entryDate = {
           ...(filters.dateFrom ? { gte: parseLocalDateStart(filters.dateFrom) } : {}),
-          ...(filters.dateTo ? { lte: parseLocalDateStart(filters.dateTo) } : {})
+          // Was parseLocalDateStart — local midnight as the upper bound excluded
+          // almost every entry actually dated on dateTo (see date.util.ts's
+          // parseLocalDateEnd doc comment for the same bug class elsewhere).
+          ...(filters.dateTo ? { lte: parseLocalDateEnd(filters.dateTo) } : {})
         }
       }
       const [entries, total] = await Promise.all([

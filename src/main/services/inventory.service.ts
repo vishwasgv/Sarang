@@ -95,6 +95,10 @@ export const inventoryService = {
   async addStock(payload: AddStockPayload, userId?: string) {
     const db = getPrisma()
     try {
+      // Same extended timeout as adjustStock below — this transaction has the
+      // identical read-modify-write shape on the same Inventory/LocationStock
+      // rows, so it is just as exposed to the contention that motivated that
+      // fix, and previously fell through to a generic SYS-001 on timeout.
       const updated = await db.$transaction(async (tx) => {
         // Read-modify-write inside the transaction so concurrent stock-affecting
         // operations on the same product can't race on a stale averageCost read.
@@ -125,12 +129,19 @@ export const inventoryService = {
         })
         await applyLocationDeltaTx(tx, payload.productId, payload.quantity)
         return inv
-      })
+      }, { timeout: 15000, maxWait: 10000 })
 
       await logAction({ userId, action: 'INVENTORY_ADD_STOCK', entityType: 'Inventory', entityId: payload.productId, newValue: { quantity: payload.quantity, reason: payload.reason } })
       return { success: true, data: updated }
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      const isBusyContention = err instanceof Error && (
+        /transaction already closed|expired transaction/i.test(err.message) ||
+        (err as { code?: string }).code === 'P1008'
+      )
+      if (isBusyContention) {
+        return { success: false, error: { code: 'INV-007', message: 'The system is busy processing another stock change right now. Please try again in a moment.' } }
+      }
       return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
     }
   },
@@ -395,14 +406,23 @@ export const inventoryService = {
   ) {
     const db = getPrisma()
     try {
+      // Same extended timeout as adjustStock — identical read-modify-write
+      // contention profile on the same Inventory/LocationStock rows.
       await db.$transaction(async (tx) => {
         await this.reduceStockTx(tx, productId, quantity, reason, referenceType, referenceId, userId)
-      })
+      }, { timeout: 15000, maxWait: 10000 })
       await logAction({ userId, action: 'INVENTORY_REDUCE_STOCK', entityType: 'Inventory', entityId: productId, newValue: { quantity: -quantity, reason } })
       const updated = await db.inventory.findUnique({ where: { productId } })
       return { success: true, data: updated }
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      const isBusyContention = err instanceof Error && (
+        /transaction already closed|expired transaction/i.test(err.message) ||
+        (err as { code?: string }).code === 'P1008'
+      )
+      if (isBusyContention) {
+        return { success: false, error: { code: 'INV-007', message: 'The system is busy processing another stock change right now. Please try again in a moment.' } }
+      }
       const msg = err instanceof Error ? err.message : 'Failed to reduce stock.'
       return { success: false, error: { code: 'SYS-001', message: msg } }
     }
@@ -465,12 +485,19 @@ export const inventoryService = {
             createdById: userId ?? null, locationId: params.toLocationId
           }
         })
-      })
+      }, { timeout: 15000, maxWait: 10000 })
 
       await logAction({ userId, action: 'INVENTORY_TRANSFER_STOCK', entityType: 'Product', entityId: params.productId, newValue: params })
       return { success: true }
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      const isBusyContention = err instanceof Error && (
+        /transaction already closed|expired transaction/i.test(err.message) ||
+        (err as { code?: string }).code === 'P1008'
+      )
+      if (isBusyContention) {
+        return { success: false, error: { code: 'INV-007', message: 'The system is busy processing another stock change right now. Please try again in a moment.' } }
+      }
       return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
     }
   }

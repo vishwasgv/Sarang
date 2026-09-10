@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { inventoryService } from './inventory.service'
+import { applyLocationDeltaTx } from './inventory.service'
 import { logAction } from './audit.service'
 import { createNotification } from './notification.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
@@ -626,15 +626,35 @@ export async function deductIngredients(
       for (const ri of recipe.items) {
         const needed = ri.quantity * resolved.quantity
         try {
-          const inv = await db.inventory.findUnique({ where: { productId: ri.ingredientProductId } })
-          if (!inv) continue
-          const newQty = Math.max(0, inv.quantity - needed)
-          // adjustStock expects new absolute quantity; movement created with negative delta for food cost report
-          await inventoryService.adjustStock({
-            productId: ri.ingredientProductId,
-            quantity: newQty,
-            reason: `${INGREDIENT_DEDUCTION_REMARKS_PREFIX} — recipe: ${recipe.recipeName}`
-          }, userId)
+          // Real bug: this used to read Inventory.quantity, compute an
+          // absolute target, then hand it to adjustStock's OWN separate
+          // transaction — a second concurrent deduction against the same
+          // shared ingredient (e.g. onions used by many dishes, two KOTs
+          // marked DONE moments apart) could read the same stale quantity
+          // here, and whichever absolute write landed second would silently
+          // clobber the other's decrement. Reading and writing fresh inside
+          // one transaction closes the window, matching the same
+          // read-inside-the-transaction fix already applied elsewhere in
+          // this codebase (e.g. adjustVariantStock, startProductionOrder).
+          await db.$transaction(async (tx) => {
+            const inv = await tx.inventory.findUnique({ where: { productId: ri.ingredientProductId } })
+            if (!inv) return
+            const newQty = Math.max(0, inv.quantity - needed)
+            const difference = newQty - inv.quantity
+            if (difference === 0) return
+            await tx.inventory.update({ where: { productId: ri.ingredientProductId }, data: { quantity: newQty } })
+            await tx.inventoryMovement.create({
+              data: {
+                productId: ri.ingredientProductId,
+                movementType: 'ADJUSTMENT',
+                quantity: difference,
+                referenceType: 'ADJUSTMENT',
+                remarks: `${INGREDIENT_DEDUCTION_REMARKS_PREFIX} — recipe: ${recipe.recipeName}`,
+                createdById: userId ?? null
+              }
+            })
+            await applyLocationDeltaTx(tx, ri.ingredientProductId, difference)
+          }, { timeout: 15000, maxWait: 10000 })
         } catch (err) {
           // Do not abort KOT fulfillment if an ingredient stock adjustment
           // fails — but a swallowed failure here previously left inventory

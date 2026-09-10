@@ -68,7 +68,13 @@ describe('createBatch', () => {
           }
         })
       },
-      inventory: { upsert: vi.fn().mockResolvedValue({}) }
+      inventory: { upsert: vi.fn().mockResolvedValue({}), findUnique: vi.fn().mockResolvedValue(null) },
+      inventoryMovement: { create: vi.fn().mockResolvedValue({}) },
+      productCostHistory: { create: vi.fn().mockResolvedValue({}) },
+      // applyLocationDeltaTx's own dependencies — resolves the default
+      // Location and upserts its LocationStock row inside this transaction.
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) }
     }
     const db = {
       product: { findUnique: vi.fn().mockResolvedValue({ productName: 'Test Product' }) },
@@ -99,6 +105,33 @@ describe('createBatch', () => {
 
     expect(res.success).toBe(true)
     expect(new Date(res.data!.mfgDate!)).toEqual(new Date(2026, 7, 1))
+  })
+
+  // Real bug found in this session's audit: createBatch used to increment
+  // Inventory.quantity directly with no averageCost recalculation, no
+  // InventoryMovement record, and no LocationStock sync — the three
+  // invariants every other stock-in path (addStockTx) keeps together.
+  it('recalculates weighted average cost, records a movement, and syncs LocationStock on a new batch receipt', async () => {
+    const { db, tx } = makeCreateDb()
+    tx.inventory.findUnique = vi.fn().mockResolvedValue({ productId: 'prod-1', quantity: 100, averageCost: 50 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Current: 100 @ 50 = 5000; adding 10 @ 80 = 800; new avg = 5800/110 ≈ 52.73
+    await createBatch({ productId: 'prod-1', batchNumber: 'B001', expiryDate: '2026-08-15', quantityReceived: 10, unitCost: 80 })
+
+    expect(tx.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      update: expect.objectContaining({ quantity: { increment: 10 }, averageCost: expect.closeTo(52.73, 1) })
+    }))
+    expect(tx.inventoryMovement.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ movementType: 'ADDITION', quantity: 10, referenceType: 'PRODUCT_BATCH' })
+    }))
+    expect(tx.locationStock.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId_locationId: { productId: 'prod-1', locationId: 'loc-main' } },
+      update: { quantity: { increment: 10 } }
+    }))
+    expect(tx.productCostHistory.create).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ productId: 'prod-1', unitCost: 80, quantity: 10, sourceType: 'PRODUCT_BATCH' })
+    }))
   })
 })
 
@@ -186,10 +219,28 @@ describe('updateBatch — read-inside-transaction race fix', () => {
         update: vi.fn().mockResolvedValue({}),
       },
       inventory: { upsert: vi.fn().mockResolvedValue({}) },
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) },
     }
     db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
     return db
   }
+
+  // Real bug found in this session's audit: the Inventory.quantity delta
+  // above was applied without ever syncing LocationStock (applyLocationDeltaTx),
+  // silently drifting a multi-location business's per-location breakdown away
+  // from the aggregate every time a batch quantity was corrected.
+  it('keeps LocationStock in sync with the same delta applied to Inventory.quantity', async () => {
+    const db = makeMockDb({ preCheckQty: 100, freshQty: 70 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await updateBatch({ id: 'batch-1', quantityRemaining: 80 })
+
+    expect(db.locationStock.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId_locationId: { productId: 'prod-1', locationId: 'loc-main' } },
+      update: { quantity: { increment: 10 } },
+    }))
+  })
 
   // Real bug found live (core-commerce audit): the delta used to be computed
   // from `existing.quantityRemaining` captured BEFORE the transaction opened
@@ -246,6 +297,8 @@ describe('deleteBatch — atomic claim prevents double inventory decrement', () 
         }),
       },
       inventory: { upsert: vi.fn().mockResolvedValue({}) },
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) },
     }
     db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
     return db
@@ -261,6 +314,21 @@ describe('deleteBatch — atomic claim prevents double inventory decrement', () 
     expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
       where: { productId: 'prod-1' },
       update: { quantity: { decrement: 15 } },
+    }))
+  })
+
+  // Real bug found in this session's audit: the decrement above never kept
+  // LocationStock in sync (applyLocationDeltaTx) — a deleted batch's quantity
+  // must come off the same location its Inventory aggregate came off.
+  it('keeps LocationStock in sync when a batch is deleted', async () => {
+    const db = makeMockDb({ id: 'batch-1', productId: 'prod-1', quantityRemaining: 15, isActive: true })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await deleteBatch('batch-1')
+
+    expect(db.locationStock.upsert).toHaveBeenCalledWith(expect.objectContaining({
+      where: { productId_locationId: { productId: 'prod-1', locationId: 'loc-main' } },
+      update: { quantity: { increment: -15 } },
     }))
   })
 

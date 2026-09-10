@@ -158,6 +158,20 @@ async function rescheduleVaccineReminder(vaccinationRecordId: string, oldDueDate
             scheduledFor: { in: [oldSevenDaysBefore, oldThirtyDaysBefore] },
           },
         })
+        // Real bug found: only the 7D/30D reminders were cancelled here — a
+        // VACCINE_OVERDUE message queued earlier (while this record was
+        // still overdue, keyed on templateBody rather than scheduledFor, see
+        // generateVaccineReminder's dedup) survived a reschedule untouched.
+        // Pushing nextDueDate into the future must not leave a stale "is now
+        // overdue" WhatsApp message still queued to send.
+        await db.notificationQueue.deleteMany({
+          where: {
+            customerId,
+            notificationType: 'VACCINE_OVERDUE',
+            status: 'PENDING',
+            templateBody: { contains: vaccinationRecordId.slice(-6) },
+          },
+        })
       }
     }
   } catch {

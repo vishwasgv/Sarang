@@ -15,6 +15,59 @@ function serializeShootBooking<T extends { estimatedDurationHours: unknown; fina
   }
 }
 
+function toMins(t: string): number {
+  const [h, m] = t.split(':').map(Number)
+  return h * 60 + m
+}
+
+type Db = ReturnType<typeof getPrisma>
+type TxClient = Parameters<Parameters<Db['$transaction']>[0]>[0]
+
+// Real bug found: photographerIds had NO double-booking conflict check at
+// all — unlike the structurally identical instructor/vehicle problem this
+// same codebase already closed in driving.service.ts's
+// findDrivingSessionConflict. Two shoots could be booked for the same
+// photographer at fully overlapping times with no warning, silently
+// double-committing a real staff member. Runs inside the same transaction as
+// the write it guards, for the same race-safety reason findDrivingSessionConflict
+// documents. Either booking missing a shootTime is treated as an all-day
+// conflict for that photographer — safer than a false negative.
+async function findPhotographerConflict(
+  db: TxClient | Db,
+  photographerIds: string[],
+  shootDate: Date,
+  shootTime: string | null,
+  estimatedDurationHours: number,
+  excludeBookingId?: string
+): Promise<string | null> {
+  if (photographerIds.length === 0) return null
+  const dayEnd = new Date(shootDate.getTime() + 86400000)
+  const candidates = await db.shootBooking.findMany({
+    where: {
+      shootDate: { gte: shootDate, lt: dayEnd },
+      status: { not: 'CANCELLED' },
+      ...(excludeBookingId ? { id: { not: excludeBookingId } } : {}),
+    },
+    select: { shootTime: true, estimatedDurationHours: true, photographerIds: true },
+  })
+  const newStart = shootTime ? toMins(shootTime) : null
+  const newEnd = newStart != null ? newStart + Math.round(estimatedDurationHours * 60) : null
+  for (const c of candidates) {
+    let ids: string[] = []
+    try { ids = JSON.parse(c.photographerIds) } catch { ids = [] }
+    if (!ids.some((pid) => photographerIds.includes(pid))) continue
+    if (newStart == null || !c.shootTime) {
+      return 'A photographer on this booking already has a shoot scheduled the same day.'
+    }
+    const eStart = toMins(c.shootTime)
+    const eEnd = eStart + Math.round(Number(c.estimatedDurationHours) * 60)
+    if (newStart < eEnd && eStart < newEnd!) {
+      return 'A photographer on this booking is already booked for an overlapping time slot.'
+    }
+  }
+  return null
+}
+
 export async function listShootBookings(filters?: { status?: string; clientId?: string; search?: string }) {
   const db = getPrisma()
   const where: Record<string, unknown> = {}
@@ -63,33 +116,47 @@ export async function createShootBooking(payload: {
   notes?: string
 }) {
   const db = getPrisma()
-  const booking = await db.shootBooking.create({
-    data: {
-      clientId: payload.clientId,
-      shootType: payload.shootType,
-      // Real bug found live (2026-08-27 Phase 68 audit): a bare
-      // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
-      // with this app's own parseLocalDateStart convention.
-      shootDate: parseLocalDateStart(payload.shootDate),
-      shootTime: payload.shootTime || null,
-      shootLocation: payload.shootLocation,
-      estimatedDurationHours: payload.estimatedDurationHours,
-      deliverableType: payload.deliverableType ?? 'DIGITAL_ONLY',
-      expectedPhotosCount: payload.expectedPhotosCount ?? null,
-      deliveryDeadline: payload.deliveryDeadline ? parseLocalDateStart(payload.deliveryDeadline) : null,
-      photographerIds: JSON.stringify(payload.photographerIds ?? []),
-      editorAssignedId: payload.editorAssignedId || null,
-      notes: payload.notes || null,
-    },
-    include: {
-      client: { select: { id: true, customerName: true, phone: true } },
-      editor: { select: { id: true, fullName: true } },
-      delivery: true,
-    },
+  const shootDate = parseLocalDateStart(payload.shootDate)
+  const photographerIds = payload.photographerIds ?? []
+
+  const result = await db.$transaction(async (tx): Promise<
+    | { ok: true; booking: Awaited<ReturnType<typeof tx.shootBooking.create>> }
+    | { ok: false; error: { code: string; message: string } }
+  > => {
+    const conflict = await findPhotographerConflict(tx, photographerIds, shootDate, payload.shootTime || null, payload.estimatedDurationHours)
+    if (conflict) return { ok: false, error: { code: 'SHT-008', message: conflict } }
+
+    const booking = await tx.shootBooking.create({
+      data: {
+        clientId: payload.clientId,
+        shootType: payload.shootType,
+        // Real bug found live (2026-08-27 Phase 68 audit): a bare
+        // `new Date('YYYY-MM-DD')` parses as UTC midnight — inconsistent
+        // with this app's own parseLocalDateStart convention.
+        shootDate,
+        shootTime: payload.shootTime || null,
+        shootLocation: payload.shootLocation,
+        estimatedDurationHours: payload.estimatedDurationHours,
+        deliverableType: payload.deliverableType ?? 'DIGITAL_ONLY',
+        expectedPhotosCount: payload.expectedPhotosCount ?? null,
+        deliveryDeadline: payload.deliveryDeadline ? parseLocalDateStart(payload.deliveryDeadline) : null,
+        photographerIds: JSON.stringify(photographerIds),
+        editorAssignedId: payload.editorAssignedId || null,
+        notes: payload.notes || null,
+      },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+        editor: { select: { id: true, fullName: true } },
+        delivery: true,
+      },
+    })
+    return { ok: true, booking }
   })
-  await db.auditLog.create({ data: { action: 'CREATE', entityType: 'ShootBooking', entityId: booking.id, newValue: JSON.stringify({ shootType: booking.shootType, clientId: booking.clientId }) } }).catch(() => {})
-  await scheduleShootReminder(booking.id).catch(() => {})
-  return { success: true, data: serializeShootBooking(booking) }
+
+  if (!result.ok) return { success: false, error: result.error }
+  await db.auditLog.create({ data: { action: 'CREATE', entityType: 'ShootBooking', entityId: result.booking.id, newValue: JSON.stringify({ shootType: result.booking.shootType, clientId: result.booking.clientId }) } }).catch(() => {})
+  await scheduleShootReminder(result.booking.id).catch(() => {})
+  return { success: true, data: serializeShootBooking(result.booking) }
 }
 
 async function scheduleShootReminder(bookingId: string): Promise<void> {
@@ -134,22 +201,53 @@ export async function updateShootBooking(payload: {
   }
   const db = getPrisma()
   const { id, shootDate, deliveryDeadline, photographerIds, ...rest } = payload
-  const booking = await db.shootBooking.update({
-    where: { id },
-    data: {
-      ...rest,
-      ...(shootDate !== undefined ? { shootDate: parseLocalDateStart(shootDate) } : {}),
-      ...(deliveryDeadline !== undefined ? { deliveryDeadline: deliveryDeadline ? parseLocalDateStart(deliveryDeadline) : null } : {}),
-      ...(photographerIds !== undefined ? { photographerIds: JSON.stringify(photographerIds) } : {}),
-    },
-    include: {
-      client: { select: { id: true, customerName: true, phone: true } },
-      editor: { select: { id: true, fullName: true } },
-      delivery: true,
-    },
+
+  const result = await db.$transaction(async (tx): Promise<
+    | { ok: true; booking: Awaited<ReturnType<typeof tx.shootBooking.update>> }
+    | { ok: false; notFound: true }
+    | { ok: false; error: { code: string; message: string } }
+  > => {
+    const existing = await tx.shootBooking.findUnique({
+      where: { id },
+      select: { shootDate: true, shootTime: true, estimatedDurationHours: true, photographerIds: true },
+    })
+    if (!existing) return { ok: false, notFound: true }
+
+    // Re-check the same photographer-overlap conflict createShootBooking
+    // enforces — rescheduling onto a conflicting slot, or reassigning onto an
+    // already-busy photographer, must be rejected exactly like creating one
+    // would be. Uses the *effective* photographers/date/time/duration
+    // (existing value unless this update changes it).
+    const effectivePhotographerIds = photographerIds !== undefined ? photographerIds : (JSON.parse(existing.photographerIds || '[]') as string[])
+    const effectiveShootDate = shootDate !== undefined ? parseLocalDateStart(shootDate) : existing.shootDate
+    const effectiveShootTime = payload.shootTime !== undefined ? payload.shootTime : existing.shootTime
+    const effectiveDuration = payload.estimatedDurationHours !== undefined ? payload.estimatedDurationHours : Number(existing.estimatedDurationHours)
+    const conflict = await findPhotographerConflict(tx, effectivePhotographerIds, effectiveShootDate, effectiveShootTime || null, effectiveDuration, id)
+    if (conflict) return { ok: false, error: { code: 'SHT-008', message: conflict } }
+
+    const booking = await tx.shootBooking.update({
+      where: { id },
+      data: {
+        ...rest,
+        ...(shootDate !== undefined ? { shootDate: parseLocalDateStart(shootDate) } : {}),
+        ...(deliveryDeadline !== undefined ? { deliveryDeadline: deliveryDeadline ? parseLocalDateStart(deliveryDeadline) : null } : {}),
+        ...(photographerIds !== undefined ? { photographerIds: JSON.stringify(photographerIds) } : {}),
+      },
+      include: {
+        client: { select: { id: true, customerName: true, phone: true } },
+        editor: { select: { id: true, fullName: true } },
+        delivery: true,
+      },
+    })
+    return { ok: true, booking }
   })
-  await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'ShootBooking', entityId: booking.id } }).catch(() => {})
-  return { success: true, data: serializeShootBooking(booking) }
+
+  if (!result.ok) {
+    if ('notFound' in result) return { success: false, error: { code: 'SHT-009', message: 'Shoot booking not found.' } }
+    return { success: false, error: result.error }
+  }
+  await db.auditLog.create({ data: { action: 'UPDATE', entityType: 'ShootBooking', entityId: result.booking.id } }).catch(() => {})
+  return { success: true, data: serializeShootBooking(result.booking) }
 }
 
 export async function deleteShootBooking(id: string) {

@@ -62,7 +62,7 @@ describe('coaching-syllabus.service', () => {
 
     expect(res.success).toBe(true)
     expect(db.syllabusTopic.create).toHaveBeenCalledWith(expect.objectContaining({
-      data: expect.objectContaining({ topicName: 'Trigonometry', sequenceOrder: 0, plannedDate: new Date('2026-08-01') }),
+      data: expect.objectContaining({ topicName: 'Trigonometry', sequenceOrder: 0, plannedDate: new Date(2026, 7, 1) }),
     }))
   })
 

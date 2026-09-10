@@ -379,10 +379,32 @@ export const paymentService = {
         // Phase 62 — GL auto-posting: reverse the original payment's JournalEntry.
         await reverseEntryBySourceTx(tx, 'PAYMENT', payment.id, `Payment reversed: ${payload.reason} (Invoice ${payment.invoice.invoiceNumber})`, userId)
 
+        // Real bug found in this audit: recordForeignCurrencySettlement's
+        // Payment.amount is the APPLIED amount, not necessarily the full
+        // invoice balance it discharged — in the loss case it wrote off the
+        // shortfall straight out of Accounts Receivable via a separate
+        // REALIZED_FX_GAIN_LOSS entry (sourceId: payment.id, a different
+        // sourceType from the reversal right above, so it was never reached
+        // by it). A plain reversal using only payment.amount both left that
+        // FX entry permanently un-reversed AND restored too little balance
+        // (silently writing off the shortfall a second time, forever). The
+        // FX entry's own AR line carries exactly the missing amount, so it's
+        // recoverable here without a schema change.
+        let restoreAmount = payment.amount
+        if (payment.foreignCurrencyCode) {
+          const fxEntry = await tx.journalEntry.findFirst({ where: { sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: payment.id, isReversed: false }, include: { lines: true } })
+          if (fxEntry) {
+            const arAccount = await chartOfAccountsService.getSystemAccountByCode('1100', tx)
+            const arLine = fxEntry.lines.find((l) => l.accountId === arAccount.id && l.creditAmount > 0)
+            if (arLine) restoreAmount = roundCurrency(restoreAmount + arLine.creditAmount)
+            await reverseEntryBySourceTx(tx, 'REALIZED_FX_GAIN_LOSS', payment.id, `Payment reversed: ${payload.reason} (Invoice ${payment.invoice.invoiceNumber})`, userId)
+          }
+        }
+
         await tx.payment.update({ where: { id: payload.paymentId }, data: { isReversed: true, reversalReason: payload.reason } })
 
-        const newPaidAmount = Math.max(0, roundCurrency(payment.invoice.paidAmount - payment.amount))
-        const newBalance = roundCurrency(payment.invoice.balanceAmount + payment.amount)
+        const newPaidAmount = Math.max(0, roundCurrency(payment.invoice.paidAmount - restoreAmount))
+        const newBalance = roundCurrency(payment.invoice.balanceAmount + restoreAmount)
         const newPaymentStatus = newPaidAmount <= 0.01 ? 'UNPAID' : 'PARTIAL'
 
         await tx.invoice.update({
@@ -396,7 +418,7 @@ export const paymentService = {
             customerId: payment.customerId,
             referenceType: 'PAYMENT_REVERSAL',
             referenceId: payload.paymentId,
-            debitAmount: payment.amount,
+            debitAmount: restoreAmount,
             creditAmount: 0,
             remarks: `Reversal: ${payload.reason} (Invoice ${payment.invoice.invoiceNumber})`
           }, tx)

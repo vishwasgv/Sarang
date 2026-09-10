@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // Phase 58 §2 — Coaching Institute: topic-by-topic syllabus coverage per
 // batch, so "how much of the syllabus is actually done" is a real tracked
@@ -31,7 +32,10 @@ export async function createSyllabusTopic(payload: {
         batchId: payload.batchId,
         topicName: payload.topicName,
         sequenceOrder: payload.sequenceOrder ?? 0,
-        plannedDate: payload.plannedDate ? new Date(payload.plannedDate) : null,
+        // plannedDate is a bare "YYYY-MM-DD" string — a raw `new Date(str)`
+        // parses as UTC midnight, one calendar day early in any
+        // negative-UTC-offset timezone. parseLocalDateStart anchors local.
+        plannedDate: payload.plannedDate ? parseLocalDateStart(payload.plannedDate) : null,
         notes: payload.notes || null,
       },
     })
@@ -67,7 +71,7 @@ export async function updateSyllabusTopic(payload: {
       data: {
         ...rest,
         ...statusData,
-        ...(plannedDate !== undefined ? { plannedDate: plannedDate ? new Date(plannedDate) : null } : {}),
+        ...(plannedDate !== undefined ? { plannedDate: plannedDate ? parseLocalDateStart(plannedDate) : null } : {}),
       },
     })
     await db.auditLog.create({ data: { action: status === 'COMPLETED' ? 'COMPLETED' : 'UPDATE', entityType: 'SyllabusTopic', entityId: topic.id } }).catch(() => {})

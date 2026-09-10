@@ -2,11 +2,9 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
-vi.mock('../inventory.service', () => ({ inventoryService: { adjustStock: vi.fn() } }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
 
 import { getPrisma } from '../../database/db'
-import { inventoryService } from '../inventory.service'
 import { billingService } from '../billing.service'
 import {
   updateKOTStatus, assignWaiter, mergeTableIntoInvoice, releaseTablesForInvoiceTx,
@@ -39,8 +37,16 @@ function makeMockDb(kotStatus: string) {
     // Empty by default (the item isn't a kit) so every pre-existing test's
     // behavior is unchanged; kit-expansion tests below override this.
     kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
-    inventory: { findUnique: vi.fn().mockResolvedValue(null) },
+    inventory: { findUnique: vi.fn().mockResolvedValue(null), update: vi.fn().mockResolvedValue({}) },
+    inventoryMovement: { create: vi.fn().mockResolvedValue({}) },
+    // Ingredient deduction now runs inside its own transaction (real TOCTOU
+    // fix — see restaurant.service.ts's deductIngredients) and syncs
+    // LocationStock via applyLocationDeltaTx, same as every other
+    // direct-Inventory-mutation call site.
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+    locationStock: { upsert: vi.fn().mockResolvedValue({}) },
   }
+  db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
   return db
 }
 
@@ -56,29 +62,32 @@ describe('restaurant.service.updateKOTStatus', () => {
   })
 
   it('rejects changing status of an already-DONE KOT — prevents double ingredient deduction', async () => {
-    vi.mocked(getPrisma).mockReturnValue(makeMockDb('DONE') as never)
+    const db = makeMockDb('DONE')
+    vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await updateKOTStatus('kot-1', 'CANCELLED')
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('RST-017')
     // Ingredient deduction must never even be attempted for a rejected transition
-    expect(inventoryService.adjustStock).not.toHaveBeenCalled()
+    expect(db.inventory.update).not.toHaveBeenCalled()
   })
 
   it('rejects re-marking a CANCELLED KOT as DONE — the DONE -> CANCELLED -> DONE double-deduction path', async () => {
-    vi.mocked(getPrisma).mockReturnValue(makeMockDb('CANCELLED') as never)
+    const db = makeMockDb('CANCELLED')
+    vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await updateKOTStatus('kot-1', 'DONE')
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('RST-017')
-    expect(inventoryService.adjustStock).not.toHaveBeenCalled()
+    expect(db.inventory.update).not.toHaveBeenCalled()
   })
 
   it('is a no-op-safe idempotent call when re-setting the same terminal status', async () => {
-    vi.mocked(getPrisma).mockReturnValue(makeMockDb('DONE') as never)
+    const db = makeMockDb('DONE')
+    vi.mocked(getPrisma).mockReturnValue(db as never)
     const res = await updateKOTStatus('kot-1', 'DONE')
     // Same status -> same status is allowed through (status !== kot.status is false),
     // but must not re-deduct ingredients since kot.status === 'DONE' already.
     expect(res.success).toBe(true)
-    expect(inventoryService.adjustStock).not.toHaveBeenCalled()
+    expect(db.inventory.update).not.toHaveBeenCalled()
   })
 })
 
@@ -117,12 +126,12 @@ describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient de
     expect(db.recipe.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'rice' } }))
     expect(db.recipe.findUnique).not.toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'thali-kit' } }))
     // Ingredients for BOTH dishes get deducted, not just one
-    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
-      expect.objectContaining({ productId: 'lentils', quantity: 9.8 }), undefined
-    )
-    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
-      expect.objectContaining({ productId: 'raw-rice', quantity: 9.85 }), undefined
-    )
+    expect(db.inventory.update).toHaveBeenCalledWith({
+      where: { productId: 'lentils' }, data: { quantity: 9.8 }
+    })
+    expect(db.inventory.update).toHaveBeenCalledWith({
+      where: { productId: 'raw-rice' }, data: { quantity: 9.85 }
+    })
   })
 
   it('multiplies component quantity by both the kit-component ratio and the quantity of kits sold', async () => {
@@ -140,9 +149,9 @@ describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient de
     await updateKOTStatus('kot-1', 'DONE')
 
     // 3 kits x 2 dal-per-kit x 0.2 lentils-per-dal = 1.2 lentils needed
-    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
-      expect.objectContaining({ productId: 'lentils', quantity: 98.8 }), undefined
-    )
+    expect(db.inventory.update).toHaveBeenCalledWith({
+      where: { productId: 'lentils' }, data: { quantity: 98.8 }
+    })
   })
 
   it('a non-kit item still deducts its own recipe directly, unchanged from before this fix', async () => {
@@ -155,9 +164,9 @@ describe('restaurant.service.updateKOTStatus — kit (combo/thali) ingredient de
     await updateKOTStatus('kot-1', 'DONE')
 
     expect(db.recipe.findUnique).toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'prod-1' } }))
-    expect(inventoryService.adjustStock).toHaveBeenCalledWith(
-      expect.objectContaining({ productId: 'chicken', quantity: 49.5 }), undefined
-    )
+    expect(db.inventory.update).toHaveBeenCalledWith({
+      where: { productId: 'chicken' }, data: { quantity: 49.5 }
+    })
   })
 })
 

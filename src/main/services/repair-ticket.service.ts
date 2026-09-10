@@ -352,22 +352,39 @@ export async function updateRepairTicketStatus(payload: {
 
     await db.$transaction(async (tx) => {
       const now = new Date()
+      // Real bug found: every field below used to fall back to the OUTER
+      // `existing` snapshot, read before this transaction started — the
+      // exact TOCTOU lost-update shape this file already closed for the
+      // replacement-serial claim below. Two near-concurrent status updates
+      // for the same ticket (e.g. one setting repairCost, another setting
+      // technicianId moments later) would each merge against their own
+      // stale pre-transaction snapshot; whichever commits second silently
+      // reverts the first caller's just-written field(s). Re-reading fresh
+      // via `tx` right before the merge closes it — SQLite's single-writer
+      // lock serializes these transactions, so this read always reflects
+      // any update already committed by another call.
+      const current = await tx.repairTicket.findUnique({ where: { id: payload.id } })
+      if (!current) throw new ServiceError('RPR-008', 'Repair ticket not found.')
+      if (from !== payload.status && !ALLOWED_TRANSITIONS[current.status as RepairTicketStatus]?.includes(payload.status)) {
+        throw new ServiceError('RPR-009', `Cannot move a ticket from ${current.status} to ${payload.status}.`)
+      }
+
       await tx.repairTicket.update({
         where: { id: payload.id },
         data: {
           status: payload.status,
-          vendorId: payload.vendorId ?? existing.vendorId,
-          vendorRmaNumber: payload.vendorRmaNumber ?? existing.vendorRmaNumber,
-          replacementSerialId: payload.status === 'REPLACED' ? (payload.replacementSerialId ?? existing.replacementSerialId) : existing.replacementSerialId,
-          repairCost: payload.repairCost ?? existing.repairCost,
-          technicianId: payload.technicianId ?? existing.technicianId,
-          notes: payload.notes ?? existing.notes,
-          sentToVendorDate: payload.status === 'SENT_TO_VENDOR' && !existing.sentToVendorDate ? now : existing.sentToVendorDate,
-          vendorSlaDueDate: payload.status === 'SENT_TO_VENDOR' && !existing.sentToVendorDate
+          vendorId: payload.vendorId ?? current.vendorId,
+          vendorRmaNumber: payload.vendorRmaNumber ?? current.vendorRmaNumber,
+          replacementSerialId: payload.status === 'REPLACED' ? (payload.replacementSerialId ?? current.replacementSerialId) : current.replacementSerialId,
+          repairCost: payload.repairCost ?? current.repairCost,
+          technicianId: payload.technicianId ?? current.technicianId,
+          notes: payload.notes ?? current.notes,
+          sentToVendorDate: payload.status === 'SENT_TO_VENDOR' && !current.sentToVendorDate ? now : current.sentToVendorDate,
+          vendorSlaDueDate: payload.status === 'SENT_TO_VENDOR' && !current.sentToVendorDate
             ? new Date(now.getTime() + VENDOR_SLA_DAYS * 24 * 60 * 60 * 1000)
-            : existing.vendorSlaDueDate,
-          vendorResponseDate: existing.status === 'SENT_TO_VENDOR' && !existing.vendorResponseDate && ['AWAITING_PARTS', 'REPAIRED', 'REPLACED'].includes(payload.status) ? now : existing.vendorResponseDate,
-          deliveredDate: payload.status === 'RETURNED_TO_CUSTOMER' && !existing.deliveredDate ? now : existing.deliveredDate
+            : current.vendorSlaDueDate,
+          vendorResponseDate: current.status === 'SENT_TO_VENDOR' && !current.vendorResponseDate && ['AWAITING_PARTS', 'REPAIRED', 'REPLACED'].includes(payload.status) ? now : current.vendorResponseDate,
+          deliveredDate: payload.status === 'RETURNED_TO_CUSTOMER' && !current.deliveredDate ? now : current.deliveredDate
         }
       })
 

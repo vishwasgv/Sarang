@@ -1798,7 +1798,7 @@ describe('ai-vertical-templates.service — electronics.vendorRecovery', () => {
 
     const result = await executeVerticalTemplate('electronics.vendorRecovery', {}, '₹')
 
-    expect(result.headline).toBe('₹800 outstanding across 1 open vendor claim')
+    expect(result.headline).toBe('₹800.00 outstanding across 1 open vendor claim')
     expect(result.details[0]).toContain('RMA-00001')
     expect(result.details[0]).toContain('800')
     expect(result.isEmpty).toBe(false)

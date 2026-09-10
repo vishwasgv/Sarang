@@ -10,6 +10,7 @@ import {
   listCustomersForFieldOrder, listFieldOrderCatalog, createFieldOrderRequest, getBusinessDisplayInfo
 } from '../services/field-order.service'
 import { logger } from '../utils/logger'
+import { secureTokenEquals } from '../security/token-compare'
 
 // Phase 58 §2 — Distributor field-rep order capture (phone/laptop, LAN).
 // Structurally cloned from kitchen-display-server.ts (itself cloned from
@@ -164,7 +165,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     // GET /field-order/:token — serves the static capture page.
     if (req.method === 'GET' && parts[0] === 'field-order' && parts.length === 2) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[1] !== expectedToken) { res.writeHead(404); res.end('Not found'); return }
+      if (!secureTokenEquals(parts[1], expectedToken)) { res.writeHead(404); res.end('Not found'); return }
       const html = getCapturePageHtml()
       if (html === null) { res.writeHead(404); res.end('Not found'); return }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -174,7 +175,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
     if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'field-order' && parts[3] === 'business' && parts.length === 4) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[2] !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
       const info = await getBusinessDisplayInfo()
       sendJson(res, 200, { success: true, data: info })
       return
@@ -182,7 +183,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
     if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'field-order' && parts[3] === 'customers' && parts.length === 4) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[2] !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
       const customers = await listCustomersForFieldOrder()
       sendJson(res, 200, { success: true, data: customers })
       return
@@ -194,7 +195,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     // fresh regardless, see field-order.service.ts).
     if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'field-order' && parts[3] === 'catalog' && parts.length === 4) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[2] !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
       const customerId = url.searchParams.get('customerId') || undefined
       const catalog = await listFieldOrderCatalog(customerId)
       sendJson(res, 200, { success: true, data: catalog })
@@ -204,7 +205,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'field-order' && parts[3] === 'submit' && parts.length === 4) {
       if (isRateLimited(ip, 'submit', SUBMIT_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many orders submitted — please wait a moment.' } }); return }
       if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
-      if (parts[2] !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
 
       const body = await readBody(req)
       let parsed: { repName?: string; customerId?: string; customerName?: string; items?: Array<{ productId: string; quantity: number }>; notes?: string }

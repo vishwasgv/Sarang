@@ -310,6 +310,10 @@ export async function startProductionOrder(id: string, userId?: string): Promise
               createdById: userId ?? null
             }
           })
+          // Same sync gap already fixed in completeProductionOrder — this path
+          // updates Inventory.quantity directly, not through reduceStockTx, so
+          // it must keep LocationStock in sync itself.
+          await applyLocationDeltaTx(tx, usage.componentProductId!, -usage.quantityPlanned)
         }
         // Record actual as planned when starting
         await tx.productionMaterialUsage.update({
@@ -569,6 +573,9 @@ export async function cancelProductionOrder(payload: {
                 createdById: userId ?? null
               }
             })
+            // Reverse of the same sync gap fixed in startProductionOrder's
+            // consumption branch above.
+            await applyLocationDeltaTx(tx, usage.componentProductId!, usage.quantityActual)
           }
         }
       }

@@ -236,7 +236,12 @@ describe('startProductionOrder — Phase 58 §2 multi-level BOM component consum
       productionMaterialUsage: { update: vi.fn().mockResolvedValue({}) },
       productionOrder: {
         update: vi.fn().mockResolvedValue({ ...order, status: 'IN_PROGRESS', startDate: new Date(), product: { productName: 'Finished' }, materialUsage: materialUsage.map(u => ({ ...u, batchConsumption: [] })) })
-      }
+      },
+      // Same LocationStock sync gap fixed elsewhere (e.g. completeProductionOrder) —
+      // a component-product sub-assembly consumption now keeps LocationStock in
+      // sync too, via applyLocationDeltaTx which reads the default Location.
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) }
     }
     return {
       productionOrder: { findUnique: vi.fn().mockResolvedValue(order) },
@@ -337,7 +342,12 @@ describe('cancelProductionOrder — Phase 58 §2 restores component-product stoc
       // to write status via an unconditional `update` after a
       // pre-transaction status check — fixed to an atomic `updateMany`
       // claim (see the race test below).
-      productionOrder: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) }
+      productionOrder: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+      // Same LocationStock sync gap fixed elsewhere — restoring a
+      // component-product's stock on cancel now keeps LocationStock in sync
+      // too, via applyLocationDeltaTx which reads the default Location.
+      location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-main', isDefault: true }) },
+      locationStock: { upsert: vi.fn().mockResolvedValue({}) }
     }
     const db = {
       productionOrder: { findUnique: vi.fn().mockResolvedValue(order) },

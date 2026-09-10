@@ -5,6 +5,7 @@ import { billingService } from './billing.service'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { roundCurrency } from './currency.service'
 import { ServiceError } from '../errors/service-error'
+import { parseLocalDateStart } from '../utils/date.util'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -146,7 +147,11 @@ export async function createRentalUnit(payload: { productId: string; unitLabel: 
       data: {
         productId: payload.productId, unitLabel: payload.unitLabel.trim(),
         conditionNotes: payload.conditionNotes?.trim() || null,
-        purchaseDate: payload.purchaseDate ? new Date(payload.purchaseDate) : null,
+        // Real bug: a bare `new Date(dateOnlyString)` parses as UTC midnight,
+        // not local midnight — the same systemic bug already fixed at every
+        // other purchaseDate call site in this codebase (serial.service.ts,
+        // session-pack.service.ts, driving.service.ts, fixed-asset.service.ts).
+        purchaseDate: payload.purchaseDate ? parseLocalDateStart(payload.purchaseDate) : null,
         unitCost: payload.unitCost ?? 0,
         serviceIntervalRentals: payload.serviceIntervalRentals ?? null,
         serviceIntervalDays: payload.serviceIntervalDays ?? null,

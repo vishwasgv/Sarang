@@ -8489,14 +8489,20 @@ describe('reportService.generateDiscountReport', () => {
     expect(result.rows[0].discountAmount).toBe(-20)
   })
 
-  it('excludes CANCELLED invoices entirely', async () => {
+  // Real bug found in a fresh audit pass: a SPLIT invoice's own InvoiceItem
+  // rows are left in place (only its Invoice-level totals are zeroed — see
+  // billing.service.ts's splitInvoice comment), so a report reading item
+  // fields directly must exclude SPLIT too, not just CANCELLED, or it
+  // double-counts every split invoice's discount against both the original
+  // and its child invoices.
+  it('excludes CANCELLED and SPLIT invoices entirely', async () => {
     const db = { invoice: { findMany: vi.fn().mockResolvedValue([]) } }
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await reportService.generateDiscountReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
 
-    const whereArg = vi.mocked(db.invoice.findMany).mock.calls[0][0] as { where: { status: { not: string } } }
-    expect(whereArg.where.status).toEqual({ not: 'CANCELLED' })
+    const whereArg = vi.mocked(db.invoice.findMany).mock.calls[0][0] as { where: { status: { notIn: string[] } } }
+    expect(whereArg.where.status).toEqual({ notIn: ['CANCELLED', 'SPLIT'] })
   })
 
   it('returns zero-value summary and empty arrays when nothing matches the range', async () => {

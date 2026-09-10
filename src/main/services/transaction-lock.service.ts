@@ -3,6 +3,18 @@ import { logAction } from './audit.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
 
+// profile.lockDate is persisted at local midnight (setLockDate ->
+// parseLocalDateStart) — comparing a real transaction timestamp (which
+// always carries a real time-of-day, e.g. `new Date()` at invoice creation)
+// against that raw midnight instant with `<=` only ever blocks the lock
+// date's own midnight moment, never the rest of that day. The error message
+// on both callers below promises "on or before the lock date" — i.e. the
+// WHOLE lock date is meant to be closed — so the comparison needs the lock
+// date's own end-of-day instant, not its start.
+function endOfLocalDay(d: Date): Date {
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 59, 59, 999)
+}
+
 // Central Transaction Locking guard (Phase 62, Section 4.1 item 5) — every
 // dated financial transaction type (Invoice, Bill, Payment, SupplierPayment,
 // Expense, Journal Entry, PO) calls this ONE function before create/edit/
@@ -14,7 +26,7 @@ export async function assertNotLocked(transactionDate: Date): Promise<{ success:
   const db = getPrisma()
   const profile = await db.businessProfile.findFirst({ select: { lockDate: true } })
   if (!profile?.lockDate) return null
-  if (transactionDate.getTime() <= profile.lockDate.getTime()) {
+  if (transactionDate.getTime() <= endOfLocalDay(profile.lockDate).getTime()) {
     const lockDateStr = profile.lockDate.toISOString().slice(0, 10)
     return {
       success: false,
@@ -34,7 +46,7 @@ export async function assertNotLockedOrThrow(tx: unknown, transactionDate: Date)
   const db = (tx as ReturnType<typeof getPrisma>) ?? getPrisma()
   const profile = await db.businessProfile.findFirst({ select: { lockDate: true } })
   if (!profile?.lockDate) return
-  if (transactionDate.getTime() <= profile.lockDate.getTime()) {
+  if (transactionDate.getTime() <= endOfLocalDay(profile.lockDate).getTime()) {
     const lockDateStr = profile.lockDate.toISOString().slice(0, 10)
     throw new ServiceError('LOCK-001', `This transaction falls on or before the lock date (${lockDateStr}) and cannot be created, edited, voided, or reversed. Ask an administrator to move the lock date if this was a mistake.`)
   }

@@ -107,7 +107,10 @@ export async function updateMilestone(payload: {
         ...(milestoneAmount !== undefined ? { milestoneAmount } : {}),
         ...(milestoneName !== undefined  ? { milestoneName: milestoneName.trim() } : {}),
         ...(dueDate !== undefined        ? { dueDate:       dueDate       ? parseLocalDateStart(dueDate)       : null } : {}),
-        ...(completedDate !== undefined  ? { completedDate: completedDate ? new Date(completedDate) : null } : {}),
+        // Manual completedDate override (date-only string) anchors at LOCAL
+        // midnight, matching dueDate above — a bare `new Date(str)` parse
+        // lands one calendar day early in a negative-UTC-offset timezone.
+        ...(completedDate !== undefined  ? { completedDate: completedDate ? parseLocalDateStart(completedDate) : null } : {}),
         ...(autoCompletedDate !== undefined ? { completedDate: autoCompletedDate } : {}),
       },
     })

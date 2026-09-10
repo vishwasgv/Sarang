@@ -377,10 +377,29 @@ export const supplierPaymentService = {
         // Phase 62 — GL auto-posting: reverse the original payment's JournalEntry.
         await reverseEntryBySourceTx(tx, 'SUPPLIER_PAYMENT', payment.id, `Payment reversed: ${payload.reason} (Bill ${payment.bill.billNumber})`, userId)
 
+        // Real bug found in this audit (mirrors payment.service.ts's own
+        // reversePayment fix): recordForeignCurrencyBillSettlement's
+        // SupplierPayment.amount is the APPLIED amount, not necessarily the
+        // full bill balance it discharged — in the "paid less than book
+        // value" case it wrote the remainder off Accounts Payable via a
+        // separate REALIZED_FX_GAIN_LOSS entry (a different sourceType from
+        // the reversal above, so never reached by it). Recovered here from
+        // that FX entry's own AP debit line, same as the customer-side fix.
+        let restoreAmount = payment.amount
+        if (payment.foreignCurrencyCode) {
+          const fxEntry = await tx.journalEntry.findFirst({ where: { sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: payment.id, isReversed: false }, include: { lines: true } })
+          if (fxEntry) {
+            const apAccount = await chartOfAccountsService.getSystemAccountByCode('2000', tx)
+            const apLine = fxEntry.lines.find((l) => l.accountId === apAccount.id && l.debitAmount > 0)
+            if (apLine) restoreAmount = roundCurrency(restoreAmount + apLine.debitAmount)
+            await reverseEntryBySourceTx(tx, 'REALIZED_FX_GAIN_LOSS', payment.id, `Payment reversed: ${payload.reason} (Bill ${payment.bill.billNumber})`, userId)
+          }
+        }
+
         await tx.supplierPayment.update({ where: { id: payload.paymentId }, data: { isReversed: true, reversalReason: payload.reason } })
 
-        const newPaidAmount = Math.max(0, roundCurrency(payment.bill.paidAmount - payment.amount))
-        const newBalance = roundCurrency(payment.bill.balanceAmount + payment.amount)
+        const newPaidAmount = Math.max(0, roundCurrency(payment.bill.paidAmount - restoreAmount))
+        const newBalance = roundCurrency(payment.bill.balanceAmount + restoreAmount)
         const newStatus = newPaidAmount <= 0.01 ? 'OPEN' : 'PARTIALLY_PAID'
 
         await tx.bill.update({
@@ -394,7 +413,7 @@ export const supplierPaymentService = {
             supplierId: payment.supplierId,
             referenceType: 'BILL_PAYMENT_REVERSAL',
             referenceId: payload.paymentId,
-            debitAmount: payment.amount,
+            debitAmount: restoreAmount,
             creditAmount: 0,
             remarks: `Reversal: ${payload.reason} (Bill ${payment.bill.billNumber})`
           }, tx)

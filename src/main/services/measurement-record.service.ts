@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // MeasurementRecord has 15 Prisma Decimal fields (chest, waist, hips,
 // shoulder, neck, sleeve, inseam, outseam, thigh, height, plus Phase 48's
@@ -83,7 +84,10 @@ export async function createMeasurementRecord(payload: {
       cuff: payload.cuff ?? null,
       notes: payload.notes ?? null,
       takenById: payload.takenById ?? null,
-      recordDate: payload.recordDate ? new Date(payload.recordDate) : new Date(),
+      // recordDate is a bare "YYYY-MM-DD" string — a raw `new Date(str)`
+      // parses as UTC midnight, landing one calendar day early in any
+      // negative-UTC-offset timezone. parseLocalDateStart anchors local.
+      recordDate: payload.recordDate ? parseLocalDateStart(payload.recordDate) : new Date(),
     },
     include: { takenBy: { select: { id: true, fullName: true } } },
   })
@@ -115,7 +119,7 @@ export async function updateMeasurementRecord(payload: {
   const db = getPrisma()
   const { id, recordDate, ...rest } = payload
   const data: Record<string, unknown> = { ...rest }
-  if (recordDate !== undefined) data.recordDate = new Date(recordDate)
+  if (recordDate !== undefined) data.recordDate = parseLocalDateStart(recordDate)
 
   const record = await db.measurementRecord.update({
     where: { id },

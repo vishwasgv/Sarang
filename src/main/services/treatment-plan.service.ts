@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
+import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // TreatmentPlan.totalEstimatedCost is a Prisma Decimal, not a plain number —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -7,8 +8,20 @@ import { billingService } from './billing.service'
 // including from create()/update() returning the row they just wrote. This
 // was masked until now by the recordedById/createdById FK bug always
 // throwing first.
-function serializePlan<T extends { totalEstimatedCost: unknown }>(plan: T): T {
-  return { ...plan, totalEstimatedCost: Number(plan.totalEstimatedCost) }
+//
+// acceptedDate/completedDate are date-only DateTime fields — structured
+// clone preserves a raw Date instance across IPC without throwing (unlike
+// Decimal), so this half was never caught by a clone error; it would ship as
+// a silent renderer crash instead (same bug class as every other
+// `.slice(0,10)`-on-a-Date-object fix in this codebase — see date.util.ts's
+// toLocalDateOnlyIso).
+function serializePlan<T extends { totalEstimatedCost: unknown; acceptedDate?: Date | null; completedDate?: Date | null }>(plan: T): T {
+  return {
+    ...plan,
+    totalEstimatedCost: Number(plan.totalEstimatedCost),
+    ...('acceptedDate' in plan ? { acceptedDate: (plan.acceptedDate ? toLocalDateOnlyIso(plan.acceptedDate) : null) as unknown as Date } : {}),
+    ...('completedDate' in plan ? { completedDate: (plan.completedDate ? toLocalDateOnlyIso(plan.completedDate) : null) as unknown as Date } : {}),
+  }
 }
 
 export async function listTreatmentPlans(patientId: string) {
@@ -93,8 +106,8 @@ export async function updateTreatmentPlan(payload: {
       where: { id },
       data: {
         ...rest,
-        ...(acceptedDate !== undefined ? { acceptedDate: acceptedDate ? new Date(acceptedDate) : null } : {}),
-        ...(completedDate !== undefined ? { completedDate: completedDate ? new Date(completedDate) : null } : {}),
+        ...(acceptedDate !== undefined ? { acceptedDate: acceptedDate ? parseLocalDateStart(acceptedDate) : null } : {}),
+        ...(completedDate !== undefined ? { completedDate: completedDate ? parseLocalDateStart(completedDate) : null } : {}),
       },
     })
 

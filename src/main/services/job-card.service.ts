@@ -291,10 +291,14 @@ export async function updateJobCard(payload: {
       data.warrantyExpiryDate = new Date((data.deliveredDate as Date).getTime() + effectiveWarrantyDays * 86400000)
     } else if ('warrantyDays' in payload && payload.warrantyDays != null && payload.warrantyDays > 0 && (data.deliveredDate || old.status === 'DELIVERED')) {
       // warrantyDays set/changed on an already-delivered job — recompute
-      // expiry from its existing deliveredDate.
-      const existing = await db.jobCard.findUnique({ where: { id: payload.id }, select: { deliveredDate: true } })
-      if (existing?.deliveredDate) {
-        data.warrantyExpiryDate = new Date(existing.deliveredDate.getTime() + payload.warrantyDays * 86400000)
+      // expiry from its deliveredDate. Prefer the value just set in THIS
+      // same call (data.deliveredDate) over a fresh DB read, which would
+      // still return the pre-update row if deliveredDate was backdated in
+      // this same payload alongside warrantyDays.
+      const deliveredDateForWarranty = (data.deliveredDate as Date | null | undefined)
+        ?? (await db.jobCard.findUnique({ where: { id: payload.id }, select: { deliveredDate: true } }))?.deliveredDate
+      if (deliveredDateForWarranty) {
+        data.warrantyExpiryDate = new Date(deliveredDateForWarranty.getTime() + payload.warrantyDays * 86400000)
       }
     }
 

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { serializeBatch } from './coaching-batch.service'
 import { ServiceError } from '../errors/service-error'
+import { parseLocalDateStart } from '../utils/date.util'
 
 // CoachingBatchEnrollment.discountAmount/effectiveFee are Prisma Decimal
 // fields — Electron's IPC (structured clone) cannot serialize a Decimal
@@ -96,7 +97,10 @@ export async function createEnrollment(payload: {
         discountType: payload.discountType ?? 'NONE',
         discountAmount: payload.discountAmount ?? 0,
         effectiveFee: payload.effectiveFee,
-        enrolledDate: payload.enrolledDate ? new Date(payload.enrolledDate) : new Date(),
+        // enrolledDate is a bare "YYYY-MM-DD" string — a raw `new Date(str)`
+        // parses as UTC midnight, landing one calendar day early in any
+        // negative-UTC-offset timezone. parseLocalDateStart anchors local.
+        enrolledDate: payload.enrolledDate ? parseLocalDateStart(payload.enrolledDate) : new Date(),
         notes: payload.notes || null,
       },
       include: {

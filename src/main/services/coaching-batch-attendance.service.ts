@@ -1,11 +1,16 @@
 import { getPrisma } from '../database/db'
+import { parseLocalDateStart } from '../utils/date.util'
 
 export async function getAttendance(batchId: string, date: string) {
   const db = getPrisma()
-  const d = new Date(date)
-  // Normalise to midnight UTC to match stored date
-  const dayStart = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate()))
-  const dayEnd = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth(), d.getUTCDate() + 1))
+  // Real bug found: this used to normalise via Date.UTC — a different
+  // calendar-day anchor than every other date-only field in this codebase
+  // (local midnight, via parseLocalDateStart), so a business running west of
+  // UTC would look up the wrong stored day. Anchor local, matching
+  // saveAttendance below (and the batchId_attendanceDate unique constraint
+  // it writes against).
+  const dayStart = parseLocalDateStart(date)
+  const dayEnd = new Date(dayStart.getTime() + 86400000)
 
   const record = await db.coachingBatchAttendance.findFirst({
     where: {
@@ -26,7 +31,7 @@ export async function saveAttendance(payload: {
   notes?: string
 }) {
   const db = getPrisma()
-  const attendanceDate = new Date(payload.attendanceDate)
+  const attendanceDate = parseLocalDateStart(payload.attendanceDate)
 
   const record = await db.coachingBatchAttendance.upsert({
     where: { batchId_attendanceDate: { batchId: payload.batchId, attendanceDate } },

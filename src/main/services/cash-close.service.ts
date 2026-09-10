@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
+import { sumCurrency, roundCurrency } from './currency.service'
 
 function startOfDay(d: Date): Date {
   const s = new Date(d); s.setHours(0, 0, 0, 0); return s
@@ -34,8 +35,8 @@ export const cashCloseService = {
     for (const p of payments) {
       byMethod[p.paymentMethod] = (byMethod[p.paymentMethod] ?? 0) + p.amount
     }
-    const expectedCash = byMethod['CASH'] ?? 0
-    const totalCollected = payments.reduce((s, p) => s + p.amount, 0)
+    const expectedCash = roundCurrency(byMethod['CASH'] ?? 0)
+    const totalCollected = sumCurrency(payments.map((p) => p.amount))
 
     const existing = await db.dailyCashClose.findFirst({
       where: { closeDate: { gte: from, lte: to } }
@@ -66,8 +67,8 @@ export const cashCloseService = {
       where: { paymentDate: { gte: from, lte: to }, isReversed: false, paymentMethod: 'CASH' },
       select: { amount: true }
     })
-    const expectedCash = payments.reduce((s, p) => s + p.amount, 0)
-    const variance = payload.actualCash - expectedCash
+    const expectedCash = sumCurrency(payments.map((p) => p.amount))
+    const variance = roundCurrency(payload.actualCash - expectedCash)
 
     const existing = await db.dailyCashClose.findFirst({ where: { closeDate: { gte: from, lte: to } } })
 

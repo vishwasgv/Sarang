@@ -65,6 +65,14 @@ export async function deleteCaseDisbursement(id: string, userId?: string) {
     const db = getPrisma()
     const existing = await db.caseDisbursement.findUnique({ where: { id } })
     if (!existing) return { success: false, error: { code: 'CD68-006', message: 'Disbursement not found.' } }
+    // Matches the sibling billed-financial-record guard already established
+    // in this codebase (time-entry.service.ts's isBilled check,
+    // service-project-milestone.service.ts's invoiceId check) — a
+    // disbursement already reflected in a client's bill must not silently
+    // disappear from the audit trail.
+    if (existing.isBilledToClient) {
+      return { success: false, error: { code: 'CD68-009', message: 'This disbursement has already been billed to the client and cannot be deleted.' } }
+    }
     await db.caseDisbursement.delete({ where: { id } })
     await logAction({ userId, action: 'CASE_DISBURSEMENT_DELETED', entityType: 'CaseDisbursement', entityId: id, oldValue: existing })
     return { success: true }

@@ -52,6 +52,7 @@ function makeMockDb(existing: ReturnType<typeof makeBooking> | null = null) {
     auditLog: { create: vi.fn().mockResolvedValue({}) },
     notificationQueue: { create: vi.fn().mockResolvedValue({}) },
   }
+  db.$transaction = vi.fn((cb: (tx: unknown) => unknown) => cb(db))
   return db
 }
 

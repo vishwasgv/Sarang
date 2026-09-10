@@ -9,6 +9,7 @@ import { isModuleEnabled } from '../services/industry-template.service'
 import { listKOTs, updateKOTStatus, listKOTsForWaiter, markKOTServed, listWaiterTables, createWaiterTableOrder } from '../services/restaurant.service'
 import { listMenuProducts } from '../services/restaurant-order.service'
 import { logger } from '../utils/logger'
+import { secureTokenEquals } from '../security/token-compare'
 
 // Kitchen Display (phone/laptop, LAN) — a second small, dependency-free local
 // HTTP server, structurally cloned from qr-order-server.ts (see that file's
@@ -199,7 +200,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     // GET /kitchen/:token — serves the static board page.
     if (req.method === 'GET' && parts[0] === 'kitchen' && parts.length === 2) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[1] !== expectedToken) { res.writeHead(404); res.end('Not found'); return }
+      if (!secureTokenEquals(parts[1], expectedToken)) { res.writeHead(404); res.end('Not found'); return }
       const html = getBoardPageHtml()
       if (html === null) { res.writeHead(404); res.end('Not found'); return }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -211,7 +212,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     // already gives the in-app KOTScreen and the second-monitor board.
     if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'kitchen' && parts[3] === 'board' && parts.length === 4) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[2] !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
       const result = await listKOTs()
       sendJson(res, result.success ? 200 : 400, result)
       return
@@ -222,7 +223,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'kitchen' && parts[3] === 'status' && parts.length === 4) {
       if (isRateLimited(ip, 'status', STATUS_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
       if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
-      if (parts[2] !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
 
       const body = await readBody(req)
       let parsed: { kotId?: string; status?: string }
@@ -247,7 +248,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
     // GET /waiter/:token/:employeeId — serves the static waiter page.
     if (req.method === 'GET' && parts[0] === 'waiter' && parts.length === 3) {
       if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-      if (parts[1] !== expectedToken) { res.writeHead(404); res.end('Not found'); return }
+      if (!secureTokenEquals(parts[1], expectedToken)) { res.writeHead(404); res.end('Not found'); return }
       const html = getWaiterPageHtml()
       if (html === null) { res.writeHead(404); res.end('Not found'); return }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
@@ -266,14 +267,14 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       // printed QR would keep showing live orders and letting them mark
       // tickets served indefinitely. One check here covers all five
       // actions instead of duplicating it in each service function.
-      if (token === expectedToken) {
+      if (secureTokenEquals(token, expectedToken)) {
         const employee = await getPrisma().employee.findUnique({ where: { id: employeeId }, select: { isActive: true } })
         if (!employee || !employee.isActive) { sendJson(res, 403, { success: false, error: { message: 'This waiter link is no longer active.' } }); return }
       }
 
       if (req.method === 'GET' && action === 'board') {
         if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        if (!secureTokenEquals(token, expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
         const result = await listKOTsForWaiter(employeeId)
         sendJson(res, result.success ? 200 : 400, result)
         return
@@ -281,7 +282,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
       if (req.method === 'GET' && action === 'tables') {
         if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        if (!secureTokenEquals(token, expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
         const result = await listWaiterTables(employeeId)
         sendJson(res, result.success ? 200 : 400, result)
         return
@@ -289,7 +290,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
 
       if (req.method === 'GET' && action === 'menu') {
         if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
-        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        if (!secureTokenEquals(token, expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
         const products = await listMenuProducts()
         sendJson(res, 200, { success: true, data: products })
         return
@@ -298,7 +299,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       if (req.method === 'POST' && action === 'served') {
         if (isRateLimited(ip, 'status', STATUS_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
         if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
-        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        if (!secureTokenEquals(token, expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
         const body = await readBody(req)
         let parsed: { kotId?: string }
         try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
@@ -311,7 +312,7 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       if (req.method === 'POST' && action === 'order') {
         if (isRateLimited(ip, 'status', STATUS_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
         if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
-        if (token !== expectedToken) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+        if (!secureTokenEquals(token, expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
         const body = await readBody(req, 20_000)
         let parsed: { tableId?: string; items?: Array<{ productId: string; quantity: number }> }
         try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }

@@ -247,7 +247,12 @@ async function generateSalesReport(params: {
     orderBy: { invoiceDate: 'asc' }
   })
 
-  const activeInvoices = invoices.filter(inv => inv.status !== 'CANCELLED')
+  // SPLIT (not just CANCELLED) must be excluded too — splitInvoice() zeroes
+  // the parent's own totals and re-homes the real sale onto new child
+  // invoices (see generateTaxReport's own SPLIT comment); counting the
+  // zeroed shell here would inflate invoiceCount/groups/byHour with a
+  // phantom zero-revenue "sale" and understate averageOrderValue.
+  const activeInvoices = invoices.filter(inv => inv.status !== 'CANCELLED' && inv.status !== 'SPLIT')
   const cancelled = invoices.filter(inv => inv.status === 'CANCELLED').length
 
   const totalRevenue = activeInvoices.reduce((s, i) => s + i.totalAmount, 0)
@@ -264,8 +269,16 @@ async function generateSalesReport(params: {
 
   const groupMap = new Map<string, SalesReportGroup>()
   for (const inv of activeInvoices) {
-    const groupDate = dateField === 'paymentDate' && inv.payments.length > 0
-      ? new Date(inv.payments[0].paymentDate)
+    // BUG FIX: payments[0] is whatever order the DB returns non-reversed
+    // payments in (not necessarily sorted, and not filtered to the requested
+    // range) -- for an invoice paid in multiple installments this could bucket
+    // the whole invoice under a payment date OUTSIDE dateFrom/dateTo. Find the
+    // actual in-range payment the dateWhere query matched on instead.
+    const inRangePayment = dateField === 'paymentDate'
+      ? inv.payments.find(p => p.paymentDate >= from && p.paymentDate <= to)
+      : undefined
+    const groupDate = inRangePayment
+      ? new Date(inRangePayment.paymentDate)
       : new Date(inv.invoiceDate)
     const label = groupLabel(groupDate, gby)
     const existing = groupMap.get(label) ?? { label, revenue: 0, invoiceCount: 0, taxAmount: 0 }
@@ -397,8 +410,19 @@ async function generateTaxReport(params: { dateFrom: string; dateTo: string }): 
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
+  // Real bug found in this audit: splitInvoice() zeroes the SPLIT parent's own
+  // Invoice-level totals (subtotal/taxAmount/totalAmount all -> 0) but
+  // deliberately leaves its InvoiceItem rows untouched (see billing.service.ts's
+  // splitInvoice comment) — a report reading Invoice.totalAmount is safe, but
+  // this one reads InvoiceItem.taxAmount/unitPrice directly, so excluding only
+  // CANCELLED left every split invoice's original (real, non-zero) line items
+  // counted here AS WELL AS each of its child invoices' own line items,
+  // double-counting taxable turnover and tax collected. Same fix applied to
+  // every other GST-report/discount-report function in this file that reads
+  // InvoiceItem fields directly (generateGSTR1, generateHSNSummaryReport,
+  // generateGSTR3BPreview, generateDiscountReport).
   const taxItemWhere = {
-    invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' as const } },
+    invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     taxRate: { not: 0 }
   }
 
@@ -2920,8 +2944,11 @@ async function generateGSTR1(params: { dateFrom: string; dateTo: string }): Prom
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
+  // See generateTaxReport's taxItemWhere comment — SPLIT excluded too, not
+  // just CANCELLED, since this reads InvoiceItem fields directly and a SPLIT
+  // parent's original items are left in place, un-zeroed.
   const invoices = await db.invoice.findMany({
-    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     include: {
       customer: { select: { customerName: true, taxNumber: true, state: true } },
       items: true
@@ -3011,8 +3038,9 @@ async function generateHSNSummaryReport(params: { dateFrom: string; dateTo: stri
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
+  // See generateTaxReport's taxItemWhere comment — SPLIT excluded too.
   const invoices = await db.invoice.findMany({
-    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     include: {
       customer: { select: { taxNumber: true } },
       items: { include: { product: { select: { unit: true } } } }
@@ -3175,8 +3203,9 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
   const to = toDateEnd(params.dateTo)
 
   const [invoices, rcmBills, rcmExpenses] = await Promise.all([
+    // See generateTaxReport's taxItemWhere comment — SPLIT excluded too.
     db.invoice.findMany({
-      where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+      where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
       include: { customer: { select: { taxNumber: true, state: true } }, items: true },
       orderBy: { invoiceDate: 'asc' }
     }),
@@ -3397,8 +3426,14 @@ async function generateClientRetentionReport(params: { dateFrom: string; dateTo:
 
   const uniqueIds = [...new Set(inPeriod.map(a => a.customerId as string))]
 
+  // Bounded to <= `to` (but deliberately NOT >= `from`, so firstVisitEver can
+  // still reach further back) — atRiskCutoff above is only meaningful if
+  // lastVisit itself can never reflect a visit that happens after the
+  // report's own period end; without this bound, a customer who returned
+  // after `to` (in real wall-clock time) would read back as recently
+  // visited even in a historical report scoped well before that return.
   const allVisits = await db.appointment.findMany({
-    where: { customerId: { in: uniqueIds }, status: attendedFilter },
+    where: { customerId: { in: uniqueIds }, scheduledDate: { lte: to }, status: attendedFilter },
     select: { customerId: true, scheduledDate: true },
     orderBy: { scheduledDate: 'asc' },
   })
@@ -3549,8 +3584,9 @@ async function generateDiscountReport(params: { dateFrom: string; dateTo: string
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
+  // See generateTaxReport's taxItemWhere comment — SPLIT excluded too.
   const invoices = await db.invoice.findMany({
-    where: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+    where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     include: {
       customer: { select: { customerName: true } },
       createdBy: { select: { fullName: true } },
@@ -4325,8 +4361,12 @@ async function generateAttendanceReport(params: { dateFrom: string; dateTo: stri
   // denominator avoids a business with 2 weekly offs looking artificially
   // less attendant than one with none.
   const countableForRate = records.filter(r => r.status !== 'HOLIDAY' && r.status !== 'WEEK_OFF')
+  // HALF_DAY counts as 0.5, matching byEmployee's own attendanceRate formula
+  // below — this previously counted a HALF_DAY as a full present day here
+  // while byEmployee weighted it at 0.5, so the two attendance-rate figures
+  // in the same report silently disagreed with each other.
   const overallAttendanceRate = countableForRate.length
-    ? Math.round((countableForRate.filter(r => r.status === 'PRESENT' || r.status === 'HALF_DAY').length / countableForRate.length) * 100)
+    ? Math.round((countableForRate.reduce((s, r) => s + (r.status === 'PRESENT' ? 1 : r.status === 'HALF_DAY' ? 0.5 : 0), 0) / countableForRate.length) * 100)
     : 0
 
   const empMap = new Map<string, AttendanceByEmployee>()
@@ -6385,7 +6425,7 @@ async function generateRealEstatePipelineReport(params: { dateFrom: string; date
 
   const [properties, inquiries, deals] = await Promise.all([
     db.property.findMany({ where: { createdAt: { gte: from, lte: to } } }),
-    db.propertyInquiry.findMany({ where: { createdAt: { gte: from, lte: to } } }),
+    db.propertyInquiry.findMany({ where: { createdAt: { gte: from, lte: to } }, select: { status: true, property: { select: { askingPrice: true, monthlyRent: true } } } }),
     db.propertyDeal.findMany({
       where: { createdAt: { gte: from, lte: to } },
       include: {
@@ -6401,6 +6441,7 @@ async function generateRealEstatePipelineReport(params: { dateFrom: string; date
   for (const i of inquiries) {
     const entry = byStage.get(i.status) ?? { count: 0, value: 0 }
     entry.count += 1
+    entry.value += Number(i.property?.askingPrice ?? i.property?.monthlyRent ?? 0)
     byStage.set(i.status, entry)
   }
 
