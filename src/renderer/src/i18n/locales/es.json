@@ -4184,6 +4184,8 @@
     "searchPlaceholder": "p. ej. INV-00042",
     "invoiceNotFound": "Factura no encontrada o no se puede devolver.",
     "searchError": "No se pudieron buscar facturas.",
+    "priorReturnsError": "No se pudieron verificar las devoluciones previas de esta factura. Inténtelo de nuevo antes de procesar la devolución.",
+    "processReturnError": "No se pudo procesar la devolución. Inténtelo de nuevo.",
     "customer": "Cliente",
     "total": "Total",
     "selectItems": "Seleccionar Artículos a Devolver",

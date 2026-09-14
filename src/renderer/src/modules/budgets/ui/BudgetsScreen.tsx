@@ -52,7 +52,7 @@ export function BudgetsScreen() {
         window.api.reports.budgetVsActual({ periodYear: period.year, periodMonth: period.month })
       ])
       if (budgetRes.success && budgetRes.data) setBudgets(budgetRes.data as Budget[])
-      else toastError(t('common.error'), budgetRes.error?.message ?? t('budgets.couldNotLoad'))
+      else toastError(t('common.error'), t('budgets.couldNotLoad'))
       if (actualRes.success && actualRes.data) setActualRows((actualRes.data as { rows: BudgetVsActualRow[] }).rows ?? [])
     } catch {
       toastError(t('common.error'), t('budgets.couldNotLoad'))
@@ -71,7 +71,7 @@ export function BudgetsScreen() {
   async function handleDelete(id: string) {
     try {
       const res = await window.api.budgets.delete({ id })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('budgets.couldNotDelete')); return }
+      if (!res.success) { toastError(t('common.error'), t('budgets.couldNotDelete')); return }
       load()
     } catch {
       toastError(t('common.error'), t('budgets.couldNotDelete'))
@@ -216,7 +216,7 @@ function BudgetFormModal({ budget, period, costCentres, accounts, onClose, onSav
             costCentreId: costCentreId || undefined, accountId: accountId || undefined,
             periodYear: period.year, periodMonth: period.month, amount, notes: notes.trim() || undefined
           })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('budgets.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('budgets.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       onSaved()
     } catch {

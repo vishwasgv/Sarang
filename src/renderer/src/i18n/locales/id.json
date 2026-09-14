@@ -4194,6 +4194,8 @@
     "processAnother": "Proses Pengembalian Lain",
     "searchPlaceholder": "mis. INV-00042",
     "searchError": "Tidak dapat mencari faktur.",
+    "priorReturnsError": "Tidak dapat memverifikasi retur sebelumnya untuk faktur ini. Coba lagi sebelum memproses retur.",
+    "processReturnError": "Tidak dapat memproses retur. Silakan coba lagi.",
     "exchange": {
       "action": "Tukar",
       "title": "Tukar dengan ukuran/warna lain",

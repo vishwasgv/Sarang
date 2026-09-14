@@ -133,7 +133,7 @@ export function ReturnScreen() {
         // Block the return entirely until the prior-returns lookup succeeds,
         // and do not populate invoice/returnItems so the selection UI can't render.
         setSearchError('Could not verify prior returns for this invoice. Please try again before processing a return.')
-        toastError(t('common.error'), 'Could not verify prior returns for this invoice.')
+        toastError(t('common.error'), t('returns.priorReturnsError'))
         return
       }
       const alreadyReturned = new Map<string, number>()
@@ -157,7 +157,7 @@ export function ReturnScreen() {
       })))
     } catch {
       setSearchError('Could not search invoices. Please try again.')
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('returns.searchError'))
     } finally {
       setSearching(false)
     }
@@ -222,7 +222,7 @@ export function ReturnScreen() {
       }
     } catch {
       setExchangeError(t('returns.exchange.error'))
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('returns.exchange.error'))
     } finally {
       setExchangeSubmitting(false)
     }
@@ -249,7 +249,7 @@ export function ReturnScreen() {
       }
     } catch {
       setSubmitError('Could not process return. Please try again.')
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('returns.processReturnError'))
     } finally {
       setSubmitting(false)
     }

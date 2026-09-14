@@ -137,7 +137,7 @@ export function CustomOrderBookingScreen(): React.JSX.Element {
         window.api.products.list({ isActive: true, limit: 500 }),
       ])
       if (bRes.success) setBookings((bRes.data as CustomOrderBooking[]) ?? [])
-      else toastError(t('common.error'), bRes.error?.message ?? t('bakery.customOrders.loadFailed'))
+      else toastError(t('common.error'), t('bakery.customOrders.loadFailed'))
       if (pRes.success) setProducts((pRes.data as { products?: Product[] })?.products ?? [])
     } catch {
       toastError(t('common.error'), t('bakery.customOrders.loadFailed'))
@@ -215,7 +215,7 @@ export function CustomOrderBookingScreen(): React.JSX.Element {
     try {
       const res = await window.api.customOrderBooking.generateInvoice({ id })
       if (res.success) { toastSuccess(t('bakery.customOrders.invoiceGenerated'), t('bakery.customOrders.invoiceGeneratedDetail')); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('bakery.customOrders.invoiceGenerateFailed'))
+      else toastError(t('common.error'), t('bakery.customOrders.invoiceGenerateFailed'))
     } finally {
       setInvoicingId(null)
     }

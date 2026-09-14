@@ -147,7 +147,7 @@ export function CateringEventScreen(): React.JSX.Element {
         window.api.products.list({ isActive: true, limit: 500 }),
       ])
       if (eRes.success) setEvents((eRes.data as CateringEvent[]) ?? [])
-      else toastError(t('common.error'), eRes.error?.message ?? t('bakery.cateringEvents.loadFailed'))
+      else toastError(t('common.error'), t('bakery.cateringEvents.loadFailed'))
       if (pRes.success) setProducts((pRes.data as { products?: Product[] })?.products ?? [])
     } catch {
       toastError(t('common.error'), t('bakery.cateringEvents.loadFailed'))
@@ -256,7 +256,7 @@ export function CateringEventScreen(): React.JSX.Element {
         setPriceTarget(null)
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('bakery.cateringEvents.finalPriceRecordFailed'))
+        toastError(t('common.error'), t('bakery.cateringEvents.finalPriceRecordFailed'))
       }
     } finally {
       setRecordingPrice(false)
@@ -268,7 +268,7 @@ export function CateringEventScreen(): React.JSX.Element {
     try {
       const res = await window.api.cateringEvent.generateInvoice({ id })
       if (res.success) { toastSuccess(t('bakery.cateringEvents.invoiceGenerated'), t('bakery.cateringEvents.invoiceGeneratedDetail')); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('bakery.cateringEvents.invoiceGenerateFailed'))
+      else toastError(t('common.error'), t('bakery.cateringEvents.invoiceGenerateFailed'))
     } finally {
       setInvoicingId(null)
     }

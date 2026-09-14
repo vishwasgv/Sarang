@@ -112,7 +112,7 @@ export function KOTScreen() {
         orderRequestsErroredRef.current = false
       } else if (!orderRequestsErroredRef.current) {
         orderRequestsErroredRef.current = true
-        toastError(t('common.error'), res.error?.message ?? t('restaurant.kot.couldNotLoadIncomingOrders'))
+        toastError(t('common.error'), t('restaurant.kot.couldNotLoadIncomingOrders'))
       }
     } catch {
       if (!orderRequestsErroredRef.current) {
@@ -133,7 +133,7 @@ export function KOTScreen() {
         kotsErroredRef.current = false
       } else if (!kotsErroredRef.current) {
         kotsErroredRef.current = true
-        toastError(t('common.error'), res.error?.message ?? t('restaurant.kot.couldNotLoadTickets'))
+        toastError(t('common.error'), t('restaurant.kot.couldNotLoadTickets'))
       }
     } catch {
       if (!kotsErroredRef.current) {
@@ -157,7 +157,7 @@ export function KOTScreen() {
   async function handleReject(requestId: string) {
     try {
       const res = await api.restaurant.rejectOrderRequest({ requestId })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurant.kot.couldNotRejectOrder'))
+      if (!res.success) toastError(t('common.error'), t('restaurant.kot.couldNotRejectOrder'))
     } catch {
       toastError(t('common.error'), t('restaurant.kot.couldNotRejectOrder'))
     } finally {
@@ -176,7 +176,7 @@ export function KOTScreen() {
         load()
         toastSuccess(t('restaurant.kot.orderAcceptedTitle'), t('restaurant.kot.orderAcceptedDesc'))
       } else {
-        toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('restaurant.kot.couldNotAcceptOrder'))
+        toastError(t('common.error'), t('restaurant.kot.couldNotAcceptOrder'))
       }
     } catch {
       toastError(t('common.error'), t('restaurant.kot.couldNotAcceptOrder'))
@@ -196,7 +196,7 @@ export function KOTScreen() {
     setUpdating(kot.id)
     try {
       const res = await api.restaurant.updateKOTStatus({ kotId: kot.id, status: next })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurant.kot.couldNotUpdateStatus'))
+      if (!res.success) toastError(t('common.error'), t('restaurant.kot.couldNotUpdateStatus'))
     } catch {
       toastError(t('common.error'), t('restaurant.kot.couldNotUpdateStatus'))
     } finally {
@@ -209,7 +209,7 @@ export function KOTScreen() {
     setUpdating(kotId)
     try {
       const res = await api.restaurant.updateKOTStatus({ kotId, status: 'CANCELLED' })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurant.kot.couldNotCancelKot'))
+      if (!res.success) toastError(t('common.error'), t('restaurant.kot.couldNotCancelKot'))
     } catch {
       toastError(t('common.error'), t('restaurant.kot.couldNotCancelKot'))
     } finally {
@@ -225,7 +225,7 @@ export function KOTScreen() {
     setUpdating(kotId)
     try {
       const res = await api.restaurant.markKOTServed({ kotId })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurant.kot.couldNotMarkServed'))
+      if (!res.success) toastError(t('common.error'), t('restaurant.kot.couldNotMarkServed'))
     } catch {
       toastError(t('common.error'), t('restaurant.kot.couldNotMarkServed'))
     } finally {
@@ -242,7 +242,7 @@ export function KOTScreen() {
     try {
       const res = await api.print.kot({ kotId })
       if (res.success) toastSuccess(t('restaurant.kot.printedTitle'), t('restaurant.kot.printedDesc'))
-      else toastError(t('restaurant.kot.printFailedTitle'), (res.error as { message?: string })?.message ?? t('restaurant.kot.couldNotPrintKot'))
+      else toastError(t('restaurant.kot.printFailedTitle'), t('restaurant.kot.couldNotPrintKot'))
     } catch {
       toastError(t('restaurant.kot.printFailedTitle'), t('restaurant.kot.couldNotPrintKot'))
     } finally {

@@ -4194,6 +4194,8 @@
     "processAnother": "Traiter un Autre Retour",
     "searchPlaceholder": "ex. INV-00042",
     "searchError": "Impossible de rechercher les factures.",
+    "priorReturnsError": "Impossible de vérifier les retours précédents pour cette facture. Veuillez réessayer avant de traiter le retour.",
+    "processReturnError": "Impossible de traiter le retour. Veuillez réessayer.",
     "exchange": {
       "action": "Échange",
       "title": "Échanger contre une autre taille/couleur",

@@ -61,7 +61,7 @@ export function RecipesScreen() {
       if (recipesRes.success && recipesRes.data) {
         setRecipes(recipesRes.data as Recipe[])
       } else {
-        toastError(t('common.error'), recipesRes.error?.message ?? t('restaurant.recipes.couldNotLoadRecipes'))
+        toastError(t('common.error'), t('restaurant.recipes.couldNotLoadRecipes'))
       }
     } catch {
       toastError(t('common.error'), t('restaurant.recipes.couldNotLoadRecipes'))
@@ -82,7 +82,7 @@ export function RecipesScreen() {
       try {
         const res = await api.products.search(productQuery.trim())
         if (res.success && res.data) setProductResults(res.data as Product[])
-        else toastError(t('common.error'), res.error?.message ?? t('restaurant.recipes.couldNotSearchProducts'))
+        else toastError(t('common.error'), t('restaurant.recipes.couldNotSearchProducts'))
       } catch {
         toastError(t('common.error'), t('restaurant.recipes.couldNotSearchProducts'))
       }
@@ -179,7 +179,7 @@ export function RecipesScreen() {
         try {
           const res = await api.products.search(row.query.trim())
           if (res.success && res.data) setIngredientResults(idx, res.data as Product[])
-          else toastError(t('common.error'), res.error?.message ?? t('restaurant.recipes.couldNotSearchProducts'))
+          else toastError(t('common.error'), t('restaurant.recipes.couldNotSearchProducts'))
         } catch {
           toastError(t('common.error'), t('restaurant.recipes.couldNotSearchProducts'))
         }

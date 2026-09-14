@@ -145,7 +145,7 @@ export function RestaurantTablesScreen() {
       if (res.success && res.data) {
         setTables(res.data as RestaurantTable[])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotLoadTables'))
+        toastError(t('common.error'), t('restaurantTables.couldNotLoadTables'))
       }
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotLoadTables'))
@@ -160,7 +160,7 @@ export function RestaurantTablesScreen() {
       if (res.success && res.data) {
         setQrStatus(res.data as { running: boolean; port: number | null; lanUrls: string[] })
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotLoadQrStatus'))
+        toastError(t('common.error'), t('restaurantTables.couldNotLoadQrStatus'))
       }
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotLoadQrStatus'))
@@ -197,7 +197,7 @@ export function RestaurantTablesScreen() {
         setWifiEditing(false)
         await loadWifiConfig()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotSaveWifi'))
+        toastError(t('common.error'), t('restaurantTables.couldNotSaveWifi'))
       }
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotSaveWifi'))
@@ -218,7 +218,7 @@ export function RestaurantTablesScreen() {
     try {
       const res = await api.reservations.list({ status: 'CONFIRMED' })
       if (res.success && res.data) setReservations(res.data as Reservation[])
-      else toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotLoadReservations'))
+      else toastError(t('common.error'), t('restaurantTables.couldNotLoadReservations'))
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotLoadReservations'))
     } finally {
@@ -239,7 +239,7 @@ export function RestaurantTablesScreen() {
     setAssigningWaiterFor(tableId)
     try {
       const res = await api.restaurant.assignWaiter({ tableId, waiterId: waiterId || null })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotAssignWaiter'))
+      if (!res.success) toastError(t('common.error'), t('restaurantTables.couldNotAssignWaiter'))
       await load()
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotAssignWaiter'))
@@ -253,7 +253,7 @@ export function RestaurantTablesScreen() {
     try {
       const next = on ? [...enabledModules, 'qr_table_ordering' as never] : enabledModules.filter(m => m !== 'qr_table_ordering')
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotUpdateQrSetting'))
+      if (!res.success) toastError(t('common.error'), t('restaurantTables.couldNotUpdateQrSetting'))
       await loadQrStatus()
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotUpdateQrSetting'))
@@ -345,7 +345,7 @@ export function RestaurantTablesScreen() {
   async function handleStatus(tableId: string, status: string) {
     try {
       const res = await api.restaurant.updateTableStatus({ tableId, status })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotUpdateStatus'))
+      if (!res.success) toastError(t('common.error'), t('restaurantTables.couldNotUpdateStatus'))
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotUpdateStatus'))
     } finally {
@@ -410,7 +410,7 @@ export function RestaurantTablesScreen() {
         load()
         navigate(`/billing/${invoiceId}`)
       } else {
-        toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('restaurantTables.couldNotCheckout'))
+        toastError(t('common.error'), t('restaurantTables.couldNotCheckout'))
       }
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotCheckout'))
@@ -429,7 +429,7 @@ export function RestaurantTablesScreen() {
         setMergeTarget(null)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotMergeTable'))
+        toastError(t('common.error'), t('restaurantTables.couldNotMergeTable'))
       }
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotMergeTable'))
@@ -458,7 +458,7 @@ export function RestaurantTablesScreen() {
         setAddingReservation(false)
         loadReservations(); loadUpcomingReservations()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotAddReservation'))
+        toastError(t('common.error'), t('restaurantTables.couldNotAddReservation'))
       }
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotAddReservation'))
@@ -470,7 +470,7 @@ export function RestaurantTablesScreen() {
   async function handleReservationStatus(id: string, status: string) {
     try {
       const res = await api.reservations.updateStatus({ id, status })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('restaurantTables.couldNotUpdateReservation'))
+      if (!res.success) toastError(t('common.error'), t('restaurantTables.couldNotUpdateReservation'))
       loadReservations(); loadUpcomingReservations(); load()
     } catch {
       toastError(t('common.error'), t('restaurantTables.couldNotUpdateReservation'))

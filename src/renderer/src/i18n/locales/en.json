@@ -4576,6 +4576,8 @@
     "searchPlaceholder": "e.g. INV-00042",
     "invoiceNotFound": "Invoice not found or cannot be returned.",
     "searchError": "Could not search invoices.",
+    "priorReturnsError": "Could not verify prior returns for this invoice. Please try again before processing a return.",
+    "processReturnError": "Could not process return. Please try again.",
     "customer": "Customer",
     "total": "Total",
     "selectItems": "Select Items to Return",

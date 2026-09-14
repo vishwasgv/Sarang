@@ -4194,6 +4194,8 @@
     "processAnother": "Processar Outra Devolução",
     "searchPlaceholder": "ex. INV-00042",
     "searchError": "Não foi possível pesquisar as notas.",
+    "priorReturnsError": "Não foi possível verificar as devoluções anteriores desta nota. Tente novamente antes de processar a devolução.",
+    "processReturnError": "Não foi possível processar a devolução. Tente novamente.",
     "exchange": {
       "action": "Troca",
       "title": "Trocar por outro tamanho/cor",
