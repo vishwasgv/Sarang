@@ -60,10 +60,10 @@ export function QuotationsScreen() {
         const d = res.data as { quotations: Quotation[] }
         setQuotations(d.quotations ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('quotations.failedLoad'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('quotations.failedLoad'))
     } finally {
       setLoading(false)
     }
@@ -76,10 +76,10 @@ export function QuotationsScreen() {
     try {
       const res = await window.api.quotations.print(q.id)
       if (!res.success) {
-        toastError((res.error as { message: string })?.message ?? t('common.error'))
+        toastError(t('quotations.failedPrint'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('quotations.failedPrint'))
     } finally {
       setPrinting(null)
     }
@@ -92,10 +92,10 @@ export function QuotationsScreen() {
     try {
       const res = await window.api.quotations.printReceipt({ id: q.id })
       if (!res.success) {
-        toastError((res.error as { message: string })?.message ?? t('common.error'))
+        toastError(t('quotations.failedPrintReceipt'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('quotations.failedPrintReceipt'))
     } finally {
       setPrinting(null)
     }
@@ -109,7 +109,7 @@ export function QuotationsScreen() {
         toastSuccess(t('quotations.converted'))
         loadData()
       } else {
-        toastError((res.error as { message: string })?.message ?? t('quotations.failedConvert'))
+        toastError(t('quotations.failedConvert'))
       }
     } catch {
       toastError(t('quotations.failedConvert'))
@@ -126,7 +126,7 @@ export function QuotationsScreen() {
         toastSuccess(t('quotations.convertedToSalesOrder'))
         loadData()
       } else {
-        toastError((res.error as { message: string })?.message ?? t('quotations.failedConvertSalesOrder'))
+        toastError(t('quotations.failedConvertSalesOrder'))
       }
     } catch {
       toastError(t('quotations.failedConvertSalesOrder'))
@@ -143,7 +143,7 @@ export function QuotationsScreen() {
         toastSuccess(t('quotations.convertedToRetainer'))
         loadData()
       } else {
-        toastError((res.error as { message: string })?.message ?? t('quotations.failedConvertRetainer'))
+        toastError(t('quotations.failedConvertRetainer'))
       }
     } catch {
       toastError(t('quotations.failedConvertRetainer'))
@@ -160,7 +160,7 @@ export function QuotationsScreen() {
         toastSuccess(t('quotations.deleted'))
         loadData()
       } else {
-        toastError((res.error as { message: string })?.message ?? t('quotations.failedDelete'))
+        toastError(t('quotations.failedDelete'))
       }
     } catch {
       toastError(t('quotations.failedDelete'))

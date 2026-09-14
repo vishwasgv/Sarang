@@ -124,9 +124,9 @@ export function QuotationFormScreen() {
         const d = res.data as { customers: Customer[] }
         setCustomers(d.customers ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('quotations.failedLoadCustomers'))
       }
-    }).catch(() => toastError(t('common.error'), t('common.error')))
+    }).catch(() => toastError(t('common.error'), t('quotations.failedLoadCustomers')))
   }, [toastError, t])
 
   function updateItem(index: number, field: keyof LineItem, value: string | number | undefined) {
@@ -183,7 +183,7 @@ export function QuotationFormScreen() {
         toastSuccess(t('quotations.created'))
         navigate('/billing/quotations')
       } else {
-        toastError((res.error as { message: string })?.message ?? t('quotations.failedCreate'))
+        toastError(t('quotations.failedCreate'))
       }
     } catch {
       toastError(t('quotations.failedCreate'))

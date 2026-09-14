@@ -154,7 +154,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
       const d = sRes.data as { suppliers: Supplier[] }
       setSuppliers(d.suppliers ?? [])
     } else {
-      toastError(t('common.error'), sRes.error?.message ?? t('common.error'))
+      toastError(t('common.error'), t('bills.toasts.loadSuppliersFailed'))
     }
   }
 
@@ -179,7 +179,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
         if (cRes.success) setCategories((cRes.data as ExpenseCategory[]) ?? [])
         if (ccRes.success) setCostCentres((ccRes.data as CostCentre[]) ?? [])
       } catch {
-        toastError(t('common.error'), t('common.error'))
+        toastError(t('common.error'), t('bills.toasts.loadOptionsFailed'))
       } finally {
         setLoadingData(false)
       }
@@ -253,10 +253,10 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
         toastSuccess(t('bills.recordBill'), bill.billNumber)
         onSaved(bill.id)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('bills.toasts.createFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('bills.toasts.createFailed'))
     }
   }
 

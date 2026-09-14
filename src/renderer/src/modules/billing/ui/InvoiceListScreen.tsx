@@ -71,10 +71,10 @@ export function InvoiceListScreen() {
         setInvoices(d.invoices)
         setTotal(d.total)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.loadInvoicesFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.loadInvoicesFailedMessage'))
     } finally { setLoading(false) }
   }, [search, statusFilter, dateFrom, dateTo, page, toastError, t])
 

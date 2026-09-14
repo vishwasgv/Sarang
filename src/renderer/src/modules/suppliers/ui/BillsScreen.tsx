@@ -62,10 +62,10 @@ export function BillsScreen() {
         setBills(d.bills ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('bills.toasts.loadListFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('bills.toasts.loadListFailed'))
     } finally {
       setLoading(false)
     }

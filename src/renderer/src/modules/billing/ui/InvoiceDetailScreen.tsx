@@ -153,7 +153,7 @@ export function InvoiceDetailScreen() {
     try {
       const res = await window.api.billing.getInvoice(id)
       if (res.success) setInvoice(res.data as Invoice)
-      else toastError(t('common.error'), res.error?.message ?? t('billing.couldNotLoadInvoice'))
+      else toastError(t('common.error'), t('billing.couldNotLoadInvoice'))
     } catch {
       toastError(t('common.error'), t('billing.couldNotLoadInvoice'))
     } finally { setLoading(false) }
@@ -180,7 +180,7 @@ export function InvoiceDetailScreen() {
         setPaymentAmount(''); setPaymentRef(''); setPaymentRemarks('')
         loadInvoice()
       } else {
-        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.couldNotRecordPayment'))
+        toastError(t('billing.failedTitle'), t('billing.couldNotRecordPayment'))
       }
     } catch {
       toastError(t('billing.failedTitle'), t('billing.couldNotRecordPayment'))
@@ -209,7 +209,7 @@ export function InvoiceDetailScreen() {
         setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
         loadInvoice()
       } else {
-        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.couldNotSettleInvoice'))
+        toastError(t('billing.failedTitle'), t('billing.couldNotSettleInvoice'))
       }
     } catch {
       toastError(t('billing.failedTitle'), t('billing.couldNotSettleInvoice'))
@@ -226,7 +226,7 @@ export function InvoiceDetailScreen() {
         setShowCancelModal(false)
         loadInvoice()
       } else {
-        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.couldNotCancelInvoice'))
+        toastError(t('billing.failedTitle'), t('billing.couldNotCancelInvoice'))
       }
     } catch {
       toastError(t('billing.failedTitle'), t('billing.couldNotCancelInvoice'))
@@ -256,7 +256,7 @@ export function InvoiceDetailScreen() {
         const challan = res.data as { challanNumber: string }
         toastSuccess(t('billing.deliveryNoteCreated'), challan.challanNumber)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('billing.deliveryNoteFailed'))
+        toastError(t('common.error'), t('billing.deliveryNoteFailed'))
       }
     } catch {
       toastError(t('common.error'), t('billing.deliveryNoteFailed'))
@@ -297,7 +297,7 @@ export function InvoiceDetailScreen() {
         const challan = res.data as { challanNumber: string }
         toastSuccess(t('billing.packingSlipCreated'), challan.challanNumber)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('billing.packingSlipFailed'))
+        toastError(t('common.error'), t('billing.packingSlipFailed'))
       }
     } catch {
       toastError(t('common.error'), t('billing.packingSlipFailed'))
@@ -368,7 +368,7 @@ export function InvoiceDetailScreen() {
         setShowSplitModal(false)
         loadInvoice()
       } else {
-        toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('billing.splitFailedMessage'))
+        toastError(t('common.error'), t('billing.splitFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('billing.splitFailedMessage'))
@@ -385,7 +385,7 @@ export function InvoiceDetailScreen() {
         setReversingPaymentId(null); setReverseReason('')
         loadInvoice()
       } else {
-        toastError(t('billing.failedTitle'), res.error?.message ?? t('billing.paymentHistory.reverseFailedMessage'))
+        toastError(t('billing.failedTitle'), t('billing.paymentHistory.reverseFailedMessage'))
       }
     } catch {
       toastError(t('billing.failedTitle'), t('billing.paymentHistory.reverseFailedMessage'))
@@ -403,7 +403,7 @@ export function InvoiceDetailScreen() {
         toastSuccess(t('billing.kotSentTitle'), t('billing.kotSentMessage', { invoiceNumber: invoice.invoiceNumber }))
         loadInvoice()
       } else {
-        toastError(t('billing.failedTitle'), (res.error as { message?: string })?.message ?? t('billing.couldNotSendToKitchen'))
+        toastError(t('billing.failedTitle'), t('billing.couldNotSendToKitchen'))
       }
     } catch {
       toastError(t('billing.failedTitle'), t('billing.couldNotSendToKitchen'))
@@ -421,7 +421,7 @@ export function InvoiceDetailScreen() {
       if (res.success) {
         setPreviewHtml(res.data as string)
       } else {
-        toastError(t('billing.previewFailedTitle'), res.error?.message ?? t('billing.previewFailedMessage'))
+        toastError(t('billing.previewFailedTitle'), t('billing.previewFailedMessage'))
       }
     } catch {
       toastError(t('billing.previewFailedTitle'), t('billing.previewFailedMessage'))
@@ -435,7 +435,7 @@ export function InvoiceDetailScreen() {
       const res = previewIsReceipt
         ? await window.api.print.receipt({ invoiceId: invoice.id })
         : await window.api.print.invoice({ invoiceId: invoice.id })
-      if (!res.success) toastError(t('billing.printFailedTitle'), res.error?.message ?? t('billing.couldNotPrint'))
+      if (!res.success) toastError(t('billing.printFailedTitle'), t('billing.couldNotPrint'))
       else setPreviewHtml(null)
     } catch {
       toastError(t('billing.printFailedTitle'), t('billing.couldNotPrint'))

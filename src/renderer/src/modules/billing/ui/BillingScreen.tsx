@@ -540,7 +540,7 @@ export function BillingScreen() {
         setIsInterState(false); setBuyerState('')
         setShowHoldModal(false); setHoldLabel('')
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.holdSaleFailedMessage'))
       }
     } finally {
       setHolding(false)
@@ -573,7 +573,7 @@ export function BillingScreen() {
         setIsInterState(snapshot.isInterState); setBuyerState(snapshot.buyerState)
         setShowResumeModal(false)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.resumeSaleFailedMessage'))
       }
     } finally {
       setResumingId(null)
@@ -587,9 +587,9 @@ export function BillingScreen() {
     try {
       const res = await window.api.heldSale.delete({ id })
       if (res.success) setHeldSales((prev) => prev.filter((h) => h.id !== id))
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('billing.discardHeldSaleFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.discardHeldSaleFailedMessage'))
     } finally {
       setDeletingHeldSale(false)
       setDeleteHeldSaleTarget(null)
@@ -649,7 +649,7 @@ export function BillingScreen() {
             toastError(t('billing.barcodeNotFoundTitle'), t('billing.barcodeNotFoundMessage', { code: productQuery.trim() }))
           }
         } else {
-          toastError(t('billing.searchFailedTitle'), res.error?.message ?? t('billing.couldNotSearchProducts'))
+          toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchProducts'))
         }
       } catch {
         toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchProductsRetry'))
@@ -676,7 +676,7 @@ export function BillingScreen() {
       try {
         const res = await window.api.customers.search(customerQuery)
         if (res.success) setCustomerResults(res.data as Customer[])
-        else toastError(t('billing.searchFailedTitle'), res.error?.message ?? t('billing.couldNotSearchCustomers'))
+        else toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchCustomers'))
       } catch {
         toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchCustomers'))
       }
@@ -717,7 +717,7 @@ export function BillingScreen() {
   async function handleCreateCropSeason() {
     if (!newSeasonName.trim()) { toastError(t('billing.seasonNameRequiredTitle'), t('billing.enterSeasonName')); return }
     const res = await window.api.cropSeason.create({ name: newSeasonName.trim(), harvestMonth: newSeasonMonth, harvestDay: newSeasonDay })
-    if (!res.success) { toastError(t('billing.couldNotSaveTitle'), res.error?.message ?? t('billing.couldNotSaveCropSeason')); return }
+    if (!res.success) { toastError(t('billing.couldNotSaveTitle'), t('billing.couldNotSaveCropSeason')); return }
     setNewSeasonName(''); setNewSeasonMonth(1); setNewSeasonDay(1)
     await reloadCropSeasons()
     toastSuccess(t('billing.seasonSavedTitle'), t('billing.seasonSavedMessage', { name: newSeasonName.trim() }))
@@ -725,7 +725,7 @@ export function BillingScreen() {
 
   async function handleDeleteCropSeason(id: string) {
     const res = await window.api.cropSeason.delete({ id })
-    if (!res.success) { toastError(t('billing.couldNotDeleteTitle'), res.error?.message ?? t('billing.couldNotDeleteCropSeason')); return }
+    if (!res.success) { toastError(t('billing.couldNotDeleteTitle'), t('billing.couldNotDeleteCropSeason')); return }
     if (cropSeasonId === id) setCropSeasonId('')
     await reloadCropSeasons()
   }
@@ -752,7 +752,7 @@ export function BillingScreen() {
       if (variantTrackingEnabled) {
         const res = await window.api.variants.list({ productId: product.id })
         if (!res.success) {
-          toastError(t('common.error'), res.error?.message ?? t('common.error'))
+          toastError(t('common.error'), t('billing.loadVariantsFailedMessage'))
           return
         }
         const variants = (res.data as VariantRecord[]) ?? []
@@ -767,7 +767,7 @@ export function BillingScreen() {
       if (serialTrackingEnabled) {
         const res = await window.api.serials.list({ productId: product.id, status: 'AVAILABLE' })
         if (!res.success) {
-          toastError(t('common.error'), res.error?.message ?? t('common.error'))
+          toastError(t('common.error'), t('billing.loadSerialsFailedMessage'))
           return
         }
         const serials = (res.data as { serials: SerialRecord[] }).serials ?? []
@@ -781,7 +781,7 @@ export function BillingScreen() {
       }
       addToCartDirect(product)
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.addToCartFailedMessage'))
     }
   }
 
@@ -792,7 +792,7 @@ export function BillingScreen() {
     try {
       const res = await window.api.billing.getOrCreateTipProduct()
       if (!res.success) {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.addTipFailedMessage'))
         return
       }
       const tipProduct = res.data as Product
@@ -813,7 +813,7 @@ export function BillingScreen() {
       setShowTipModal(false)
       setTipAmount('')
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.addTipFailedMessage'))
     } finally {
       setAddingTip(false)
     }
@@ -829,7 +829,7 @@ export function BillingScreen() {
     try {
       const res = await window.api.billing.getOrCreateServiceProduct({ name: serviceName.trim() })
       if (!res.success) {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.addServiceFailedMessage'))
         return
       }
       const serviceProduct = res.data as Product
@@ -848,7 +848,7 @@ export function BillingScreen() {
       setServicePrice('')
       setServiceQty('1')
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.addServiceFailedMessage'))
     } finally {
       setAddingService(false)
     }
@@ -873,7 +873,7 @@ export function BillingScreen() {
       customerId: customer?.id ?? null
     })
     if (!res.success) {
-      toastError(t('billing.couldNotRecordTrialTitle'), res.error?.message ?? t('common.somethingWentWrong'))
+      toastError(t('billing.couldNotRecordTrialTitle'), t('common.somethingWentWrong'))
       return
     }
     setTrialMode(false)
@@ -1212,10 +1212,10 @@ export function BillingScreen() {
         setShowQuickAdd(false); setQuickName(''); setQuickPhone('')
         toastSuccess(t('customers.addCustomer'), `${c.customerName}`)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.quickAddCustomerFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.quickAddCustomerFailedMessage'))
     } finally { setQuickAdding(false) }
   }, [quickName, quickPhone, toastSuccess, toastError])
 
@@ -1273,7 +1273,7 @@ export function BillingScreen() {
           toastSuccess(t('billing.orderSentToKitchen'), tableLabel ?? '')
           navigate('/restaurant/tables')
         } else {
-          toastError(t('common.error'), res.error?.message ?? t('common.error'))
+          toastError(t('common.error'), t('billing.sendTableOrderFailedMessage'))
         }
         return
       }
@@ -1350,7 +1350,7 @@ export function BillingScreen() {
             if (!splitRes.success) {
               toastError(
                 t('billing.splitPaymentFailedTitle'),
-                t('billing.splitPaymentFailedMessage', { invoiceNumber: inv.invoiceNumber, error: splitRes.error?.message ?? t('billing.unknownError') })
+                t('billing.splitPaymentFailedMessage', { invoiceNumber: inv.invoiceNumber, error: t('billing.unknownError') })
               )
               navigate(`/billing/${inv.id}`)
               return
@@ -1368,14 +1368,14 @@ export function BillingScreen() {
         toastSuccess(t('billing.invoiceCreated'), `${inv.invoiceNumber}`)
         navigate(`/billing/${inv.id}`)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('billing.createInvoiceFailedMessage'))
       }
     } catch {
       // createInvoice itself threw (IPC/connection error) — no invoice was
       // created, so a generic failure message is correct here (unlike the
       // recordSplit case above, which has its own catch because the invoice
       // DOES exist by that point).
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('billing.createInvoiceFailedMessage'))
     } finally {
       setSubmitting(false)
     }
@@ -1457,10 +1457,10 @@ export function BillingScreen() {
                         setProductDropdownIdx(results.length > 0 ? 0 : -1)
                       }
                     } else {
-                      toastError(t('common.error'), res.error?.message ?? t('common.error'))
+                      toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchProducts'))
                     }
                   } catch {
-                    toastError(t('common.error'), t('common.error'))
+                    toastError(t('billing.searchFailedTitle'), t('billing.couldNotSearchProducts'))
                   }
                   return
                 }

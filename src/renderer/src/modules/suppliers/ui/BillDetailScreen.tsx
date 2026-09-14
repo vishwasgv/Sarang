@@ -99,10 +99,10 @@ export function BillDetailScreen() {
     try {
       const res = await window.api.bills.get(id)
       if (res.success) setBill(res.data as Bill)
-      else setError(res.error?.message ?? t('bills.billNotFound'))
+      else setError(t('bills.billNotFound'))
     } catch {
-      setError(t('common.error'))
-      toastError(t('common.error'), t('common.error'))
+      setError(t('bills.toasts.loadFailed'))
+      toastError(t('common.error'), t('bills.toasts.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -154,7 +154,7 @@ export function BillDetailScreen() {
         setDeductTds(false); setTdsSection(''); setTdsAmount(''); setTdsSuggestion(null)
         loadBill()
       } else {
-        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.recordPaymentFailed'))
+        toastError(t('bills.toasts.failedTitle'), t('bills.toasts.recordPaymentFailed'))
       }
     } catch {
       toastError(t('bills.toasts.failedTitle'), t('bills.toasts.recordPaymentFailed'))
@@ -183,7 +183,7 @@ export function BillDetailScreen() {
         setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
         loadBill()
       } else {
-        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.settleFailed'))
+        toastError(t('bills.toasts.failedTitle'), t('bills.toasts.settleFailed'))
       }
     } catch {
       toastError(t('bills.toasts.failedTitle'), t('bills.toasts.settleFailed'))
@@ -200,7 +200,7 @@ export function BillDetailScreen() {
         setReversingId(null); setReverseReason('')
         loadBill()
       } else {
-        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.reverseFailed'))
+        toastError(t('bills.toasts.failedTitle'), t('bills.toasts.reverseFailed'))
       }
     } catch {
       toastError(t('bills.toasts.failedTitle'), t('bills.toasts.reverseFailed'))
@@ -217,7 +217,7 @@ export function BillDetailScreen() {
         setVoidOpen(false)
         loadBill()
       } else {
-        toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.voidFailed'))
+        toastError(t('bills.toasts.failedTitle'), t('bills.toasts.voidFailed'))
       }
     } catch {
       toastError(t('bills.toasts.failedTitle'), t('bills.toasts.voidFailed'))
@@ -229,7 +229,7 @@ export function BillDetailScreen() {
     setPrinting(true)
     try {
       const res = await window.api.bills.print(bill.id)
-      if (!res.success) toastError(t('bills.toasts.failedTitle'), res.error?.message ?? t('bills.toasts.printFailed'))
+      if (!res.success) toastError(t('bills.toasts.failedTitle'), t('bills.toasts.printFailed'))
     } catch {
       toastError(t('bills.toasts.failedTitle'), t('bills.toasts.printFailed'))
     } finally { setPrinting(false) }

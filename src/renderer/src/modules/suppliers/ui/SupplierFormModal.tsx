@@ -103,7 +103,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         : await window.api.suppliers.create({ ...payload, openingBalance: openingBalance ?? 0 })
 
       if (!response.success) {
-        toastError(t('common.error'), response.error?.message ?? t('suppliers.saveFailedMessage'))
+        toastError(t('common.error'), t('suppliers.saveFailedMessage'))
         return
       }
       toastSuccess(isEdit ? t('suppliers.updatedTitle') : t('suppliers.createdTitle'), t('suppliers.savedMessage', { name: values.supplierName }))

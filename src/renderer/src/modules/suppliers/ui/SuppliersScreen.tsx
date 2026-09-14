@@ -41,10 +41,10 @@ export function SuppliersScreen() {
         setSuppliers(d.suppliers ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('suppliers.loadFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('suppliers.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -62,7 +62,7 @@ export function SuppliersScreen() {
         setArchiveTarget(null)
         loadData()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('suppliers.archiveFailedMessage'))
       }
     } finally {
       setArchiving(false)
