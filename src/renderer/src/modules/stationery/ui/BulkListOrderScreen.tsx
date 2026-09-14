@@ -124,7 +124,7 @@ export function BulkListOrderScreen(): React.JSX.Element {
         window.api.bulkListOrder.reorderReminders(),
       ])
       if (oRes.success) setOrders((oRes.data as BulkListOrder[]) ?? [])
-      else toastError(t('common.error'), oRes.error?.message ?? t('stationery.bulkListOrder.couldNotLoad'))
+      else toastError(t('common.error'), t('stationery.bulkListOrder.couldNotLoad'))
       if (pRes.success) setProducts((pRes.data as { products?: Product[] })?.products ?? [])
       if (rRes.success) setReminders((rRes.data as ReorderReminderRow[]) ?? [])
     } catch {
@@ -193,7 +193,7 @@ export function BulkListOrderScreen(): React.JSX.Element {
     try {
       const res = await window.api.bulkListOrder.matchItem({ itemId, productId: d.productId, unitPrice })
       if (res.success) await load()
-      else toastError(t('common.error'), res.error?.message ?? t('stationery.bulkListOrder.couldNotMatchItem'))
+      else toastError(t('common.error'), t('stationery.bulkListOrder.couldNotMatchItem'))
     } finally {
       setMatchingId(null)
     }
@@ -205,7 +205,7 @@ export function BulkListOrderScreen(): React.JSX.Element {
       const paymentMethod = (billPaymentMethod[orderId] ?? 'CREDIT') as 'CASH' | 'UPI' | 'CARD' | 'WALLET' | 'CREDIT' | 'SPLIT'
       const res = await window.api.bulkListOrder.bill({ orderId, paymentMethod })
       if (res.success) { toastSuccess(t('stationery.bulkListOrder.orderBilledTitle'), t('stationery.bulkListOrder.orderBilledMessage')); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('stationery.bulkListOrder.couldNotBillOrder'))
+      else toastError(t('common.error'), t('stationery.bulkListOrder.couldNotBillOrder'))
     } finally {
       setBillingId(null)
     }

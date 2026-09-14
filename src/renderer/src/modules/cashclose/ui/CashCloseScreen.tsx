@@ -89,10 +89,10 @@ export function CashCloseScreen() {
           setNotes(d.existing.notes ?? '')
         }
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('cashClose.summaryLoadFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('cashClose.summaryLoadFailed'))
     } finally {
       setLoading(false)
     }
@@ -104,10 +104,10 @@ export function CashCloseScreen() {
       if (res.success) {
         setHistory(((res.data as { records: CashCloseRecord[] }) ?? {}).records ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('cashClose.historyLoadFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('cashClose.historyLoadFailed'))
     }
   }, [toastError, t])
 
@@ -136,7 +136,7 @@ export function CashCloseScreen() {
         await loadSummary()
         await loadHistory()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('cashClose.recordFailed'))
+        toastError(t('common.error'), t('cashClose.recordFailed'))
       }
     } catch {
       toastError(t('common.error'), t('cashClose.recordFailed'))

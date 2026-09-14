@@ -52,7 +52,7 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     try {
       const res = await window.api.jobSiteAccount.list()
       if (res.success) setAccounts((res.data as JobSiteAccount[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('jobsite.accounts.couldNotLoad'))
+      else toastError(t('common.error'), t('jobsite.accounts.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('jobsite.accounts.couldNotLoad'))
     } finally {
@@ -101,7 +101,7 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     if (!balances[id]) {
       const res = await window.api.jobSiteAccount.balance({ id })
       if (res.success) setBalances((prev) => ({ ...prev, [id]: res.data as JobSiteAccountBalance }))
-      else toastError(t('common.error'), res.error?.message ?? t('jobsite.accounts.couldNotLoadBalance'))
+      else toastError(t('common.error'), t('jobsite.accounts.couldNotLoadBalance'))
     }
   }
 
@@ -110,7 +110,7 @@ export function JobSiteAccountsScreen(): React.JSX.Element {
     try {
       const res = await window.api.jobSiteAccount.close({ id })
       if (res.success) { toastSuccess(t('jobsite.accounts.accountClosedTitle'), ''); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('jobsite.accounts.couldNotCloseAccount'))
+      else toastError(t('common.error'), t('jobsite.accounts.couldNotCloseAccount'))
     } finally {
       setClosingId(null)
     }

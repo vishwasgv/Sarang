@@ -143,7 +143,7 @@ export function TripBookingScreen(): React.JSX.Element {
         setDutyBata('0'); setDutyNightHalt('0'); setDutyNightDriving('0')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.bookings.dutyStartFailed'))
+        toastError(t('common.error'), t('tours.bookings.dutyStartFailed'))
       }
     } finally {
       setStartingDuty(false)
@@ -160,7 +160,7 @@ export function TripBookingScreen(): React.JSX.Element {
         setClosingLogId(null); setCloseEndOdometer(''); setCloseEndTime('')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.bookings.dutyCloseFailed'))
+        toastError(t('common.error'), t('tours.bookings.dutyCloseFailed'))
       }
     } finally {
       setClosingDuty(false)
@@ -175,7 +175,7 @@ export function TripBookingScreen(): React.JSX.Element {
         toastSuccess(t('tours.bookings.invoiceGenerated'), '')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.bookings.invoiceGenerateFailed'))
+        toastError(t('common.error'), t('tours.bookings.invoiceGenerateFailed'))
       }
     } finally {
       setGeneratingInvoiceId(null)
@@ -192,7 +192,7 @@ export function TripBookingScreen(): React.JSX.Element {
         toastSuccess(t('tours.bookings.bookingCancelled'), '')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.bookings.bookingCancelFailed'))
+        toastError(t('common.error'), t('tours.bookings.bookingCancelFailed'))
       }
     } finally {
       setCancellingId(null)

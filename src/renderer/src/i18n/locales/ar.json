@@ -4166,6 +4166,8 @@
     "recordedTitle": "تم تسجيل إغلاق الصندوق",
     "recordedMessage": "تم حفظ إغلاق اليوم لـ {{date}} بنجاح.",
     "recordFailed": "فشل تسجيل إغلاق الصندوق.",
+    "summaryLoadFailed": "تعذر تحميل ملخص النقد لهذا اليوم.",
+    "historyLoadFailed": "تعذر تحميل سجل إغلاق الصندوق.",
     "overwriteConfirmMessage": "تم تسجيل إغلاق صندوق لـ {{date}} بالفعل. تسجيله مرة أخرى سيستبدل النقد الفعلي والفرق المسجَّلين سابقًا لذلك اليوم. متابعة؟"
   },
   "returns": {
@@ -6419,6 +6421,14 @@
     "confirmDeleteUnit": "حذف هذه الوحدة؟ لا يمكن التراجع عن هذا الإجراء.",
     "deleteFailed": "تعذر حذف هذه الوحدة.",
     "saveFailed": "تعذر الحفظ.",
+    "loadUnitsFailed": "تعذر تحميل وحدات التأجير.",
+    "loadProductsFailed": "تعذر تحميل المنتجات.",
+    "loadBookingsFailed": "تعذر تحميل حجوزات التأجير.",
+    "checkoutFailed": "تعذر تسجيل خروج هذا الحجز.",
+    "returnFailed": "تعذر إتمام عملية الإرجاع.",
+    "nextCycleFailed": "تعذر إنشاء دورة التأجير التالية.",
+    "cancelFailed": "تعذر إلغاء هذا الحجز.",
+    "invoiceGenerateFailed": "تعذر إنشاء الفاتورة.",
     "summary": {
       "totalCheckedOut": "مؤجر حاليًا"
     },

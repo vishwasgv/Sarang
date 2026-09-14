@@ -4166,6 +4166,8 @@
     "recordedTitle": "Clôture de Caisse Enregistrée",
     "recordedMessage": "Clôture de journée pour le {{date}} enregistrée avec succès.",
     "recordFailed": "Échec de l'enregistrement de la clôture de caisse.",
+    "summaryLoadFailed": "Impossible de charger le résumé de caisse du jour.",
+    "historyLoadFailed": "Impossible de charger l'historique des clôtures de caisse.",
     "overwriteConfirmMessage": "Une clôture de caisse pour le {{date}} est déjà enregistrée. L'enregistrer à nouveau écrasera les espèces réelles et l'écart précédents pour cette journée. Continuer ?"
   },
   "returns": {
@@ -6419,6 +6421,14 @@
     "confirmDeleteUnit": "Supprimer cette unité ? Cette action est irréversible.",
     "deleteFailed": "Impossible de supprimer cette unité.",
     "saveFailed": "Impossible d'enregistrer.",
+    "loadUnitsFailed": "Impossible de charger les unités de location.",
+    "loadProductsFailed": "Impossible de charger les produits.",
+    "loadBookingsFailed": "Impossible de charger les réservations de location.",
+    "checkoutFailed": "Impossible d'effectuer le check-out de cette réservation.",
+    "returnFailed": "Impossible de traiter le retour.",
+    "nextCycleFailed": "Impossible de créer le prochain cycle de location.",
+    "cancelFailed": "Impossible d'annuler cette réservation.",
+    "invoiceGenerateFailed": "Impossible de générer la facture.",
     "summary": {
       "totalCheckedOut": "Actuellement Loué"
     },

@@ -78,9 +78,9 @@ export function RentalBookingsScreen() {
     try {
       const res = await api.rental.listBookings(statusFilter ? { status: statusFilter } : undefined)
       if (res.success && res.data) setBookings((res.data as { bookings: RentalBooking[] }).bookings)
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.loadBookingsFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.loadBookingsFailed'))
     } finally {
       setLoading(false)
     }
@@ -187,9 +187,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
         .map((i) => ({ itemId: i.id, conditionOut: conditionOutByItem[i.id].trim() }))
       const res = await api.rental.checkoutBooking({ id: booking.id, checkoutNotes, itemConditions: itemConditions.length > 0 ? itemConditions : undefined })
       if (res.success) onChanged()
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.checkoutFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.checkoutFailed'))
     } finally {
       setBusy(false)
     }
@@ -209,9 +209,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
         itemConditions: itemConditions.length > 0 ? itemConditions : undefined,
       })
       if (res.success) onChanged()
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.returnFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.returnFailed'))
     } finally {
       setBusy(false)
     }
@@ -222,9 +222,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
     try {
       const res = await api.rental.createNextCycle({ bookingId: booking.id })
       if (res.success) { toastSuccess(t('rental.nextCycleCreated'), ''); onChanged() }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.nextCycleFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.nextCycleFailed'))
     } finally {
       setCreatingNextCycle(false)
     }
@@ -236,9 +236,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
       const res = await api.rental.cancelBooking({ id: booking.id })
       setShowCancelConfirm(false)
       if (res.success) onChanged()
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.cancelFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.cancelFailed'))
     } finally {
       setBusy(false)
     }
@@ -249,9 +249,9 @@ function BookingDetailModal({ booking, canManage, onClose, onChanged }: { bookin
     try {
       const res = await api.rental.generateInvoice({ bookingId: booking.id })
       if (res.success) onChanged()
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.invoiceGenerateFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.invoiceGenerateFailed'))
     } finally {
       setBusy(false)
     }

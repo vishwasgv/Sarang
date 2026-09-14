@@ -56,7 +56,7 @@ export function VehicleFleetScreen(): React.JSX.Element {
     try {
       const res = await window.api.vehicle.list()
       if (res.success) setVehicles((res.data as Vehicle[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('tours.fleet.loadFailed'))
+      else toastError(t('common.error'), t('tours.fleet.loadFailed'))
     } catch {
       toastError(t('common.error'), t('tours.fleet.loadFailed'))
     } finally {
@@ -109,7 +109,7 @@ export function VehicleFleetScreen(): React.JSX.Element {
         toastSuccess(t('tours.fleet.statusUpdated'), '')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.fleet.statusUpdateFailed'))
+        toastError(t('common.error'), t('tours.fleet.statusUpdateFailed'))
       }
     } finally {
       setStatusUpdatingId(null)
@@ -136,7 +136,7 @@ export function VehicleFleetScreen(): React.JSX.Element {
         await openServiceLog(serviceVehicleId)
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.fleet.serviceLogFailed'))
+        toastError(t('common.error'), t('tours.fleet.serviceLogFailed'))
       }
     } finally {
       setLoggingService(false)

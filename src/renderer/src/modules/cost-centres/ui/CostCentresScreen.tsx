@@ -32,7 +32,7 @@ export function CostCentresScreen() {
     try {
       const res = await window.api.costCentres.list()
       if (res.success && res.data) setCostCentres(res.data as CostCentre[])
-      else toastError(t('common.error'), res.error?.message ?? t('costCentres.couldNotLoad'))
+      else toastError(t('common.error'), t('costCentres.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('costCentres.couldNotLoad'))
     } finally {
@@ -130,7 +130,7 @@ function CostCentreFormModal({ costCentre, onClose, onSaved }: { costCentre?: Co
       const res = costCentre
         ? await window.api.costCentres.update({ id: costCentre.id, name: name.trim(), code: code.trim() || undefined, isActive })
         : await window.api.costCentres.create({ name: name.trim(), code: code.trim() || undefined })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('costCentres.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('costCentres.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       onSaved()
     } catch {

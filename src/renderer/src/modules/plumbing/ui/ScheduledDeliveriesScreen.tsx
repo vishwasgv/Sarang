@@ -46,7 +46,7 @@ export function ScheduledDeliveriesScreen(): React.JSX.Element {
     try {
       const res = await window.api.billing.listScheduledDeliveries()
       if (res.success) setDeliveries((res.data as DeliveryInvoice[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('plumbing.scheduledDeliveries.couldNotLoad'))
+      else toastError(t('common.error'), t('plumbing.scheduledDeliveries.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('plumbing.scheduledDeliveries.couldNotLoad'))
     } finally {
@@ -61,7 +61,7 @@ export function ScheduledDeliveriesScreen(): React.JSX.Element {
     try {
       const res = await window.api.billing.updateDeliveryStatus({ invoiceId: id, status })
       if (res.success) await load()
-      else toastError(t('common.error'), res.error?.message ?? t('plumbing.scheduledDeliveries.couldNotUpdateStatus'))
+      else toastError(t('common.error'), t('plumbing.scheduledDeliveries.couldNotUpdateStatus'))
     } finally {
       setUpdatingId(null)
     }

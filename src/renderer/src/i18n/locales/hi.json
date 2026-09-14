@@ -4166,6 +4166,8 @@
     "recordedTitle": "कैश क्लोज़ दर्ज हुआ",
     "recordedMessage": "{{date}} का डे क्लोज़ सफलतापूर्वक सहेजा गया।",
     "recordFailed": "कैश क्लोज़ दर्ज करने में विफल।",
+    "summaryLoadFailed": "दिन का कैश सारांश लोड नहीं हो सका।",
+    "historyLoadFailed": "कैश क्लोज़ इतिहास लोड नहीं हो सका।",
     "overwriteConfirmMessage": "{{date}} का कैश क्लोज़ पहले से दर्ज है। दोबारा दर्ज करने से उस दिन की पिछली वास्तविक नकद राशि और अंतर अधिलेखित हो जाएगा। जारी रखें?"
   },
   "returns": {
@@ -6419,6 +6421,14 @@
     "confirmDeleteUnit": "इस इकाई को हटाएं? यह पूर्ववत नहीं किया जा सकता।",
     "deleteFailed": "यह इकाई हटाई नहीं जा सकी।",
     "saveFailed": "सहेजा नहीं जा सका।",
+    "loadUnitsFailed": "किराये की इकाइयां लोड नहीं हो सकीं।",
+    "loadProductsFailed": "उत्पाद लोड नहीं हो सके।",
+    "loadBookingsFailed": "किराये की बुकिंग लोड नहीं हो सकीं।",
+    "checkoutFailed": "इस बुकिंग को चेक आउट नहीं किया जा सका।",
+    "returnFailed": "वापसी प्रक्रिया पूरी नहीं हो सकी।",
+    "nextCycleFailed": "अगला किराया चक्र नहीं बनाया जा सका।",
+    "cancelFailed": "यह बुकिंग रद्द नहीं की जा सकी।",
+    "invoiceGenerateFailed": "चालान जनरेट नहीं हो सका।",
     "summary": {
       "totalCheckedOut": "वर्तमान में किराए पर"
     },

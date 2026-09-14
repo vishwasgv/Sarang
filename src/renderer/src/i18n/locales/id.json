@@ -4166,6 +4166,8 @@
     "recordedTitle": "Tutup Kasir Dicatat",
     "recordedMessage": "Penutupan hari untuk {{date}} berhasil disimpan.",
     "recordFailed": "Gagal mencatat penutupan kasir.",
+    "summaryLoadFailed": "Tidak dapat memuat ringkasan kas hari ini.",
+    "historyLoadFailed": "Tidak dapat memuat riwayat penutupan kasir.",
     "overwriteConfirmMessage": "Penutupan kasir untuk {{date}} sudah tercatat. Mencatat lagi akan menimpa uang tunai aktual dan selisih sebelumnya untuk hari itu. Lanjutkan?"
   },
   "returns": {
@@ -6419,6 +6421,14 @@
     "confirmDeleteUnit": "Hapus unit ini? Tindakan ini tidak dapat dibatalkan.",
     "deleteFailed": "Tidak dapat menghapus unit ini.",
     "saveFailed": "Tidak dapat menyimpan.",
+    "loadUnitsFailed": "Tidak dapat memuat unit sewa.",
+    "loadProductsFailed": "Tidak dapat memuat produk.",
+    "loadBookingsFailed": "Tidak dapat memuat pemesanan sewa.",
+    "checkoutFailed": "Tidak dapat check-out pemesanan ini.",
+    "returnFailed": "Tidak dapat memproses pengembalian.",
+    "nextCycleFailed": "Tidak dapat membuat siklus sewa berikutnya.",
+    "cancelFailed": "Tidak dapat membatalkan pemesanan ini.",
+    "invoiceGenerateFailed": "Tidak dapat membuat faktur.",
     "summary": {
       "totalCheckedOut": "Sedang Disewa"
     },

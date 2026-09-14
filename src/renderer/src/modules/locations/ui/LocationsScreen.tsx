@@ -34,7 +34,7 @@ export function LocationsScreen() {
     try {
       const res = await window.api.locations.list()
       if (res.success && res.data) setLocations(res.data as Location[])
-      else toastError(t('common.error'), res.error?.message ?? t('locations.couldNotLoad'))
+      else toastError(t('common.error'), t('locations.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('locations.couldNotLoad'))
     } finally {
@@ -135,7 +135,7 @@ function LocationFormModal({ location, onClose, onSaved }: { location?: Location
       const res = location
         ? await window.api.locations.update({ id: location.id, name: name.trim(), address: address.trim() || undefined, isActive })
         : await window.api.locations.create({ name: name.trim(), address: address.trim() || undefined })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('locations.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('locations.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       onSaved()
     } catch {
@@ -259,7 +259,7 @@ function TransferStockModal({ locations, onClose, onSaved }: { locations: Locati
     setSaving(true)
     try {
       const res = await window.api.inventory.transferStock({ productId, quantity, fromLocationId, toLocationId, reason: reason.trim() || undefined })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('locations.couldNotTransfer')); return }
+      if (!res.success) { toastError(t('common.error'), t('locations.couldNotTransfer')); return }
       toastSuccess(t('locations.stockTransferred'), '')
       onSaved()
     } catch {

@@ -4166,6 +4166,8 @@
     "recordedTitle": "Cierre de Caja Registrado",
     "recordedMessage": "El cierre del día {{date}} se guardó correctamente.",
     "recordFailed": "Error al registrar el cierre de caja.",
+    "summaryLoadFailed": "No se pudo cargar el resumen de caja del día.",
+    "historyLoadFailed": "No se pudo cargar el historial de cierres de caja.",
     "overwriteConfirmMessage": "Ya existe un cierre de caja registrado para {{date}}. Registrarlo de nuevo sobrescribirá el efectivo real y la varianza anteriores de ese día. ¿Continuar?"
   },
   "returns": {
@@ -6611,6 +6613,14 @@
     "confirmDeleteUnit": "¿Eliminar esta unidad? Esta acción no se puede deshacer.",
     "deleteFailed": "No se pudo eliminar esta unidad.",
     "saveFailed": "No se pudo guardar.",
+    "loadUnitsFailed": "No se pudieron cargar las unidades de alquiler.",
+    "loadProductsFailed": "No se pudieron cargar los productos.",
+    "loadBookingsFailed": "No se pudieron cargar las reservas de alquiler.",
+    "checkoutFailed": "No se pudo realizar el checkout de esta reserva.",
+    "returnFailed": "No se pudo procesar la devolución.",
+    "nextCycleFailed": "No se pudo crear el siguiente ciclo de alquiler.",
+    "cancelFailed": "No se pudo cancelar esta reserva.",
+    "invoiceGenerateFailed": "No se pudo generar la factura.",
     "summary": {
       "totalCheckedOut": "Actualmente Alquilado"
     },

@@ -61,16 +61,16 @@ export function RentalUnitsScreen() {
         api.products.list({ limit: 200 }),
       ])
       if (unitsRes.success && unitsRes.data) setUnits((unitsRes.data as { units: RentalUnit[] }).units)
-      else toastError(t('common.error'), unitsRes.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('rental.loadUnitsFailed'))
       if (productsRes.success) {
         const d = productsRes.data as { products?: RentalProduct[] } | RentalProduct[]
         const arr = Array.isArray(d) ? d : d.products ?? []
         setProducts(arr.filter((p) => p.isRentable && p.rentalTrackingType === 'UNIT'))
       } else {
-        toastError(t('common.error'), productsRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('rental.loadProductsFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('rental.loadUnitsFailed'))
     } finally {
       setLoading(false)
     }
@@ -106,7 +106,7 @@ export function RentalUnitsScreen() {
     try {
       const res = await api.rental.updateUnit({ id: unit.id, status })
       if (res.success) await load()
-      else toastError(t('common.error'), res.error?.message ?? t('rental.saveFailed') as string)
+      else toastError(t('common.error'), t('rental.saveFailed') as string)
     } catch {
       toastError(t('common.error'), t('rental.saveFailed') as string)
     }
@@ -116,7 +116,7 @@ export function RentalUnitsScreen() {
     try {
       const res = await api.rental.markUnitServiced({ id: unit.id })
       if (res.success) await load()
-      else toastError(t('common.error'), res.error?.message ?? t('rental.saveFailed') as string)
+      else toastError(t('common.error'), t('rental.saveFailed') as string)
     } catch {
       toastError(t('common.error'), t('rental.saveFailed') as string)
     }
@@ -128,7 +128,7 @@ export function RentalUnitsScreen() {
     try {
       const res = await api.rental.deleteUnit({ id: deleteTarget.id })
       if (res.success) { setDeleteTarget(null); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('rental.deleteFailed') as string)
+      else toastError(t('common.error'), t('rental.deleteFailed') as string)
     } catch {
       toastError(t('common.error'), t('rental.deleteFailed') as string)
     } finally {

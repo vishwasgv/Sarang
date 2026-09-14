@@ -4245,7 +4245,9 @@
     "recordedTitle": "Cash Close Recorded",
     "recordedMessage": "Day close for {{date}} saved successfully.",
     "recordFailed": "Failed to record cash close.",
-    "overwriteConfirmMessage": "A cash close for {{date}} is already recorded. Recording again will overwrite the previous actual cash and variance for that day. Continue?"
+    "overwriteConfirmMessage": "A cash close for {{date}} is already recorded. Recording again will overwrite the previous actual cash and variance for that day. Continue?",
+    "summaryLoadFailed": "Could not load the day's cash summary.",
+    "historyLoadFailed": "Could not load cash close history."
   },
   "checkin": {
     "title": "Customer Check-In",
@@ -7003,6 +7005,14 @@
     "confirmDeleteUnit": "Delete this unit? This cannot be undone.",
     "deleteFailed": "Could not delete this unit.",
     "saveFailed": "Could not save.",
+    "loadUnitsFailed": "Could not load rental units.",
+    "loadProductsFailed": "Could not load products.",
+    "loadBookingsFailed": "Could not load rental bookings.",
+    "checkoutFailed": "Could not check out this booking.",
+    "returnFailed": "Could not process the return.",
+    "nextCycleFailed": "Could not create the next rental cycle.",
+    "cancelFailed": "Could not cancel this booking.",
+    "invoiceGenerateFailed": "Could not generate invoice.",
     "summary": {
       "totalCheckedOut": "Currently Rented"
     },

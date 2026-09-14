@@ -58,7 +58,7 @@ export function TourPackageScreen(): React.JSX.Element {
         toastSuccess(t('tours.packages.packageStatusUpdated'), '')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.packages.packageStatusUpdateFailed'))
+        toastError(t('common.error'), t('tours.packages.packageStatusUpdateFailed'))
       }
     } finally {
       setPackageStatusUpdatingId(null)
@@ -75,7 +75,7 @@ export function TourPackageScreen(): React.JSX.Element {
         const dres = await window.api.tourPackage.listDepartures({ tourPackageId: expandedPackageId })
         if (dres.success) setDepartures((dres.data as TourDeparture[]) ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.packages.departureStatusUpdateFailed'))
+        toastError(t('common.error'), t('tours.packages.departureStatusUpdateFailed'))
       }
     } finally {
       setDepartureStatusUpdatingId(null)
@@ -93,7 +93,7 @@ export function TourPackageScreen(): React.JSX.Element {
     try {
       const res = await window.api.tourPackage.list()
       if (res.success) setPackages((res.data as TourPackage[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('tours.packages.loadFailed'))
+      else toastError(t('common.error'), t('tours.packages.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -141,7 +141,7 @@ export function TourPackageScreen(): React.JSX.Element {
         const dres = await window.api.tourPackage.listDepartures({ tourPackageId: expandedPackageId })
         if (dres.success) setDepartures((dres.data as TourDeparture[]) ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.packages.departureAddFailed'))
+        toastError(t('common.error'), t('tours.packages.departureAddFailed'))
       }
     } finally {
       setSavingDeparture(false)
@@ -164,7 +164,7 @@ export function TourPackageScreen(): React.JSX.Element {
           if (dres.success) setDepartures((dres.data as TourDeparture[]) ?? [])
         }
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('tours.packages.bookingFailed'))
+        toastError(t('common.error'), t('tours.packages.bookingFailed'))
       }
     } finally {
       setBooking(false)
