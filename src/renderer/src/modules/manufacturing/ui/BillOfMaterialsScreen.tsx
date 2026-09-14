@@ -90,10 +90,10 @@ export function BillOfMaterialsScreen() {
       if (res.success && res.data) {
         setBoms(res.data as Bom[])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadBomsFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadBomsFailedMessage'))
     } finally {
       setLoading(false)
     }

@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "الموردون الذين يوفرون المواد الخام للإنتاج",
     "noVendorLinked": "لا يوجد باعة مرتبطون بالمواد الخام.",
     "noVendorDesc": "أضف موردًا لمادة خام لرؤيته هنا.",
+    "loadVendorsFailedMessage": "فشل تحميل الموردين.",
+    "loadVendorMaterialsFailedMessage": "فشل تحميل مواد المورد.",
+    "loadMaterialsFailedMessage": "فشل تحميل المواد الخام.",
+    "loadMovementsFailedMessage": "فشل تحميل سجل الحركات.",
+    "loadBatchesFailedMessage": "فشل تحميل الدفعات.",
+    "loadOrdersFailedMessage": "فشل تحميل أوامر الإنتاج.",
+    "loadOrderDetailFailedMessage": "فشل تحميل تفاصيل الأمر.",
+    "loadAnalyticsFailedMessage": "فشل تحميل تحليلات الإنتاج.",
+    "loadFinishedGoodsFailedMessage": "فشل تحميل البضاعة الجاهزة.",
+    "loadProductionHistoryFailedMessage": "فشل تحميل سجل الإنتاج.",
+    "loadDispatchFailedMessage": "فشل تحميل سجلات الشحن.",
+    "loadBomsFailedMessage": "فشل تحميل قائمة المواد.",
     "viewMaterials": "عرض المواد",
     "lowStockCount": "مخزون منخفض",
     "stockCol": "المخزون",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "المعدل/ساعة",
       "workerNameRequired": "اسم العامل مطلوب.",
       "hoursRequired": "يجب أن تكون ساعات العمل أكبر من صفر.",
-      "rateInvalid": "لا يمكن أن يكون معدل الساعة سالبًا."
+      "rateInvalid": "لا يمكن أن يكون معدل الساعة سالبًا.",
+      "addFailedMessage": "فشلت إضافة إدخال العمالة.",
+      "removeFailedMessage": "فشلت إزالة إدخال العمالة."
     },
     "batchNumber": "رقم الدفعة",
     "receiveBatch": "استلام دفعة",
@@ -5347,7 +5361,8 @@
       "minutes": "الدقائق",
       "totalMinutes": "تم تسجيل {{minutes}} دقيقة توقف",
       "reasonRequired": "سبب التوقف مطلوب.",
-      "minutesRequired": "يجب أن تكون دقائق التوقف أكبر من صفر."
+      "minutesRequired": "يجب أن تكون دقائق التوقف أكبر من صفر.",
+      "logFailedMessage": "فشل تسجيل وقت التوقف."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" هي أبطأ مرحلة لديك، بمتوسط {{hours}} ساعة ({{percent}}% من إجمالي وقت التوريد)."

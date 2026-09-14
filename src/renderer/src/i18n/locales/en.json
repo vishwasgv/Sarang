@@ -5802,6 +5802,18 @@
     "vendorSubtitle": "Suppliers who provide raw materials for production",
     "noVendorLinked": "No vendors linked to raw materials.",
     "noVendorDesc": "Add a supplier to a raw material to see them here.",
+    "loadVendorsFailedMessage": "Failed to load vendors.",
+    "loadVendorMaterialsFailedMessage": "Failed to load vendor materials.",
+    "loadMaterialsFailedMessage": "Failed to load raw materials.",
+    "loadMovementsFailedMessage": "Failed to load movement history.",
+    "loadBatchesFailedMessage": "Failed to load raw material lots.",
+    "loadOrdersFailedMessage": "Failed to load production orders.",
+    "loadOrderDetailFailedMessage": "Failed to load order details.",
+    "loadAnalyticsFailedMessage": "Failed to load production analytics.",
+    "loadFinishedGoodsFailedMessage": "Failed to load finished goods.",
+    "loadProductionHistoryFailedMessage": "Failed to load production history.",
+    "loadDispatchFailedMessage": "Failed to load dispatch records.",
+    "loadBomsFailedMessage": "Failed to load bills of materials.",
     "viewMaterials": "View materials",
     "lowStockCount": "Low Stock",
     "stockCol": "Stock",
@@ -5906,7 +5918,9 @@
       "ratePerHour": "Rate/Hour",
       "workerNameRequired": "Worker name is required.",
       "hoursRequired": "Hours worked must be greater than zero.",
-      "rateInvalid": "Rate per hour cannot be negative."
+      "rateInvalid": "Rate per hour cannot be negative.",
+      "addFailedMessage": "Failed to add labor entry.",
+      "removeFailedMessage": "Failed to remove labor entry."
     },
     "batchNumber": "Batch / Lot Number",
     "receiveBatch": "Receive Lot",
@@ -5928,7 +5942,8 @@
       "minutes": "Minutes",
       "totalMinutes": "{{minutes}} min downtime logged",
       "reasonRequired": "Downtime reason is required.",
-      "minutesRequired": "Downtime minutes must be greater than zero."
+      "minutesRequired": "Downtime minutes must be greater than zero.",
+      "logFailedMessage": "Failed to log downtime."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" is your slowest stage, averaging {{hours}}h ({{percent}}% of total lead time)."

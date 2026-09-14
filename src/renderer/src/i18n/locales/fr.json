@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "Fournisseurs qui fournissent les matières premières pour la production",
     "noVendorLinked": "Aucun vendeur lié aux matières premières.",
     "noVendorDesc": "Ajoutez un fournisseur à une matière première pour le voir ici.",
+    "loadVendorsFailedMessage": "Échec du chargement des fournisseurs.",
+    "loadVendorMaterialsFailedMessage": "Échec du chargement des matières du fournisseur.",
+    "loadMaterialsFailedMessage": "Échec du chargement des matières premières.",
+    "loadMovementsFailedMessage": "Échec du chargement de l'historique des mouvements.",
+    "loadBatchesFailedMessage": "Échec du chargement des lots.",
+    "loadOrdersFailedMessage": "Échec du chargement des ordres de production.",
+    "loadOrderDetailFailedMessage": "Échec du chargement des détails de la commande.",
+    "loadAnalyticsFailedMessage": "Échec du chargement de l'analyse de production.",
+    "loadFinishedGoodsFailedMessage": "Échec du chargement des produits finis.",
+    "loadProductionHistoryFailedMessage": "Échec du chargement de l'historique de production.",
+    "loadDispatchFailedMessage": "Échec du chargement des enregistrements d'expédition.",
+    "loadBomsFailedMessage": "Échec du chargement de la nomenclature.",
     "viewMaterials": "Voir les matières",
     "lowStockCount": "Stock Faible",
     "stockCol": "Stock",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "Taux/Heure",
       "workerNameRequired": "Le nom de l'ouvrier est obligatoire.",
       "hoursRequired": "Les heures travaillées doivent être supérieures à zéro.",
-      "rateInvalid": "Le taux horaire ne peut pas être négatif."
+      "rateInvalid": "Le taux horaire ne peut pas être négatif.",
+      "addFailedMessage": "Impossible d'ajouter l'entrée de main-d'œuvre.",
+      "removeFailedMessage": "Impossible de supprimer l'entrée de main-d'œuvre."
     },
     "batchNumber": "Numéro de Lot",
     "receiveBatch": "Réceptionner un Lot",
@@ -5347,7 +5361,8 @@
       "minutes": "Minutes",
       "totalMinutes": "{{minutes}} min d'arrêt enregistrées",
       "reasonRequired": "Le motif de l'arrêt est requis.",
-      "minutesRequired": "Les minutes d'arrêt doivent être supérieures à zéro."
+      "minutesRequired": "Les minutes d'arrêt doivent être supérieures à zéro.",
+      "logFailedMessage": "Impossible d'enregistrer le temps d'arrêt."
     },
     "bottleneck": {
       "message": "« {{stage}} » est votre étape la plus lente, avec une moyenne de {{hours}}h ({{percent}} % du délai total)."

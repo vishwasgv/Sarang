@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "उत्पादनासाठी कच्चा माल पुरवणारे पुरवठादार",
     "noVendorLinked": "कच्च्या मालाशी कोणताही विक्रेता जोडलेला नाही.",
     "noVendorDesc": "येथे पाहण्यासाठी कच्च्या मालाला पुरवठादार जोडा.",
+    "loadVendorsFailedMessage": "विक्रेते लोड करण्यात अयशस्वी.",
+    "loadVendorMaterialsFailedMessage": "विक्रेता साहित्य लोड करण्यात अयशस्वी.",
+    "loadMaterialsFailedMessage": "कच्चा माल लोड करण्यात अयशस्वी.",
+    "loadMovementsFailedMessage": "हालचाल इतिहास लोड करण्यात अयशस्वी.",
+    "loadBatchesFailedMessage": "लॉट लोड करण्यात अयशस्वी.",
+    "loadOrdersFailedMessage": "उत्पादन ऑर्डर लोड करण्यात अयशस्वी.",
+    "loadOrderDetailFailedMessage": "ऑर्डर तपशील लोड करण्यात अयशस्वी.",
+    "loadAnalyticsFailedMessage": "उत्पादन विश्लेषण लोड करण्यात अयशस्वी.",
+    "loadFinishedGoodsFailedMessage": "तयार माल लोड करण्यात अयशस्वी.",
+    "loadProductionHistoryFailedMessage": "उत्पादन इतिहास लोड करण्यात अयशस्वी.",
+    "loadDispatchFailedMessage": "प्रेषण नोंदी लोड करण्यात अयशस्वी.",
+    "loadBomsFailedMessage": "साहित्य यादी लोड करण्यात अयशस्वी.",
     "viewMaterials": "साहित्य पहा",
     "lowStockCount": "कमी स्टॉक",
     "stockCol": "स्टॉक",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "दर/तास",
       "workerNameRequired": "कामगाराचे नाव आवश्यक आहे.",
       "hoursRequired": "काम केलेले तास शून्यापेक्षा जास्त असणे आवश्यक आहे.",
-      "rateInvalid": "प्रति तास दर ऋण असू शकत नाही."
+      "rateInvalid": "प्रति तास दर ऋण असू शकत नाही.",
+      "addFailedMessage": "कामगार नोंद जोडण्यात अयशस्वी.",
+      "removeFailedMessage": "कामगार नोंद काढण्यात अयशस्वी."
     },
     "batchNumber": "बॅच / लॉट क्रमांक",
     "receiveBatch": "लॉट स्वीकारा",
@@ -5347,7 +5361,8 @@
       "minutes": "मिनिटे",
       "totalMinutes": "{{minutes}} मिनिटे डाउनटाइम नोंदवले",
       "reasonRequired": "डाउनटाइमचे कारण आवश्यक आहे.",
-      "minutesRequired": "डाउनटाइम मिनिटे शून्यापेक्षा जास्त असावीत."
+      "minutesRequired": "डाउनटाइम मिनिटे शून्यापेक्षा जास्त असावीत.",
+      "logFailedMessage": "डाउनटाइम नोंदवण्यात अयशस्वी."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" हा तुमचा सर्वात संथ टप्पा आहे, सरासरी {{hours}} तास ({{percent}}% एकूण लीड टाइमपैकी)."

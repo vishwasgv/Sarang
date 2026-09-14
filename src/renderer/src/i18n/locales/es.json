@@ -5412,6 +5412,18 @@
     "vendorSubtitle": "Proveedores que suministran materias primas para la producción",
     "noVendorLinked": "No hay vendedores vinculados a materias primas.",
     "noVendorDesc": "Agrega un proveedor a una materia prima para verlo aquí.",
+    "loadVendorsFailedMessage": "No se pudieron cargar los proveedores.",
+    "loadVendorMaterialsFailedMessage": "No se pudieron cargar los materiales del proveedor.",
+    "loadMaterialsFailedMessage": "No se pudieron cargar las materias primas.",
+    "loadMovementsFailedMessage": "No se pudo cargar el historial de movimientos.",
+    "loadBatchesFailedMessage": "No se pudieron cargar los lotes.",
+    "loadOrdersFailedMessage": "No se pudieron cargar las órdenes de producción.",
+    "loadOrderDetailFailedMessage": "No se pudieron cargar los detalles de la orden.",
+    "loadAnalyticsFailedMessage": "No se pudo cargar el análisis de producción.",
+    "loadFinishedGoodsFailedMessage": "No se pudieron cargar los productos terminados.",
+    "loadProductionHistoryFailedMessage": "No se pudo cargar el historial de producción.",
+    "loadDispatchFailedMessage": "No se pudieron cargar los registros de despacho.",
+    "loadBomsFailedMessage": "No se pudo cargar la lista de materiales.",
     "viewMaterials": "Ver materiales",
     "lowStockCount": "Stock Bajo",
     "stockCol": "Stock",
@@ -5516,7 +5528,9 @@
       "ratePerHour": "Tarifa/Hora",
       "workerNameRequired": "El nombre del trabajador es obligatorio.",
       "hoursRequired": "Las horas trabajadas deben ser mayores que cero.",
-      "rateInvalid": "La tarifa por hora no puede ser negativa."
+      "rateInvalid": "La tarifa por hora no puede ser negativa.",
+      "addFailedMessage": "No se pudo agregar la entrada de mano de obra.",
+      "removeFailedMessage": "No se pudo eliminar la entrada de mano de obra."
     },
     "batchNumber": "Número de Lote",
     "receiveBatch": "Recibir Lote",
@@ -5538,7 +5552,8 @@
       "minutes": "Minutos",
       "totalMinutes": "{{minutes}} min de tiempo inactivo registrados",
       "reasonRequired": "El motivo del tiempo inactivo es obligatorio.",
-      "minutesRequired": "Los minutos de tiempo inactivo deben ser mayores que cero."
+      "minutesRequired": "Los minutos de tiempo inactivo deben ser mayores que cero.",
+      "logFailedMessage": "No se pudo registrar el tiempo de inactividad."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" es tu etapa más lenta, con un promedio de {{hours}}h ({{percent}}% del tiempo de espera total)."

@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "உற்பத்திக்கான மூலப்பொருட்களை வழங்கும் சப்ளையர்கள்",
     "noVendorLinked": "மூலப்பொருட்களுடன் இணைக்கப்பட்ட விற்பனையாளர்கள் இல்லை.",
     "noVendorDesc": "ஒரு சப்ளையரை மூலப்பொருளுடன் இணைத்தால் அது இங்கே தோன்றும்.",
+    "loadVendorsFailedMessage": "விற்பனையாளர்களை ஏற்றுவதில் தோல்வி.",
+    "loadVendorMaterialsFailedMessage": "விற்பனையாளர் பொருட்களை ஏற்றுவதில் தோல்வி.",
+    "loadMaterialsFailedMessage": "மூலப்பொருளை ஏற்றுவதில் தோல்வி.",
+    "loadMovementsFailedMessage": "இயக்க வரலாற்றை ஏற்றுவதில் தோல்வி.",
+    "loadBatchesFailedMessage": "லாட்களை ஏற்றுவதில் தோல்வி.",
+    "loadOrdersFailedMessage": "உற்பத்தி ஆர்டர்களை ஏற்றுவதில் தோல்வி.",
+    "loadOrderDetailFailedMessage": "ஆர்டர் விவரங்களை ஏற்றுவதில் தோல்வி.",
+    "loadAnalyticsFailedMessage": "உற்பத்தி பகுப்பாய்வை ஏற்றுவதில் தோல்வி.",
+    "loadFinishedGoodsFailedMessage": "முடிந்த சரக்கை ஏற்றுவதில் தோல்வி.",
+    "loadProductionHistoryFailedMessage": "உற்பத்தி வரலாற்றை ஏற்றுவதில் தோல்வி.",
+    "loadDispatchFailedMessage": "அனுப்புதல் பதிவுகளை ஏற்றுவதில் தோல்வி.",
+    "loadBomsFailedMessage": "பொருள் பட்டியலை ஏற்றுவதில் தோல்வி.",
     "viewMaterials": "மூலப்பொருட்களைப் பார்",
     "lowStockCount": "குறைந்த இருப்பு",
     "stockCol": "இருப்பு",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "மணிக்கு விகிதம்",
       "workerNameRequired": "தொழிலாளியின் பெயர் தேவை.",
       "hoursRequired": "வேலை செய்த மணிநேரம் பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
-      "rateInvalid": "மணிக்கு விகிதம் எதிர்மறையாக இருக்கக்கூடாது."
+      "rateInvalid": "மணிக்கு விகிதம் எதிர்மறையாக இருக்கக்கூடாது.",
+      "addFailedMessage": "உழைப்பு பதிவைச் சேர்க்க முடியவில்லை.",
+      "removeFailedMessage": "உழைப்பு பதிவை அகற்ற முடியவில்லை."
     },
     "batchNumber": "தொகுதி / லாட் எண்",
     "receiveBatch": "லாட் பெறவும்",
@@ -5347,7 +5361,8 @@
       "minutes": "நிமிடங்கள்",
       "totalMinutes": "{{minutes}} நிமிட டவுன்டைம் பதிவு செய்யப்பட்டது",
       "reasonRequired": "டவுன்டைம் காரணம் தேவை.",
-      "minutesRequired": "டவுன்டைம் நிமிடங்கள் பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்."
+      "minutesRequired": "டவுன்டைம் நிமிடங்கள் பூஜ்ஜியத்தை விட அதிகமாக இருக்க வேண்டும்.",
+      "logFailedMessage": "வேலை நிறுத்த நேரத்தை பதிவு செய்ய முடியவில்லை."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" உங்கள் மிக மெதுவான நிலை, சராசரியாக {{hours}} மணி நேரம் (மொத்த லீட் டைமில் {{percent}}%)."

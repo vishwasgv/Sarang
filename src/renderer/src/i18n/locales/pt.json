@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "Fornecedores que fornecem matérias-primas para a produção",
     "noVendorLinked": "Nenhum vendedor vinculado a matérias-primas.",
     "noVendorDesc": "Adicione um fornecedor a uma matéria-prima para vê-lo aqui.",
+    "loadVendorsFailedMessage": "Falha ao carregar fornecedores.",
+    "loadVendorMaterialsFailedMessage": "Falha ao carregar materiais do fornecedor.",
+    "loadMaterialsFailedMessage": "Falha ao carregar matérias-primas.",
+    "loadMovementsFailedMessage": "Falha ao carregar o histórico de movimentações.",
+    "loadBatchesFailedMessage": "Falha ao carregar os lotes.",
+    "loadOrdersFailedMessage": "Falha ao carregar ordens de produção.",
+    "loadOrderDetailFailedMessage": "Falha ao carregar detalhes do pedido.",
+    "loadAnalyticsFailedMessage": "Falha ao carregar análise de produção.",
+    "loadFinishedGoodsFailedMessage": "Falha ao carregar produtos acabados.",
+    "loadProductionHistoryFailedMessage": "Falha ao carregar histórico de produção.",
+    "loadDispatchFailedMessage": "Falha ao carregar registros de expedição.",
+    "loadBomsFailedMessage": "Falha ao carregar lista de materiais.",
     "viewMaterials": "Ver materiais",
     "lowStockCount": "Estoque Baixo",
     "stockCol": "Estoque",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "Taxa/Hora",
       "workerNameRequired": "O nome do trabalhador é obrigatório.",
       "hoursRequired": "As horas trabalhadas devem ser maiores que zero.",
-      "rateInvalid": "A taxa por hora não pode ser negativa."
+      "rateInvalid": "A taxa por hora não pode ser negativa.",
+      "addFailedMessage": "Falha ao adicionar registro de mão de obra.",
+      "removeFailedMessage": "Falha ao remover registro de mão de obra."
     },
     "batchNumber": "Número do Lote",
     "receiveBatch": "Receber Lote",
@@ -5347,7 +5361,8 @@
       "minutes": "Minutos",
       "totalMinutes": "{{minutes}} min de tempo parado registrados",
       "reasonRequired": "O motivo do tempo parado é obrigatório.",
-      "minutesRequired": "Os minutos de tempo parado devem ser maiores que zero."
+      "minutesRequired": "Os minutos de tempo parado devem ser maiores que zero.",
+      "logFailedMessage": "Falha ao registrar o tempo de inatividade."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" é sua etapa mais lenta, com média de {{hours}}h ({{percent}}% do tempo total de entrega)."

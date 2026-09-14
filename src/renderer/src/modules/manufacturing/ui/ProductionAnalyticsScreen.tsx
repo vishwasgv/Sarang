@@ -73,10 +73,10 @@ export function ProductionAnalyticsScreen() {
       setRawMatCount(md.total ?? 0)
     }
     if (!(ordersRes.success && ordersRes.data) || !(matRes.success && matRes.data)) {
-      toastError(t('common.error'), (ordersRes.error ?? matRes.error)?.message ?? t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadAnalyticsFailedMessage'))
     }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadAnalyticsFailedMessage'))
     } finally {
       setLoading(false)
     }

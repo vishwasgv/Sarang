@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "ఉత్పత్తి కోసం ముడి సరుకును సరఫరా చేసే సప్లయర్లు",
     "noVendorLinked": "ముడి సరుకుకు ఏ వెండర్లూ లింక్ చేయబడలేదు.",
     "noVendorDesc": "ఇక్కడ చూడటానికి ముడి సరుకుకు సప్లయర్‌ను జోడించండి.",
+    "loadVendorsFailedMessage": "విక్రేతలను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadVendorMaterialsFailedMessage": "విక్రేత సామగ్రిని లోడ్ చేయడంలో విఫలమైంది.",
+    "loadMaterialsFailedMessage": "ముడి సరుకును లోడ్ చేయడంలో విఫలమైంది.",
+    "loadMovementsFailedMessage": "కదలిక చరిత్రను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadBatchesFailedMessage": "లాట్‌లను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadOrdersFailedMessage": "ఉత్పత్తి ఆర్డర్లను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadOrderDetailFailedMessage": "ఆర్డర్ వివరాలను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadAnalyticsFailedMessage": "ఉత్పత్తి విశ్లేషణను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadFinishedGoodsFailedMessage": "తయారైన వస్తువులను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadProductionHistoryFailedMessage": "ఉత్పత్తి చరిత్రను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadDispatchFailedMessage": "డిస్పాచ్ రికార్డులను లోడ్ చేయడంలో విఫలమైంది.",
+    "loadBomsFailedMessage": "సామగ్రి జాబితాను లోడ్ చేయడంలో విఫలమైంది.",
     "viewMaterials": "సామగ్రిని చూడండి",
     "lowStockCount": "తక్కువ నిల్వ",
     "stockCol": "నిల్వ",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "గంటకు రేటు",
       "workerNameRequired": "కార్మికుని పేరు అవసరం.",
       "hoursRequired": "పనిచేసిన గంటలు సున్నా కంటే ఎక్కువగా ఉండాలి.",
-      "rateInvalid": "గంటకు రేటు ప్రతికూలంగా ఉండకూడదు."
+      "rateInvalid": "గంటకు రేటు ప్రతికూలంగా ఉండకూడదు.",
+      "addFailedMessage": "శ్రమ ఎంట్రీని జోడించడం సాధ్యం కాలేదు.",
+      "removeFailedMessage": "శ్రమ ఎంట్రీని తొలగించడం సాధ్యం కాలేదు."
     },
     "batchNumber": "బ్యాచ్ / లాట్ నంబర్",
     "receiveBatch": "లాట్ స్వీకరించండి",
@@ -5347,7 +5361,8 @@
       "minutes": "నిమిషాలు",
       "totalMinutes": "{{minutes}} నిమిషాల డౌన్‌టైమ్ నమోదు చేయబడింది",
       "reasonRequired": "డౌన్‌టైమ్ కారణం అవసరం.",
-      "minutesRequired": "డౌన్‌టైమ్ నిమిషాలు సున్నా కంటే ఎక్కువగా ఉండాలి."
+      "minutesRequired": "డౌన్‌టైమ్ నిమిషాలు సున్నా కంటే ఎక్కువగా ఉండాలి.",
+      "logFailedMessage": "డౌన్‌టైమ్‌ను నమోదు చేయడం సాధ్యం కాలేదు."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" మీ నెమ్మదైన దశ, సగటున {{hours}}గం ({{percent}}% మొత్తం లీడ్ టైమ్‌లో)."

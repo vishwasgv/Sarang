@@ -106,10 +106,10 @@ export function RawMaterialsScreen() {
         const d = res.data as { materials: RawMaterial[] }
         setMaterials(d.materials)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadMaterialsFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadMaterialsFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -221,9 +221,9 @@ export function RawMaterialsScreen() {
     try {
       const res = await api.rawMaterials.movements({ rawMaterialId: m.id, limit: 50 })
       if (res.success && res.data) setMovements(res.data as Movement[])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('manufacturing.loadMovementsFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadMovementsFailedMessage'))
     } finally {
       setMovementsLoading(false)
     }
@@ -237,9 +237,9 @@ export function RawMaterialsScreen() {
     try {
       const res = await api.rawMaterials.listBatches({ rawMaterialId: m.id })
       if (res.success && res.data) setBatches(res.data as RawMaterialBatch[])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('manufacturing.loadBatchesFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadBatchesFailedMessage'))
     } finally {
       setBatchesLoading(false)
     }

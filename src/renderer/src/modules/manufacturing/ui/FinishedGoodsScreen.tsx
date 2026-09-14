@@ -74,10 +74,10 @@ export function FinishedGoodsScreen() {
           }))
         setGoods(finishedGoods)
       } else {
-        toastError(t('common.error'), (bomsRes.error ?? productsRes.error)?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadFinishedGoodsFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadFinishedGoodsFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -94,10 +94,10 @@ export function FinishedGoodsScreen() {
         const d = res.data as { orders: ProductionHistory[] }
         setHistory(d.orders)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadProductionHistoryFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadProductionHistoryFailedMessage'))
     } finally {
       setHistoryLoading(false)
     }

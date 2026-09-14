@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "ઉત્પાદન માટે કાચો માલ પૂરો પાડતા સપ્લાયર",
     "noVendorLinked": "કાચા માલ સાથે કોઈ વિક્રેતા જોડાયેલ નથી.",
     "noVendorDesc": "તેમને અહીં જોવા માટે કાચા માલમાં સપ્લાયર ઉમેરો.",
+    "loadVendorsFailedMessage": "વિક્રેતાઓ લોડ કરવામાં નિષ્ફળ.",
+    "loadVendorMaterialsFailedMessage": "વિક્રેતા સામગ્રી લોડ કરવામાં નિષ્ફળ.",
+    "loadMaterialsFailedMessage": "કાચો માલ લોડ કરવામાં નિષ્ફળ.",
+    "loadMovementsFailedMessage": "હિલચાલ ઇતિહાસ લોડ કરવામાં નિષ્ફળ.",
+    "loadBatchesFailedMessage": "લોટ લોડ કરવામાં નિષ્ફળ.",
+    "loadOrdersFailedMessage": "ઉત્પાદન ઓર્ડર લોડ કરવામાં નિષ્ફળ.",
+    "loadOrderDetailFailedMessage": "ઓર્ડર વિગતો લોડ કરવામાં નિષ્ફળ.",
+    "loadAnalyticsFailedMessage": "ઉત્પાદન વિશ્લેષણ લોડ કરવામાં નિષ્ફળ.",
+    "loadFinishedGoodsFailedMessage": "તૈયાર માલ લોડ કરવામાં નિષ્ફળ.",
+    "loadProductionHistoryFailedMessage": "ઉત્પાદન ઇતિહાસ લોડ કરવામાં નિષ્ફળ.",
+    "loadDispatchFailedMessage": "રવાનગી રેકોર્ડ લોડ કરવામાં નિષ્ફળ.",
+    "loadBomsFailedMessage": "સામગ્રી યાદી લોડ કરવામાં નિષ્ફળ.",
     "viewMaterials": "સામગ્રી જુઓ",
     "lowStockCount": "ઓછો સ્ટોક",
     "stockCol": "સ્ટોક",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "દર/કલાક",
       "workerNameRequired": "કામદારનું નામ જરૂરી છે.",
       "hoursRequired": "કામ કરેલા કલાકો શૂન્ય કરતાં વધુ હોવા જોઈએ.",
-      "rateInvalid": "કલાક દીઠ દર નકારાત્મક ન હોઈ શકે."
+      "rateInvalid": "કલાક દીઠ દર નકારાત્મક ન હોઈ શકે.",
+      "addFailedMessage": "શ્રમ એન્ટ્રી ઉમેરવામાં નિષ્ફળ.",
+      "removeFailedMessage": "શ્રમ એન્ટ્રી દૂર કરવામાં નિષ્ફળ."
     },
     "batchNumber": "બેચ / લોટ નંબર",
     "receiveBatch": "લોટ મેળવો",
@@ -5347,7 +5361,8 @@
       "minutes": "મિનિટ",
       "totalMinutes": "{{minutes}} મિનિટ ડાઉનટાઇમ નોંધાયું",
       "reasonRequired": "ડાઉનટાઇમનું કારણ જરૂરી છે.",
-      "minutesRequired": "ડાઉનટાઇમ મિનિટ શૂન્ય કરતાં વધુ હોવી જોઈએ."
+      "minutesRequired": "ડાઉનટાઇમ મિનિટ શૂન્ય કરતાં વધુ હોવી જોઈએ.",
+      "logFailedMessage": "ડાઉનટાઇમ નોંધવામાં નિષ્ફળ."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" તમારો સૌથી ધીમો તબક્કો છે, સરેરાશ {{hours}} કલાક ({{percent}}% કુલ લીડ ટાઇમના)."

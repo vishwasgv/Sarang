@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "ಉತ್ಪಾದನೆಗೆ ಕಚ್ಚಾ ವಸ್ತುಗಳನ್ನು ಒದಗಿಸುವ ಪೂರೈಕೆದಾರರು",
     "noVendorLinked": "ಕಚ್ಚಾ ವಸ್ತುಗಳಿಗೆ ಯಾವುದೇ ವ್ಯಾಪಾರಿಗಳನ್ನು ಜೋಡಿಸಿಲ್ಲ.",
     "noVendorDesc": "ಇಲ್ಲಿ ನೋಡಲು ಒಂದು ಕಚ್ಚಾ ವಸ್ತುವಿಗೆ ಪೂರೈಕೆದಾರರನ್ನು ಸೇರಿಸಿ.",
+    "loadVendorsFailedMessage": "ಮಾರಾಟಗಾರರನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadVendorMaterialsFailedMessage": "ಮಾರಾಟಗಾರ ಸಾಮಗ್ರಿಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadMaterialsFailedMessage": "ಕಚ್ಚಾ ವಸ್ತುಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadMovementsFailedMessage": "ಚಲನೆ ಇತಿಹಾಸವನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadBatchesFailedMessage": "ಲಾಟ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadOrdersFailedMessage": "ಉತ್ಪಾದನಾ ಆದೇಶಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadOrderDetailFailedMessage": "ಆದೇಶ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadAnalyticsFailedMessage": "ಉತ್ಪಾದನಾ ವಿಶ್ಲೇಷಣೆಯನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadFinishedGoodsFailedMessage": "ಸಿದ್ಧಪಡಿಸಿದ ಸರಕುಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadProductionHistoryFailedMessage": "ಉತ್ಪಾದನಾ ಇತಿಹಾಸವನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadDispatchFailedMessage": "ರವಾನೆ ದಾಖಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
+    "loadBomsFailedMessage": "ವಸ್ತುಗಳ ಪಟ್ಟಿಯನ್ನು ಲೋಡ್ ಮಾಡಲು ವಿಫಲವಾಗಿದೆ.",
     "viewMaterials": "ಸಾಮಗ್ರಿಗಳನ್ನು ನೋಡಿ",
     "lowStockCount": "ಕಡಿಮೆ ಸ್ಟಾಕ್",
     "stockCol": "ಸ್ಟಾಕ್",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "ದರ/ಗಂಟೆ",
       "workerNameRequired": "ಕಾರ್ಮಿಕರ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
       "hoursRequired": "ಕೆಲಸ ಮಾಡಿದ ಗಂಟೆಗಳು ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
-      "rateInvalid": "ಗಂಟೆಗೆ ದರ ಋಣಾತ್ಮಕವಾಗಿರಬಾರದು."
+      "rateInvalid": "ಗಂಟೆಗೆ ದರ ಋಣಾತ್ಮಕವಾಗಿರಬಾರದು.",
+      "addFailedMessage": "ಕಾರ್ಮಿಕ ನಮೂದನ್ನು ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "removeFailedMessage": "ಕಾರ್ಮಿಕ ನಮೂದನ್ನು ತೆಗೆದುಹಾಕಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "batchNumber": "ಬ್ಯಾಚ್ / ಲಾಟ್ ಸಂಖ್ಯೆ",
     "receiveBatch": "ಲಾಟ್ ಸ್ವೀಕರಿಸಿ",
@@ -5347,7 +5361,8 @@
       "minutes": "ನಿಮಿಷಗಳು",
       "totalMinutes": "{{minutes}} ನಿಮಿಷ ಡೌನ್‌ಟೈಮ್ ದಾಖಲಿಸಲಾಗಿದೆ",
       "reasonRequired": "ಡೌನ್‌ಟೈಮ್ ಕಾರಣ ಅಗತ್ಯವಿದೆ.",
-      "minutesRequired": "ಡೌನ್‌ಟೈಮ್ ನಿಮಿಷಗಳು ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು."
+      "minutesRequired": "ಡೌನ್‌ಟೈಮ್ ನಿಮಿಷಗಳು ಶೂನ್ಯಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
+      "logFailedMessage": "ಡೌನ್‌ಟೈಮ್ ದಾಖಲಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" ನಿಮ್ಮ ಅತ್ಯಂತ ನಿಧಾನ ಹಂತವಾಗಿದೆ, ಸರಾಸರಿ {{hours}} ಗಂಟೆ (ಒಟ್ಟು ಲೀಡ್ ಟೈಮ್‌ನ {{percent}}%)."

@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "उत्पादन के लिए कच्चा माल देने वाले आपूर्तिकर्ता",
     "noVendorLinked": "कच्चे माल से कोई विक्रेता जुड़ा नहीं है।",
     "noVendorDesc": "उन्हें यहां देखने के लिए किसी कच्चे माल में आपूर्तिकर्ता जोड़ें।",
+    "loadVendorsFailedMessage": "विक्रेता लोड करने में विफल।",
+    "loadVendorMaterialsFailedMessage": "विक्रेता सामग्री लोड करने में विफल।",
+    "loadMaterialsFailedMessage": "कच्चा माल लोड करने में विफल।",
+    "loadMovementsFailedMessage": "मूवमेंट इतिहास लोड करने में विफल।",
+    "loadBatchesFailedMessage": "लॉट लोड करने में विफल।",
+    "loadOrdersFailedMessage": "उत्पादन आदेश लोड करने में विफल।",
+    "loadOrderDetailFailedMessage": "आदेश विवरण लोड करने में विफल।",
+    "loadAnalyticsFailedMessage": "उत्पादन विश्लेषण लोड करने में विफल।",
+    "loadFinishedGoodsFailedMessage": "तैयार माल लोड करने में विफल।",
+    "loadProductionHistoryFailedMessage": "उत्पादन इतिहास लोड करने में विफल।",
+    "loadDispatchFailedMessage": "प्रेषण रिकॉर्ड लोड करने में विफल।",
+    "loadBomsFailedMessage": "सामग्री सूची लोड करने में विफल।",
     "viewMaterials": "सामग्री देखें",
     "lowStockCount": "कम स्टॉक",
     "stockCol": "स्टॉक",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "दर/घंटा",
       "workerNameRequired": "कर्मचारी का नाम आवश्यक है।",
       "hoursRequired": "काम किए गए घंटे शून्य से अधिक होने चाहिए।",
-      "rateInvalid": "प्रति घंटा दर नकारात्मक नहीं हो सकती।"
+      "rateInvalid": "प्रति घंटा दर नकारात्मक नहीं हो सकती।",
+      "addFailedMessage": "श्रम प्रविष्टि जोड़ने में विफल।",
+      "removeFailedMessage": "श्रम प्रविष्टि हटाने में विफल।"
     },
     "batchNumber": "बैच / लॉट नंबर",
     "receiveBatch": "लॉट प्राप्त करें",
@@ -5347,7 +5361,8 @@
       "minutes": "मिनट",
       "totalMinutes": "{{minutes}} मिनट डाउनटाइम दर्ज किया गया",
       "reasonRequired": "डाउनटाइम का कारण ज़रूरी है।",
-      "minutesRequired": "डाउनटाइम मिनट शून्य से अधिक होने चाहिए।"
+      "minutesRequired": "डाउनटाइम मिनट शून्य से अधिक होने चाहिए।",
+      "logFailedMessage": "डाउनटाइम दर्ज करने में विफल।"
     },
     "bottleneck": {
       "message": "\"{{stage}}\" आपका सबसे धीमा चरण है, औसतन {{hours}} घंटे ({{percent}}% कुल लीड टाइम का)।"

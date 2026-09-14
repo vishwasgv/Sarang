@@ -76,10 +76,10 @@ export function DispatchTrackingScreen() {
         const d = res.data as { records: DispatchRecord[] }
         setRecords(d.records ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadDispatchFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadDispatchFailedMessage'))
     } finally {
       setLoading(false)
     }

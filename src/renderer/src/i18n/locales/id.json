@@ -5217,6 +5217,18 @@
     "vendorSubtitle": "Pemasok yang menyediakan bahan baku untuk produksi",
     "noVendorLinked": "Tidak ada vendor yang terhubung ke bahan baku.",
     "noVendorDesc": "Tambahkan pemasok ke bahan baku agar muncul di sini.",
+    "loadVendorsFailedMessage": "Gagal memuat pemasok.",
+    "loadVendorMaterialsFailedMessage": "Gagal memuat bahan pemasok.",
+    "loadMaterialsFailedMessage": "Gagal memuat bahan baku.",
+    "loadMovementsFailedMessage": "Gagal memuat riwayat pergerakan.",
+    "loadBatchesFailedMessage": "Gagal memuat lot.",
+    "loadOrdersFailedMessage": "Gagal memuat perintah produksi.",
+    "loadOrderDetailFailedMessage": "Gagal memuat detail pesanan.",
+    "loadAnalyticsFailedMessage": "Gagal memuat analitik produksi.",
+    "loadFinishedGoodsFailedMessage": "Gagal memuat barang jadi.",
+    "loadProductionHistoryFailedMessage": "Gagal memuat riwayat produksi.",
+    "loadDispatchFailedMessage": "Gagal memuat catatan pengiriman.",
+    "loadBomsFailedMessage": "Gagal memuat daftar bahan.",
     "viewMaterials": "Lihat bahan",
     "lowStockCount": "Stok Menipis",
     "stockCol": "Stok",
@@ -5325,7 +5337,9 @@
       "ratePerHour": "Tarif/Jam",
       "workerNameRequired": "Nama pekerja wajib diisi.",
       "hoursRequired": "Jam kerja harus lebih besar dari nol.",
-      "rateInvalid": "Tarif per jam tidak boleh negatif."
+      "rateInvalid": "Tarif per jam tidak boleh negatif.",
+      "addFailedMessage": "Gagal menambahkan entri tenaga kerja.",
+      "removeFailedMessage": "Gagal menghapus entri tenaga kerja."
     },
     "batchNumber": "Nomor Lot",
     "receiveBatch": "Terima Lot",
@@ -5347,7 +5361,8 @@
       "minutes": "Menit",
       "totalMinutes": "{{minutes}} menit waktu henti tercatat",
       "reasonRequired": "Alasan waktu henti wajib diisi.",
-      "minutesRequired": "Menit waktu henti harus lebih besar dari nol."
+      "minutesRequired": "Menit waktu henti harus lebih besar dari nol.",
+      "logFailedMessage": "Gagal mencatat waktu henti."
     },
     "bottleneck": {
       "message": "\"{{stage}}\" adalah tahap Anda yang paling lambat, rata-rata {{hours}} jam ({{percent}}% dari total waktu tunggu)."

@@ -204,10 +204,10 @@ export function ProductionOrdersScreen() {
         const d = res.data as { orders: ProductionOrder[] }
         setOrders(d.orders)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadOrdersFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadOrdersFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -357,7 +357,7 @@ export function ProductionOrdersScreen() {
       setDetailOrder(order)
       setWorkOrders([])
       setDowntimeEntries({})
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadOrderDetailFailedMessage'))
     }
   }
 
@@ -370,12 +370,12 @@ export function ProductionOrdersScreen() {
     setDowntimeSubmitting(true)
     try {
       const res = await api.workOrders.logDowntime({ workOrderId: downtimeTarget.id, reason: downtimeReason.trim(), minutes, notes: downtimeNotes.trim() || undefined })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+      if (!res.success) { toastError(t('common.error'), t('manufacturing.downtime.logFailedMessage')); return }
       const listRes = await api.workOrders.listDowntime({ workOrderId: downtimeTarget.id })
       if (listRes.success) setDowntimeEntries(prev => ({ ...prev, [downtimeTarget.id]: (listRes.data as DowntimeEntry[]) ?? [] }))
       setDowntimeTarget(null); setDowntimeReason(''); setDowntimeMinutes(''); setDowntimeNotes('')
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.downtime.logFailedMessage'))
     } finally {
       setDowntimeSubmitting(false)
     }
@@ -392,11 +392,11 @@ export function ProductionOrdersScreen() {
     setSavingLabor(true)
     try {
       const res = await api.production.addLaborEntry({ productionOrderId: detailOrder.id, workerName: laborWorkerName.trim(), hoursWorked: hours, ratePerHour: rate })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+      if (!res.success) { toastError(t('common.error'), t('manufacturing.labor.addFailedMessage')); return }
       setLaborWorkerName(''); setLaborHours(''); setLaborRate(''); setShowAddLabor(false)
       await openDetail(detailOrder)
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.labor.addFailedMessage'))
     } finally {
       setSavingLabor(false)
     }
@@ -406,10 +406,10 @@ export function ProductionOrdersScreen() {
     if (!detailOrder) return
     try {
       const res = await api.production.removeLaborEntry(entryId)
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+      if (!res.success) { toastError(t('common.error'), t('manufacturing.labor.removeFailedMessage')); return }
       await openDetail(detailOrder)
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.labor.removeFailedMessage'))
     }
   }
 

@@ -75,10 +75,10 @@ export function VendorManagementScreen() {
           }))
         setVendors(vendorList)
       } else {
-        toastError(t('common.error'), (suppRes.error ?? matRes.error)?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadVendorsFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadVendorsFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -95,10 +95,10 @@ export function VendorManagementScreen() {
         const d = res.data as { materials: RawMaterialForVendor[] }
         setVendorMaterials(d.materials ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('manufacturing.loadVendorMaterialsFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('manufacturing.loadVendorMaterialsFailedMessage'))
     } finally {
       setMatLoading(false)
     }
