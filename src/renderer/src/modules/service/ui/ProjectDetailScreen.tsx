@@ -62,7 +62,7 @@ export function ProjectDetailScreen() {
         api.workLogs.list({ projectId: id, limit: 100 })
       ])
       if (pRes.success && pRes.data) setProject(pRes.data as Project)
-      else toastError(t('common.error'), pRes.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('service.couldNotLoadProjectDetail'))
       if (tRes.success && tRes.data) {
         const d = tRes.data as { tasks: ProjectTask[] }
         setTasks(d.tasks ?? [])
@@ -72,7 +72,7 @@ export function ProjectDetailScreen() {
         setLogs(d.logs ?? [])
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadProjectDetail'))
     } finally {
       setLoading(false)
     }

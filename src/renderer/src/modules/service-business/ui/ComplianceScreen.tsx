@@ -322,10 +322,10 @@ export default function ComplianceScreen(): React.JSX.Element {
         setShowForm(false)
         await loadTasks()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('compliance.saveTaskFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('compliance.saveTaskFailedMessage'))
     } finally {
       setFormSaving(false)
     }
@@ -336,9 +336,9 @@ export default function ComplianceScreen(): React.JSX.Element {
     try {
       const res = await api.complianceTask.delete({ id })
       if (res.success) { setDeleteTaskId(null); await loadTasks() }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('compliance.deleteTaskFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('compliance.deleteTaskFailedMessage'))
     } finally {
       setDeleteTaskSaving(false)
     }
@@ -366,10 +366,10 @@ export default function ComplianceScreen(): React.JSX.Element {
         setUpdateTask(null)
         await loadTasks()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('compliance.updateStatusFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('compliance.updateStatusFailedMessage'))
     } finally {
       setUpdateSaving(false)
     }

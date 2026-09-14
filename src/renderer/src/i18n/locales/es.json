@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "Elija cuánto de cada línea facturar ahora — puede facturar el resto más tarde.",
     "remainingLabel": "{{remaining}} restante",
     "nothingToInvoice": "Nada que Facturar",
-    "enterAtLeastOneQty": "Ingrese una cantidad mayor que cero para al menos una línea."
+    "enterAtLeastOneQty": "Ingrese una cantidad mayor que cero para al menos una línea.",
+    "loadFailedMessage": "Error al cargar los detalles de la orden de venta.",
+    "confirmFailedMessage": "Error al confirmar la orden de venta.",
+    "printFailedMessage": "Error al imprimir la orden de venta.",
+    "cancelFailedMessage": "Error al cancelar la orden de venta.",
+    "createInvoiceFailedMessage": "Error al crear la factura.",
+    "loadListFailedMessage": "Error al cargar las órdenes de venta.",
+    "loadCustomersFailedMessage": "Error al cargar los clientes.",
+    "loadOptionsFailedMessage": "Error al cargar las opciones de la orden de venta.",
+    "createFailedMessage": "Error al crear la orden de venta."
   },
   "priceLists": {
     "title": "Listas de Precios",
@@ -5779,6 +5788,14 @@
     "couldNotDeleteProject": "No se pudo eliminar el proyecto.",
     "couldNotCreateTicket": "No se pudo crear el ticket.",
     "couldNotDeleteTicket": "No se pudo eliminar el ticket.",
+    "couldNotLoadWorkLogs": "No se pudieron cargar los registros de trabajo.",
+    "couldNotLoadTickets": "No se pudieron cargar los tickets.",
+    "couldNotLoadContracts": "No se pudieron cargar los contratos de servicio.",
+    "couldNotLoadProjects": "No se pudieron cargar los proyectos.",
+    "couldNotLoadProjectDetail": "No se pudieron cargar los detalles del proyecto.",
+    "couldNotLoadJobCards": "No se pudieron cargar las órdenes de trabajo.",
+    "couldNotLoadCustomers": "No se pudieron cargar los clientes.",
+    "couldNotLoadCustomerHistory": "No se pudo cargar el historial del cliente.",
     "enterValidBillableAmount": "Ingrese un monto facturable mayor que cero.",
     "confirmCancelJob": "¿Cancelar esta orden de trabajo? El artículo del cliente ya no se seguirá a través del flujo de reparación. Esto no se puede deshacer.",
     "confirmCancelProject": "¿Marcar este proyecto como cancelado? Aún podrá ver su historial, pero ya no se seguirá como trabajo activo."
@@ -6056,7 +6073,10 @@
   },
   "compliance": {
     "disclaimerLabel": "Aviso legal:",
-    "disclaimerText": "Las fechas de cumplimiento son indicativas. Verifique las fechas límite actuales en gst.gov.in e incometax.gov.in. Aszurex no acepta responsabilidad por presentaciones no realizadas según las fechas mostradas aquí."
+    "disclaimerText": "Las fechas de cumplimiento son indicativas. Verifique las fechas límite actuales en gst.gov.in e incometax.gov.in. Aszurex no acepta responsabilidad por presentaciones no realizadas según las fechas mostradas aquí.",
+    "saveTaskFailedMessage": "Error al guardar la tarea de cumplimiento.",
+    "deleteTaskFailedMessage": "Error al eliminar la tarea de cumplimiento.",
+    "updateStatusFailedMessage": "Error al actualizar el estado de la tarea de cumplimiento."
   },
   "logistics": {
     "fleet": {
@@ -6419,7 +6439,9 @@
       "deleteMeasurementFailed": "No se pudo eliminar la medida.",
       "updateStatusFailed": "No se pudo actualizar el estado.",
       "trialDateRequired": "La fecha de la prueba es obligatoria.",
-      "fabricQuantityInvalid": "Ingrese una cantidad válida."
+      "fabricQuantityInvalid": "Ingrese una cantidad válida.",
+      "loadOrdersFailed": "Error al cargar los pedidos.",
+      "loadMeasurementsFailed": "Error al cargar las medidas."
     },
     "trial": {
       "title": "Programar Prueba",
@@ -6973,6 +6995,8 @@
     "checkedIn": "Entrada registrada",
     "checkedOut": "Salida registrada",
     "checkInFailed": "No se pudo registrar la entrada. Inténtalo de nuevo.",
+    "checkOutFailed": "No se pudo registrar la salida. Inténtalo de nuevo.",
+    "loadFailed": "No se pudieron cargar los registros de entrada.",
     "currentlyIn": "Actualmente presentes ({{count}})",
     "noOneIn": "Nadie ha registrado entrada actualmente.",
     "recentVisits": "Visitas Recientes",

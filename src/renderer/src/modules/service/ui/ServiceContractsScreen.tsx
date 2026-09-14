@@ -51,9 +51,9 @@ export function ServiceContractsScreen(): React.JSX.Element {
     try {
       const res = await window.api.serviceContracts.list()
       if (res.success) setContracts((res.data as ServiceContract[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('service.couldNotLoadContracts'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadContracts'))
     } finally {
       setLoading(false)
     }
@@ -105,7 +105,7 @@ export function ServiceContractsScreen(): React.JSX.Element {
         setInvoiceTarget(null)
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('service.couldNotGenerateInvoice'))
       }
     } finally {
       setInvoicing(false)

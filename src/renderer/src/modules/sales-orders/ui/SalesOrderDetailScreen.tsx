@@ -73,7 +73,7 @@ export function SalesOrderDetailScreen() {
       else setError(res.error?.message ?? t('salesOrders.notFound'))
     } catch {
       setError(t('common.error'))
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('salesOrders.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -91,10 +91,10 @@ export function SalesOrderDetailScreen() {
         toastSuccess(status === 'PENDING_APPROVAL' ? t('salesOrders.submittedForApproval') : t('salesOrders.confirmed'), so.soNumber)
         loadSO()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('salesOrders.confirmFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('salesOrders.confirmFailedMessage'))
     } finally { setConfirming(false) }
   }
 
@@ -103,9 +103,9 @@ export function SalesOrderDetailScreen() {
     setPrinting(true)
     try {
       const res = await window.api.salesOrders.print(so.id)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('salesOrders.printFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('salesOrders.printFailedMessage'))
     } finally { setPrinting(false) }
   }
 
@@ -119,10 +119,10 @@ export function SalesOrderDetailScreen() {
         setCancelOpen(false)
         loadSO()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('salesOrders.cancelFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('salesOrders.cancelFailedMessage'))
     } finally { setCancelling(false) }
   }
 
@@ -152,10 +152,10 @@ export function SalesOrderDetailScreen() {
         setInvoiceOpen(false)
         loadSO()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('salesOrders.createInvoiceFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('salesOrders.createInvoiceFailedMessage'))
     } finally { setInvoicing(false) }
   }
 

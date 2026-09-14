@@ -288,9 +288,9 @@ export default function TailoringScreen() {
       if (q) filters.search = q
       const res = await api.tailoringOrder.list(filters)
       if (res.success) setOrders(res.data as TailoringOrder[])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('tailoring.errors.loadOrdersFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('tailoring.errors.loadOrdersFailed'))
     }
   }, [toastError, t])
 
@@ -319,10 +319,10 @@ export default function TailoringScreen() {
         setMeasurements(recs)
         setClientMeasurements(prev => ({ ...prev, [cid]: recs }))
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('tailoring.errors.loadMeasurementsFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('tailoring.errors.loadMeasurementsFailed'))
     }
   }
 

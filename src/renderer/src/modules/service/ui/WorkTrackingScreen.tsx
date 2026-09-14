@@ -51,7 +51,7 @@ export function WorkTrackingScreen() {
         const d = lRes.data as { logs: WorkLog[] }
         setLogs(d.logs ?? [])
       } else {
-        toastError(t('common.error'), lRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('service.couldNotLoadWorkLogs'))
       }
       if (pRes.success && pRes.data) {
         const d = pRes.data as { projects: Project[] }
@@ -66,7 +66,7 @@ export function WorkTrackingScreen() {
         setJobCards(d.jobCards ?? [])
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadWorkLogs'))
     } finally {
       setLoading(false)
     }

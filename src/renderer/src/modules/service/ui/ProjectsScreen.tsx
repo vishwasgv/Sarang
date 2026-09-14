@@ -82,7 +82,7 @@ export function ProjectsScreen() {
         const d = pRes.data as { projects: Project[] }
         setProjects(d.projects ?? [])
       } else {
-        toastError(t('common.error'), pRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('service.couldNotLoadProjects'))
       }
       if (cRes.success && cRes.data) {
         const d = cRes.data as { customers: Customer[] }
@@ -104,7 +104,7 @@ export function ProjectsScreen() {
         setWinRate(wRes.data as { totalProposals: number; winRatePercent: number })
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadProjects'))
     } finally {
       setLoading(false)
     }
@@ -139,7 +139,7 @@ export function ProjectsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotCreateProject'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotCreateProject'))
     } finally {
       setSaving(false)
     }
@@ -177,7 +177,7 @@ export function ProjectsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotDeleteProject'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotDeleteProject'))
     } finally {
       setDeleting(false)
     }
@@ -196,7 +196,7 @@ export function ProjectsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotGenerateInvoice'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotGenerateInvoice'))
     } finally {
       setGeneratingInvoice(false)
     }

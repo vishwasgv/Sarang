@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "Choisissez la quantité à facturer maintenant pour chaque ligne — vous pourrez facturer le reste plus tard.",
     "remainingLabel": "{{remaining}} restant",
     "nothingToInvoice": "Rien à Facturer",
-    "enterAtLeastOneQty": "Saisissez une quantité supérieure à zéro pour au moins une ligne."
+    "enterAtLeastOneQty": "Saisissez une quantité supérieure à zéro pour au moins une ligne.",
+    "loadFailedMessage": "Échec du chargement des détails de la commande client.",
+    "confirmFailedMessage": "Échec de la confirmation de la commande client.",
+    "printFailedMessage": "Échec de l'impression de la commande client.",
+    "cancelFailedMessage": "Échec de l'annulation de la commande client.",
+    "createInvoiceFailedMessage": "Échec de la création de la facture.",
+    "loadListFailedMessage": "Échec du chargement des commandes clients.",
+    "loadCustomersFailedMessage": "Échec du chargement des clients.",
+    "loadOptionsFailedMessage": "Échec du chargement des options de la commande client.",
+    "createFailedMessage": "Échec de la création de la commande client."
   },
   "priceLists": {
     "title": "Listes de Prix",
@@ -5588,6 +5597,14 @@
     "couldNotDeleteProject": "Impossible de supprimer le projet.",
     "couldNotCreateTicket": "Impossible de créer le ticket.",
     "couldNotDeleteTicket": "Impossible de supprimer le ticket.",
+    "couldNotLoadWorkLogs": "Impossible de charger les journaux de travail.",
+    "couldNotLoadTickets": "Impossible de charger les tickets.",
+    "couldNotLoadContracts": "Impossible de charger les contrats de service.",
+    "couldNotLoadProjects": "Impossible de charger les projets.",
+    "couldNotLoadProjectDetail": "Impossible de charger les détails du projet.",
+    "couldNotLoadJobCards": "Impossible de charger les fiches de travail.",
+    "couldNotLoadCustomers": "Impossible de charger les clients.",
+    "couldNotLoadCustomerHistory": "Impossible de charger l'historique du client.",
     "enterValidBillableAmount": "Entrez un montant facturable supérieur à zéro.",
     "confirmCancelJob": "Annuler cette fiche de travail ? L'article du client ne sera plus suivi dans le flux de réparation. Cette action est irréversible.",
     "confirmCancelProject": "Marquer ce projet comme annulé ? Vous pourrez toujours consulter son historique, mais il ne sera plus suivi comme travail actif."
@@ -5865,7 +5882,10 @@
   },
   "compliance": {
     "disclaimerLabel": "Avertissement :",
-    "disclaimerText": "Les dates de conformité sont indicatives. Vérifiez les échéances actuelles sur gst.gov.in et incometax.gov.in. Aszurex décline toute responsabilité en cas de dépôt manqué basé sur les dates affichées ici."
+    "disclaimerText": "Les dates de conformité sont indicatives. Vérifiez les échéances actuelles sur gst.gov.in et incometax.gov.in. Aszurex décline toute responsabilité en cas de dépôt manqué basé sur les dates affichées ici.",
+    "saveTaskFailedMessage": "Échec de l'enregistrement de la tâche de conformité.",
+    "deleteTaskFailedMessage": "Échec de la suppression de la tâche de conformité.",
+    "updateStatusFailedMessage": "Échec de la mise à jour du statut de la tâche de conformité."
   },
   "logistics": {
     "fleet": {
@@ -6228,7 +6248,9 @@
       "deleteMeasurementFailed": "Échec de la suppression de la mesure.",
       "updateStatusFailed": "Échec de la mise à jour du statut.",
       "trialDateRequired": "La date d'essayage est requise.",
-      "fabricQuantityInvalid": "Entrez une quantité valide."
+      "fabricQuantityInvalid": "Entrez une quantité valide.",
+      "loadOrdersFailed": "Échec du chargement des commandes.",
+      "loadMeasurementsFailed": "Échec du chargement des mesures."
     },
     "measurements": {
       "selectClient": "Sélectionner un Client",
@@ -6973,6 +6995,8 @@
     "checkedIn": "Arrivée enregistrée",
     "checkedOut": "Départ enregistré",
     "checkInFailed": "Impossible d'enregistrer l'arrivée. Veuillez réessayer.",
+    "checkOutFailed": "Impossible d'enregistrer le départ. Veuillez réessayer.",
+    "loadFailed": "Impossible de charger les enregistrements de présence.",
     "currentlyIn": "Actuellement présents ({{count}})",
     "noOneIn": "Personne n'est actuellement présent.",
     "recentVisits": "Visites Récentes",

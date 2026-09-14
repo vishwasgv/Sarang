@@ -108,7 +108,7 @@ export function JobCardsScreen() {
         const d = jRes.data as { jobCards: JobCard[] }
         setCards(d.jobCards ?? [])
       } else {
-        toastError(t('common.error'), jRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('service.couldNotLoadJobCards'))
       }
       if (cRes.success && cRes.data) {
         const d = cRes.data as { customers: Customer[] }
@@ -118,7 +118,7 @@ export function JobCardsScreen() {
         setUsers(uRes.data as User[])
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadJobCards'))
     } finally {
       setLoading(false)
     }
@@ -180,7 +180,7 @@ export function JobCardsScreen() {
     try {
       const res = await api.jobCards.removePart({ id: partId })
       if (res.success) await loadParts(detail.id)
-      else toastError(t('common.error'), (res.error as any)?.message ?? t('service.couldNotRemovePart'))
+      else toastError(t('common.error'), t('service.couldNotRemovePart'))
     } catch {
       toastError(t('common.error'), t('service.couldNotRemovePart'))
     }
@@ -199,7 +199,7 @@ export function JobCardsScreen() {
         setCards(prev => prev.map(c => c.id === updated.id ? updated : c))
         toastSuccess(t('service.warrantySaved'))
       } else {
-        toastError(t('common.error'), (res.error as any)?.message ?? t('service.couldNotSaveWarranty'))
+        toastError(t('common.error'), t('service.couldNotSaveWarranty'))
       }
     } catch {
       toastError(t('common.error'), t('service.couldNotSaveWarranty'))
@@ -251,7 +251,7 @@ export function JobCardsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotCreateJobCard'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotCreateJobCard'))
     } finally {
       setSaving(false)
     }
@@ -347,7 +347,7 @@ export function JobCardsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotDeleteJobCard'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotDeleteJobCard'))
     } finally {
       setDeleting(false)
     }
@@ -366,7 +366,7 @@ export function JobCardsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotGenerateInvoice'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotGenerateInvoice'))
     } finally {
       setGeneratingInvoice(false)
     }

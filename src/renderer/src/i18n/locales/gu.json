@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "હમણાં દરેક લાઇનમાંથી કેટલું બિલ કરવું તે પસંદ કરો — બાકીનું પછી બિલ કરી શકો છો.",
     "remainingLabel": "{{remaining}} બાકી",
     "nothingToInvoice": "બિલ કરવા માટે કંઈ નથી",
-    "enterAtLeastOneQty": "ઓછામાં ઓછી એક લાઇન માટે શૂન્ય કરતાં વધુ જથ્થો દાખલ કરો."
+    "enterAtLeastOneQty": "ઓછામાં ઓછી એક લાઇન માટે શૂન્ય કરતાં વધુ જથ્થો દાખલ કરો.",
+    "loadFailedMessage": "વેચાણ ઓર્ડરની વિગતો લોડ કરવામાં નિષ્ફળ.",
+    "confirmFailedMessage": "વેચાણ ઓર્ડરની પુષ્ટિ કરવામાં નિષ્ફળ.",
+    "printFailedMessage": "વેચાણ ઓર્ડર પ્રિન્ટ કરવામાં નિષ્ફળ.",
+    "cancelFailedMessage": "વેચાણ ઓર્ડર રદ કરવામાં નિષ્ફળ.",
+    "createInvoiceFailedMessage": "બિલ બનાવવામાં નિષ્ફળ.",
+    "loadListFailedMessage": "વેચાણ ઓર્ડર લોડ કરવામાં નિષ્ફળ.",
+    "loadCustomersFailedMessage": "ગ્રાહકો લોડ કરવામાં નિષ્ફળ.",
+    "loadOptionsFailedMessage": "વેચાણ ઓર્ડર વિકલ્પો લોડ કરવામાં નિષ્ફળ.",
+    "createFailedMessage": "વેચાણ ઓર્ડર બનાવવામાં નિષ્ફળ."
   },
   "priceLists": {
     "title": "કિંમત યાદીઓ",
@@ -5588,6 +5597,14 @@
     "couldNotDeleteProject": "પ્રોજેક્ટ ડિલીટ કરી શકાયો નહીં.",
     "couldNotCreateTicket": "ટિકિટ બની શકી નહીં.",
     "couldNotDeleteTicket": "ટિકિટ ડિલીટ કરી શકાઈ નહીં.",
+    "couldNotLoadWorkLogs": "કાર્ય લોગ લોડ કરી શકાયા નહીં.",
+    "couldNotLoadTickets": "ટિકિટ લોડ કરી શકાઈ નહીં.",
+    "couldNotLoadContracts": "સેવા કરાર લોડ કરી શકાયા નહીં.",
+    "couldNotLoadProjects": "પ્રોજેક્ટ્સ લોડ કરી શકાયા નહીં.",
+    "couldNotLoadProjectDetail": "પ્રોજેક્ટ વિગતો લોડ કરી શકાઈ નહીં.",
+    "couldNotLoadJobCards": "જોબ કાર્ડ લોડ કરી શકાયા નહીં.",
+    "couldNotLoadCustomers": "ગ્રાહકો લોડ કરી શકાયા નહીં.",
+    "couldNotLoadCustomerHistory": "ગ્રાહક ઇતિહાસ લોડ કરી શકાયો નહીં.",
     "enterValidBillableAmount": "શૂન્યથી વધુ બિલ કરવાપાત્ર રકમ દાખલ કરો.",
     "confirmCancelJob": "આ જૉબ કાર્ડ રદ કરવું છે? ગ્રાહકની વસ્તુ હવે રિપેર વર્કફ્લોમાં ટ્રેક થશે નહીં. આ પૂર્વવત્ કરી શકાશે નહીં.",
     "confirmCancelProject": "આ પ્રોજેક્ટને રદ થયેલ તરીકે ચિહ્નિત કરવો છે? તમે હજુ પણ તેનો ઇતિહાસ જોઈ શકો છો, પરંતુ તે હવે સક્રિય કાર્ય તરીકે ટ્રેક થશે નહીં."
@@ -5865,7 +5882,10 @@
   },
   "compliance": {
     "disclaimerLabel": "અસ્વીકરણ:",
-    "disclaimerText": "પાલન તારીખો ફક્ત સૂચક છે. gst.gov.in અને incometax.gov.in પર વર્તમાન નિયત તારીખો ચકાસો. અહીં દર્શાવેલ તારીખોના આધારે ચૂકી ગયેલી ફાઇલિંગ માટે Aszurex કોઈ જવાબદારી સ્વીકારતું નથી."
+    "disclaimerText": "પાલન તારીખો ફક્ત સૂચક છે. gst.gov.in અને incometax.gov.in પર વર્તમાન નિયત તારીખો ચકાસો. અહીં દર્શાવેલ તારીખોના આધારે ચૂકી ગયેલી ફાઇલિંગ માટે Aszurex કોઈ જવાબદારી સ્વીકારતું નથી.",
+    "saveTaskFailedMessage": "પાલન કાર્ય સાચવવામાં નિષ્ફળ.",
+    "deleteTaskFailedMessage": "પાલન કાર્ય ડિલીટ કરવામાં નિષ્ફળ.",
+    "updateStatusFailedMessage": "પાલન કાર્યની સ્થિતિ અપડેટ કરવામાં નિષ્ફળ."
   },
   "logistics": {
     "fleet": {
@@ -6228,7 +6248,9 @@
       "deleteMeasurementFailed": "માપ કાઢવામાં નિષ્ફળ.",
       "updateStatusFailed": "સ્થિતિ અપડેટ કરવામાં નિષ્ફળ.",
       "trialDateRequired": "ટ્રાયલ તારીખ જરૂરી છે.",
-      "fabricQuantityInvalid": "માન્ય જથ્થો દાખલ કરો."
+      "fabricQuantityInvalid": "માન્ય જથ્થો દાખલ કરો.",
+      "loadOrdersFailed": "ઓર્ડર લોડ કરવામાં નિષ્ફળ.",
+      "loadMeasurementsFailed": "માપ લોડ કરવામાં નિષ્ફળ."
     },
     "measurements": {
       "selectClient": "ગ્રાહક પસંદ કરો",
@@ -6973,6 +6995,8 @@
     "checkedIn": "ચેક ઇન થયું",
     "checkedOut": "ચેક આઉટ થયું",
     "checkInFailed": "ચેક ઇન કરી શકાયું નથી. કૃપા કરી ફરી પ્રયાસ કરો.",
+    "checkOutFailed": "ચેક આઉટ કરી શકાયું નથી. કૃપા કરી ફરી પ્રયાસ કરો.",
+    "loadFailed": "ચેક-ઇન રેકોર્ડ્સ લોડ કરી શકાયા નહીં.",
     "currentlyIn": "હાલમાં ચેક ઇન ({{count}})",
     "noOneIn": "હાલમાં કોઈ ચેક ઇન નથી.",
     "recentVisits": "તાજેતરની મુલાકાતો",

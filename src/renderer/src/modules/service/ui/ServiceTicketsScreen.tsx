@@ -81,7 +81,7 @@ export function ServiceTicketsScreen() {
         const d = tRes.data as { tickets: Ticket[] }
         setTickets(d.tickets ?? [])
       } else {
-        toastError(t('common.error'), tRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('service.couldNotLoadTickets'))
       }
       if (cRes.success && cRes.data) {
         const d = cRes.data as { customers: Customer[] }
@@ -99,7 +99,7 @@ export function ServiceTicketsScreen() {
         setAcceptedQuotations(d.quotations ?? [])
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadTickets'))
     } finally {
       setLoading(false)
     }
@@ -136,7 +136,7 @@ export function ServiceTicketsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotCreateTicket'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotCreateTicket'))
     } finally {
       setSaving(false)
     }
@@ -177,7 +177,7 @@ export function ServiceTicketsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotDeleteTicket'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotDeleteTicket'))
     } finally {
       setDeleting(false)
     }
@@ -199,7 +199,7 @@ export function ServiceTicketsScreen() {
         toastError((res.error as any)?.message ?? t('service.couldNotGenerateInvoice'))
       }
     } catch {
-      toastError(t('common.error'))
+      toastError(t('common.error'), t('service.couldNotGenerateInvoice'))
     } finally {
       setGeneratingInvoice(false)
     }

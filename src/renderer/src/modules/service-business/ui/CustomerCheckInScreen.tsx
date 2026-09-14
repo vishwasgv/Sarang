@@ -49,10 +49,10 @@ export function CustomerCheckInScreen(): React.JSX.Element {
         api.customerCheckIn.list(),
       ])
       if (activeRes.success) setActive((activeRes.data as CheckInRow[]) ?? [])
-      else toastError(t('common.error'), activeRes.error?.message ?? '')
+      else toastError(t('common.error'), t('checkin.loadFailed'))
       if (recentRes.success) setRecent((recentRes.data as CheckInRow[]) ?? [])
     } catch {
-      toastError(t('common.error'), '')
+      toastError(t('common.error'), t('checkin.loadFailed'))
     } finally {
       setLoading(false)
     }
@@ -86,9 +86,9 @@ export function CustomerCheckInScreen(): React.JSX.Element {
     try {
       const res = await api.customerCheckIn.checkOut({ checkInId: id })
       if (res.success) { toastSuccess(t('checkin.checkedOut'), ''); await load() }
-      else toastError(t('common.error'), res.error?.message ?? '')
+      else toastError(t('common.error'), t('checkin.checkOutFailed'))
     } catch {
-      toastError(t('common.error'), '')
+      toastError(t('common.error'), t('checkin.checkOutFailed'))
     } finally {
       setCheckingOutId(null)
     }

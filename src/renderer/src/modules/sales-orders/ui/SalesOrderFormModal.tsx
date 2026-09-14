@@ -134,7 +134,7 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
       const d = cRes.data as { customers: Customer[] }
       setCustomers(d.customers ?? [])
     } else {
-      toastError(t('common.error'), cRes.error?.message ?? t('common.error'))
+      toastError(t('common.error'), t('salesOrders.loadCustomersFailedMessage'))
     }
   }
 
@@ -155,7 +155,7 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
         }
         if (cRes.success) setCategories((cRes.data as ExpenseCategory[]) ?? [])
       } catch {
-        toastError(t('common.error'), t('common.error'))
+        toastError(t('common.error'), t('salesOrders.loadOptionsFailedMessage'))
       } finally {
         setLoadingData(false)
       }
@@ -208,10 +208,10 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
         toastSuccess(t('salesOrders.newOrder'), so.soNumber)
         onSaved(so.id)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('salesOrders.createFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('salesOrders.createFailedMessage'))
     }
   }
 

@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "Escolha quanto de cada linha faturar agora — pode faturar o restante depois.",
     "remainingLabel": "{{remaining}} restante",
     "nothingToInvoice": "Nada para Faturar",
-    "enterAtLeastOneQty": "Insira uma quantidade maior que zero para pelo menos uma linha."
+    "enterAtLeastOneQty": "Insira uma quantidade maior que zero para pelo menos uma linha.",
+    "loadFailedMessage": "Falha ao carregar os detalhes do pedido de venda.",
+    "confirmFailedMessage": "Falha ao confirmar o pedido de venda.",
+    "printFailedMessage": "Falha ao imprimir o pedido de venda.",
+    "cancelFailedMessage": "Falha ao cancelar o pedido de venda.",
+    "createInvoiceFailedMessage": "Falha ao criar a fatura.",
+    "loadListFailedMessage": "Falha ao carregar os pedidos de venda.",
+    "loadCustomersFailedMessage": "Falha ao carregar os clientes.",
+    "loadOptionsFailedMessage": "Falha ao carregar as opções do pedido de venda.",
+    "createFailedMessage": "Falha ao criar o pedido de venda."
   },
   "priceLists": {
     "title": "Listas de Preços",
@@ -5588,6 +5597,14 @@
     "couldNotDeleteProject": "Não foi possível excluir o projeto.",
     "couldNotCreateTicket": "Não foi possível criar o ticket.",
     "couldNotDeleteTicket": "Não foi possível excluir o ticket.",
+    "couldNotLoadWorkLogs": "Falha ao carregar os registros de trabalho.",
+    "couldNotLoadTickets": "Falha ao carregar os tickets.",
+    "couldNotLoadContracts": "Falha ao carregar os contratos de serviço.",
+    "couldNotLoadProjects": "Falha ao carregar os projetos.",
+    "couldNotLoadProjectDetail": "Falha ao carregar os detalhes do projeto.",
+    "couldNotLoadJobCards": "Falha ao carregar as ordens de serviço.",
+    "couldNotLoadCustomers": "Falha ao carregar os clientes.",
+    "couldNotLoadCustomerHistory": "Falha ao carregar o histórico do cliente.",
     "enterValidBillableAmount": "Informe um valor faturável maior que zero.",
     "confirmCancelJob": "Cancelar esta ordem de serviço? O item do cliente não será mais rastreado no fluxo de reparo. Esta ação não pode ser desfeita.",
     "confirmCancelProject": "Marcar este projeto como cancelado? Você ainda pode ver seu histórico, mas ele não será mais rastreado como trabalho ativo."
@@ -5865,7 +5882,10 @@
   },
   "compliance": {
     "disclaimerLabel": "Aviso:",
-    "disclaimerText": "As datas de conformidade são indicativas. Verifique os prazos atuais em gst.gov.in e incometax.gov.in. A Aszurex não aceita responsabilidade por entregas perdidas com base nas datas mostradas aqui."
+    "disclaimerText": "As datas de conformidade são indicativas. Verifique os prazos atuais em gst.gov.in e incometax.gov.in. A Aszurex não aceita responsabilidade por entregas perdidas com base nas datas mostradas aqui.",
+    "saveTaskFailedMessage": "Falha ao salvar a tarefa de conformidade.",
+    "deleteTaskFailedMessage": "Falha ao excluir a tarefa de conformidade.",
+    "updateStatusFailedMessage": "Falha ao atualizar o status da tarefa de conformidade."
   },
   "logistics": {
     "fleet": {
@@ -6228,7 +6248,9 @@
       "deleteMeasurementFailed": "Falha ao excluir a medida.",
       "updateStatusFailed": "Falha ao atualizar o status.",
       "trialDateRequired": "A data da prova é obrigatória.",
-      "fabricQuantityInvalid": "Insira uma quantidade válida."
+      "fabricQuantityInvalid": "Insira uma quantidade válida.",
+      "loadOrdersFailed": "Falha ao carregar os pedidos.",
+      "loadMeasurementsFailed": "Falha ao carregar as medidas."
     },
     "measurements": {
       "selectClient": "Selecionar Cliente",
@@ -6973,6 +6995,8 @@
     "checkedIn": "Check-in realizado",
     "checkedOut": "Check-out realizado",
     "checkInFailed": "Não foi possível fazer o check-in. Tente novamente.",
+    "checkOutFailed": "Não foi possível fazer o check-out. Tente novamente.",
+    "loadFailed": "Falha ao carregar os registros de check-in.",
     "currentlyIn": "Presentes no momento ({{count}})",
     "noOneIn": "Ninguém está presente no momento.",
     "recentVisits": "Visitas Recentes",

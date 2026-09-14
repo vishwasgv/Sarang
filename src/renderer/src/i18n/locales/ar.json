@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "اختر مقدار ما تريد فوترته الآن من كل سطر — يمكنك فوترة الباقي لاحقًا.",
     "remainingLabel": "متبقٍ {{remaining}}",
     "nothingToInvoice": "لا يوجد ما يمكن فوترته",
-    "enterAtLeastOneQty": "أدخل كمية أكبر من صفر لسطر واحد على الأقل."
+    "enterAtLeastOneQty": "أدخل كمية أكبر من صفر لسطر واحد على الأقل.",
+    "loadFailedMessage": "فشل تحميل تفاصيل أمر البيع.",
+    "confirmFailedMessage": "فشل تأكيد أمر البيع.",
+    "printFailedMessage": "فشل طباعة أمر البيع.",
+    "cancelFailedMessage": "فشل إلغاء أمر البيع.",
+    "createInvoiceFailedMessage": "فشل إنشاء الفاتورة.",
+    "loadListFailedMessage": "فشل تحميل أوامر البيع.",
+    "loadCustomersFailedMessage": "فشل تحميل العملاء.",
+    "loadOptionsFailedMessage": "فشل تحميل خيارات أمر البيع.",
+    "createFailedMessage": "فشل إنشاء أمر البيع."
   },
   "priceLists": {
     "title": "قوائم الأسعار",
@@ -5588,6 +5597,14 @@
     "couldNotDeleteProject": "تعذر حذف المشروع.",
     "couldNotCreateTicket": "تعذر إنشاء التذكرة.",
     "couldNotDeleteTicket": "تعذر حذف التذكرة.",
+    "couldNotLoadWorkLogs": "تعذر تحميل سجلات العمل.",
+    "couldNotLoadTickets": "تعذر تحميل التذاكر.",
+    "couldNotLoadContracts": "تعذر تحميل عقود الخدمة.",
+    "couldNotLoadProjects": "تعذر تحميل المشاريع.",
+    "couldNotLoadProjectDetail": "تعذر تحميل تفاصيل المشروع.",
+    "couldNotLoadJobCards": "تعذر تحميل بطاقات العمل.",
+    "couldNotLoadCustomers": "تعذر تحميل العملاء.",
+    "couldNotLoadCustomerHistory": "تعذر تحميل سجل العميل.",
     "enterValidBillableAmount": "أدخل مبلغًا قابلًا للفوترة أكبر من صفر.",
     "confirmCancelJob": "إلغاء بطاقة العمل هذه؟ لن يُتتبَّع صنف العميل بعد ذلك عبر مسار الإصلاح. لا يمكن التراجع عن هذا.",
     "confirmCancelProject": "وضع علامة على هذا المشروع كملغى؟ يمكنك ما زلت عرض سجله، لكنه لن يُتتبَّع كعمل نشط بعد الآن."
@@ -5865,7 +5882,10 @@
   },
   "compliance": {
     "disclaimerLabel": "إخلاء مسؤولية:",
-    "disclaimerText": "تواريخ الامتثال إرشادية فقط. يرجى التحقق من المواعيد النهائية الحالية على gst.gov.in و incometax.gov.in. لا تتحمل Aszurex أي مسؤولية عن أي تأخير في التقديم بناءً على التواريخ الموضحة هنا."
+    "disclaimerText": "تواريخ الامتثال إرشادية فقط. يرجى التحقق من المواعيد النهائية الحالية على gst.gov.in و incometax.gov.in. لا تتحمل Aszurex أي مسؤولية عن أي تأخير في التقديم بناءً على التواريخ الموضحة هنا.",
+    "saveTaskFailedMessage": "فشل حفظ مهمة الامتثال.",
+    "deleteTaskFailedMessage": "فشل حذف مهمة الامتثال.",
+    "updateStatusFailedMessage": "فشل تحديث حالة مهمة الامتثال."
   },
   "logistics": {
     "fleet": {
@@ -6228,7 +6248,9 @@
       "deleteMeasurementFailed": "فشل حذف المقاس.",
       "updateStatusFailed": "فشل تحديث الحالة.",
       "trialDateRequired": "تاريخ التجربة مطلوب.",
-      "fabricQuantityInvalid": "أدخل كمية صحيحة."
+      "fabricQuantityInvalid": "أدخل كمية صحيحة.",
+      "loadOrdersFailed": "فشل تحميل الطلبات.",
+      "loadMeasurementsFailed": "فشل تحميل القياسات."
     },
     "measurements": {
       "selectClient": "اختر العميل",
@@ -6973,6 +6995,8 @@
     "checkedIn": "تم تسجيل الدخول",
     "checkedOut": "تم تسجيل الخروج",
     "checkInFailed": "تعذر تسجيل الدخول. حاول مرة أخرى.",
+    "checkOutFailed": "تعذر تسجيل الخروج. حاول مرة أخرى.",
+    "loadFailed": "تعذر تحميل سجلات تسجيل الدخول.",
     "currentlyIn": "الحاضرون حاليًا ({{count}})",
     "noOneIn": "لا يوجد أحد حاضر حاليًا.",
     "recentVisits": "الزيارات الأخيرة",

@@ -1912,7 +1912,16 @@
     "partialInvoiceHint": "Choose how much of each line to invoice now — you can invoice the rest later.",
     "remainingLabel": "{{remaining}} remaining",
     "nothingToInvoice": "Nothing to Invoice",
-    "enterAtLeastOneQty": "Enter a quantity greater than zero for at least one line."
+    "enterAtLeastOneQty": "Enter a quantity greater than zero for at least one line.",
+    "loadFailedMessage": "Failed to load sales order details.",
+    "confirmFailedMessage": "Failed to confirm sales order.",
+    "printFailedMessage": "Failed to print sales order.",
+    "cancelFailedMessage": "Failed to cancel sales order.",
+    "createInvoiceFailedMessage": "Failed to create invoice.",
+    "loadListFailedMessage": "Failed to load sales orders.",
+    "loadCustomersFailedMessage": "Failed to load customers.",
+    "loadOptionsFailedMessage": "Failed to load sales order options.",
+    "createFailedMessage": "Failed to create sales order."
   },
   "priceLists": {
     "title": "Price Lists",
@@ -4245,6 +4254,8 @@
     "checkedIn": "Checked in",
     "checkedOut": "Checked out",
     "checkInFailed": "Could not check in. Please try again.",
+    "checkOutFailed": "Could not check out. Please try again.",
+    "loadFailed": "Could not load check-in records.",
     "currentlyIn": "Currently checked in ({{count}})",
     "noOneIn": "No one is currently checked in.",
     "recentVisits": "Recent Visits",
@@ -6169,6 +6180,14 @@
     "couldNotDeleteProject": "Could not delete project.",
     "couldNotCreateTicket": "Could not create ticket.",
     "couldNotDeleteTicket": "Could not delete ticket.",
+    "couldNotLoadWorkLogs": "Could not load work logs.",
+    "couldNotLoadTickets": "Could not load tickets.",
+    "couldNotLoadContracts": "Could not load service contracts.",
+    "couldNotLoadProjects": "Could not load projects.",
+    "couldNotLoadProjectDetail": "Could not load project details.",
+    "couldNotLoadJobCards": "Could not load job cards.",
+    "couldNotLoadCustomers": "Could not load customers.",
+    "couldNotLoadCustomerHistory": "Could not load customer history.",
     "enterValidBillableAmount": "Enter a billable amount greater than zero.",
     "confirmCancelJob": "Cancel this job card? The customer's item will no longer be tracked through the repair workflow. This cannot be undone.",
     "confirmCancelProject": "Mark this project as cancelled? You can still view its history, but it will no longer be tracked as active work."
@@ -6446,7 +6465,10 @@
   },
   "compliance": {
     "disclaimerLabel": "Disclaimer:",
-    "disclaimerText": "Compliance dates are indicative. Verify current due dates with gst.gov.in and incometax.gov.in. Aszurex accepts no liability for missed filings based on dates shown here."
+    "disclaimerText": "Compliance dates are indicative. Verify current due dates with gst.gov.in and incometax.gov.in. Aszurex accepts no liability for missed filings based on dates shown here.",
+    "saveTaskFailedMessage": "Failed to save compliance task.",
+    "deleteTaskFailedMessage": "Failed to delete compliance task.",
+    "updateStatusFailedMessage": "Failed to update compliance task status."
   },
   "logistics": {
     "fleet": {
@@ -6813,7 +6835,9 @@
       "deleteMeasurementFailed": "Failed to delete measurement.",
       "updateStatusFailed": "Failed to update status.",
       "trialDateRequired": "Trial date is required.",
-      "fabricQuantityInvalid": "Enter a valid quantity."
+      "fabricQuantityInvalid": "Enter a valid quantity.",
+      "loadOrdersFailed": "Failed to load orders.",
+      "loadMeasurementsFailed": "Failed to load measurements."
     },
     "trial": {
       "title": "Schedule Trial / Fitting",

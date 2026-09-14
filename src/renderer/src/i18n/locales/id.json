@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "Pilih berapa banyak dari setiap baris yang akan ditagih sekarang — sisanya bisa ditagih nanti.",
     "remainingLabel": "{{remaining}} tersisa",
     "nothingToInvoice": "Tidak Ada yang Perlu Ditagih",
-    "enterAtLeastOneQty": "Masukkan jumlah lebih besar dari nol untuk setidaknya satu baris."
+    "enterAtLeastOneQty": "Masukkan jumlah lebih besar dari nol untuk setidaknya satu baris.",
+    "loadFailedMessage": "Gagal memuat detail pesanan penjualan.",
+    "confirmFailedMessage": "Gagal mengonfirmasi pesanan penjualan.",
+    "printFailedMessage": "Gagal mencetak pesanan penjualan.",
+    "cancelFailedMessage": "Gagal membatalkan pesanan penjualan.",
+    "createInvoiceFailedMessage": "Gagal membuat tagihan.",
+    "loadListFailedMessage": "Gagal memuat pesanan penjualan.",
+    "loadCustomersFailedMessage": "Gagal memuat pelanggan.",
+    "loadOptionsFailedMessage": "Gagal memuat opsi pesanan penjualan.",
+    "createFailedMessage": "Gagal membuat pesanan penjualan."
   },
   "priceLists": {
     "title": "Daftar Harga",
@@ -5588,6 +5597,14 @@
     "couldNotDeleteProject": "Tidak dapat menghapus proyek.",
     "couldNotCreateTicket": "Tidak dapat membuat tiket.",
     "couldNotDeleteTicket": "Tidak dapat menghapus tiket.",
+    "couldNotLoadWorkLogs": "Gagal memuat log pekerjaan.",
+    "couldNotLoadTickets": "Gagal memuat tiket.",
+    "couldNotLoadContracts": "Gagal memuat kontrak layanan.",
+    "couldNotLoadProjects": "Gagal memuat proyek.",
+    "couldNotLoadProjectDetail": "Gagal memuat detail proyek.",
+    "couldNotLoadJobCards": "Gagal memuat kartu kerja.",
+    "couldNotLoadCustomers": "Gagal memuat pelanggan.",
+    "couldNotLoadCustomerHistory": "Gagal memuat riwayat pelanggan.",
     "enterValidBillableAmount": "Masukkan jumlah tagihan yang lebih besar dari nol.",
     "confirmCancelJob": "Batalkan kartu kerja ini? Barang pelanggan tidak akan lagi dilacak melalui alur kerja perbaikan. Ini tidak dapat dibatalkan.",
     "confirmCancelProject": "Tandai proyek ini sebagai dibatalkan? Anda masih dapat melihat riwayatnya, tetapi tidak akan lagi dilacak sebagai pekerjaan aktif."
@@ -5865,7 +5882,10 @@
   },
   "compliance": {
     "disclaimerLabel": "Sangkalan:",
-    "disclaimerText": "Tanggal kepatuhan bersifat indikatif. Verifikasi tanggal jatuh tempo terkini di gst.gov.in dan incometax.gov.in. Aszurex tidak bertanggung jawab atas pengajuan yang terlewat berdasarkan tanggal yang ditampilkan di sini."
+    "disclaimerText": "Tanggal kepatuhan bersifat indikatif. Verifikasi tanggal jatuh tempo terkini di gst.gov.in dan incometax.gov.in. Aszurex tidak bertanggung jawab atas pengajuan yang terlewat berdasarkan tanggal yang ditampilkan di sini.",
+    "saveTaskFailedMessage": "Gagal menyimpan tugas kepatuhan.",
+    "deleteTaskFailedMessage": "Gagal menghapus tugas kepatuhan.",
+    "updateStatusFailedMessage": "Gagal memperbarui status tugas kepatuhan."
   },
   "logistics": {
     "fleet": {
@@ -6228,7 +6248,9 @@
       "deleteMeasurementFailed": "Gagal menghapus ukuran.",
       "updateStatusFailed": "Gagal memperbarui status.",
       "trialDateRequired": "Tanggal uji coba wajib diisi.",
-      "fabricQuantityInvalid": "Masukkan jumlah yang valid."
+      "fabricQuantityInvalid": "Masukkan jumlah yang valid.",
+      "loadOrdersFailed": "Gagal memuat pesanan.",
+      "loadMeasurementsFailed": "Gagal memuat ukuran."
     },
     "measurements": {
       "selectClient": "Pilih Pelanggan",
@@ -6973,6 +6995,8 @@
     "checkedIn": "Berhasil check in",
     "checkedOut": "Berhasil check out",
     "checkInFailed": "Tidak dapat check in. Silakan coba lagi.",
+    "checkOutFailed": "Tidak dapat check out. Silakan coba lagi.",
+    "loadFailed": "Gagal memuat catatan check-in.",
     "currentlyIn": "Sedang check in ({{count}})",
     "noOneIn": "Tidak ada yang sedang check in.",
     "recentVisits": "Kunjungan Terbaru",

@@ -1910,7 +1910,16 @@
     "partialInvoiceHint": "आता प्रत्येक ओळीतून किती बिल करायचे ते निवडा — उर्वरित नंतर बिल करू शकता.",
     "remainingLabel": "{{remaining}} शिल्लक",
     "nothingToInvoice": "बिल करण्यासाठी काही नाही",
-    "enterAtLeastOneQty": "किमान एका ओळीसाठी शून्यपेक्षा जास्त प्रमाण नमूद करा."
+    "enterAtLeastOneQty": "किमान एका ओळीसाठी शून्यपेक्षा जास्त प्रमाण नमूद करा.",
+    "loadFailedMessage": "विक्री ऑर्डरचे तपशील लोड करण्यात अयशस्वी.",
+    "confirmFailedMessage": "विक्री ऑर्डरची पुष्टी करण्यात अयशस्वी.",
+    "printFailedMessage": "विक्री ऑर्डर प्रिंट करण्यात अयशस्वी.",
+    "cancelFailedMessage": "विक्री ऑर्डर रद्द करण्यात अयशस्वी.",
+    "createInvoiceFailedMessage": "बिल तयार करण्यात अयशस्वी.",
+    "loadListFailedMessage": "विक्री ऑर्डर लोड करण्यात अयशस्वी.",
+    "loadCustomersFailedMessage": "ग्राहक लोड करण्यात अयशस्वी.",
+    "loadOptionsFailedMessage": "विक्री ऑर्डर पर्याय लोड करण्यात अयशस्वी.",
+    "createFailedMessage": "विक्री ऑर्डर तयार करण्यात अयशस्वी."
   },
   "priceLists": {
     "title": "किंमत याद्या",
@@ -5588,6 +5597,14 @@
     "couldNotDeleteProject": "प्रकल्प हटवता आला नाही.",
     "couldNotCreateTicket": "तिकीट तयार करता आले नाही.",
     "couldNotDeleteTicket": "तिकीट हटवता आले नाही.",
+    "couldNotLoadWorkLogs": "कामाच्या नोंदी लोड करता आल्या नाहीत.",
+    "couldNotLoadTickets": "तिकिटे लोड करता आली नाहीत.",
+    "couldNotLoadContracts": "सेवा करार लोड करता आले नाहीत.",
+    "couldNotLoadProjects": "प्रकल्प लोड करता आले नाहीत.",
+    "couldNotLoadProjectDetail": "प्रकल्पाचे तपशील लोड करता आले नाहीत.",
+    "couldNotLoadJobCards": "जॉब कार्ड लोड करता आले नाहीत.",
+    "couldNotLoadCustomers": "ग्राहक लोड करता आले नाहीत.",
+    "couldNotLoadCustomerHistory": "ग्राहक इतिहास लोड करता आला नाही.",
     "enterValidBillableAmount": "शून्यापेक्षा जास्त बिलिंगयोग्य रक्कम प्रविष्ट करा.",
     "confirmCancelJob": "हे जॉब कार्ड रद्द करायचे? ग्राहकाची वस्तू यापुढे दुरुस्ती वर्कफ्लोमधून ट्रॅक केली जाणार नाही. हे पूर्ववत करता येणार नाही.",
     "confirmCancelProject": "हा प्रकल्प रद्द झाला म्हणून चिन्हांकित करायचा? तुम्ही अजूनही त्याचा इतिहास पाहू शकता, पण तो यापुढे सक्रिय कामकाज म्हणून ट्रॅक केला जाणार नाही."
@@ -5865,7 +5882,10 @@
   },
   "compliance": {
     "disclaimerLabel": "अस्वीकरण:",
-    "disclaimerText": "अनुपालन तारखा केवळ सूचक आहेत. gst.gov.in आणि incometax.gov.in वर सद्य अंतिम तारखा तपासा. येथे दर्शविलेल्या तारखांवर आधारित चुकलेल्या फाइलिंगसाठी Aszurex कोणतीही जबाबदारी स्वीकारत नाही."
+    "disclaimerText": "अनुपालन तारखा केवळ सूचक आहेत. gst.gov.in आणि incometax.gov.in वर सद्य अंतिम तारखा तपासा. येथे दर्शविलेल्या तारखांवर आधारित चुकलेल्या फाइलिंगसाठी Aszurex कोणतीही जबाबदारी स्वीकारत नाही.",
+    "saveTaskFailedMessage": "अनुपालन कार्य जतन करण्यात अयशस्वी.",
+    "deleteTaskFailedMessage": "अनुपालन कार्य हटवण्यात अयशस्वी.",
+    "updateStatusFailedMessage": "अनुपालन कार्याची स्थिती अपडेट करण्यात अयशस्वी."
   },
   "logistics": {
     "fleet": {
@@ -6228,7 +6248,9 @@
       "deleteMeasurementFailed": "माप हटवण्यात अयशस्वी.",
       "updateStatusFailed": "स्थिती अद्ययावत करण्यात अयशस्वी.",
       "trialDateRequired": "ट्रायल तारीख आवश्यक आहे.",
-      "fabricQuantityInvalid": "वैध प्रमाण प्रविष्ट करा."
+      "fabricQuantityInvalid": "वैध प्रमाण प्रविष्ट करा.",
+      "loadOrdersFailed": "ऑर्डर लोड करण्यात अयशस्वी.",
+      "loadMeasurementsFailed": "मापे लोड करण्यात अयशस्वी."
     },
     "measurements": {
       "selectClient": "ग्राहक निवडा",
@@ -6973,6 +6995,8 @@
     "checkedIn": "चेक इन केले",
     "checkedOut": "चेक आउट केले",
     "checkInFailed": "चेक इन करता आले नाही. कृपया पुन्हा प्रयत्न करा.",
+    "checkOutFailed": "चेक आउट करता आले नाही. कृपया पुन्हा प्रयत्न करा.",
+    "loadFailed": "चेक-इन नोंदी लोड करता आल्या नाहीत.",
     "currentlyIn": "सध्या चेक इन आहेत ({{count}})",
     "noOneIn": "सध्या कोणीही चेक इन नाही.",
     "recentVisits": "अलीकडील भेटी",

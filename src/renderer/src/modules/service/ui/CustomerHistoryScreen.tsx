@@ -43,10 +43,10 @@ export function CustomerHistoryScreen() {
         const d = res.data as { customers: Customer[] }
         setCustomers(d.customers ?? [])
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('service.couldNotLoadCustomers'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadCustomers'))
     } finally {
       setLoading(false)
     }
@@ -76,7 +76,7 @@ export function CustomerHistoryScreen() {
         }
       }))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('service.couldNotLoadCustomerHistory'))
       setHistory(prev => ({ ...prev, [customerId]: { projects: [], tickets: [], jobCards: [], invoices: [], loading: false } }))
     }
   }
