@@ -54,7 +54,7 @@ export function ApprovalWorkflowsScreen() {
         window.api.users.list()
       ])
       if (wRes.success) setWorkflows((wRes.data as ApprovalWorkflow[]) ?? [])
-      else toastError(t('common.error'), wRes.error?.message ?? t('approvalWorkflows.couldNotLoad'))
+      else toastError(t('common.error'), t('approvalWorkflows.couldNotLoad'))
       if (rRes.success) setRoles((rRes.data as Role[]) ?? [])
       if (uRes.success) setUsers((uRes.data as UserRow[]) ?? [])
     } catch {
@@ -112,7 +112,7 @@ export function ApprovalWorkflowsScreen() {
         setShowCreate(false)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('approvalWorkflows.couldNotCreate'))
+        toastError(t('common.error'), t('approvalWorkflows.couldNotCreate'))
       }
     } catch {
       toastError(t('common.error'), t('approvalWorkflows.couldNotCreate'))
@@ -124,7 +124,7 @@ export function ApprovalWorkflowsScreen() {
   async function toggleActive(wf: ApprovalWorkflow) {
     try {
       const res = await window.api.approvalWorkflows.update({ id: wf.id, isActive: !wf.isActive })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('approvalWorkflows.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('approvalWorkflows.couldNotSave')); return }
       load()
     } catch {
       toastError(t('common.error'), t('approvalWorkflows.couldNotSave'))
@@ -141,7 +141,7 @@ export function ApprovalWorkflowsScreen() {
         setDeleteTarget(null)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('approvalWorkflows.couldNotDelete'))
+        toastError(t('common.error'), t('approvalWorkflows.couldNotDelete'))
       }
     } catch {
       toastError(t('common.error'), t('approvalWorkflows.couldNotDelete'))

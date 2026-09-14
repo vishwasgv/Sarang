@@ -127,7 +127,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         : await window.api.customers.create(payload)
 
       if (!response.success) {
-        toastError(t('common.error'), response.error?.message ?? t('customers.saveFailedMessage'))
+        toastError(t('common.error'), t('customers.saveFailedMessage'))
         return
       }
       toastSuccess(isEdit ? t('customers.updatedTitle') : t('customers.createdTitle'), t('customers.savedMessage', { name: values.customerName }))

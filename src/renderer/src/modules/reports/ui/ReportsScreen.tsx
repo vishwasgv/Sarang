@@ -1464,10 +1464,10 @@ export function ReportsScreen() {
       if (res.success && d?.currencySymbol) {
         setCurrencySymbol(d.currencySymbol)
       } else if (!res.success) {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('reports.couldNotLoadCurrency'))
       }
     }).catch(() => {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('reports.couldNotLoadCurrency'))
     })
   }, [t, toastError])
 
@@ -1493,13 +1493,13 @@ export function ReportsScreen() {
   useEffect(() => {
     window.api.hr.listEmployees({ isActive: true }).then((res) => {
       if (!res.success) {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('reports.couldNotLoadEmployees'))
         return
       }
       const d = res.data as { employees?: { id: string; fullName: string }[] } | { id: string; fullName: string }[]
       setEmployees(Array.isArray(d) ? d : (d.employees ?? []))
     }).catch(() => {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('reports.couldNotLoadEmployees'))
     })
   }, [t, toastError])
 
@@ -2088,7 +2088,7 @@ export function ReportsScreen() {
       if (res.success) {
         setReportData(res.data)
       } else {
-        toastError(t('reports.title'), res.error?.message ?? t('reports.noData'))
+        toastError(t('reports.title'), t('reports.noData'))
         setReportData(null)
       }
     } catch {
@@ -2106,7 +2106,7 @@ export function ReportsScreen() {
       if (res.success) {
         setReportData(res.data)
       } else {
-        toastError(t('reports.title'), res.error?.message ?? t('reports.noData'))
+        toastError(t('reports.title'), t('reports.noData'))
       }
     } catch {
       toastError(t('reports.title'), t('reports.noData'))
@@ -3401,9 +3401,9 @@ export function ReportsScreen() {
     try {
       const { headers, rows } = buildExportData()
       const res = await window.api.export.toCsv({ filename: `${activeReport}-report.csv`, headers, rows })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('reports.exportCsvFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('reports.exportCsvFailedMessage'))
     } finally {
       setExporting(false)
     }
@@ -3418,9 +3418,9 @@ export function ReportsScreen() {
         filename: `${activeReport}-report.xlsx`,
         sheets: [{ name: def.label, headers, rows }]
       })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('reports.exportExcelFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('reports.exportExcelFailedMessage'))
     } finally {
       setExporting(false)
     }
@@ -3444,12 +3444,12 @@ export function ReportsScreen() {
       })
       if (res.success && res.data) {
         const pdfRes = await window.api.export.toPdf({ html: res.data as string, filename: `${activeReport}-report.pdf` })
-        if (!pdfRes.success) toastError(t('common.error'), pdfRes.error?.message ?? t('common.error'))
+        if (!pdfRes.success) toastError(t('common.error'), t('reports.exportPdfFailedMessage'))
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('reports.exportPdfFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('reports.exportPdfFailedMessage'))
     } finally {
       setExporting(false)
     }

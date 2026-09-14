@@ -111,7 +111,7 @@ export function DocumentsScreen() {
       if (res.success && res.data) {
         setDocs(res.data as DocRecord[])
       } else {
-        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotLoad')
+        const msg = t('documents.couldNotLoad')
         setError(msg)
         toastError(t('common.error'), msg)
       }
@@ -132,13 +132,13 @@ export function DocumentsScreen() {
         setDocs(prev => prev.filter(d => d.id !== confirmDelete.id))
         setConfirmDelete(null)
       } else {
-        const msg = (res.error as { message?: string })?.message ?? 'Could not delete document.'
+        const msg = t('documents.couldNotDelete')
         setError(msg)
         toastError(t('common.error'), msg)
       }
     } catch {
-      setError('Could not delete document.')
-      toastError(t('common.error'), 'Could not delete document.')
+      setError(t('documents.couldNotDelete'))
+      toastError(t('common.error'), t('documents.couldNotDelete'))
     } finally {
       setDeletingId(null)
     }
@@ -148,7 +148,7 @@ export function DocumentsScreen() {
     try {
       const res = await api.documents.open({ id })
       if (!res.success) {
-        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotOpen')
+        const msg = t('documents.couldNotOpen')
         setError(msg)
         toastError(t('common.error'), msg)
       }

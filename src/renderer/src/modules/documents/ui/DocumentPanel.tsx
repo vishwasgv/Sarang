@@ -57,7 +57,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       if (res.success && res.data) {
         setDocs(res.data as DocRecord[])
       } else {
-        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotLoad')
+        const msg = t('documents.couldNotLoad')
         setError(msg)
         toastError(t('common.error'), msg)
       }
@@ -74,7 +74,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
     try {
       const picked = await api.documents.pick({ title: t('documents.attachDialogTitle') })
       if (!picked.success) {
-        const msg = (picked.error as { message?: string })?.message ?? t('documents.couldNotOpenPicker')
+        const msg = t('documents.couldNotOpenPicker')
         setError(msg)
         toastError(t('common.error'), msg)
         return
@@ -87,7 +87,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
       if (res.success) {
         await load()
       } else {
-        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotAttach')
+        const msg = t('documents.couldNotAttach')
         setError(msg)
         toastError(t('common.error'), msg)
       }
@@ -108,7 +108,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
         setDocs(prev => prev.filter(d => d.id !== confirmDelete.id))
         setConfirmDelete(null)
       } else {
-        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotDelete')
+        const msg = t('documents.couldNotDelete')
         setError(msg)
         toastError(t('common.error'), msg)
       }
@@ -124,7 +124,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
     try {
       const res = await api.documents.open({ id })
       if (!res.success) {
-        const msg = (res.error as { message?: string })?.message ?? t('documents.couldNotOpen')
+        const msg = t('documents.couldNotOpen')
         setError(msg)
         toastError(t('common.error'), msg)
       }

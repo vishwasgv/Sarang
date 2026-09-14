@@ -42,10 +42,10 @@ export function CustomersScreen() {
         setCustomers(d.customers ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('customers.loadFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('customers.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -63,7 +63,7 @@ export function CustomersScreen() {
         setArchiveTarget(null)
         loadData()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('customers.archiveFailedMessage'))
       }
     } finally {
       setArchiving(false)

@@ -87,10 +87,10 @@ export function ExpensesScreen() {
         setExpenses(d.expenses ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('expenses.loadFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('expenses.loadFailedMessage'))
     } finally { setLoading(false) }
   }, [dateFrom, dateTo, catFilter, toastError, t])
 
@@ -98,9 +98,9 @@ export function ExpensesScreen() {
   useEffect(() => {
     window.api.expenses.listCategories().then((res: any) => {
       if (res.success) setCategories(res.data as ExpenseCategory[])
-      else toastError(t('common.error'), res?.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('expenses.loadCategoriesFailedMessage'))
     }).catch(() => {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('expenses.loadCategoriesFailedMessage'))
     })
     window.api.suppliers.list({ limit: 200 }).then((res: any) => {
       if (res.success) setSuppliers(((res.data as { suppliers: SupplierOption[] })?.suppliers) ?? [])
@@ -179,10 +179,10 @@ export function ExpensesScreen() {
         setFormOpen(false)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('expenses.saveFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('expenses.saveFailedMessage'))
     } finally { setFormSaving(false) }
   }
 
@@ -196,10 +196,10 @@ export function ExpensesScreen() {
         setDeleteTarget(null)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('expenses.deleteFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('expenses.deleteFailedMessage'))
     } finally { setDeleting(false) }
   }
 

@@ -183,7 +183,7 @@ export function DashboardScreen() {
         wantsExpiryWidget ? api.batches.expiryAlerts({ withinDays: 30 }) : Promise.resolve({ success: true, data: null })
       ])
       if (kpiRes.success) setKpis(kpiRes.data as DashboardKpis)
-      else toastError(t('common.error'), kpiRes.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('dashboard.loadFailedMessage'))
       if (actRes.success) setActivity((actRes.data as ActivityItem[]) ?? [])
       if (alertRes.success) setAlerts((alertRes.data as DashboardAlert[]) ?? [])
       if (outRes.success) setTopOutstanding((outRes.data as TopOutstanding[]) ?? [])
@@ -211,7 +211,7 @@ export function DashboardScreen() {
         if (prodRes.success) setTopProducts((prodRes.data as TopProduct[]) ?? [])
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('dashboard.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -227,9 +227,9 @@ export function DashboardScreen() {
         : { period: p }
       const res = await api.analytics.getRevenueTrend(payload)
       if (res.success) setTrend((res.data as TrendPoint[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('dashboard.trendLoadFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('dashboard.trendLoadFailedMessage'))
     } finally {
       setTrendLoading(false)
     }

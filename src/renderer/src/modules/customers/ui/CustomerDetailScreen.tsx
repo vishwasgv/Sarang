@@ -151,7 +151,7 @@ export function CustomerDetailScreen() {
         loadInterest()
         loadLedger()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('customers.couldNotPostInterest'))
+        toastError(t('common.error'), t('customers.couldNotPostInterest'))
       }
     } catch {
       toastError(t('common.error'), t('customers.couldNotPostInterest'))
