@@ -181,7 +181,7 @@ function TutorialSection() {
     try {
       const res = await api.tutorial.start({ businessType: myBusinessType ?? 'GENERAL' })
       if (res.success === false) {
-        toastError(t('common.error'), res.error?.message ?? t('settings.tutorial.startFailed'))
+        toastError(t('common.error'), t('settings.tutorial.startFailed'))
         setRestarting(false)
       }
       // On success the app relaunches into the tutorial — nothing more to do here.
@@ -250,7 +250,7 @@ function CustomFieldsSection() {
     try {
       const res = await api.customFields.list({ entityType })
       if (res.success && res.data) setFields(res.data as CustomFieldDefinition[])
-      else toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotLoad'))
+      else toastError(t('common.error'), t('customFields.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('customFields.couldNotLoad'))
     } finally {
@@ -281,7 +281,7 @@ function CustomFieldsSection() {
       const res = editTarget
         ? await api.customFields.update({ id: editTarget.id, fieldName: form.fieldName.trim(), selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined })
         : await api.customFields.create({ entityType, fieldName: form.fieldName.trim(), fieldType: form.fieldType, selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('customFields.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       setShowModal(false)
       load()
@@ -295,7 +295,7 @@ function CustomFieldsSection() {
   async function toggleActive(field: CustomFieldDefinition) {
     const res = await api.customFields.update({ id: field.id, isActive: !field.isActive })
     if (res.success) load()
-    else toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotSave'))
+    else toastError(t('common.error'), t('customFields.couldNotSave'))
   }
 
   return (
@@ -645,7 +645,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
         toastSuccess(t('common.saved'), t('settings.profile.updated'))
       } else {
         setError(res.error?.message ?? t('settings.profile.saveFailed'))
-        toastError(t('common.error'), res.error?.message ?? t('settings.profile.saveFailed'))
+        toastError(t('common.error'), t('settings.profile.saveFailed'))
       }
     } catch {
       setError(t('settings.profile.saveFailed'))
@@ -955,7 +955,7 @@ function TaxConfigurationSection() {
     try {
       const res = await window.api.tax.list()
       if (res.success) setTaxes(res.data as TaxConfig[])
-      else toastError(t('common.error'), res.error?.message ?? t('settings.tax.loadFailed'))
+      else toastError(t('common.error'), t('settings.tax.loadFailed'))
     } catch {
       toastError(t('common.error'), t('settings.tax.loadFailed'))
     } finally {
@@ -994,7 +994,7 @@ function TaxConfigurationSection() {
         resetForm()
         loadTaxes()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.tax.saveFailed'))
+        toastError(t('common.error'), t('settings.tax.saveFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.tax.saveFailed'))
@@ -1013,7 +1013,7 @@ function TaxConfigurationSection() {
         setDeleteTarget(null)
         loadTaxes()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.tax.deleteFailed'))
+        toastError(t('common.error'), t('settings.tax.deleteFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.tax.deleteFailed'))
@@ -1163,7 +1163,7 @@ function UsersManagementSection() {
       if (uRes.success) setUsers(uRes.data as User[])
       if (rRes.success) setRoles((rRes.data as Role[]))
       if (!uRes.success || !rRes.success) {
-        toastError(t('common.error'), (uRes.error ?? rRes.error)?.message ?? t('settings.usersMgmt.loadFailed'))
+        toastError(t('common.error'), t('settings.usersMgmt.loadFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.usersMgmt.loadFailed'))
@@ -1210,7 +1210,7 @@ function UsersManagementSection() {
     try {
       const res = await window.api.users.deactivate({ userId: u.id })
       if (res.success) { setDeactivateTarget(null); loadData() }
-      else toastError(t('common.error'), res.error?.message ?? t('settings.usersMgmt.deactivateFailed'))
+      else toastError(t('common.error'), t('settings.usersMgmt.deactivateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.usersMgmt.deactivateFailed'))
     } finally {
@@ -1919,7 +1919,7 @@ function AppearanceSection() {
         toastSuccess(t('settings.print.typeSaved'))
       } else {
         setPrintType(previous)
-        toastError(t('common.error'), res.error?.message ?? t('settings.print.typeSaveFailed'))
+        toastError(t('common.error'), t('settings.print.typeSaveFailed'))
       }
     } catch {
       setPrintType(previous)
@@ -1974,7 +1974,7 @@ function AppearanceSection() {
     try {
       const res = await window.api.kitchenDisplay.open(displayId !== undefined ? { displayId } : undefined)
       if (res.success) toastSuccess(t('settings.print.kitchenDisplayOpened'))
-      else toastError(t('common.error'), res.error?.message ?? t('settings.print.kitchenDisplayOpenFailed'))
+      else toastError(t('common.error'), t('settings.print.kitchenDisplayOpenFailed'))
     } catch {
       toastError(t('common.error'), t('settings.print.kitchenDisplayOpenFailed'))
     } finally {
@@ -1987,7 +1987,7 @@ function AppearanceSection() {
     setKdBusy(true)
     try {
       const res = await window.api.kitchenDisplay.close()
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('settings.print.kitchenDisplayCloseFailed'))
+      if (!res.success) toastError(t('common.error'), t('settings.print.kitchenDisplayCloseFailed'))
     } catch {
       toastError(t('common.error'), t('settings.print.kitchenDisplayCloseFailed'))
     } finally {
@@ -2007,7 +2007,7 @@ function AppearanceSection() {
         toastSuccess(t('settings.print.kitchenPrinterSaved'))
       } else {
         setKotPrinter(previous)
-        toastError(t('common.error'), res.error?.message ?? t('settings.print.kitchenPrinterSaveFailed'))
+        toastError(t('common.error'), t('settings.print.kitchenPrinterSaveFailed'))
       }
     } catch {
       setKotPrinter(previous)
@@ -2172,7 +2172,7 @@ function KitchenDisplayWebSection() {
     try {
       const next = on ? [...enabledModules, 'kitchen_display_web'] : enabledModules.filter(m => m !== 'kitchen_display_web')
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('settings.kitchenDisplayWeb.updateFailed'))
+      if (!res.success) toastError(t('common.error'), t('settings.kitchenDisplayWeb.updateFailed'))
       await loadStatus()
       setQr(null)
       setShowQr(false)
@@ -2189,7 +2189,7 @@ function KitchenDisplayWebSection() {
     try {
       const res = await window.api.restaurant.generateKitchenDisplayQr()
       if (res.success && res.data) setQr(res.data)
-      else toastError(t('common.error'), res.error?.message ?? t('settings.kitchenDisplayWeb.qrGenerateFailed'))
+      else toastError(t('common.error'), t('settings.kitchenDisplayWeb.qrGenerateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.kitchenDisplayWeb.qrGenerateFailed'))
     } finally {
@@ -2207,7 +2207,7 @@ function KitchenDisplayWebSection() {
         await loadStatus()
         if (showQr) await loadQr()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.kitchenDisplayWeb.regenerateFailed'))
+        toastError(t('common.error'), t('settings.kitchenDisplayWeb.regenerateFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.kitchenDisplayWeb.regenerateFailed'))
@@ -2307,7 +2307,7 @@ function FieldOrderCaptureSection() {
     try {
       const next = on ? [...enabledModules, 'field_order_capture'] : enabledModules.filter(m => m !== 'field_order_capture')
       const res = await updateEnabledModules(next as typeof enabledModules)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('settings.fieldOrderCapture.updateFailed'))
+      if (!res.success) toastError(t('common.error'), t('settings.fieldOrderCapture.updateFailed'))
       await loadStatus()
       setQr(null)
       setShowQr(false)
@@ -2324,7 +2324,7 @@ function FieldOrderCaptureSection() {
     try {
       const res = await window.api.distributor.generateFieldOrderQr()
       if (res.success && res.data) setQr(res.data)
-      else toastError(t('common.error'), res.error?.message ?? t('settings.fieldOrderCapture.qrGenerateFailed'))
+      else toastError(t('common.error'), t('settings.fieldOrderCapture.qrGenerateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.fieldOrderCapture.qrGenerateFailed'))
     } finally {
@@ -2342,7 +2342,7 @@ function FieldOrderCaptureSection() {
         await loadStatus()
         if (showQr) await loadQr()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.fieldOrderCapture.regenerateFailed'))
+        toastError(t('common.error'), t('settings.fieldOrderCapture.regenerateFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.fieldOrderCapture.regenerateFailed'))
@@ -2459,7 +2459,7 @@ function BusinessFeaturesSection() {
       const next = on ? [...enabledModules, key as never] : enabledModules.filter(m => m !== key)
       const res = await updateEnabledModules(next as typeof enabledModules)
       if (res.success) toastSuccess(on ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), on ? t('settings.features.turnedOn') : t('settings.features.turnedOff'))
-      else toastError(t('common.error'), res.error?.message ?? t('settings.features.updateFailed'))
+      else toastError(t('common.error'), t('settings.features.updateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.features.updateFailed'))
     } finally {
@@ -2475,7 +2475,7 @@ function BusinessFeaturesSection() {
         : enabledModules.filter(m => !(LOGISTICS_BUNDLE as readonly string[]).includes(m))
       const res = await updateEnabledModules(next as typeof enabledModules)
       if (res.success) toastSuccess(on ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), on ? t('settings.features.logisticsTurnedOn') : t('settings.features.logisticsTurnedOff'))
-      else toastError(t('common.error'), res.error?.message ?? t('settings.features.updateFailed'))
+      else toastError(t('common.error'), t('settings.features.updateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.features.updateFailed'))
     } finally {
@@ -2592,7 +2592,7 @@ function InvoiceTemplatesSection() {
         window.api.businessProfile.get()
       ])
       if (tRes.success) setTemplates((tRes.data as InvoiceTemplateRow[]) ?? [])
-      else toastError(t('common.error'), tRes.error?.message ?? t('settings.invoiceTemplates.loadFailed'))
+      else toastError(t('common.error'), t('settings.invoiceTemplates.loadFailed'))
       if (pRes.success) setBusinessDefaultId((pRes.data as { defaultInvoiceTemplateId: string | null }).defaultInvoiceTemplateId ?? null)
     } catch {
       toastError(t('common.error'), t('settings.invoiceTemplates.loadFailed'))
@@ -2643,7 +2643,7 @@ function InvoiceTemplatesSection() {
         setShowForm(false)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.invoiceTemplates.saveFailed'))
+        toastError(t('common.error'), t('settings.invoiceTemplates.saveFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.invoiceTemplates.saveFailed'))
@@ -2660,7 +2660,7 @@ function InvoiceTemplatesSection() {
         setBusinessDefaultId(tpl.id)
         toastSuccess(t('settings.invoiceTemplates.defaultSetTitle'), tpl.name)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.invoiceTemplates.setDefaultFailed'))
+        toastError(t('common.error'), t('settings.invoiceTemplates.setDefaultFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.invoiceTemplates.setDefaultFailed'))
@@ -2674,7 +2674,7 @@ function InvoiceTemplatesSection() {
     try {
       const res = await window.api.invoiceTemplates.delete(deleteTarget.id)
       if (res.success) { toastSuccess(t('settings.invoiceTemplates.deletedTitle'), deleteTarget.name); load() }
-      else toastError(t('common.error'), res.error?.message ?? t('settings.invoiceTemplates.deleteFailed'))
+      else toastError(t('common.error'), t('settings.invoiceTemplates.deleteFailed'))
     } catch {
       toastError(t('common.error'), t('settings.invoiceTemplates.deleteFailed'))
     } finally {
@@ -2841,7 +2841,7 @@ function BarcodeSection() {
       const next = on ? [...enabledModules, key as never] : enabledModules.filter(m => m !== key)
       const res = await updateEnabledModules(next as typeof enabledModules)
       if (res.success) toastSuccess(on ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), on ? t('settings.features.turnedOn') : t('settings.barcode.featureTurnedOff'))
-      else toastError(t('common.error'), res.error?.message ?? t('settings.features.updateFailed'))
+      else toastError(t('common.error'), t('settings.features.updateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.features.updateFailed'))
     } finally {
@@ -2858,7 +2858,7 @@ function BarcodeSection() {
       if (widthRes.success && heightRes.success) {
         toastSuccess(t('settings.barcode.labelSizeSaved'))
       } else {
-        toastError(t('common.error'), (widthRes.error ?? heightRes.error)?.message ?? t('settings.barcode.labelSizeSaveFailed'))
+        toastError(t('common.error'), t('settings.barcode.labelSizeSaveFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.barcode.labelSizeSaveFailed'))
@@ -2874,7 +2874,7 @@ function BarcodeSection() {
         toastSuccess(t('settings.barcode.labelPrinterSaved'))
       } else {
         setLabelPrinter(previous)
-        toastError(t('common.error'), res.error?.message ?? t('settings.barcode.labelPrinterSaveFailed'))
+        toastError(t('common.error'), t('settings.barcode.labelPrinterSaveFailed'))
       }
     } catch {
       setLabelPrinter(previous)
@@ -2892,7 +2892,7 @@ function BarcodeSection() {
         setBackfillResult(t('settings.barcode.backfillResult', { generated, totalMissing }))
         toastSuccess(t('settings.barcode.barcodesGeneratedTitle'), t('settings.barcode.barcodesGeneratedDesc', { count: generated }))
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('settings.barcode.generateFailed'))
+        toastError(t('common.error'), t('settings.barcode.generateFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.barcode.generateFailed'))
@@ -3012,7 +3012,7 @@ function AiAssistantSection() {
       const updated = next ? [...enabledModules, 'ai_assistant' as never] : enabledModules.filter((m) => m !== 'ai_assistant')
       const res = await updateEnabledModules(updated as typeof enabledModules)
       if (res.success) toastSuccess(next ? t('settings.features.enabledTitle') : t('settings.features.disabledTitle'), next ? t('settings.aiAssistant.enabledDesc') : t('settings.aiAssistant.disabledDesc'))
-      else toastError(t('common.error'), res.error?.message ?? t('settings.aiAssistant.updateFailed'))
+      else toastError(t('common.error'), t('settings.aiAssistant.updateFailed'))
     } catch {
       toastError(t('common.error'), t('settings.aiAssistant.updateFailed'))
     } finally {
@@ -3025,7 +3025,7 @@ function AiAssistantSection() {
     try {
       const res = await window.api.ai.clearHistory()
       if (res.success) toastSuccess(t('settings.aiAssistant.clearedTitle'), t('settings.aiAssistant.clearedDesc'))
-      else toastError(t('common.error'), res.error?.message ?? t('settings.aiAssistant.clearFailed'))
+      else toastError(t('common.error'), t('settings.aiAssistant.clearFailed'))
     } catch {
       toastError(t('common.error'), t('settings.aiAssistant.clearFailed'))
     } finally {
