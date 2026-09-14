@@ -53,7 +53,7 @@ export function PrintLabelsScreen() {
       try {
         const res = await window.api.products.search(query)
         if (res.success) setResults(res.data as Product[])
-        else toastError(t('products.printLabels.searchFailedTitle'), res.error?.message ?? t('products.printLabels.searchFailedMessage'))
+        else toastError(t('products.printLabels.searchFailedTitle'), t('products.printLabels.searchFailedMessage'))
       } catch {
         toastError(t('products.printLabels.searchFailedTitle'), t('products.printLabels.searchFailedMessage'))
       }
@@ -67,7 +67,7 @@ export function PrintLabelsScreen() {
       try {
         const res = await window.api.products.search(looseQuery)
         if (res.success) setLooseResults((res.data as Product[]).filter(p => p.sellByWeight))
-        else toastError(t('products.printLabels.searchFailedTitle'), res.error?.message ?? t('products.printLabels.searchFailedMessage'))
+        else toastError(t('products.printLabels.searchFailedTitle'), t('products.printLabels.searchFailedMessage'))
       } catch {
         toastError(t('products.printLabels.searchFailedTitle'), t('products.printLabels.searchFailedMessage'))
       }
@@ -123,7 +123,7 @@ export function PrintLabelsScreen() {
         const refreshed = await window.api.variants.list({ productId: variantPicker.product.id })
         if (refreshed.success) setVariantPicker(v => v ? { ...v, variants: (refreshed.data as Variant[]).filter(x => x.isActive !== false) } : v)
       } else {
-        toastError(t('products.printLabels.genericFailedTitle'), (res.error as { message?: string })?.message ?? t('products.printLabels.generateBarcodesFailedMessage'))
+        toastError(t('products.printLabels.genericFailedTitle'), t('products.printLabels.generateBarcodesFailedMessage'))
       }
     } catch {
       toastError(t('products.printLabels.genericFailedTitle'), t('products.printLabels.generateBarcodesFailedMessage'))
@@ -166,7 +166,7 @@ export function PrintLabelsScreen() {
     try {
       const res = await window.api.print.previewLabels(payload)
       if (res.success) setPreviewHtml(res.data as string)
-      else toastError(t('products.printLabels.previewFailedTitle'), res.error?.message ?? t('products.printLabels.previewFailedMessage'))
+      else toastError(t('products.printLabels.previewFailedTitle'), t('products.printLabels.previewFailedMessage'))
     } catch {
       toastError(t('products.printLabels.previewFailedTitle'), t('products.printLabels.previewFailedMessage'))
     } finally { setBusy(false) }
@@ -183,7 +183,7 @@ export function PrintLabelsScreen() {
         setPreviewHtml(null)
         setLines([])
       } else {
-        toastError(t('products.printLabels.printFailedTitle'), res.error?.message ?? t('products.printLabels.printFailedMessage'))
+        toastError(t('products.printLabels.printFailedTitle'), t('products.printLabels.printFailedMessage'))
       }
     } catch {
       toastError(t('products.printLabels.printFailedTitle'), t('products.printLabels.printFailedMessage'))
@@ -197,7 +197,7 @@ export function PrintLabelsScreen() {
     setWeighPrinting(true)
     try {
       const genRes = await window.api.products.generateWeightLabel({ productId: looseProduct.id, weightGrams: grams })
-      if (!genRes.success) { toastError(t('common.error'), genRes.error?.message ?? t('products.printLabels.createWeightLabelFailedMessage')); return }
+      if (!genRes.success) { toastError(t('common.error'), t('products.printLabels.createWeightLabelFailedMessage')); return }
       // The price is computed server-side (barcode.service.ts), not re-derived
       // here — a prior version hardcoded a /1000 conversion that was correct
       // for kg/L but silently 1000x-undercharged the printed price for any
@@ -226,7 +226,7 @@ export function PrintLabelsScreen() {
           )
         }
       } else {
-        toastError(t('products.printLabels.printFailedTitle'), printRes.error?.message ?? t('products.printLabels.printGeneratedButFailedMessage'))
+        toastError(t('products.printLabels.printFailedTitle'), t('products.printLabels.printGeneratedButFailedMessage'))
       }
       setWeightGrams('')
       setLooseProduct(null)

@@ -103,17 +103,17 @@ export function BatchManagementScreen() {
         setBatches(d.batches ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadBatchesMessage'))
       }
       const alertRes = await window.api.batches.expiryAlerts({ withinDays: 30 })
       if (alertRes.success) {
         const ad = alertRes.data as { expiring: unknown[]; expired: unknown[] }
         setAlerts({ expiring: ad.expiring?.length ?? 0, expired: ad.expired?.length ?? 0 })
       } else {
-        toastError(t('common.error'), alertRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadExpiryAlertsMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('inventory.couldNotLoadBatchDataMessage'))
     } finally {
       setLoading(false)
     }
@@ -126,10 +126,10 @@ export function BatchManagementScreen() {
         const d = sRes.data as { suppliers: { id: string; supplierName: string }[] }
         setSuppliers(d.suppliers ?? [])
       } else {
-        toastError(t('common.error'), sRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadSuppliersMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('inventory.couldNotLoadSuppliersMessage'))
     }
   }, [toastError, t])
 
@@ -184,7 +184,7 @@ export function BatchManagementScreen() {
         setProductName(''); setProductQuery(''); setProductResults([])
         loadData()
       } else {
-        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotAddBatchMessage'))
+        toastError(t('inventory.failedTitle'), t('inventory.couldNotAddBatchMessage'))
       }
     } catch {
       toastError(t('inventory.failedTitle'), t('inventory.couldNotAddBatchMessage'))
@@ -217,7 +217,7 @@ export function BatchManagementScreen() {
         setEditTarget(null)
         loadData()
       } else {
-        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotUpdateBatchMessage'))
+        toastError(t('inventory.failedTitle'), t('inventory.couldNotUpdateBatchMessage'))
       }
     } catch {
       toastError(t('inventory.failedTitle'), t('inventory.couldNotUpdateBatchMessage'))
@@ -236,7 +236,7 @@ export function BatchManagementScreen() {
         setDeleteTarget(null)
         loadData()
       } else {
-        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotRemoveBatchMessage'))
+        toastError(t('inventory.failedTitle'), t('inventory.couldNotRemoveBatchMessage'))
       }
     } catch {
       toastError(t('inventory.failedTitle'), t('inventory.couldNotRemoveBatchMessage'))

@@ -96,10 +96,10 @@ export function InventoryMovementsScreen() {
         setMovements(d.movements ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadMovementsMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('inventory.couldNotLoadMovementsMessage'))
     } finally {
       setLoading(false)
     }

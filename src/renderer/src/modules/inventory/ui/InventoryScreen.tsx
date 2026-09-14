@@ -71,7 +71,7 @@ export function InventoryScreen() {
         setInventory(d.inventory ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), listRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadInventoryMessage'))
       }
       // Low/out-of-stock badges must reflect the FULL catalog, not just the
       // current page — otherwise they silently go wrong for >50 active products.
@@ -80,10 +80,10 @@ export function InventoryScreen() {
         setLowStockCount(v.lowStockCount ?? 0)
         setOutOfStockCount(v.outOfStockCount ?? 0)
       } else {
-        toastError(t('common.error'), valueRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadInventorySummaryMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('inventory.couldNotLoadInventoryDataMessage'))
     } finally {
       setLoading(false)
     }
@@ -113,10 +113,10 @@ export function InventoryScreen() {
         }
         navigate('/purchase-orders')
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.reorder.generateFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('inventory.reorder.generateFailedMessage'))
     } finally {
       setGeneratingReorderPOs(false)
     }

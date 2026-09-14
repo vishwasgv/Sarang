@@ -135,7 +135,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
       const d = sRes.data as { suppliers: Supplier[] }
       setSuppliers(d.suppliers ?? [])
     } else {
-      toastError(t('common.error'), sRes.error?.message ?? t('purchaseOrders.loadSuppliersFailed'))
+      toastError(t('common.error'), t('purchaseOrders.loadSuppliersFailed'))
     }
   }
 
@@ -154,7 +154,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           const d = pRes.data as { products: Product[] }
           setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
         } else {
-          toastError(t('common.error'), pRes.error?.message ?? t('purchaseOrders.loadProductsFailed'))
+          toastError(t('common.error'), t('purchaseOrders.loadProductsFailed'))
         }
         if (cRes.success) setCustomers((cRes.data as { customers: Customer[] }).customers ?? [])
       } catch {
@@ -222,7 +222,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
         toastSuccess(t('purchaseOrders.poCreatedTitle'), t('purchaseOrders.poCreatedMessage', { poNumber: po.poNumber }))
         onSaved(po.id)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.createFailed'))
+        toastError(t('common.error'), t('purchaseOrders.createFailed'))
       }
     } catch {
       toastError(t('common.error'), t('purchaseOrders.createFailed'))

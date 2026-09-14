@@ -48,7 +48,7 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     try {
       const res = await window.api.categories.list()
       if (res.success) setCategories(res.data as Category[])
-      else toastError(t('common.error'), res.error?.message ?? t('products.loadCategoriesFailed'))
+      else toastError(t('common.error'), t('products.loadCategoriesFailed'))
     } catch {
       toastError(t('common.error'), t('products.loadCategoriesFailed'))
     } finally {
@@ -72,7 +72,7 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
         setShowAddForm(false)
         loadCategories()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('products.addCategoryFailed'))
+        toastError(t('common.error'), t('products.addCategoryFailed'))
       }
     } catch {
       toastError(t('common.error'), t('products.addCategoryFailed'))
@@ -103,7 +103,7 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
         cancelEdit()
         loadCategories()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('products.updateCategoryFailed'))
+        toastError(t('common.error'), t('products.updateCategoryFailed'))
       }
     } catch {
       toastError(t('common.error'), t('products.updateCategoryFailed'))
@@ -122,7 +122,7 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
         setArchiveTarget(null)
         loadCategories()
       } else {
-        toastError(t('products.cannotArchiveTitle'), res.error?.message ?? t('products.archiveCategoryFailed'))
+        toastError(t('products.cannotArchiveTitle'), t('products.archiveCategoryFailed'))
       }
     } catch {
       toastError(t('products.cannotArchiveTitle'), t('products.archiveCategoryFailed'))

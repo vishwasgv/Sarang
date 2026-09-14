@@ -137,7 +137,7 @@ export function PurchaseOrderDetailScreen() {
     setSavingLandedCost(true)
     try {
       const res = await window.api.purchaseOrders.addLandedCost({ purchaseOrderId: po.id, costType: landedCostType, amount, allocationMethod: landedCostMethod })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.landedCost.couldNotAddMessage')); return }
+      if (!res.success) { toastError(t('common.error'), t('purchaseOrders.landedCost.couldNotAddMessage')); return }
       toastSuccess(t('purchaseOrders.landedCost.addedTitle'), '')
       setLandedCostAmount('')
       setShowAddLandedCost(false)
@@ -152,7 +152,7 @@ export function PurchaseOrderDetailScreen() {
   async function handleRemoveLandedCost(allocationId: string) {
     try {
       const res = await window.api.purchaseOrders.removeLandedCost(allocationId)
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.landedCost.couldNotRemoveMessage')); return }
+      if (!res.success) { toastError(t('common.error'), t('purchaseOrders.landedCost.couldNotRemoveMessage')); return }
       loadLandedCosts()
     } catch {
       toastError(t('common.error'), t('purchaseOrders.landedCost.couldNotRemoveMessage'))
@@ -172,7 +172,7 @@ export function PurchaseOrderDetailScreen() {
         )
         loadPO()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.approveFailedMessage'))
+        toastError(t('common.error'), t('purchaseOrders.approveFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('purchaseOrders.approveFailedRetryMessage'))
@@ -190,7 +190,7 @@ export function PurchaseOrderDetailScreen() {
         toastSuccess(t('purchaseOrders.stockReceivedTitle'), t('purchaseOrders.stockReceivedMessage', { poNumber: po.poNumber }))
         loadPO()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.receiveFailedMessage'))
+        toastError(t('common.error'), t('purchaseOrders.receiveFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('purchaseOrders.receiveFailedRetryMessage'))
@@ -204,7 +204,7 @@ export function PurchaseOrderDetailScreen() {
     setPrinting(true)
     try {
       const res = await window.api.purchaseOrders.print(po.id)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.printFailedMessage'))
+      if (!res.success) toastError(t('common.error'), t('purchaseOrders.printFailedMessage'))
     } catch {
       toastError(t('common.error'), t('purchaseOrders.printFailedRetryMessage'))
     } finally {
@@ -246,7 +246,7 @@ export function PurchaseOrderDetailScreen() {
         setCancelOpen(false)
         loadPO()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('purchaseOrders.cancelFailedMessage'))
+        toastError(t('common.error'), t('purchaseOrders.cancelFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('purchaseOrders.cancelFailedRetryMessage'))

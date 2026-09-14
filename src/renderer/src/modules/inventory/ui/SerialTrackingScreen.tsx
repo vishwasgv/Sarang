@@ -173,10 +173,10 @@ export function SerialTrackingScreen() {
         setSerials(d.serials ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('inventory.couldNotLoadSerialsMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('inventory.couldNotLoadSerialsMessage'))
     } finally {
       setLoading(false)
     }
@@ -263,7 +263,7 @@ export function SerialTrackingScreen() {
         }
         setWarrantyResult(null); setWarrantySearch(''); setWarrantyCustomer(null); setWarrantyAddress('')
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('inventory.warrantyTransfer.couldNotTransfer'))
+        toastError(t('common.error'), t('inventory.warrantyTransfer.couldNotTransfer'))
       }
     } finally {
       setTransferring(false)
@@ -292,7 +292,7 @@ export function SerialTrackingScreen() {
         setForm({ productId: '', serialNumber: '', imeiNumber: '', imei2Number: '', warrantyMonths: '', purchaseDate: '', unitCost: '' })
         loadData()
       } else {
-        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotAddSerialMessage'))
+        toastError(t('inventory.failedTitle'), t('inventory.couldNotAddSerialMessage'))
       }
     } catch {
       toastError(t('inventory.failedTitle'), t('inventory.couldNotAddSerialMessage'))
@@ -334,7 +334,7 @@ export function SerialTrackingScreen() {
         setBulkProductId(''); setBulkPurchaseDate(''); setBulkWarrantyMonths(''); setBulkText('')
         loadData()
       } else {
-        toastError(t('inventory.importFailedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotImportMessage'))
+        toastError(t('inventory.importFailedTitle'), t('inventory.couldNotImportMessage'))
       }
     } catch {
       toastError(t('inventory.importFailedTitle'), t('inventory.couldNotImportMessage'))
@@ -353,7 +353,7 @@ export function SerialTrackingScreen() {
         setStatusTarget(null)
         loadData()
       } else {
-        toastError(t('inventory.failedTitle'), (res.error as { message: string })?.message ?? t('inventory.couldNotUpdateStatusMessage'))
+        toastError(t('inventory.failedTitle'), t('inventory.couldNotUpdateStatusMessage'))
       }
     } catch {
       toastError(t('inventory.failedTitle'), t('inventory.couldNotUpdateStatusMessage'))

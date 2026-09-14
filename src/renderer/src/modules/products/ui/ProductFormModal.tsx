@@ -353,7 +353,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
     setSuggestingKit(true)
     try {
       const res = await window.api.products.suggestKitComponents({ anchorProductId: product.id, limit: 8 })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('products.form.kitSuggestFailedMessage')); return }
+      if (!res.success) { toastError(t('common.error'), t('products.form.kitSuggestFailedMessage')); return }
       const suggestions = (res.data as { suggestions: Array<{ productId: string; suggestedQuantity: number }> }).suggestions
       if (suggestions.length === 0) { toastError(t('products.form.noSuggestionsTitle'), t('products.form.noSuggestionsMessage')); return }
       setKitRows(prev => {
@@ -383,7 +383,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         toastSuccess(t('products.form.kitUpdatedTitle'), valid.length > 0 ? t('products.form.kitComponentsSavedMessage') : t('products.form.kitRemovedMessage'))
         onSaved()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('products.form.saveKitFailedMessage'))
+        toastError(t('common.error'), t('products.form.saveKitFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('products.form.saveKitFailedMessage'))
@@ -495,7 +495,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         setValue('barcode', (res.data as { barcode: string }).barcode)
         toastSuccess(t('products.form.barcodeGeneratedTitle'), t('products.form.barcodeGeneratedMessage'))
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('products.form.generateBarcodeFailedMessage'))
+        toastError(t('common.error'), t('products.form.generateBarcodeFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('products.form.generateBarcodeFailedMessage'))
@@ -511,7 +511,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
       if (res.success && res.data) {
         setValue('imagePath', res.data as string)
       } else if (!res.success) {
-        toastError(t('common.error'), res.error?.message ?? t('products.form.openFilePickerFailedMessage'))
+        toastError(t('common.error'), t('products.form.openFilePickerFailedMessage'))
       }
     } catch {
       toastError(t('common.error'), t('products.form.openFilePickerFailedMessage'))
@@ -528,7 +528,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         : await window.api.products.create(payload)
 
       if (!response.success) {
-        toastError(t('common.error'), response.error?.message ?? t('products.form.saveFailedMessage'))
+        toastError(t('common.error'), t('products.form.saveFailedMessage'))
         return
       }
       // Phase 38: if barcode_generation is on and the owner didn't type one,

@@ -100,7 +100,7 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
         toastSuccess(t('inventory.stockAdjustedTitle'), t('inventory.stockAdjustedMessage', { productName: inventoryItem.product.productName, quantity: values.quantity, unit: inventoryItem.product.unit }))
         onSaved()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('inventory.adjustStockFailed'))
+        toastError(t('common.error'), t('inventory.adjustStockFailed'))
       }
     } catch {
       toastError(t('common.error'), t('inventory.adjustStockFailed'))

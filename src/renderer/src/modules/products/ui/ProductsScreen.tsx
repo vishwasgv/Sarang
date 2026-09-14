@@ -78,12 +78,12 @@ export function ProductsScreen() {
         setProducts(d.products ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), pRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('products.loadProductsFailed'))
       }
       if (cRes.success) setCategories(cRes.data as Category[])
-      else toastError(t('common.error'), cRes.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('products.loadCategoriesFailed'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('products.loadDataFailed'))
     } finally {
       setLoading(false)
     }
@@ -101,7 +101,7 @@ export function ProductsScreen() {
         setArchiveTarget(null)
         loadData()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('products.archiveFailed'))
       }
     } finally {
       setArchiving(false)
@@ -125,10 +125,10 @@ export function ProductsScreen() {
         toastSuccess(isCurrently86d ? 'Available Again' : '86\'d for Today', product.productName)
         loadData()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('products.toggleAvailabilityFailed'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('products.toggleAvailabilityFailed'))
     }
   }
 

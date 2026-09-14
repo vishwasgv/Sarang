@@ -64,10 +64,10 @@ export function PurchaseOrdersScreen() {
         setOrders(d.orders ?? [])
         setTotal(d.total ?? 0)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('purchaseOrders.loadOrdersFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('purchaseOrders.loadOrdersFailedMessage'))
     } finally {
       setLoading(false)
     }

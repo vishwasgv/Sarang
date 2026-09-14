@@ -58,17 +58,17 @@ export function AgriInputsDashboardScreen() {
         setExpiring(d.expiring ?? [])
         setExpired(d.expired ?? [])
       } else if (!alertsRes.success) {
-        toastError(t('common.error'), alertsRes.error?.message ?? t('inventory.agriInputsDashboard.couldNotLoadExpiryAlerts'))
+        toastError(t('common.error'), t('inventory.agriInputsDashboard.couldNotLoadExpiryAlerts'))
       }
       if (lowStockRes.success && lowStockRes.data) {
         setLowStockCount((lowStockRes.data as { total: number }).total ?? 0)
       } else if (!lowStockRes.success) {
-        toastError(t('common.error'), lowStockRes.error?.message ?? t('inventory.agriInputsDashboard.couldNotLoadLowStockCount'))
+        toastError(t('common.error'), t('inventory.agriInputsDashboard.couldNotLoadLowStockCount'))
       }
       if (serialsRes.success && serialsRes.data) {
         setSerials((serialsRes.data as { serials: SerialRow[] }).serials ?? [])
       } else if (!serialsRes.success) {
-        toastError(t('common.error'), serialsRes.error?.message ?? t('inventory.agriInputsDashboard.couldNotLoadEquipment'))
+        toastError(t('common.error'), t('inventory.agriInputsDashboard.couldNotLoadEquipment'))
       }
       if (dueRes.success) setServiceDue((dueRes.data as EquipmentDueForServiceRow[]) ?? [])
     }).catch(() => {
@@ -82,14 +82,14 @@ export function AgriInputsDashboardScreen() {
   async function handleSetServiceDate() {
     if (!setServiceForId || !setServiceDate) { toastError(t('common.error'), t('inventory.agriInputsDashboard.pickEquipmentAndDate')); return }
     const res = await window.api.serials.updateServiceInfo({ id: setServiceForId, nextServiceDueDate: setServiceDate })
-    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('inventory.agriInputsDashboard.couldNotSaveServiceDate')); return }
+    if (!res.success) { toastError(t('common.error'), t('inventory.agriInputsDashboard.couldNotSaveServiceDate')); return }
     setSetServiceForId(''); setSetServiceDate('')
     await loadServiceDue()
   }
 
   async function handleSendReminder(serialId: string) {
     const res = await window.api.serials.scheduleServiceReminder({ serialId })
-    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('inventory.agriInputsDashboard.couldNotScheduleReminder')); return }
+    if (!res.success) { toastError(t('common.error'), t('inventory.agriInputsDashboard.couldNotScheduleReminder')); return }
   }
 
   const now = Date.now()
