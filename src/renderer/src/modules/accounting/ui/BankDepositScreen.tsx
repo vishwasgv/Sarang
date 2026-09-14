@@ -164,7 +164,7 @@ function CreateDepositModal({ bankAccounts, onClose, onSaved }: { bankAccounts: 
         chequeIds: selectedChequeIds.length > 0 ? selectedChequeIds : undefined,
         notes: notes.trim() || undefined
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.bankDeposits.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.bankDeposits.couldNotCreate')); return }
       toastSuccess(t('accounting.bankDeposits.created'), formatCurrency(cashTotal + chequeTotal))
       onSaved()
     } catch {

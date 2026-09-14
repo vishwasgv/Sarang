@@ -38,7 +38,7 @@ export function ChartOfAccountsScreen() {
     try {
       const res = await window.api.chartOfAccounts.list(typeFilter ? { accountType: typeFilter } : undefined)
       if (res.success && res.data) setAccounts(res.data as Account[])
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.chartOfAccounts.couldNotLoad'))
+      else toastError(t('common.error'), t('accounting.chartOfAccounts.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('accounting.chartOfAccounts.couldNotLoad'))
     } finally {
@@ -149,7 +149,7 @@ function CreateAccountModal({ accounts, onClose, onSaved }: { accounts: Account[
         accountCode: accountCode.trim(), accountName: accountName.trim(), accountType,
         parentId: parentId || undefined
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.chartOfAccounts.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.chartOfAccounts.couldNotCreate')); return }
       toastSuccess(t('accounting.chartOfAccounts.accountCreated'), accountName.trim())
       onSaved()
     } catch {

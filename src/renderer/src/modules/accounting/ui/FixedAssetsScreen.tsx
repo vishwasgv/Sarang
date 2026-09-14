@@ -37,7 +37,7 @@ export function FixedAssetsScreen() {
     try {
       const res = await window.api.fixedAssets.list(statusFilter ? { status: statusFilter } : undefined)
       if (res.success && res.data) setAssets(res.data as FixedAsset[])
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.fixedAssets.couldNotLoad'))
+      else toastError(t('common.error'), t('accounting.fixedAssets.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('accounting.fixedAssets.couldNotLoad'))
     } finally { setLoading(false) }
@@ -135,7 +135,7 @@ function CreateAssetModal({ onClose, onSaved }: { onClose: () => void; onSaved: 
         purchaseDate: form.purchaseDate, purchaseCost: parseFloat(form.purchaseCost), usefulLifeMonths: parseInt(form.usefulLifeMonths, 10),
         depreciationMethod: form.depreciationMethod, salvageValue: parseFloat(form.salvageValue) || 0
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.fixedAssets.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.fixedAssets.couldNotCreate')); return }
       toastSuccess(t('accounting.fixedAssets.assetCreated'), form.assetName.trim())
       onSaved()
     } catch {

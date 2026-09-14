@@ -43,7 +43,7 @@ export function JournalEntriesScreen() {
       if (res.success && res.data) {
         const d = res.data as { entries: JournalEntry[]; total: number }
         setEntries(d.entries); setTotal(d.total)
-      } else toastError(t('common.error'), res.error?.message ?? t('accounting.journalEntries.couldNotLoad'))
+      } else toastError(t('common.error'), t('accounting.journalEntries.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('accounting.journalEntries.couldNotLoad'))
     } finally { setLoading(false) }
@@ -60,7 +60,7 @@ export function JournalEntriesScreen() {
         toastSuccess(t('accounting.journalEntries.reversed'), t('accounting.journalEntries.mirroredEntryPosted'))
         setReversingId(null); setReverseReason('')
         load()
-      } else toastError(t('common.error'), res.error?.message ?? t('accounting.journalEntries.couldNotReverse'))
+      } else toastError(t('common.error'), t('accounting.journalEntries.couldNotReverse'))
     } catch {
       toastError(t('common.error'), t('accounting.journalEntries.couldNotReverse'))
     } finally { setReversing(false) }
@@ -217,7 +217,7 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
           remarks: l.remarks.trim() || undefined
         }))
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.journalEntries.couldNotPost')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.journalEntries.couldNotPost')); return }
       toastSuccess(t('accounting.journalEntries.entryPosted'), '')
       onSaved()
     } catch {

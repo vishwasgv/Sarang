@@ -58,7 +58,7 @@ export function PostDatedChequesScreen() {
     try {
       const res = await window.api.postDatedCheques.updateStatus({ id, status })
       if (res.success) { toastSuccess(t('accounting.postDatedCheques.updated'), t('accounting.postDatedCheques.chequeMarked', { status: t(`accounting.postDatedCheques.status.${status}`) })); load() }
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.postDatedCheques.couldNotUpdateStatus'))
+      else toastError(t('common.error'), t('accounting.postDatedCheques.couldNotUpdateStatus'))
     } catch {
       toastError(t('common.error'), t('accounting.postDatedCheques.couldNotUpdateStatus'))
     }
@@ -183,7 +183,7 @@ function ChequeBooksModal({ bankAccounts, onClose }: { bankAccounts: BankAccount
     setSaving(true)
     try {
       const res = await window.api.chequeBooks.create({ bankAccountId: form.bankAccountId, startNumber: start, endNumber: end })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.chequeBooks.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.chequeBooks.couldNotCreate')); return }
       toastSuccess(t('accounting.chequeBooks.created'), `${start}-${end}`)
       setForm({ bankAccountId: '', startNumber: '', endNumber: '' })
       load()
@@ -195,7 +195,7 @@ function ChequeBooksModal({ bankAccounts, onClose }: { bankAccounts: BankAccount
   async function toggleActive(book: ChequeBook) {
     const res = await window.api.chequeBooks.setActive({ id: book.id, isActive: !book.isActive })
     if (res.success) load()
-    else toastError(t('common.error'), res.error?.message ?? t('accounting.chequeBooks.couldNotUpdate'))
+    else toastError(t('common.error'), t('accounting.chequeBooks.couldNotUpdate'))
   }
 
   const accountName = (id: string) => bankAccounts.find((a) => a.id === id)?.accountName ?? id
@@ -284,7 +284,7 @@ function CreatePdcModal({ bankAccounts, onClose, onSaved }: { bankAccounts: Bank
         direction: form.direction,
         dueDate: form.dueDate, amount: parseFloat(form.amount), remarks: form.remarks.trim() || undefined
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.postDatedCheques.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.postDatedCheques.couldNotCreate')); return }
       toastSuccess(t('accounting.postDatedCheques.chequeRecorded'), useChequeBook ? String((res.data as { chequeNumber: string })?.chequeNumber ?? '') : form.chequeNumber.trim())
       onSaved()
     } catch {

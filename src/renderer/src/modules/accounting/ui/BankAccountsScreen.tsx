@@ -35,7 +35,7 @@ export function BankAccountsScreen() {
     try {
       const res = await window.api.bankAccounts.list()
       if (res.success && res.data) setAccounts(res.data as BankAccount[])
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.bankAccounts.couldNotLoad'))
+      else toastError(t('common.error'), t('accounting.bankAccounts.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('accounting.bankAccounts.couldNotLoad'))
     } finally { setLoading(false) }
@@ -117,7 +117,7 @@ function CreateBankAccountModal({ onClose, onSaved }: { onClose: () => void; onS
         ifscCode: form.ifscCode.trim() || undefined,
         openingBalance: parseFloat(form.openingBalance) || 0
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.bankAccounts.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.bankAccounts.couldNotCreate')); return }
       toastSuccess(t('accounting.bankAccounts.accountCreated'), form.accountName.trim())
       onSaved()
     } catch {

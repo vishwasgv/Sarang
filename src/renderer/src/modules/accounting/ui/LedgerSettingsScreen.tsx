@@ -56,7 +56,7 @@ export function LedgerSettingsScreen() {
         setLockDateInput(value)
         toastSuccess(t('accounting.ledgerSettings.lockDateUpdated'), value || t('accounting.ledgerSettings.cleared'))
         loadLockDate()
-      } else toastError(t('common.error'), res.error?.message ?? t('accounting.ledgerSettings.couldNotSetLockDate'))
+      } else toastError(t('common.error'), t('accounting.ledgerSettings.couldNotSetLockDate'))
     } catch {
       toastError(t('common.error'), t('accounting.ledgerSettings.couldNotSetLockDate'))
     } finally { setSavingLock(false) }
@@ -72,7 +72,7 @@ export function LedgerSettingsScreen() {
         toastSuccess(t('accounting.ledgerSettings.yearClosed'), t('accounting.ledgerSettings.netIncomeSummary', { netIncome: d.netIncome, count: d.accountsCarriedForward }))
         setConfirmClose(false); setClosingDate('')
         loadLockDate()
-      } else toastError(t('common.error'), res.error?.message ?? t('accounting.ledgerSettings.couldNotCloseYear'))
+      } else toastError(t('common.error'), t('accounting.ledgerSettings.couldNotCloseYear'))
     } catch {
       toastError(t('common.error'), t('accounting.ledgerSettings.couldNotCloseYear'))
     } finally { setClosingYear(false) }

@@ -64,7 +64,7 @@ export function BankReconciliationScreen() {
         const d = res.data as { matchedCount: number }
         toastSuccess(t('accounting.bankReconciliation.autoMatchComplete'), t('accounting.bankReconciliation.linesReconciled', { count: d.matchedCount }))
         load()
-      } else toastError(t('common.error'), res.error?.message ?? t('accounting.bankReconciliation.couldNotAutoMatch'))
+      } else toastError(t('common.error'), t('accounting.bankReconciliation.couldNotAutoMatch'))
     } catch {
       toastError(t('common.error'), t('accounting.bankReconciliation.couldNotAutoMatch'))
     } finally { setMatching(false) }
@@ -74,7 +74,7 @@ export function BankReconciliationScreen() {
     try {
       const res = await window.api.bankStatement.unreconcileLine({ lineId })
       if (res.success) load()
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.bankReconciliation.couldNotUnreconcile'))
+      else toastError(t('common.error'), t('accounting.bankReconciliation.couldNotUnreconcile'))
     } catch {
       toastError(t('common.error'), t('accounting.bankReconciliation.couldNotUnreconcile'))
     }
@@ -206,7 +206,7 @@ function ImportStatementModal({ bankAccountId, onClose, onSaved }: { bankAccount
           creditAmount: parseFloat(r.creditAmount) || 0
         }))
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.bankReconciliation.couldNotImport')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.bankReconciliation.couldNotImport')); return }
       toastSuccess(t('accounting.bankReconciliation.imported'), t('accounting.bankReconciliation.linesImported', { count: validRows.length }))
       onSaved()
     } catch {

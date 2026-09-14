@@ -42,7 +42,7 @@ export function FixedAssetDetailScreen() {
     try {
       const res = await window.api.fixedAssets.get(id)
       if (res.success && res.data) setAsset(res.data as FixedAsset)
-      else toastError(t('common.error'), res.error?.message ?? t('accounting.fixedAssetDetail.couldNotLoad'))
+      else toastError(t('common.error'), t('accounting.fixedAssetDetail.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('accounting.fixedAssetDetail.couldNotLoad'))
     } finally { setLoading(false) }
@@ -141,7 +141,7 @@ function RunDepreciationModal({ assetId, onClose, onSaved }: { assetId: string; 
     setSaving(true)
     try {
       const res = await window.api.fixedAssets.runDepreciation({ fixedAssetId: assetId, periodStart, periodEnd })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.fixedAssetDetail.couldNotRunDepreciation')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.fixedAssetDetail.couldNotRunDepreciation')); return }
       const d = res.data as { depreciation: { amount: number } }
       toastSuccess(t('accounting.fixedAssetDetail.depreciationPosted'), formatCurrency(d.depreciation.amount))
       onSaved()
@@ -184,7 +184,7 @@ function DisposeAssetModal({ assetId, bookValue, onClose, onSaved }: { assetId: 
     setSaving(true)
     try {
       const res = await window.api.fixedAssets.dispose({ id: assetId, disposalDate, disposalAmount: parseFloat(disposalAmount) || 0 })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('accounting.fixedAssetDetail.couldNotDispose')); return }
+      if (!res.success) { toastError(t('common.error'), t('accounting.fixedAssetDetail.couldNotDispose')); return }
       const d = res.data as { gainOrLoss: number }
       toastSuccess(t('accounting.fixedAssetDetail.assetDisposed'), t('accounting.fixedAssetDetail.gainOrLossOf', { type: d.gainOrLoss >= 0 ? t('accounting.fixedAssetDetail.gain') : t('accounting.fixedAssetDetail.loss'), amount: formatCurrency(Math.abs(d.gainOrLoss)) }))
       onSaved()
