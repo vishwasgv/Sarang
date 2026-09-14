@@ -5891,7 +5891,10 @@
       "capacityUnit": "Satuan Kapasitas",
       "deleteConfirm": "Hapus kendaraan {{number}}?",
       "printTitle": "Daftar Armada",
-      "vehicleNumberRequired": "Nomor kendaraan wajib diisi."
+      "vehicleNumberRequired": "Nomor kendaraan wajib diisi.",
+      "loadFailedMessage": "Kendaraan tidak dapat dimuat.",
+      "updateStatusFailedMessage": "Status kendaraan tidak dapat diperbarui.",
+      "deleteFailedMessage": "Kendaraan tidak dapat dihapus."
     },
     "carriers": {
       "title": "Ekspedisi & Mitra",
@@ -5910,7 +5913,10 @@
       "deactivate": "Nonaktifkan",
       "activate": "Aktifkan",
       "deleteConfirm": "Hapus ekspedisi \"{{name}}\"?",
-      "carrierNameRequired": "Nama ekspedisi wajib diisi."
+      "carrierNameRequired": "Nama ekspedisi wajib diisi.",
+      "loadFailedMessage": "Ekspedisi tidak dapat dimuat.",
+      "toggleActiveFailedMessage": "Status ekspedisi tidak dapat diperbarui.",
+      "deleteFailedMessage": "Ekspedisi tidak dapat dihapus."
     },
     "shipments": {
       "title": "Pengiriman",
@@ -5968,10 +5974,19 @@
         "empty": "Belum ada pemberhentian tambahan yang ditambahkan.",
         "primaryHint": "Tujuan di atas selalu menjadi pemberhentian pertama — tambahkan lagi di bawah untuk rute multi-pemberhentian.",
         "saveFirst": "Simpan pengiriman terlebih dahulu, lalu tambahkan pemberhentian.",
-        "deleteStopConfirm": "Hapus pemberhentian ini dari rute? Tindakan ini tidak dapat dibatalkan."
+        "deleteStopConfirm": "Hapus pemberhentian ini dari rute? Tindakan ini tidak dapat dibatalkan.",
+        "addStopFailedMessage": "Pemberhentian tidak dapat ditambahkan.",
+        "updateStatusFailedMessage": "Status pemberhentian tidak dapat diperbarui.",
+        "deleteFailedMessage": "Pemberhentian tidak dapat dihapus."
       },
       "cancelShipment": "Batalkan Pengiriman",
-      "cancelConfirm": "Batalkan pengiriman {{number}}? Tindakan ini tidak dapat dibatalkan."
+      "cancelConfirm": "Batalkan pengiriman {{number}}? Tindakan ini tidak dapat dibatalkan.",
+      "loadFailedMessage": "Pengiriman tidak dapat dimuat.",
+      "loadVehiclesFailedMessage": "Kendaraan tidak dapat dimuat.",
+      "loadCarriersFailedMessage": "Ekspedisi tidak dapat dimuat.",
+      "openEditFailedMessage": "Detail pengiriman tidak dapat dimuat.",
+      "changeStatusFailedMessage": "Status pengiriman tidak dapat diperbarui.",
+      "deleteFailedMessage": "Pengiriman tidak dapat dihapus."
     },
     "grn": {
       "title": "Nota Penerimaan Barang (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "Dipesan {{qty}} {{unit}} · sudah diterima {{received}}",
       "orderedHintShort": "Dipesan {{qty}} {{unit}}",
       "editGRNTitle": "Edit GRN",
-      "itemsHeading": "Barang"
+      "itemsHeading": "Barang",
+      "loadFailedMessage": "Nota penerimaan barang tidak dapat dimuat.",
+      "loadProductsFailedMessage": "Produk tidak dapat dimuat.",
+      "loadSuppliersFailedMessage": "Pemasok tidak dapat dimuat.",
+      "loadPurchaseOrdersFailedMessage": "Pesanan pembelian tidak dapat dimuat.",
+      "loadCatalogFailedMessage": "Data penautan tidak dapat dimuat.",
+      "verifyFailedMessage": "Nota penerimaan barang tidak dapat diverifikasi.",
+      "actionFailedMessage": "Tindakan ini tidak dapat diselesaikan."
     },
     "challan": {
       "title": "Surat Jalan",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "Nama pelanggan wajib diisi.",
       "atLeastOneItem": "Diperlukan minimal satu barang.",
       "atLeastOneValidItem": "Diperlukan minimal satu barang valid.",
-      "atLeastOneReturnQty": "Minimal satu barang harus memiliki jumlah kembali lebih dari 0."
+      "atLeastOneReturnQty": "Minimal satu barang harus memiliki jumlah kembali lebih dari 0.",
+      "loadFailedMessage": "Surat jalan tidak dapat dimuat.",
+      "loadVehiclesFailedMessage": "Kendaraan tidak dapat dimuat.",
+      "changeStatusFailedMessage": "Status surat jalan tidak dapat diperbarui.",
+      "deleteFailedMessage": "Surat jalan tidak dapat dihapus."
     },
     "freight": {
       "title": "Buku Besar Ongkir",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "Hapus entri ongkir untuk {{carrier}} ({{amount}})? Tindakan ini tidak dapat dibatalkan.",
       "amountRequired": "Jumlah harus lebih besar dari 0.",
       "paidOn": "Dibayar {{date}}",
-      "refPlaceholderShort": "No. pengiriman atau faktur"
+      "refPlaceholderShort": "No. pengiriman atau faktur",
+      "loadFailedMessage": "Entri ongkos kirim tidak dapat dimuat.",
+      "loadCarriersFailedMessage": "Ekspedisi tidak dapat dimuat.",
+      "loadSummaryFailedMessage": "Ringkasan ongkos kirim tidak dapat dimuat.",
+      "markPaidFailedMessage": "Entri tidak dapat ditandai sebagai lunas.",
+      "deleteFailedMessage": "Entri ongkos kirim tidak dapat dihapus."
     },
     "analytics": {
       "title": "Analitik Logistik",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "Terkirim",
       "returnedCol": "Dikembalikan",
       "fleetStatus": "Status Armada",
-      "noData": "Tidak ada data tersedia."
+      "noData": "Tidak ada data tersedia.",
+      "loadFailedMessage": "Data analitik tidak dapat dimuat."
     },
     "loadMore": "Muat Lagi",
     "showingOf": "Menampilkan {{shown}} dari {{total}}"

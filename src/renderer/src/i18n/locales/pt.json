@@ -5891,7 +5891,10 @@
       "capacityUnit": "Unidade de Capacidade",
       "deleteConfirm": "Excluir veículo {{number}}?",
       "printTitle": "Registro de Frota",
-      "vehicleNumberRequired": "O número do veículo é obrigatório."
+      "vehicleNumberRequired": "O número do veículo é obrigatório.",
+      "loadFailedMessage": "Não foi possível carregar os veículos.",
+      "updateStatusFailedMessage": "Não foi possível atualizar o status do veículo.",
+      "deleteFailedMessage": "Não foi possível excluir o veículo."
     },
     "carriers": {
       "title": "Transportadoras e Parceiros",
@@ -5910,7 +5913,10 @@
       "deactivate": "Desativar",
       "activate": "Ativar",
       "deleteConfirm": "Excluir transportadora \"{{name}}\"?",
-      "carrierNameRequired": "O nome da transportadora é obrigatório."
+      "carrierNameRequired": "O nome da transportadora é obrigatório.",
+      "loadFailedMessage": "Não foi possível carregar as transportadoras.",
+      "toggleActiveFailedMessage": "Não foi possível atualizar o status da transportadora.",
+      "deleteFailedMessage": "Não foi possível excluir a transportadora."
     },
     "shipments": {
       "title": "Remessas",
@@ -5968,10 +5974,19 @@
         "empty": "Nenhuma parada adicional foi adicionada ainda.",
         "primaryHint": "O destino acima é sempre a primeira parada — adicione mais abaixo para uma rota com várias paradas.",
         "saveFirst": "Salve o envio primeiro e depois adicione paradas.",
-        "deleteStopConfirm": "Remover esta parada da rota? Esta ação não pode ser desfeita."
+        "deleteStopConfirm": "Remover esta parada da rota? Esta ação não pode ser desfeita.",
+        "addStopFailedMessage": "Não foi possível adicionar a parada.",
+        "updateStatusFailedMessage": "Não foi possível atualizar o status da parada.",
+        "deleteFailedMessage": "Não foi possível excluir a parada."
       },
       "cancelShipment": "Cancelar Remessa",
-      "cancelConfirm": "Cancelar a remessa {{number}}? Esta ação não pode ser desfeita."
+      "cancelConfirm": "Cancelar a remessa {{number}}? Esta ação não pode ser desfeita.",
+      "loadFailedMessage": "Não foi possível carregar as remessas.",
+      "loadVehiclesFailedMessage": "Não foi possível carregar os veículos.",
+      "loadCarriersFailedMessage": "Não foi possível carregar as transportadoras.",
+      "openEditFailedMessage": "Não foi possível carregar os detalhes da remessa.",
+      "changeStatusFailedMessage": "Não foi possível atualizar o status da remessa.",
+      "deleteFailedMessage": "Não foi possível excluir a remessa."
     },
     "grn": {
       "title": "Notas de Recebimento de Mercadorias (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "Pedido {{qty}} {{unit}} · já recebido {{received}}",
       "orderedHintShort": "Pedido {{qty}} {{unit}}",
       "editGRNTitle": "Editar GRN",
-      "itemsHeading": "Itens"
+      "itemsHeading": "Itens",
+      "loadFailedMessage": "Não foi possível carregar as notas de recebimento.",
+      "loadProductsFailedMessage": "Não foi possível carregar os produtos.",
+      "loadSuppliersFailedMessage": "Não foi possível carregar os fornecedores.",
+      "loadPurchaseOrdersFailedMessage": "Não foi possível carregar os pedidos de compra.",
+      "loadCatalogFailedMessage": "Não foi possível carregar os dados de vinculação.",
+      "verifyFailedMessage": "Não foi possível verificar a nota de recebimento.",
+      "actionFailedMessage": "Não foi possível concluir esta ação."
     },
     "challan": {
       "title": "Guias de Remessa",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "O nome do cliente é obrigatório.",
       "atLeastOneItem": "É necessário pelo menos um item.",
       "atLeastOneValidItem": "É necessário pelo menos um item válido.",
-      "atLeastOneReturnQty": "Pelo menos um item deve ter uma quantidade de devolução maior que 0."
+      "atLeastOneReturnQty": "Pelo menos um item deve ter uma quantidade de devolução maior que 0.",
+      "loadFailedMessage": "Não foi possível carregar as guias de remessa.",
+      "loadVehiclesFailedMessage": "Não foi possível carregar os veículos.",
+      "changeStatusFailedMessage": "Não foi possível atualizar o status da guia de remessa.",
+      "deleteFailedMessage": "Não foi possível excluir a guia de remessa."
     },
     "freight": {
       "title": "Livro de Fretes",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "Excluir lançamento de frete de {{carrier}} ({{amount}})? Esta ação não pode ser desfeita.",
       "amountRequired": "O valor deve ser maior que 0.",
       "paidOn": "Pago em {{date}}",
-      "refPlaceholderShort": "N.º da remessa ou fatura"
+      "refPlaceholderShort": "N.º da remessa ou fatura",
+      "loadFailedMessage": "Não foi possível carregar os lançamentos de frete.",
+      "loadCarriersFailedMessage": "Não foi possível carregar as transportadoras.",
+      "loadSummaryFailedMessage": "Não foi possível carregar o resumo de fretes.",
+      "markPaidFailedMessage": "Não foi possível marcar o lançamento como pago.",
+      "deleteFailedMessage": "Não foi possível excluir o lançamento de frete."
     },
     "analytics": {
       "title": "Análise de Logística",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "Entregues",
       "returnedCol": "Devolvidos",
       "fleetStatus": "Status da Frota",
-      "noData": "Nenhum dado disponível."
+      "noData": "Nenhum dado disponível.",
+      "loadFailedMessage": "Não foi possível carregar os dados de análise."
     },
     "loadMore": "Carregar Mais",
     "showingOf": "Mostrando {{shown}} de {{total}}"

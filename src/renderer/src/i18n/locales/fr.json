@@ -5891,7 +5891,10 @@
       "capacityUnit": "Unité de Capacité",
       "deleteConfirm": "Supprimer le véhicule {{number}} ?",
       "printTitle": "Registre de Flotte",
-      "vehicleNumberRequired": "Le numéro de véhicule est obligatoire."
+      "vehicleNumberRequired": "Le numéro de véhicule est obligatoire.",
+      "loadFailedMessage": "Impossible de charger les véhicules.",
+      "updateStatusFailedMessage": "Impossible de mettre à jour le statut du véhicule.",
+      "deleteFailedMessage": "Impossible de supprimer le véhicule."
     },
     "carriers": {
       "title": "Transporteurs et Partenaires",
@@ -5910,7 +5913,10 @@
       "deactivate": "Désactiver",
       "activate": "Activer",
       "deleteConfirm": "Supprimer le transporteur « {{name}} » ?",
-      "carrierNameRequired": "Le nom du transporteur est obligatoire."
+      "carrierNameRequired": "Le nom du transporteur est obligatoire.",
+      "loadFailedMessage": "Impossible de charger les transporteurs.",
+      "toggleActiveFailedMessage": "Impossible de mettre à jour le statut du transporteur.",
+      "deleteFailedMessage": "Impossible de supprimer le transporteur."
     },
     "shipments": {
       "title": "Expéditions",
@@ -5968,10 +5974,19 @@
         "empty": "Aucun arrêt supplémentaire n'a encore été ajouté.",
         "primaryHint": "La destination ci-dessus est toujours le premier arrêt — ajoutez-en d'autres ci-dessous pour un itinéraire à plusieurs arrêts.",
         "saveFirst": "Enregistrez d'abord l'expédition, puis ajoutez des arrêts.",
-        "deleteStopConfirm": "Supprimer cet arrêt de l'itinéraire ? Cette action est irréversible."
+        "deleteStopConfirm": "Supprimer cet arrêt de l'itinéraire ? Cette action est irréversible.",
+        "addStopFailedMessage": "Impossible d'ajouter l'arrêt.",
+        "updateStatusFailedMessage": "Impossible de mettre à jour le statut de l'arrêt.",
+        "deleteFailedMessage": "Impossible de supprimer l'arrêt."
       },
       "cancelShipment": "Annuler l'Expédition",
-      "cancelConfirm": "Annuler l'expédition {{number}} ? Cette action est irréversible."
+      "cancelConfirm": "Annuler l'expédition {{number}} ? Cette action est irréversible.",
+      "loadFailedMessage": "Impossible de charger les expéditions.",
+      "loadVehiclesFailedMessage": "Impossible de charger les véhicules.",
+      "loadCarriersFailedMessage": "Impossible de charger les transporteurs.",
+      "openEditFailedMessage": "Impossible de charger les détails de l'expédition.",
+      "changeStatusFailedMessage": "Impossible de mettre à jour le statut de l'expédition.",
+      "deleteFailedMessage": "Impossible de supprimer l'expédition."
     },
     "grn": {
       "title": "Bons de Réception de Marchandises (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "Commandé {{qty}} {{unit}} · déjà reçu {{received}}",
       "orderedHintShort": "Commandé {{qty}} {{unit}}",
       "editGRNTitle": "Modifier le GRN",
-      "itemsHeading": "Articles"
+      "itemsHeading": "Articles",
+      "loadFailedMessage": "Impossible de charger les bons de réception.",
+      "loadProductsFailedMessage": "Impossible de charger les produits.",
+      "loadSuppliersFailedMessage": "Impossible de charger les fournisseurs.",
+      "loadPurchaseOrdersFailedMessage": "Impossible de charger les bons de commande.",
+      "loadCatalogFailedMessage": "Impossible de charger les données de liaison.",
+      "verifyFailedMessage": "Impossible de vérifier le bon de réception.",
+      "actionFailedMessage": "Impossible de terminer cette action."
     },
     "challan": {
       "title": "Bons de Livraison",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "Le nom du client est obligatoire.",
       "atLeastOneItem": "Au moins un article est requis.",
       "atLeastOneValidItem": "Au moins un article valide est requis.",
-      "atLeastOneReturnQty": "Au moins un article doit avoir une quantité de retour supérieure à 0."
+      "atLeastOneReturnQty": "Au moins un article doit avoir une quantité de retour supérieure à 0.",
+      "loadFailedMessage": "Impossible de charger les bons de livraison.",
+      "loadVehiclesFailedMessage": "Impossible de charger les véhicules.",
+      "changeStatusFailedMessage": "Impossible de mettre à jour le statut du bon de livraison.",
+      "deleteFailedMessage": "Impossible de supprimer le bon de livraison."
     },
     "freight": {
       "title": "Registre de Fret",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "Supprimer l'entrée de fret pour {{carrier}} ({{amount}}) ? Cette action est irréversible.",
       "amountRequired": "Le montant doit être supérieur à 0.",
       "paidOn": "Payé le {{date}}",
-      "refPlaceholderShort": "N° d'expédition ou de facture"
+      "refPlaceholderShort": "N° d'expédition ou de facture",
+      "loadFailedMessage": "Impossible de charger les entrées de fret.",
+      "loadCarriersFailedMessage": "Impossible de charger les transporteurs.",
+      "loadSummaryFailedMessage": "Impossible de charger le récapitulatif de fret.",
+      "markPaidFailedMessage": "Impossible de marquer l'entrée comme payée.",
+      "deleteFailedMessage": "Impossible de supprimer l'entrée de fret."
     },
     "analytics": {
       "title": "Analyses Logistiques",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "Livrés",
       "returnedCol": "Retournés",
       "fleetStatus": "Statut de la Flotte",
-      "noData": "Aucune donnée disponible."
+      "noData": "Aucune donnée disponible.",
+      "loadFailedMessage": "Impossible de charger les données d'analyse."
     },
     "loadMore": "Charger Plus",
     "showingOf": "Affichage de {{shown}} sur {{total}}"

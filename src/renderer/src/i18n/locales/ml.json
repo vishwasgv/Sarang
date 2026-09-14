@@ -5891,7 +5891,10 @@
       "capacityUnit": "ശേഷി യൂണിറ്റ്",
       "deleteConfirm": "വാഹനം {{number}} ഇല്ലാതാക്കണോ?",
       "printTitle": "വാഹനവ്യൂഹ രജിസ്റ്റർ",
-      "vehicleNumberRequired": "വാഹന നമ്പർ ആവശ്യമാണ്."
+      "vehicleNumberRequired": "വാഹന നമ്പർ ആവശ്യമാണ്.",
+      "loadFailedMessage": "വാഹനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "updateStatusFailedMessage": "വാഹനത്തിന്റെ നില അപ്ഡേറ്റ് ചെയ്യാനായില്ല.",
+      "deleteFailedMessage": "വാഹനം ഇല്ലാതാക്കാനായില്ല."
     },
     "carriers": {
       "title": "ചരക്കുവാഹകരും പങ്കാളികളും",
@@ -5910,7 +5913,10 @@
       "deactivate": "നിർജീവമാക്കുക",
       "activate": "സജീവമാക്കുക",
       "deleteConfirm": "ചരക്കുവാഹകൻ \"{{name}}\" ഇല്ലാതാക്കണോ?",
-      "carrierNameRequired": "ചരക്കുവാഹകന്റെ പേര് ആവശ്യമാണ്."
+      "carrierNameRequired": "ചരക്കുവാഹകന്റെ പേര് ആവശ്യമാണ്.",
+      "loadFailedMessage": "ചരക്കുവാഹകരെ ലോഡ് ചെയ്യാനായില്ല.",
+      "toggleActiveFailedMessage": "ചരക്കുവാഹകന്റെ നില അപ്ഡേറ്റ് ചെയ്യാനായില്ല.",
+      "deleteFailedMessage": "ചരക്കുവാഹകനെ ഇല്ലാതാക്കാനായില്ല."
     },
     "shipments": {
       "title": "കയറ്റുമതികൾ",
@@ -5968,10 +5974,19 @@
         "empty": "ഇതുവരെ അധിക സ്റ്റോപ്പുകളൊന്നും ചേർത്തിട്ടില്ല.",
         "primaryHint": "മുകളിലെ ലക്ഷ്യസ്ഥാനം എപ്പോഴും ആദ്യത്തെ സ്റ്റോപ്പാണ് — മൾട്ടി-സ്റ്റോപ്പ് റൂട്ടിനായി താഴെ കൂടുതൽ ചേർക്കുക.",
         "saveFirst": "ആദ്യം ഷിപ്‌മെന്റ് സേവ് ചെയ്യുക, തുടർന്ന് സ്റ്റോപ്പുകൾ ചേർക്കുക.",
-        "deleteStopConfirm": "ഈ സ്റ്റോപ്പ് റൂട്ടിൽ നിന്ന് നീക്കം ചെയ്യണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല."
+        "deleteStopConfirm": "ഈ സ്റ്റോപ്പ് റൂട്ടിൽ നിന്ന് നീക്കം ചെയ്യണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല.",
+        "addStopFailedMessage": "സ്റ്റോപ്പ് ചേർക്കാനായില്ല.",
+        "updateStatusFailedMessage": "സ്റ്റോപ്പിന്റെ നില അപ്ഡേറ്റ് ചെയ്യാനായില്ല.",
+        "deleteFailedMessage": "സ്റ്റോപ്പ് ഇല്ലാതാക്കാനായില്ല."
       },
       "cancelShipment": "കയറ്റുമതി റദ്ദാക്കുക",
-      "cancelConfirm": "കയറ്റുമതി {{number}} റദ്ദാക്കണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല."
+      "cancelConfirm": "കയറ്റുമതി {{number}} റദ്ദാക്കണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല.",
+      "loadFailedMessage": "കയറ്റുമതികൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadVehiclesFailedMessage": "വാഹനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadCarriersFailedMessage": "ചരക്കുവാഹകരെ ലോഡ് ചെയ്യാനായില്ല.",
+      "openEditFailedMessage": "കയറ്റുമതി വിശദാംശങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "changeStatusFailedMessage": "കയറ്റുമതിയുടെ നില അപ്ഡേറ്റ് ചെയ്യാനായില്ല.",
+      "deleteFailedMessage": "കയറ്റുമതി ഇല്ലാതാക്കാനായില്ല."
     },
     "grn": {
       "title": "ചരക്ക് സ്വീകരണ കുറിപ്പുകൾ (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "ഓർഡർ ചെയ്തത് {{qty}} {{unit}} · ഇതിനകം ലഭിച്ചത് {{received}}",
       "orderedHintShort": "ഓർഡർ ചെയ്തത് {{qty}} {{unit}}",
       "editGRNTitle": "GRN എഡിറ്റ് ചെയ്യുക",
-      "itemsHeading": "ഇനങ്ങൾ"
+      "itemsHeading": "ഇനങ്ങൾ",
+      "loadFailedMessage": "GRN-കൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadProductsFailedMessage": "ഉൽപ്പന്നങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadSuppliersFailedMessage": "വിതരണക്കാരെ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadPurchaseOrdersFailedMessage": "വാങ്ങൽ ഓർഡറുകൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadCatalogFailedMessage": "ലിങ്കിംഗ് ഡാറ്റ ലോഡ് ചെയ്യാനായില്ല.",
+      "verifyFailedMessage": "GRN പരിശോധിച്ചുറപ്പിക്കാനായില്ല.",
+      "actionFailedMessage": "ഈ പ്രവർത്തനം പൂർത്തിയാക്കാനായില്ല."
     },
     "challan": {
       "title": "ഡെലിവറി ചലാനുകൾ",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "ഉപഭോക്താവിന്റെ പേര് ആവശ്യമാണ്.",
       "atLeastOneItem": "കുറഞ്ഞത് ഒരു ഇനമെങ്കിലും ആവശ്യമാണ്.",
       "atLeastOneValidItem": "കുറഞ്ഞത് ഒരു സാധുവായ ഇനമെങ്കിലും ആവശ്യമാണ്.",
-      "atLeastOneReturnQty": "കുറഞ്ഞത് ഒരു ഇനത്തിനെങ്കിലും 0-ൽ കൂടുതൽ തിരിച്ചുനൽകൽ അളവ് ഉണ്ടായിരിക്കണം."
+      "atLeastOneReturnQty": "കുറഞ്ഞത് ഒരു ഇനത്തിനെങ്കിലും 0-ൽ കൂടുതൽ തിരിച്ചുനൽകൽ അളവ് ഉണ്ടായിരിക്കണം.",
+      "loadFailedMessage": "ചലാനുകൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadVehiclesFailedMessage": "വാഹനങ്ങൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "changeStatusFailedMessage": "ചലാന്റെ നില അപ്ഡേറ്റ് ചെയ്യാനായില്ല.",
+      "deleteFailedMessage": "ചലാൻ ഇല്ലാതാക്കാനായില്ല."
     },
     "freight": {
       "title": "ചരക്കുകൂലി ലെഡ്ജർ",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "{{carrier}} ({{amount}}) എന്നതിനുള്ള ചരക്കുകൂലി എൻട്രി ഇല്ലാതാക്കണോ? ഈ പ്രവർത്തനം പഴയപടിയാക്കാൻ കഴിയില്ല.",
       "amountRequired": "തുക 0-ൽ കൂടുതൽ ആയിരിക്കണം.",
       "paidOn": "{{date}} ന് അടച്ചു",
-      "refPlaceholderShort": "കയറ്റുമതി # അല്ലെങ്കിൽ ഇൻവോയ്സ് #"
+      "refPlaceholderShort": "കയറ്റുമതി # അല്ലെങ്കിൽ ഇൻവോയ്സ് #",
+      "loadFailedMessage": "ചരക്കുകൂലി എൻട്രികൾ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadCarriersFailedMessage": "ചരക്കുവാഹകരെ ലോഡ് ചെയ്യാനായില്ല.",
+      "loadSummaryFailedMessage": "ചരക്കുകൂലി സംഗ്രഹം ലോഡ് ചെയ്യാനായില്ല.",
+      "markPaidFailedMessage": "എൻട്രി അടച്ചതായി അടയാളപ്പെടുത്താനായില്ല.",
+      "deleteFailedMessage": "ചരക്കുകൂലി എൻട്രി ഇല്ലാതാക്കാനായില്ല."
     },
     "analytics": {
       "title": "ലോജിസ്റ്റിക്സ് വിശകലനം",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "ഡെലിവർ ചെയ്തു",
       "returnedCol": "തിരികെ നൽകി",
       "fleetStatus": "വാഹനവ്യൂഹ നില",
-      "noData": "ഡാറ്റ ലഭ്യമല്ല."
+      "noData": "ഡാറ്റ ലഭ്യമല്ല.",
+      "loadFailedMessage": "വിശകലന ഡാറ്റ ലോഡ് ചെയ്യാനായില്ല."
     },
     "loadMore": "കൂടുതൽ ലോഡ് ചെയ്യുക",
     "showingOf": "{{total}} ൽ {{shown}} കാണിക്കുന്നു"

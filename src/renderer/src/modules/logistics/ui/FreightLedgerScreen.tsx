@@ -86,13 +86,13 @@ export default function FreightLedgerScreen() {
         }),
       ])
       if (lr.success) { setEntries(lr.data as FreightEntry[]); setTotal((lr as { total?: number }).total ?? (lr.data as FreightEntry[]).length) }
-      else toastError(t('common.error'), lr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.freight.loadFailedMessage'))
       if (cr.success) setCarriers(cr.data as Carrier[])
-      else toastError(t('common.error'), cr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.freight.loadCarriersFailedMessage'))
       if (sr.success) setSummary(sr.data as FreightSummary)
-      else toastError(t('common.error'), sr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.freight.loadSummaryFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.freight.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -130,10 +130,10 @@ export default function FreightLedgerScreen() {
     setMarkingPaidId(id)
     try {
       const res = await window.api.logisticsFreight.markPaid({ id })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.freight.markPaidFailedMessage'))
       await load()
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.freight.markPaidFailedMessage'))
     } finally {
       setMarkingPaidId(null)
     }
@@ -179,10 +179,10 @@ export default function FreightLedgerScreen() {
     setDeleting(true)
     try {
       const res = await window.api.logisticsFreight.delete(deleteTarget.id)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.freight.deleteFailedMessage'))
       else { setDeleteTarget(null); load() }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.freight.deleteFailedMessage'))
     } finally {
       setDeleting(false)
     }

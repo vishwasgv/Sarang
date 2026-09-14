@@ -5891,7 +5891,10 @@
       "capacityUnit": "وحدة السعة",
       "deleteConfirm": "حذف المركبة {{number}}؟",
       "printTitle": "سجل الأسطول",
-      "vehicleNumberRequired": "رقم المركبة مطلوب."
+      "vehicleNumberRequired": "رقم المركبة مطلوب.",
+      "loadFailedMessage": "تعذّر تحميل المركبات.",
+      "updateStatusFailedMessage": "تعذّر تحديث حالة المركبة.",
+      "deleteFailedMessage": "تعذّر حذف المركبة."
     },
     "carriers": {
       "title": "شركات النقل والشركاء",
@@ -5910,7 +5913,10 @@
       "deactivate": "تعطيل",
       "activate": "تفعيل",
       "deleteConfirm": "حذف شركة النقل \"{{name}}\"؟",
-      "carrierNameRequired": "اسم شركة النقل مطلوب."
+      "carrierNameRequired": "اسم شركة النقل مطلوب.",
+      "loadFailedMessage": "تعذّر تحميل شركات النقل.",
+      "toggleActiveFailedMessage": "تعذّر تحديث حالة شركة النقل.",
+      "deleteFailedMessage": "تعذّر حذف شركة النقل."
     },
     "shipments": {
       "title": "الشحنات",
@@ -5968,10 +5974,19 @@
         "empty": "لم تتم إضافة أي محطات إضافية بعد.",
         "primaryHint": "الوجهة أعلاه هي دائمًا المحطة الأولى — أضف المزيد أدناه لمسار متعدد المحطات.",
         "saveFirst": "احفظ الشحنة أولاً، ثم أضف المحطات.",
-        "deleteStopConfirm": "إزالة هذه المحطة من المسار؟ لا يمكن التراجع عن هذا الإجراء."
+        "deleteStopConfirm": "إزالة هذه المحطة من المسار؟ لا يمكن التراجع عن هذا الإجراء.",
+        "addStopFailedMessage": "تعذّر إضافة المحطة.",
+        "updateStatusFailedMessage": "تعذّر تحديث حالة المحطة.",
+        "deleteFailedMessage": "تعذّر حذف المحطة."
       },
       "cancelShipment": "إلغاء الشحنة",
-      "cancelConfirm": "إلغاء الشحنة {{number}}؟ لا يمكن التراجع عن هذا الإجراء."
+      "cancelConfirm": "إلغاء الشحنة {{number}}؟ لا يمكن التراجع عن هذا الإجراء.",
+      "loadFailedMessage": "تعذّر تحميل الشحنات.",
+      "loadVehiclesFailedMessage": "تعذّر تحميل المركبات.",
+      "loadCarriersFailedMessage": "تعذّر تحميل شركات النقل.",
+      "openEditFailedMessage": "تعذّر تحميل تفاصيل الشحنة.",
+      "changeStatusFailedMessage": "تعذّر تحديث حالة الشحنة.",
+      "deleteFailedMessage": "تعذّر حذف الشحنة."
     },
     "grn": {
       "title": "إشعارات استلام البضائع (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "تم طلب {{qty}} {{unit}} · تم استلام {{received}} مسبقًا",
       "orderedHintShort": "تم طلب {{qty}} {{unit}}",
       "editGRNTitle": "تعديل إشعار الاستلام",
-      "itemsHeading": "الأصناف"
+      "itemsHeading": "الأصناف",
+      "loadFailedMessage": "تعذّر تحميل إشعارات استلام البضائع.",
+      "loadProductsFailedMessage": "تعذّر تحميل المنتجات.",
+      "loadSuppliersFailedMessage": "تعذّر تحميل الموردين.",
+      "loadPurchaseOrdersFailedMessage": "تعذّر تحميل أوامر الشراء.",
+      "loadCatalogFailedMessage": "تعذّر تحميل بيانات الربط.",
+      "verifyFailedMessage": "تعذّر التحقق من إشعار الاستلام.",
+      "actionFailedMessage": "تعذّر إتمام هذا الإجراء."
     },
     "challan": {
       "title": "أذونات التسليم",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "اسم العميل مطلوب.",
       "atLeastOneItem": "يلزم صنف واحد على الأقل.",
       "atLeastOneValidItem": "يلزم صنف صالح واحد على الأقل.",
-      "atLeastOneReturnQty": "يجب أن يكون لصنف واحد على الأقل كمية إرجاع أكبر من 0."
+      "atLeastOneReturnQty": "يجب أن يكون لصنف واحد على الأقل كمية إرجاع أكبر من 0.",
+      "loadFailedMessage": "تعذّر تحميل أذونات التسليم.",
+      "loadVehiclesFailedMessage": "تعذّر تحميل المركبات.",
+      "changeStatusFailedMessage": "تعذّر تحديث حالة إذن التسليم.",
+      "deleteFailedMessage": "تعذّر حذف إذن التسليم."
     },
     "freight": {
       "title": "سجل الشحن",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "حذف قيد الشحن لـ {{carrier}} ({{amount}})؟ لا يمكن التراجع عن هذا الإجراء.",
       "amountRequired": "يجب أن يكون المبلغ أكبر من 0.",
       "paidOn": "دُفع في {{date}}",
-      "refPlaceholderShort": "رقم الشحنة أو الفاتورة"
+      "refPlaceholderShort": "رقم الشحنة أو الفاتورة",
+      "loadFailedMessage": "تعذّر تحميل قيود الشحن.",
+      "loadCarriersFailedMessage": "تعذّر تحميل شركات النقل.",
+      "loadSummaryFailedMessage": "تعذّر تحميل ملخص الشحن.",
+      "markPaidFailedMessage": "تعذّر تحديد القيد كمدفوع.",
+      "deleteFailedMessage": "تعذّر حذف قيد الشحن."
     },
     "analytics": {
       "title": "تحليلات اللوجستيات",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "تم التسليم",
       "returnedCol": "تم الإرجاع",
       "fleetStatus": "حالة الأسطول",
-      "noData": "لا توجد بيانات متاحة."
+      "noData": "لا توجد بيانات متاحة.",
+      "loadFailedMessage": "تعذّر تحميل بيانات التحليلات."
     },
     "loadMore": "تحميل المزيد",
     "showingOf": "عرض {{shown}} من {{total}}"

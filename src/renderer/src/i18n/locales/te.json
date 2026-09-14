@@ -5891,7 +5891,10 @@
       "capacityUnit": "సామర్థ్య యూనిట్",
       "deleteConfirm": "వాహనం {{number}} తొలగించాలా?",
       "printTitle": "వాహన సముదాయ రిజిస్టర్",
-      "vehicleNumberRequired": "వాహన సంఖ్య అవసరం."
+      "vehicleNumberRequired": "వాహన సంఖ్య అవసరం.",
+      "loadFailedMessage": "వాహనాలు లోడ్ కాలేదు.",
+      "updateStatusFailedMessage": "వాహన స్థితిని అప్‌డేట్ చేయలేకపోయాము.",
+      "deleteFailedMessage": "వాహనాన్ని తొలగించలేకపోయాము."
     },
     "carriers": {
       "title": "రవాణాదారులు & భాగస్వాములు",
@@ -5910,7 +5913,10 @@
       "deactivate": "నిష్క్రియం చేయి",
       "activate": "సక్రియం చేయి",
       "deleteConfirm": "రవాణాదారుని \"{{name}}\" తొలగించాలా?",
-      "carrierNameRequired": "రవాణాదారు పేరు అవసరం."
+      "carrierNameRequired": "రవాణాదారు పేరు అవసరం.",
+      "loadFailedMessage": "రవాణాదారులు లోడ్ కాలేదు.",
+      "toggleActiveFailedMessage": "రవాణాదారు స్థితిని అప్‌డేట్ చేయలేకపోయాము.",
+      "deleteFailedMessage": "రవాణాదారుని తొలగించలేకపోయాము."
     },
     "shipments": {
       "title": "రవాణాలు",
@@ -5968,10 +5974,19 @@
         "empty": "ఇంకా ఎలాంటి అదనపు స్టాప్‌లు జోడించబడలేదు.",
         "primaryHint": "పైన ఉన్న గమ్యస్థానం ఎల్లప్పుడూ మొదటి స్టాప్ — బహుళ-స్టాప్ మార్గం కోసం క్రింద మరిన్ని జోడించండి.",
         "saveFirst": "ముందుగా షిప్‌మెంట్‌ను సేవ్ చేయండి, తర్వాత స్టాప్‌లను జోడించండి.",
-        "deleteStopConfirm": "ఈ స్టాప్‌ను రూట్ నుండి తీసివేయాలా? దీన్ని రద్దు చేయలేరు."
+        "deleteStopConfirm": "ఈ స్టాప్‌ను రూట్ నుండి తీసివేయాలా? దీన్ని రద్దు చేయలేరు.",
+        "addStopFailedMessage": "స్టాప్‌ను జోడించలేకపోయాము.",
+        "updateStatusFailedMessage": "స్టాప్ స్థితిని అప్‌డేట్ చేయలేకపోయాము.",
+        "deleteFailedMessage": "స్టాప్‌ను తొలగించలేకపోయాము."
       },
       "cancelShipment": "రవాణాను రద్దు చేయండి",
-      "cancelConfirm": "రవాణా {{number}} ను రద్దు చేయాలా? దీన్ని రద్దు చేయలేరు."
+      "cancelConfirm": "రవాణా {{number}} ను రద్దు చేయాలా? దీన్ని రద్దు చేయలేరు.",
+      "loadFailedMessage": "రవాణాలు లోడ్ కాలేదు.",
+      "loadVehiclesFailedMessage": "వాహనాలు లోడ్ కాలేదు.",
+      "loadCarriersFailedMessage": "రవాణాదారులు లోడ్ కాలేదు.",
+      "openEditFailedMessage": "రవాణా వివరాలు లోడ్ కాలేదు.",
+      "changeStatusFailedMessage": "రవాణా స్థితిని అప్‌డేట్ చేయలేకపోయాము.",
+      "deleteFailedMessage": "రవాణాను తొలగించలేకపోయాము."
     },
     "grn": {
       "title": "సరుకు స్వీకరణ నోట్‌లు (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "ఆర్డర్ చేయబడింది {{qty}} {{unit}} · ఇప్పటికే స్వీకరించినది {{received}}",
       "orderedHintShort": "ఆర్డర్ చేయబడింది {{qty}} {{unit}}",
       "editGRNTitle": "GRN సవరించండి",
-      "itemsHeading": "వస్తువులు"
+      "itemsHeading": "వస్తువులు",
+      "loadFailedMessage": "GRNలు లోడ్ కాలేదు.",
+      "loadProductsFailedMessage": "ఉత్పత్తులు లోడ్ కాలేదు.",
+      "loadSuppliersFailedMessage": "సరఫరాదారులు లోడ్ కాలేదు.",
+      "loadPurchaseOrdersFailedMessage": "కొనుగోలు ఆర్డర్‌లు లోడ్ కాలేదు.",
+      "loadCatalogFailedMessage": "లింకింగ్ డేటా లోడ్ కాలేదు.",
+      "verifyFailedMessage": "GRNను ధృవీకరించలేకపోయాము.",
+      "actionFailedMessage": "ఈ చర్యను పూర్తి చేయలేకపోయాము."
     },
     "challan": {
       "title": "డెలివరీ చలాన్‌లు",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "కస్టమర్ పేరు అవసరం.",
       "atLeastOneItem": "కనీసం ఒక వస్తువు అవసరం.",
       "atLeastOneValidItem": "కనీసం ఒక చెల్లుబాటు అయ్యే వస్తువు అవసరం.",
-      "atLeastOneReturnQty": "కనీసం ఒక వస్తువుకు వాపసు పరిమాణం 0 కంటే ఎక్కువ ఉండాలి."
+      "atLeastOneReturnQty": "కనీసం ఒక వస్తువుకు వాపసు పరిమాణం 0 కంటే ఎక్కువ ఉండాలి.",
+      "loadFailedMessage": "చలాన్‌లు లోడ్ కాలేదు.",
+      "loadVehiclesFailedMessage": "వాహనాలు లోడ్ కాలేదు.",
+      "changeStatusFailedMessage": "చలాన్ స్థితిని అప్‌డేట్ చేయలేకపోయాము.",
+      "deleteFailedMessage": "చలాన్‌ను తొలగించలేకపోయాము."
     },
     "freight": {
       "title": "సరుకు రవాణా లెడ్జర్",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "{{carrier}} ({{amount}}) కోసం సరుకు రవాణా ఎంట్రీని తొలగించాలా? ఈ చర్యను రద్దు చేయలేరు.",
       "amountRequired": "మొత్తం 0 కంటే ఎక్కువ ఉండాలి.",
       "paidOn": "{{date}} న చెల్లించబడింది",
-      "refPlaceholderShort": "రవాణా # లేదా ఇన్వాయిస్ #"
+      "refPlaceholderShort": "రవాణా # లేదా ఇన్వాయిస్ #",
+      "loadFailedMessage": "సరుకు రవాణా ఎంట్రీలు లోడ్ కాలేదు.",
+      "loadCarriersFailedMessage": "రవాణాదారులు లోడ్ కాలేదు.",
+      "loadSummaryFailedMessage": "సరుకు రవాణా సారాంశం లోడ్ కాలేదు.",
+      "markPaidFailedMessage": "ఎంట్రీని చెల్లించినట్లు గుర్తించలేకపోయాము.",
+      "deleteFailedMessage": "సరుకు రవాణా ఎంట్రీని తొలగించలేకపోయాము."
     },
     "analytics": {
       "title": "లాజిస్టిక్స్ విశ్లేషణ",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "డెలివర్ చేయబడింది",
       "returnedCol": "వాపసు చేయబడింది",
       "fleetStatus": "వాహన సముదాయ స్థితి",
-      "noData": "డేటా అందుబాటులో లేదు."
+      "noData": "డేటా అందుబాటులో లేదు.",
+      "loadFailedMessage": "విశ్లేషణ డేటా లోడ్ కాలేదు."
     },
     "loadMore": "మరిన్ని లోడ్ చేయి",
     "showingOf": "{{total}} లో {{shown}} చూపబడుతోంది"

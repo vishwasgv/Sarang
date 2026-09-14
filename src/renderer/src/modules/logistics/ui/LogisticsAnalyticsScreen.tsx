@@ -47,11 +47,11 @@ export default function LogisticsAnalyticsScreen() {
         setData(res.data as AnalyticsData)
       } else {
         setLoadError(true)
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('logistics.analytics.loadFailedMessage'))
       }
     } catch {
       setLoadError(true)
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.analytics.loadFailedMessage'))
     } finally {
       setLoading(false)
     }

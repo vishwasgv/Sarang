@@ -45,9 +45,9 @@ export default function CarriersScreen() {
     try {
       const res = await window.api.logisticsCarrier.list({ activeOnly, limit })
       if (res.success) { setCarriers(res.data as Carrier[]); setTotal((res as { total?: number }).total ?? (res.data as Carrier[]).length) }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.carriers.loadFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.carriers.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -88,9 +88,9 @@ export default function CarriersScreen() {
     try {
       const res = await window.api.logisticsCarrier.toggleActive(id)
       if (res.success) await load()
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.carriers.toggleActiveFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.carriers.toggleActiveFailedMessage'))
     } finally {
       setTogglingId(null)
     }
@@ -102,9 +102,9 @@ export default function CarriersScreen() {
     try {
       const res = await window.api.logisticsCarrier.delete(deleteTarget.id)
       if (res.success) { setDeleteTarget(null); load() }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.carriers.deleteFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.carriers.deleteFailedMessage'))
     } finally {
       setDeleting(false)
     }

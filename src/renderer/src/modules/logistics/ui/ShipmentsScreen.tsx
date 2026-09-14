@@ -120,13 +120,13 @@ export default function ShipmentsScreen() {
         window.api.logisticsCarrier.list({ activeOnly: true }),
       ])
       if (sr.success) { setShipments(sr.data as ShipmentListItem[]); setTotal((sr as { total?: number }).total ?? (sr.data as ShipmentListItem[]).length) }
-      else toastError(t('common.error'), sr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.shipments.loadFailedMessage'))
       if (vr.success) setVehicles(vr.data as Vehicle[])
-      else toastError(t('common.error'), vr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.shipments.loadVehiclesFailedMessage'))
       if (cr.success) setCarriers(cr.data as Carrier[])
-      else toastError(t('common.error'), cr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.shipments.loadCarriersFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -152,7 +152,7 @@ export default function ShipmentsScreen() {
     setOpeningEditId(s.id)
     try {
       const res = await window.api.logisticsShipment.get(s.id)
-      if (!res.success) { toastError(t('common.error'), t('common.error')); return }
+      if (!res.success) { toastError(t('common.error'), t('logistics.shipments.openEditFailedMessage')); return }
       const full = res.data as any
       setForm({
         shipmentType: full.shipmentType, originAddress: full.originAddress ?? '',
@@ -174,7 +174,7 @@ export default function ShipmentsScreen() {
       setNewStopAddress(''); setNewStopCustomerName('')
       setEditId(s.id); setError(null); setShowForm(true)
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.openEditFailedMessage'))
     } finally {
       setOpeningEditId(null)
     }
@@ -189,10 +189,10 @@ export default function ShipmentsScreen() {
         setStops(prev => [...prev, res.data as ShipmentStop])
         setNewStopAddress(''); setNewStopCustomerName('')
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('logistics.shipments.stops.addStopFailedMessage'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.stops.addStopFailedMessage'))
     } finally {
       setAddingStop(false)
     }
@@ -203,9 +203,9 @@ export default function ShipmentsScreen() {
     try {
       const res = await window.api.logisticsShipment.updateStopStatus({ id: stopId, status })
       if (res.success && res.data) setStops(prev => prev.map(s => s.id === stopId ? (res.data as ShipmentStop) : s))
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.shipments.stops.updateStatusFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.stops.updateStatusFailedMessage'))
     } finally {
       setStopBusyId(null)
     }
@@ -217,9 +217,9 @@ export default function ShipmentsScreen() {
     try {
       const res = await window.api.logisticsShipment.deleteStop(deleteStopTarget.id)
       if (res.success) { setStops(prev => prev.filter(s => s.id !== deleteStopTarget.id)); setDeleteStopTarget(null) }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.shipments.stops.deleteFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.stops.deleteFailedMessage'))
     } finally {
       setDeletingStop(false)
     }
@@ -267,10 +267,10 @@ export default function ShipmentsScreen() {
     setStatusChangingId(id)
     try {
       const res = await window.api.logisticsShipment.updateStatus({ id, status })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.shipments.changeStatusFailedMessage'))
       await load()
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.changeStatusFailedMessage'))
     } finally {
       setStatusChangingId(null)
     }
@@ -289,10 +289,10 @@ export default function ShipmentsScreen() {
     setDeleting(true)
     try {
       const res = await window.api.logisticsShipment.delete(deleteTarget.id)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.shipments.deleteFailedMessage'))
       else { setDeleteTarget(null); load() }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.shipments.deleteFailedMessage'))
     } finally {
       setDeleting(false)
     }

@@ -6082,7 +6082,10 @@
       "capacityUnit": "Unidad de Capacidad",
       "deleteConfirm": "¿Eliminar vehículo {{number}}?",
       "printTitle": "Registro de Flota",
-      "vehicleNumberRequired": "El número de vehículo es obligatorio."
+      "vehicleNumberRequired": "El número de vehículo es obligatorio.",
+      "loadFailedMessage": "No se pudieron cargar los vehículos.",
+      "updateStatusFailedMessage": "No se pudo actualizar el estado del vehículo.",
+      "deleteFailedMessage": "No se pudo eliminar el vehículo."
     },
     "carriers": {
       "title": "Transportistas y Socios",
@@ -6101,7 +6104,10 @@
       "deactivate": "Desactivar",
       "activate": "Activar",
       "deleteConfirm": "¿Eliminar transportista \"{{name}}\"?",
-      "carrierNameRequired": "El nombre del transportista es obligatorio."
+      "carrierNameRequired": "El nombre del transportista es obligatorio.",
+      "loadFailedMessage": "No se pudieron cargar los transportistas.",
+      "toggleActiveFailedMessage": "No se pudo actualizar el estado del transportista.",
+      "deleteFailedMessage": "No se pudo eliminar el transportista."
     },
     "shipments": {
       "title": "Envíos",
@@ -6161,8 +6167,17 @@
         "delete": "Eliminar",
         "empty": "Aún no se han añadido paradas adicionales.",
         "primaryHint": "El destino indicado arriba es siempre la primera parada — añada más abajo para una ruta con varias paradas.",
-        "saveFirst": "Guarde el envío primero y luego añada paradas."
-      }
+        "saveFirst": "Guarde el envío primero y luego añada paradas.",
+        "addStopFailedMessage": "No se pudo añadir la parada.",
+        "updateStatusFailedMessage": "No se pudo actualizar el estado de la parada.",
+        "deleteFailedMessage": "No se pudo eliminar la parada."
+      },
+      "loadFailedMessage": "No se pudieron cargar los envíos.",
+      "loadVehiclesFailedMessage": "No se pudieron cargar los vehículos.",
+      "loadCarriersFailedMessage": "No se pudieron cargar los transportistas.",
+      "openEditFailedMessage": "No se pudieron cargar los detalles del envío.",
+      "changeStatusFailedMessage": "No se pudo actualizar el estado del envío.",
+      "deleteFailedMessage": "No se pudo eliminar el envío."
     },
     "grn": {
       "title": "Notas de Recepción de Mercancía (GRN)",
@@ -6206,7 +6221,14 @@
       "orderedHint": "Ordenado {{qty}} {{unit}} · ya recibido {{received}}",
       "orderedHintShort": "Ordenado {{qty}} {{unit}}",
       "editGRNTitle": "Editar GRN",
-      "itemsHeading": "Artículos"
+      "itemsHeading": "Artículos",
+      "loadFailedMessage": "No se pudieron cargar las notas de recepción.",
+      "loadProductsFailedMessage": "No se pudieron cargar los productos.",
+      "loadSuppliersFailedMessage": "No se pudieron cargar los proveedores.",
+      "loadPurchaseOrdersFailedMessage": "No se pudieron cargar las órdenes de compra.",
+      "loadCatalogFailedMessage": "No se pudieron cargar los datos de vinculación.",
+      "verifyFailedMessage": "No se pudo verificar la nota de recepción.",
+      "actionFailedMessage": "No se pudo completar esta acción."
     },
     "challan": {
       "title": "Albaranes de Entrega",
@@ -6242,7 +6264,11 @@
       "customerNameRequired": "El nombre del cliente es obligatorio.",
       "atLeastOneItem": "Se requiere al menos un artículo.",
       "atLeastOneValidItem": "Se requiere al menos un artículo válido.",
-      "atLeastOneReturnQty": "Al menos un artículo debe tener una cantidad de devolución mayor a 0."
+      "atLeastOneReturnQty": "Al menos un artículo debe tener una cantidad de devolución mayor a 0.",
+      "loadFailedMessage": "No se pudieron cargar los albaranes.",
+      "loadVehiclesFailedMessage": "No se pudieron cargar los vehículos.",
+      "changeStatusFailedMessage": "No se pudo actualizar el estado del albarán.",
+      "deleteFailedMessage": "No se pudo eliminar el albarán."
     },
     "freight": {
       "title": "Libro de Fletes",
@@ -6269,7 +6295,12 @@
       "deleteConfirm": "¿Eliminar entrada de flete de {{carrier}} ({{amount}})? Esta acción no se puede deshacer.",
       "amountRequired": "El monto debe ser mayor a 0.",
       "paidOn": "Pagado el {{date}}",
-      "refPlaceholderShort": "N.º de envío o factura"
+      "refPlaceholderShort": "N.º de envío o factura",
+      "loadFailedMessage": "No se pudieron cargar los registros de flete.",
+      "loadCarriersFailedMessage": "No se pudieron cargar los transportistas.",
+      "loadSummaryFailedMessage": "No se pudo cargar el resumen de fletes.",
+      "markPaidFailedMessage": "No se pudo marcar el registro como pagado.",
+      "deleteFailedMessage": "No se pudo eliminar el registro de flete."
     },
     "analytics": {
       "title": "Análisis de Logística",
@@ -6296,7 +6327,8 @@
       "deliveredCol": "Entregados",
       "returnedCol": "Devueltos",
       "fleetStatus": "Estado de la Flota",
-      "noData": "No hay datos disponibles."
+      "noData": "No hay datos disponibles.",
+      "loadFailedMessage": "No se pudieron cargar los datos de análisis."
     },
     "loadMore": "Cargar Más",
     "showingOf": "Mostrando {{shown}} de {{total}}"

@@ -5891,7 +5891,10 @@
       "capacityUnit": "ಸಾಮರ್ಥ್ಯ ಘಟಕ",
       "deleteConfirm": "ವಾಹನ {{number}} ಅಳಿಸುವುದೇ?",
       "printTitle": "ಫ್ಲೀಟ್ ರಿಜಿಸ್ಟರ್",
-      "vehicleNumberRequired": "ವಾಹನ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ."
+      "vehicleNumberRequired": "ವಾಹನ ಸಂಖ್ಯೆ ಅಗತ್ಯವಿದೆ.",
+      "loadFailedMessage": "ವಾಹನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "updateStatusFailedMessage": "ವಾಹನದ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "deleteFailedMessage": "ವಾಹನವನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "carriers": {
       "title": "ವಾಹಕಗಳು ಮತ್ತು ಪಾಲುದಾರರು",
@@ -5910,7 +5913,10 @@
       "deactivate": "ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಿ",
       "activate": "ಸಕ್ರಿಯಗೊಳಿಸಿ",
       "deleteConfirm": "ವಾಹಕ \"{{name}}\" ಅಳಿಸುವುದೇ?",
-      "carrierNameRequired": "ವಾಹಕದ ಹೆಸರು ಅಗತ್ಯವಿದೆ."
+      "carrierNameRequired": "ವಾಹಕದ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
+      "loadFailedMessage": "ವಾಹಕಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "toggleActiveFailedMessage": "ವಾಹಕದ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "deleteFailedMessage": "ವಾಹಕವನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "shipments": {
       "title": "ಶಿಪ್‌ಮೆಂಟ್‌ಗಳು",
@@ -5968,10 +5974,19 @@
         "empty": "ಇನ್ನೂ ಯಾವುದೇ ಹೆಚ್ಚುವರಿ ನಿಲುಗಡೆ ಸೇರಿಸಲಾಗಿಲ್ಲ.",
         "primaryHint": "ಮೇಲಿನ ಗಮ್ಯಸ್ಥಾನವು ಯಾವಾಗಲೂ ಮೊದಲ ನಿಲುಗಡೆಯಾಗಿದೆ — ಬಹು-ನಿಲುಗಡೆ ಮಾರ್ಗಕ್ಕಾಗಿ ಕೆಳಗೆ ಇನ್ನಷ್ಟು ಸೇರಿಸಿ.",
         "saveFirst": "ಮೊದಲು ಸಾಗಣೆಯನ್ನು ಉಳಿಸಿ, ನಂತರ ನಿಲುಗಡೆಗಳನ್ನು ಸೇರಿಸಿ.",
-        "deleteStopConfirm": "ಈ ನಿಲುಗಡೆಯನ್ನು ಮಾರ್ಗದಿಂದ ತೆಗೆದುಹಾಕಬೇಕೆ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ."
+        "deleteStopConfirm": "ಈ ನಿಲುಗಡೆಯನ್ನು ಮಾರ್ಗದಿಂದ ತೆಗೆದುಹಾಕಬೇಕೆ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
+        "addStopFailedMessage": "ನಿಲುಗಡೆಯನ್ನು ಸೇರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+        "updateStatusFailedMessage": "ನಿಲುಗಡೆಯ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+        "deleteFailedMessage": "ನಿಲುಗಡೆಯನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
       },
       "cancelShipment": "ಶಿಪ್‌ಮೆಂಟ್ ರದ್ದುಮಾಡಿ",
-      "cancelConfirm": "ಶಿಪ್‌ಮೆಂಟ್ {{number}} ಅನ್ನು ರದ್ದುಮಾಡಬೇಕೆ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ."
+      "cancelConfirm": "ಶಿಪ್‌ಮೆಂಟ್ {{number}} ಅನ್ನು ರದ್ದುಮಾಡಬೇಕೆ? ಇದನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
+      "loadFailedMessage": "ಶಿಪ್‌ಮೆಂಟ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadVehiclesFailedMessage": "ವಾಹನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadCarriersFailedMessage": "ವಾಹಕಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "openEditFailedMessage": "ಶಿಪ್‌ಮೆಂಟ್ ವಿವರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "changeStatusFailedMessage": "ಶಿಪ್‌ಮೆಂಟ್ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "deleteFailedMessage": "ಶಿಪ್‌ಮೆಂಟ್ ಅನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "grn": {
       "title": "ಸರಕು ಸ್ವೀಕೃತಿ ಟಿಪ್ಪಣಿಗಳು (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "ಆದೇಶಿಸಿದ {{qty}} {{unit}} · ಈಗಾಗಲೇ ಸ್ವೀಕರಿಸಿದ {{received}}",
       "orderedHintShort": "ಆದೇಶಿಸಿದ {{qty}} {{unit}}",
       "editGRNTitle": "GRN ಸಂಪಾದಿಸಿ",
-      "itemsHeading": "ವಸ್ತುಗಳು"
+      "itemsHeading": "ವಸ್ತುಗಳು",
+      "loadFailedMessage": "GRNಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadProductsFailedMessage": "ಉತ್ಪನ್ನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadSuppliersFailedMessage": "ಪೂರೈಕೆದಾರರನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadPurchaseOrdersFailedMessage": "ಖರೀದಿ ಆದೇಶಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadCatalogFailedMessage": "ಲಿಂಕಿಂಗ್ ಡೇಟಾವನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "verifyFailedMessage": "GRN ಅನ್ನು ಪರಿಶೀಲಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "actionFailedMessage": "ಈ ಕ್ರಿಯೆಯನ್ನು ಪೂರ್ಣಗೊಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "challan": {
       "title": "ಡೆಲಿವರಿ ಚಲನ್‌ಗಳು",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "ಗ್ರಾಹಕರ ಹೆಸರು ಅಗತ್ಯವಿದೆ.",
       "atLeastOneItem": "ಕನಿಷ್ಠ ಒಂದು ವಸ್ತು ಅಗತ್ಯವಿದೆ.",
       "atLeastOneValidItem": "ಕನಿಷ್ಠ ಒಂದು ಮಾನ್ಯ ವಸ್ತು ಅಗತ್ಯವಿದೆ.",
-      "atLeastOneReturnQty": "ಕನಿಷ್ಠ ಒಂದು ವಸ್ತುವಿನ ಹಿಂತಿರುಗುವ ಪ್ರಮಾಣ 0 ಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು."
+      "atLeastOneReturnQty": "ಕನಿಷ್ಠ ಒಂದು ವಸ್ತುವಿನ ಹಿಂತಿರುಗುವ ಪ್ರಮಾಣ 0 ಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
+      "loadFailedMessage": "ಚಲನ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadVehiclesFailedMessage": "ವಾಹನಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "changeStatusFailedMessage": "ಚಲನ್ ಸ್ಥಿತಿಯನ್ನು ನವೀಕರಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "deleteFailedMessage": "ಚಲನ್ ಅನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "freight": {
       "title": "ಸಾಗಣೆ ಲೆಡ್ಜರ್",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "{{carrier}} ({{amount}}) ಗಾಗಿ ಸಾಗಣೆ ನಮೂದು ಅಳಿಸುವುದೇ? ಈ ಕ್ರಿಯೆಯನ್ನು ರದ್ದುಗೊಳಿಸಲಾಗುವುದಿಲ್ಲ.",
       "amountRequired": "ಮೊತ್ತ 0 ಕ್ಕಿಂತ ಹೆಚ್ಚಿರಬೇಕು.",
       "paidOn": "{{date}} ರಂದು ಪಾವತಿಸಲಾಗಿದೆ",
-      "refPlaceholderShort": "ಶಿಪ್‌ಮೆಂಟ್ # ಅಥವಾ ಇನ್ವಾಯ್ಸ್ #"
+      "refPlaceholderShort": "ಶಿಪ್‌ಮೆಂಟ್ # ಅಥವಾ ಇನ್ವಾಯ್ಸ್ #",
+      "loadFailedMessage": "ಸಾಗಣೆ ನಮೂದುಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadCarriersFailedMessage": "ವಾಹಕಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "loadSummaryFailedMessage": "ಸಾಗಣೆ ಸಾರಾಂಶವನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "markPaidFailedMessage": "ನಮೂದನ್ನು ಪಾವತಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+      "deleteFailedMessage": "ಸಾಗಣೆ ನಮೂದನ್ನು ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "analytics": {
       "title": "ಲಾಜಿಸ್ಟಿಕ್ಸ್ ವಿಶ್ಲೇಷಣೆ",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "ವಿತರಿಸಲಾಗಿದೆ",
       "returnedCol": "ಹಿಂತಿರುಗಿಸಲಾಗಿದೆ",
       "fleetStatus": "ಫ್ಲೀಟ್ ಸ್ಥಿತಿ",
-      "noData": "ಯಾವುದೇ ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ."
+      "noData": "ಯಾವುದೇ ಡೇಟಾ ಲಭ್ಯವಿಲ್ಲ.",
+      "loadFailedMessage": "ವಿಶ್ಲೇಷಣೆ ಡೇಟಾವನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
     },
     "loadMore": "ಇನ್ನಷ್ಟು ಲೋಡ್ ಮಾಡಿ",
     "showingOf": "{{total}} ರಲ್ಲಿ {{shown}} ತೋರಿಸಲಾಗುತ್ತಿದೆ"

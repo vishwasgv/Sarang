@@ -5891,7 +5891,10 @@
       "capacityUnit": "ક્ષમતા એકમ",
       "deleteConfirm": "વાહન {{number}} કાઢી નાખવું?",
       "printTitle": "કાફલા રજિસ્ટર",
-      "vehicleNumberRequired": "વાહન નંબર જરૂરી છે."
+      "vehicleNumberRequired": "વાહન નંબર જરૂરી છે.",
+      "loadFailedMessage": "વાહનો લોડ થઈ શક્યા નહીં.",
+      "updateStatusFailedMessage": "વાહનની સ્થિતિ અપડેટ થઈ શકી નહીં.",
+      "deleteFailedMessage": "વાહન કાઢી શકાયું નહીં."
     },
     "carriers": {
       "title": "વાહકો અને ભાગીદારો",
@@ -5910,7 +5913,10 @@
       "deactivate": "નિષ્ક્રિય કરો",
       "activate": "સક્રિય કરો",
       "deleteConfirm": "વાહક \"{{name}}\" કાઢી નાખવો?",
-      "carrierNameRequired": "વાહકનું નામ જરૂરી છે."
+      "carrierNameRequired": "વાહકનું નામ જરૂરી છે.",
+      "loadFailedMessage": "વાહકો લોડ થઈ શક્યા નહીં.",
+      "toggleActiveFailedMessage": "વાહકની સ્થિતિ અપડેટ થઈ શકી નહીં.",
+      "deleteFailedMessage": "વાહક કાઢી શકાયો નહીં."
     },
     "shipments": {
       "title": "શિપમેન્ટ",
@@ -5968,10 +5974,19 @@
         "empty": "હજુ સુધી કોઈ વધારાનું સ્ટોપ ઉમેરાયું નથી.",
         "primaryHint": "ઉપરનું ગંતવ્ય હંમેશા પ્રથમ સ્ટોપ છે — મલ્ટી-સ્ટોપ રૂટ માટે નીચે વધુ ઉમેરો.",
         "saveFirst": "પહેલા શિપમેન્ટ સેવ કરો, પછી સ્ટોપ ઉમેરો.",
-        "deleteStopConfirm": "આ સ્ટોપ રૂટમાંથી દૂર કરવો છે? આ પૂર્વવત્ કરી શકાશે નહીં."
+        "deleteStopConfirm": "આ સ્ટોપ રૂટમાંથી દૂર કરવો છે? આ પૂર્વવત્ કરી શકાશે નહીં.",
+        "addStopFailedMessage": "સ્ટોપ ઉમેરી શકાયો નહીં.",
+        "updateStatusFailedMessage": "સ્ટોપની સ્થિતિ અપડેટ થઈ શકી નહીં.",
+        "deleteFailedMessage": "સ્ટોપ કાઢી શકાયો નહીં."
       },
       "cancelShipment": "શિપમેન્ટ રદ કરો",
-      "cancelConfirm": "શિપમેન્ટ {{number}} રદ કરવું છે? આ પૂર્વવત્ કરી શકાશે નહીં."
+      "cancelConfirm": "શિપમેન્ટ {{number}} રદ કરવું છે? આ પૂર્વવત્ કરી શકાશે નહીં.",
+      "loadFailedMessage": "શિપમેન્ટ લોડ થઈ શક્યા નહીં.",
+      "loadVehiclesFailedMessage": "વાહનો લોડ થઈ શક્યા નહીં.",
+      "loadCarriersFailedMessage": "વાહકો લોડ થઈ શક્યા નહીં.",
+      "openEditFailedMessage": "શિપમેન્ટ વિગતો લોડ થઈ શકી નહીં.",
+      "changeStatusFailedMessage": "શિપમેન્ટની સ્થિતિ અપડેટ થઈ શકી નહીં.",
+      "deleteFailedMessage": "શિપમેન્ટ કાઢી શકાયું નહીં."
     },
     "grn": {
       "title": "માલ પ્રાપ્તિ નોંધ (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "ઓર્ડર કરેલ {{qty}} {{unit}} · પહેલેથી પ્રાપ્ત {{received}}",
       "orderedHintShort": "ઓર્ડર કરેલ {{qty}} {{unit}}",
       "editGRNTitle": "GRN સંપાદિત કરો",
-      "itemsHeading": "વસ્તુઓ"
+      "itemsHeading": "વસ્તુઓ",
+      "loadFailedMessage": "GRN લોડ થઈ શક્યા નહીં.",
+      "loadProductsFailedMessage": "ઉત્પાદનો લોડ થઈ શક્યા નહીં.",
+      "loadSuppliersFailedMessage": "સપ્લાયર્સ લોડ થઈ શક્યા નહીં.",
+      "loadPurchaseOrdersFailedMessage": "ખરીદ ઓર્ડર લોડ થઈ શક્યા નહીં.",
+      "loadCatalogFailedMessage": "લિંકિંગ ડેટા લોડ થઈ શક્યો નહીં.",
+      "verifyFailedMessage": "GRN ચકાસી શકાયું નહીં.",
+      "actionFailedMessage": "આ ક્રિયા પૂર્ણ થઈ શકી નહીં."
     },
     "challan": {
       "title": "ડિલિવરી ચલણો",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "ગ્રાહકનું નામ જરૂરી છે.",
       "atLeastOneItem": "ઓછામાં ઓછી એક વસ્તુ જરૂરી છે.",
       "atLeastOneValidItem": "ઓછામાં ઓછી એક માન્ય વસ્તુ જરૂરી છે.",
-      "atLeastOneReturnQty": "ઓછામાં ઓછી એક વસ્તુનો વળતર જથ્થો 0 થી વધુ હોવો જોઈએ."
+      "atLeastOneReturnQty": "ઓછામાં ઓછી એક વસ્તુનો વળતર જથ્થો 0 થી વધુ હોવો જોઈએ.",
+      "loadFailedMessage": "ચલણો લોડ થઈ શક્યા નહીં.",
+      "loadVehiclesFailedMessage": "વાહનો લોડ થઈ શક્યા નહીં.",
+      "changeStatusFailedMessage": "ચલણની સ્થિતિ અપડેટ થઈ શકી નહીં.",
+      "deleteFailedMessage": "ચલણ કાઢી શકાયું નહીં."
     },
     "freight": {
       "title": "ભાડું ખાતાવહી",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "{{carrier}} ({{amount}}) માટે ભાડું એન્ટ્રી કાઢી નાખવી? આ ક્રિયા પૂર્વવત્ કરી શકાશે નહીં.",
       "amountRequired": "રકમ 0 થી વધુ હોવી જોઈએ.",
       "paidOn": "{{date}} ના રોજ ચૂકવેલ",
-      "refPlaceholderShort": "શિપમેન્ટ # અથવા ઇન્વોઇસ #"
+      "refPlaceholderShort": "શિપમેન્ટ # અથવા ઇન્વોઇસ #",
+      "loadFailedMessage": "ભાડા એન્ટ્રીઓ લોડ થઈ શકી નહીં.",
+      "loadCarriersFailedMessage": "વાહકો લોડ થઈ શક્યા નહીં.",
+      "loadSummaryFailedMessage": "ભાડા સારાંશ લોડ થઈ શક્યો નહીં.",
+      "markPaidFailedMessage": "એન્ટ્રીને ચૂકવેલ તરીકે ચિહ્નિત કરી શકાઈ નહીં.",
+      "deleteFailedMessage": "ભાડા એન્ટ્રી કાઢી શકાઈ નહીં."
     },
     "analytics": {
       "title": "લોજિસ્ટિક્સ વિશ્લેષણ",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "ડિલિવર્ડ",
       "returnedCol": "પરત કરેલ",
       "fleetStatus": "કાફલા સ્થિતિ",
-      "noData": "કોઈ ડેટા ઉપલબ્ધ નથી."
+      "noData": "કોઈ ડેટા ઉપલબ્ધ નથી.",
+      "loadFailedMessage": "વિશ્લેષણ ડેટા લોડ થઈ શક્યો નહીં."
     },
     "loadMore": "વધુ લોડ કરો",
     "showingOf": "{{total}} માંથી {{shown}} બતાવી રહ્યા છીએ"

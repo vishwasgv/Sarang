@@ -66,9 +66,9 @@ export default function FleetScreen() {
         limit,
       })
       if (res.success) { setVehicles(res.data as Vehicle[]); setTotal((res as { total?: number }).total ?? (res.data as Vehicle[]).length) }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.fleet.loadFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.fleet.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -103,9 +103,9 @@ export default function FleetScreen() {
     try {
       const res = await window.api.logisticsVehicle.updateStatus({ id, status })
       if (res.success) await load()
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.fleet.updateStatusFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.fleet.updateStatusFailedMessage'))
     } finally {
       setStatusUpdatingId(null)
     }
@@ -117,9 +117,9 @@ export default function FleetScreen() {
     try {
       const res = await window.api.logisticsVehicle.delete(deleteTarget.id)
       if (res.success) { setDeleteTarget(null); load() }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.fleet.deleteFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.fleet.deleteFailedMessage'))
     } finally {
       setDeleting(false)
     }

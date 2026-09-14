@@ -97,9 +97,9 @@ export default function GRNScreen() {
         limit,
       })
       if (res.success) { setGrns(res.data as GRN[]); setTotal((res as { total?: number }).total ?? (res.data as GRN[]).length) }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.grn.loadFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.grn.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -127,22 +127,22 @@ export default function GRNScreen() {
           const d = pRes.data as { products: ProductOption[] }
           setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
         } else {
-          toastError(t('common.error'), pRes.error?.message ?? t('common.error'))
+          toastError(t('common.error'), t('logistics.grn.loadProductsFailedMessage'))
         }
         if (sRes.success) {
           const d = sRes.data as { suppliers: SupplierOption[] }
           setSuppliers(d.suppliers ?? [])
         } else {
-          toastError(t('common.error'), sRes.error?.message ?? t('common.error'))
+          toastError(t('common.error'), t('logistics.grn.loadSuppliersFailedMessage'))
         }
         if (poRes.success) {
           const d = poRes.data as { orders: POOption[] }
           setApprovedPOs((d.orders ?? []).filter(po => po.status === 'APPROVED' || po.status === 'PARTIAL_RECEIVED'))
         } else {
-          toastError(t('common.error'), poRes.error?.message ?? t('common.error'))
+          toastError(t('common.error'), t('logistics.grn.loadPurchaseOrdersFailedMessage'))
         }
       } catch {
-        if (!cancelled) toastError(t('common.error'), t('common.error'))
+        if (!cancelled) toastError(t('common.error'), t('logistics.grn.loadCatalogFailedMessage'))
       }
     }
     loadCatalog()
@@ -236,10 +236,10 @@ export default function GRNScreen() {
     setVerifyingId(id)
     try {
       const res = await window.api.logisticsGrn.update({ id, status: 'VERIFIED' })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.grn.verifyFailedMessage'))
       await load()
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.grn.verifyFailedMessage'))
     } finally {
       setVerifyingId(null)
     }
@@ -256,13 +256,13 @@ export default function GRNScreen() {
           ? await window.api.logisticsGrn.reverse(confirmAction.id)
           : await window.api.logisticsGrn.delete(confirmAction.id)
       if (!res.success) {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('logistics.grn.actionFailedMessage'))
         if (type !== 'delete') await load()
         return
       }
       await load()
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.grn.actionFailedMessage'))
       if (type !== 'delete') await load()
     } finally {
       setConfirmLoading(false)

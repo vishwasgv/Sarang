@@ -6472,7 +6472,10 @@
       "capacityUnit": "Capacity Unit",
       "deleteConfirm": "Delete vehicle {{number}}?",
       "printTitle": "Fleet Register",
-      "vehicleNumberRequired": "Vehicle number is required."
+      "vehicleNumberRequired": "Vehicle number is required.",
+      "loadFailedMessage": "Could not load vehicles.",
+      "updateStatusFailedMessage": "Could not update vehicle status.",
+      "deleteFailedMessage": "Could not delete vehicle."
     },
     "carriers": {
       "title": "Carriers & Partners",
@@ -6491,7 +6494,10 @@
       "deactivate": "Deactivate",
       "activate": "Activate",
       "deleteConfirm": "Delete carrier \"{{name}}\"?",
-      "carrierNameRequired": "Carrier name is required."
+      "carrierNameRequired": "Carrier name is required.",
+      "loadFailedMessage": "Could not load carriers.",
+      "toggleActiveFailedMessage": "Could not update carrier status.",
+      "deleteFailedMessage": "Could not delete carrier."
     },
     "shipments": {
       "title": "Shipments",
@@ -6539,6 +6545,12 @@
       "destinationRequired": "Destination address is required.",
       "cancelShipment": "Cancel Shipment",
       "cancelConfirm": "Cancel shipment {{number}}? This cannot be undone.",
+      "loadFailedMessage": "Could not load shipments.",
+      "loadVehiclesFailedMessage": "Could not load vehicles.",
+      "loadCarriersFailedMessage": "Could not load carriers.",
+      "openEditFailedMessage": "Could not load shipment details.",
+      "changeStatusFailedMessage": "Could not update shipment status.",
+      "deleteFailedMessage": "Could not delete shipment.",
       "stops": {
         "title": "Stops",
         "addStop": "Add Stop",
@@ -6551,7 +6563,10 @@
         "delete": "Delete",
         "empty": "No additional stops added yet.",
         "primaryHint": "The destination above is always the first stop — add more below for a multi-stop route.",
-        "saveFirst": "Save the shipment first, then add stops."
+        "saveFirst": "Save the shipment first, then add stops.",
+        "addStopFailedMessage": "Could not add stop.",
+        "updateStatusFailedMessage": "Could not update stop status.",
+        "deleteFailedMessage": "Could not delete stop."
       }
     },
     "grn": {
@@ -6596,7 +6611,14 @@
       "orderedHint": "Ordered {{qty}} {{unit}} · already received {{received}}",
       "orderedHintShort": "Ordered {{qty}} {{unit}}",
       "editGRNTitle": "Edit GRN",
-      "itemsHeading": "Items"
+      "itemsHeading": "Items",
+      "loadFailedMessage": "Could not load GRNs.",
+      "loadProductsFailedMessage": "Could not load products.",
+      "loadSuppliersFailedMessage": "Could not load suppliers.",
+      "loadPurchaseOrdersFailedMessage": "Could not load purchase orders.",
+      "loadCatalogFailedMessage": "Could not load linking data.",
+      "verifyFailedMessage": "Could not verify GRN.",
+      "actionFailedMessage": "Could not complete this action."
     },
     "challan": {
       "title": "Delivery Challans",
@@ -6632,7 +6654,11 @@
       "customerNameRequired": "Customer name is required.",
       "atLeastOneItem": "At least one item is required.",
       "atLeastOneValidItem": "At least one valid item is required.",
-      "atLeastOneReturnQty": "At least one item must have a return quantity greater than 0."
+      "atLeastOneReturnQty": "At least one item must have a return quantity greater than 0.",
+      "loadFailedMessage": "Could not load challans.",
+      "loadVehiclesFailedMessage": "Could not load vehicles.",
+      "changeStatusFailedMessage": "Could not update challan status.",
+      "deleteFailedMessage": "Could not delete challan."
     },
     "freight": {
       "title": "Freight Ledger",
@@ -6659,7 +6685,12 @@
       "deleteConfirm": "Delete freight entry for {{carrier}} ({{amount}})? This cannot be undone.",
       "amountRequired": "Amount must be greater than 0.",
       "paidOn": "Paid {{date}}",
-      "refPlaceholderShort": "Shipment # or invoice #"
+      "refPlaceholderShort": "Shipment # or invoice #",
+      "loadFailedMessage": "Could not load freight entries.",
+      "loadCarriersFailedMessage": "Could not load carriers.",
+      "loadSummaryFailedMessage": "Could not load freight summary.",
+      "markPaidFailedMessage": "Could not mark entry as paid.",
+      "deleteFailedMessage": "Could not delete freight entry."
     },
     "analytics": {
       "title": "Logistics Analytics",
@@ -6686,7 +6717,8 @@
       "deliveredCol": "Delivered",
       "returnedCol": "Returned",
       "fleetStatus": "Fleet Status",
-      "noData": "No data available."
+      "noData": "No data available.",
+      "loadFailedMessage": "Could not load analytics data."
     },
     "loadMore": "Load More",
     "showingOf": "Showing {{shown}} of {{total}}"

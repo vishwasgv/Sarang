@@ -90,11 +90,11 @@ export default function ChallanScreen() {
         window.api.logisticsVehicle.list(),
       ])
       if (cr.success) { setChallans(cr.data as Challan[]); setTotal((cr as { total?: number }).total ?? (cr.data as Challan[]).length) }
-      else toastError(t('common.error'), cr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.challan.loadFailedMessage'))
       if (vr.success) setVehicles(vr.data as Vehicle[])
-      else toastError(t('common.error'), vr.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('logistics.challan.loadVehiclesFailedMessage'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.challan.loadFailedMessage'))
     } finally {
       setLoading(false)
     }
@@ -135,10 +135,10 @@ export default function ChallanScreen() {
     setStatusChangingId(id)
     try {
       const res = await window.api.logisticsChallan.updateStatus({ id, status })
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.challan.changeStatusFailedMessage'))
       await load()
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.challan.changeStatusFailedMessage'))
     } finally {
       setStatusChangingId(null)
     }
@@ -207,10 +207,10 @@ export default function ChallanScreen() {
     setDeleting(true)
     try {
       const res = await window.api.logisticsChallan.delete(deleteTarget.id)
-      if (!res.success) toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      if (!res.success) toastError(t('common.error'), t('logistics.challan.deleteFailedMessage'))
       else { setDeleteTarget(null); load() }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('logistics.challan.deleteFailedMessage'))
     } finally {
       setDeleting(false)
     }

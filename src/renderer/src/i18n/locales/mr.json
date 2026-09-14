@@ -5891,7 +5891,10 @@
       "capacityUnit": "क्षमता एकक",
       "deleteConfirm": "वाहन {{number}} काढून टाकायचे?",
       "printTitle": "वाहनताफा नोंदवही",
-      "vehicleNumberRequired": "वाहन क्रमांक आवश्यक आहे."
+      "vehicleNumberRequired": "वाहन क्रमांक आवश्यक आहे.",
+      "loadFailedMessage": "वाहने लोड होऊ शकली नाहीत.",
+      "updateStatusFailedMessage": "वाहनाची स्थिती अपडेट होऊ शकली नाही.",
+      "deleteFailedMessage": "वाहन हटवता आले नाही."
     },
     "carriers": {
       "title": "वाहतूकदार आणि भागीदार",
@@ -5910,7 +5913,10 @@
       "deactivate": "निष्क्रिय करा",
       "activate": "सक्रिय करा",
       "deleteConfirm": "वाहतूकदार \"{{name}}\" काढून टाकायचा?",
-      "carrierNameRequired": "वाहतूकदाराचे नाव आवश्यक आहे."
+      "carrierNameRequired": "वाहतूकदाराचे नाव आवश्यक आहे.",
+      "loadFailedMessage": "वाहतूकदार लोड होऊ शकले नाहीत.",
+      "toggleActiveFailedMessage": "वाहतूकदाराची स्थिती अपडेट होऊ शकली नाही.",
+      "deleteFailedMessage": "वाहतूकदार हटवता आला नाही."
     },
     "shipments": {
       "title": "शिपमेंट",
@@ -5968,10 +5974,19 @@
         "empty": "अद्याप कोणतेही अतिरिक्त थांबे जोडलेले नाहीत.",
         "primaryHint": "वरील गंतव्यस्थान नेहमी पहिले थांबा असते — मल्टी-स्टॉप मार्गासाठी खाली आणखी जोडा.",
         "saveFirst": "प्रथम शिपमेंट सेव्ह करा, नंतर थांबे जोडा.",
-        "deleteStopConfirm": "हा थांबा मार्गातून काढून टाकायचा? हे पूर्ववत करता येणार नाही."
+        "deleteStopConfirm": "हा थांबा मार्गातून काढून टाकायचा? हे पूर्ववत करता येणार नाही.",
+        "addStopFailedMessage": "थांबा जोडता आला नाही.",
+        "updateStatusFailedMessage": "थांब्याची स्थिती अपडेट होऊ शकली नाही.",
+        "deleteFailedMessage": "थांबा हटवता आला नाही."
       },
       "cancelShipment": "शिपमेंट रद्द करा",
-      "cancelConfirm": "शिपमेंट {{number}} रद्द करायची? हे पूर्ववत करता येणार नाही."
+      "cancelConfirm": "शिपमेंट {{number}} रद्द करायची? हे पूर्ववत करता येणार नाही.",
+      "loadFailedMessage": "शिपमेंट लोड होऊ शकले नाहीत.",
+      "loadVehiclesFailedMessage": "वाहने लोड होऊ शकली नाहीत.",
+      "loadCarriersFailedMessage": "वाहतूकदार लोड होऊ शकले नाहीत.",
+      "openEditFailedMessage": "शिपमेंट तपशील लोड होऊ शकले नाहीत.",
+      "changeStatusFailedMessage": "शिपमेंटची स्थिती अपडेट होऊ शकली नाही.",
+      "deleteFailedMessage": "शिपमेंट हटवता आले नाही."
     },
     "grn": {
       "title": "माल प्राप्ती नोंदी (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "मागवलेले {{qty}} {{unit}} · आधीच मिळालेले {{received}}",
       "orderedHintShort": "मागवलेले {{qty}} {{unit}}",
       "editGRNTitle": "GRN संपादित करा",
-      "itemsHeading": "वस्तू"
+      "itemsHeading": "वस्तू",
+      "loadFailedMessage": "GRN लोड होऊ शकले नाहीत.",
+      "loadProductsFailedMessage": "उत्पादने लोड होऊ शकली नाहीत.",
+      "loadSuppliersFailedMessage": "पुरवठादार लोड होऊ शकले नाहीत.",
+      "loadPurchaseOrdersFailedMessage": "खरेदी ऑर्डर लोड होऊ शकल्या नाहीत.",
+      "loadCatalogFailedMessage": "लिंकिंग डेटा लोड होऊ शकला नाही.",
+      "verifyFailedMessage": "GRN सत्यापित होऊ शकले नाही.",
+      "actionFailedMessage": "ही क्रिया पूर्ण होऊ शकली नाही."
     },
     "challan": {
       "title": "डिलिव्हरी चलने",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "ग्राहकाचे नाव आवश्यक आहे.",
       "atLeastOneItem": "किमान एक वस्तू आवश्यक आहे.",
       "atLeastOneValidItem": "किमान एक वैध वस्तू आवश्यक आहे.",
-      "atLeastOneReturnQty": "किमान एका वस्तूचे परतावा प्रमाण 0 पेक्षा जास्त असणे आवश्यक आहे."
+      "atLeastOneReturnQty": "किमान एका वस्तूचे परतावा प्रमाण 0 पेक्षा जास्त असणे आवश्यक आहे.",
+      "loadFailedMessage": "चलने लोड होऊ शकली नाहीत.",
+      "loadVehiclesFailedMessage": "वाहने लोड होऊ शकली नाहीत.",
+      "changeStatusFailedMessage": "चलनाची स्थिती अपडेट होऊ शकली नाही.",
+      "deleteFailedMessage": "चलन हटवता आले नाही."
     },
     "freight": {
       "title": "मालवाहतूक खातेवही",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "{{carrier}} ({{amount}}) साठी मालवाहतूक नोंद काढून टाकायची? ही क्रिया पूर्ववत करता येणार नाही.",
       "amountRequired": "रक्कम 0 पेक्षा जास्त असणे आवश्यक आहे.",
       "paidOn": "{{date}} रोजी भरले",
-      "refPlaceholderShort": "शिपमेंट # किंवा पावती #"
+      "refPlaceholderShort": "शिपमेंट # किंवा पावती #",
+      "loadFailedMessage": "मालवाहतूक नोंदी लोड होऊ शकल्या नाहीत.",
+      "loadCarriersFailedMessage": "वाहतूकदार लोड होऊ शकले नाहीत.",
+      "loadSummaryFailedMessage": "मालवाहतूक सारांश लोड होऊ शकला नाही.",
+      "markPaidFailedMessage": "नोंद भरणा झाल्याचे चिन्हांकित करता आले नाही.",
+      "deleteFailedMessage": "मालवाहतूक नोंद हटवता आली नाही."
     },
     "analytics": {
       "title": "लॉजिस्टिक्स विश्लेषण",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "वितरित",
       "returnedCol": "परत केलेले",
       "fleetStatus": "वाहनताफा स्थिती",
-      "noData": "कोणताही डेटा उपलब्ध नाही."
+      "noData": "कोणताही डेटा उपलब्ध नाही.",
+      "loadFailedMessage": "विश्लेषण डेटा लोड होऊ शकला नाही."
     },
     "loadMore": "आणखी लोड करा",
     "showingOf": "{{total}} पैकी {{shown}} दाखवत आहे"

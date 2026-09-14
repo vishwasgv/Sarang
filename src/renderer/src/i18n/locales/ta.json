@@ -5891,7 +5891,10 @@
       "capacityUnit": "கொள்ளளவு அலகு",
       "deleteConfirm": "வாகனம் {{number}} ஐ நீக்கவா?",
       "printTitle": "வாகனத் தொகுதி பதிவேடு",
-      "vehicleNumberRequired": "வாகன எண் தேவை."
+      "vehicleNumberRequired": "வாகன எண் தேவை.",
+      "loadFailedMessage": "வாகனங்களை ஏற்ற முடியவில்லை.",
+      "updateStatusFailedMessage": "வாகன நிலையைப் புதுப்பிக்க முடியவில்லை.",
+      "deleteFailedMessage": "வாகனத்தை நீக்க முடியவில்லை."
     },
     "carriers": {
       "title": "போக்குவரத்தாளர்கள் மற்றும் கூட்டாளர்கள்",
@@ -5910,7 +5913,10 @@
       "deactivate": "செயலிழக்கச் செய்",
       "activate": "செயல்படுத்து",
       "deleteConfirm": "போக்குவரத்தாளர் \"{{name}}\" ஐ நீக்கவா?",
-      "carrierNameRequired": "போக்குவரத்தாளர் பெயர் தேவை."
+      "carrierNameRequired": "போக்குவரத்தாளர் பெயர் தேவை.",
+      "loadFailedMessage": "போக்குவரத்தாளர்களை ஏற்ற முடியவில்லை.",
+      "toggleActiveFailedMessage": "போக்குவரத்தாளர் நிலையைப் புதுப்பிக்க முடியவில்லை.",
+      "deleteFailedMessage": "போக்குவரத்தாளரை நீக்க முடியவில்லை."
     },
     "shipments": {
       "title": "அனுப்புகைகள்",
@@ -5968,10 +5974,19 @@
         "empty": "இதுவரை கூடுதல் நிறுத்தங்கள் எதுவும் சேர்க்கப்படவில்லை.",
         "primaryHint": "மேலே உள்ள சேருமிடம் எப்போதும் முதல் நிறுத்தமாகும் — பல-நிறுத்த வழித்தடத்திற்கு கீழே மேலும் சேர்க்கவும்.",
         "saveFirst": "முதலில் அனுப்புகையைச் சேமிக்கவும், பின்னர் நிறுத்தங்களைச் சேர்க்கவும்.",
-        "deleteStopConfirm": "இந்த நிறுத்தத்தை வழித்தடத்திலிருந்து அகற்றவா? இதை மீட்டெடுக்க முடியாது."
+        "deleteStopConfirm": "இந்த நிறுத்தத்தை வழித்தடத்திலிருந்து அகற்றவா? இதை மீட்டெடுக்க முடியாது.",
+        "addStopFailedMessage": "நிறுத்தத்தைச் சேர்க்க முடியவில்லை.",
+        "updateStatusFailedMessage": "நிறுத்த நிலையைப் புதுப்பிக்க முடியவில்லை.",
+        "deleteFailedMessage": "நிறுத்தத்தை நீக்க முடியவில்லை."
       },
       "cancelShipment": "அனுப்புகையை ரத்து செய்",
-      "cancelConfirm": "அனுப்புகை {{number}}ஐ ரத்து செய்யவா? இதை மீட்டெடுக்க முடியாது."
+      "cancelConfirm": "அனுப்புகை {{number}}ஐ ரத்து செய்யவா? இதை மீட்டெடுக்க முடியாது.",
+      "loadFailedMessage": "அனுப்புகைகளை ஏற்ற முடியவில்லை.",
+      "loadVehiclesFailedMessage": "வாகனங்களை ஏற்ற முடியவில்லை.",
+      "loadCarriersFailedMessage": "போக்குவரத்தாளர்களை ஏற்ற முடியவில்லை.",
+      "openEditFailedMessage": "அனுப்புகை விவரங்களை ஏற்ற முடியவில்லை.",
+      "changeStatusFailedMessage": "அனுப்புகை நிலையைப் புதுப்பிக்க முடியவில்லை.",
+      "deleteFailedMessage": "அனுப்புகையை நீக்க முடியவில்லை."
     },
     "grn": {
       "title": "பொருள் பெறுதல் குறிப்புகள் (GRN)",
@@ -6015,7 +6030,14 @@
       "orderedHint": "ஆர்டர் செய்யப்பட்டது {{qty}} {{unit}} · ஏற்கனவே பெறப்பட்டது {{received}}",
       "orderedHintShort": "ஆர்டர் செய்யப்பட்டது {{qty}} {{unit}}",
       "editGRNTitle": "GRN ஐத் திருத்து",
-      "itemsHeading": "பொருட்கள்"
+      "itemsHeading": "பொருட்கள்",
+      "loadFailedMessage": "GRNகளை ஏற்ற முடியவில்லை.",
+      "loadProductsFailedMessage": "பொருட்களை ஏற்ற முடியவில்லை.",
+      "loadSuppliersFailedMessage": "சப்ளையர்களை ஏற்ற முடியவில்லை.",
+      "loadPurchaseOrdersFailedMessage": "கொள்முதல் ஆணைகளை ஏற்ற முடியவில்லை.",
+      "loadCatalogFailedMessage": "இணைப்புத் தரவை ஏற்ற முடியவில்லை.",
+      "verifyFailedMessage": "GRNஐ சரிபார்க்க முடியவில்லை.",
+      "actionFailedMessage": "இந்தச் செயலை முடிக்க முடியவில்லை."
     },
     "challan": {
       "title": "டெலிவரி சலான்கள்",
@@ -6051,7 +6073,11 @@
       "customerNameRequired": "வாடிக்கையாளர் பெயர் தேவை.",
       "atLeastOneItem": "குறைந்தது ஒரு பொருள் தேவை.",
       "atLeastOneValidItem": "குறைந்தது ஒரு செல்லுபடியான பொருள் தேவை.",
-      "atLeastOneReturnQty": "குறைந்தது ஒரு பொருளின் திரும்பும் அளவு 0 ஐ விட அதிகமாக இருக்க வேண்டும்."
+      "atLeastOneReturnQty": "குறைந்தது ஒரு பொருளின் திரும்பும் அளவு 0 ஐ விட அதிகமாக இருக்க வேண்டும்.",
+      "loadFailedMessage": "சலான்களை ஏற்ற முடியவில்லை.",
+      "loadVehiclesFailedMessage": "வாகனங்களை ஏற்ற முடியவில்லை.",
+      "changeStatusFailedMessage": "சலான் நிலையைப் புதுப்பிக்க முடியவில்லை.",
+      "deleteFailedMessage": "சலானை நீக்க முடியவில்லை."
     },
     "freight": {
       "title": "சரக்கு கணக்கேடு",
@@ -6078,7 +6104,12 @@
       "deleteConfirm": "{{carrier}} ({{amount}}) க்கான சரக்குக் கட்டண உள்ளீட்டை நீக்கவா? இதைச் செயல்தவிர்க்க முடியாது.",
       "amountRequired": "தொகை 0 ஐ விட அதிகமாக இருக்க வேண்டும்.",
       "paidOn": "{{date}} அன்று செலுத்தப்பட்டது",
-      "refPlaceholderShort": "அனுப்புகை # அல்லது விலைப்பட்டியல் #"
+      "refPlaceholderShort": "அனுப்புகை # அல்லது விலைப்பட்டியல் #",
+      "loadFailedMessage": "சரக்குக் கட்டண பதிவுகளை ஏற்ற முடியவில்லை.",
+      "loadCarriersFailedMessage": "போக்குவரத்தாளர்களை ஏற்ற முடியவில்லை.",
+      "loadSummaryFailedMessage": "சரக்குக் கட்டணச் சுருக்கத்தை ஏற்ற முடியவில்லை.",
+      "markPaidFailedMessage": "பதிவைச் செலுத்தியதாகக் குறிக்க முடியவில்லை.",
+      "deleteFailedMessage": "சரக்குக் கட்டணப் பதிவை நீக்க முடியவில்லை."
     },
     "analytics": {
       "title": "தளவாடப் பகுப்பாய்வு",
@@ -6105,7 +6136,8 @@
       "deliveredCol": "விநியோகிக்கப்பட்டது",
       "returnedCol": "திரும்பப்பெறப்பட்டது",
       "fleetStatus": "வாகனத் தொகுதி நிலை",
-      "noData": "தரவு எதுவும் இல்லை."
+      "noData": "தரவு எதுவும் இல்லை.",
+      "loadFailedMessage": "பகுப்பாய்வுத் தரவை ஏற்ற முடியவில்லை."
     },
     "loadMore": "மேலும் ஏற்று",
     "showingOf": "{{total}} இல் {{shown}} காட்டப்படுகிறது"
