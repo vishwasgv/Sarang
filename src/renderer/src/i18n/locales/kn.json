@@ -2125,7 +2125,8 @@
     "couldNotLoad": "ಪುನರಾವರ್ತಿತ ಪ್ರೊಫೈಲ್‌ಗಳನ್ನು ಲೋಡ್ ಮಾಡಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
     "couldNotCreate": "ಪುನರಾವರ್ತಿತ ಪ್ರೊಫೈಲ್ ರಚಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
     "couldNotSave": "ಬದಲಾವಣೆಗಳನ್ನು ಉಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
-    "couldNotDelete": "ಪುನರಾವರ್ತಿತ ಪ್ರೊಫೈಲ್ ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ."
+    "couldNotDelete": "ಪುನರಾವರ್ತಿತ ಪ್ರೊಫೈಲ್ ಅಳಿಸಲು ಸಾಧ್ಯವಾಗಲಿಲ್ಲ.",
+    "couldNotLoadFormData": "ಫಾರ್ಮ್ ಡೇಟಾವನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ. ದಯವಿಟ್ಟು ಮತ್ತೆ ಪ್ರಯತ್ನಿಸಿ."
   },
   "locations": {
     "title": "ಸ್ಥಳಗಳು",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "ಮೇಕಿಂಗ್-ಚಾರ್ಜ್ ವಿರುದ್ಧ ಲೋಹ-ಮೌಲ್ಯ ಮಾರ್ಜಿನ್",
     "hallmarkCompliance": "ಹಾಲ್‌ಮಾರ್ಕಿಂಗ್ / HUID ಅನುಸರಣೆ",
     "metalRateVsSalesVolume": "ಲೋಹದ ದರ ವಿರುದ್ಧ ಮಾರಾಟ ಪ್ರಮಾಣ",
-    "purityAdjustedExchange": "ಶುದ್ಧತೆ-ಹೊಂದಾಣಿಕೆ ವಿನಿಮಯ ವಿಶ್ಲೇಷಣೆ"
+    "purityAdjustedExchange": "ಶುದ್ಧತೆ-ಹೊಂದಾಣಿಕೆ ವಿನಿಮಯ ವಿಶ್ಲೇಷಣೆ",
+    "couldNotLoadRates": "ಲೋಹದ ದರಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+    "couldNotDeleteRate": "ಈ ದರವನ್ನು ಅಳಿಸಲಾಗಲಿಲ್ಲ.",
+    "couldNotLoadExchanges": "ವಿನಿಮಯ ದಾಖಲೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+    "couldNotDeleteExchange": "ಈ ವಿನಿಮಯ ದಾಖಲೆಯನ್ನು ಅಳಿಸಲಾಗಲಿಲ್ಲ.",
+    "couldNotLinkExchange": "ಈ ವಿನಿಮಯವನ್ನು ಅನ್ವಯಿಸಲಾಗಿದೆ ಎಂದು ಗುರುತಿಸಲಾಗಲಿಲ್ಲ.",
+    "couldNotLoadSchemes": "ಗೋಲ್ಡ್ ಸೇವಿಂಗ್ಸ್ ಯೋಜನೆಗಳನ್ನು ಲೋಡ್ ಮಾಡಲಾಗಲಿಲ್ಲ.",
+    "couldNotRecordInstallment": "ಈ ಕಂತನ್ನು ದಾಖಲಿಸಲಾಗಲಿಲ್ಲ.",
+    "couldNotRedeemScheme": "ಈ ಯೋಜನೆಯನ್ನು ರಿಡೀಮ್ ಮಾಡಲಾಗಲಿಲ್ಲ."
   },
   "manual": {
     "yourType": "ನಿಮ್ಮದು",

@@ -2125,7 +2125,8 @@
     "couldNotLoad": "आवर्ती प्रोफाइल लोड नहीं हो सकीं।",
     "couldNotCreate": "आवर्ती प्रोफाइल नहीं बनाई जा सकी।",
     "couldNotSave": "बदलाव सहेजे नहीं जा सके।",
-    "couldNotDelete": "आवर्ती प्रोफाइल हटाई नहीं जा सकी।"
+    "couldNotDelete": "आवर्ती प्रोफाइल हटाई नहीं जा सकी।",
+    "couldNotLoadFormData": "फ़ॉर्म डेटा लोड नहीं हो सका। कृपया पुनः प्रयास करें।"
   },
   "locations": {
     "title": "स्थान",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "मेकिंग-चार्ज बनाम धातु-मूल्य मार्जिन",
     "hallmarkCompliance": "हॉलमार्किंग / HUID अनुपालन",
     "metalRateVsSalesVolume": "धातु दर बनाम बिक्री मात्रा",
-    "purityAdjustedExchange": "शुद्धता-समायोजित एक्सचेंज विश्लेषण"
+    "purityAdjustedExchange": "शुद्धता-समायोजित एक्सचेंज विश्लेषण",
+    "couldNotLoadRates": "धातु दरें लोड नहीं हो सकीं।",
+    "couldNotDeleteRate": "यह दर हटाई नहीं जा सकी।",
+    "couldNotLoadExchanges": "एक्सचेंज रिकॉर्ड लोड नहीं हो सके।",
+    "couldNotDeleteExchange": "यह एक्सचेंज रिकॉर्ड हटाया नहीं जा सका।",
+    "couldNotLinkExchange": "इस एक्सचेंज को लागू के रूप में चिह्नित नहीं किया जा सका।",
+    "couldNotLoadSchemes": "गोल्ड सेविंग्स स्कीमें लोड नहीं हो सकीं।",
+    "couldNotRecordInstallment": "यह किस्त दर्ज नहीं की जा सकी।",
+    "couldNotRedeemScheme": "यह स्कीम रिडीम नहीं की जा सकी।"
   },
   "manual": {
     "yourType": "आपका प्रकार",

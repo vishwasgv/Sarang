@@ -51,7 +51,7 @@ export function MetalRatesScreen(): React.JSX.Element {
     try {
       const res = await window.api.metalRate.list()
       if (res.success) setRates((res.data as MetalRate[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('jewellery.couldNotLoadRates'))
     } finally {
       setLoading(false)
     }
@@ -87,7 +87,7 @@ export function MetalRatesScreen(): React.JSX.Element {
     try {
       const res = await window.api.metalRate.delete({ id: deleteTarget.id })
       if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('jewellery.couldNotDeleteRate'))
     } finally {
       setDeleting(false)
     }

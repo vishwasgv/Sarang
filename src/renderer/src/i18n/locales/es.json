@@ -2125,7 +2125,8 @@
     "couldNotLoad": "No se pudieron cargar los perfiles recurrentes.",
     "couldNotCreate": "No se pudo crear el perfil recurrente.",
     "couldNotSave": "No se pudieron guardar los cambios.",
-    "couldNotDelete": "No se pudo eliminar el perfil recurrente."
+    "couldNotDelete": "No se pudo eliminar el perfil recurrente.",
+    "couldNotLoadFormData": "No se pudieron cargar los datos del formulario. Inténtelo de nuevo."
   },
   "locations": {
     "title": "Ubicaciones",
@@ -6736,7 +6737,15 @@
     "makingChargeMargin": "Margen de Cargo por Elaboración vs. Valor del Metal",
     "hallmarkCompliance": "Cumplimiento de Sello / HUID",
     "metalRateVsSalesVolume": "Tasa de Metal vs. Volumen de Ventas",
-    "purityAdjustedExchange": "Análisis de Cambio Ajustado por Pureza"
+    "purityAdjustedExchange": "Análisis de Cambio Ajustado por Pureza",
+    "couldNotLoadRates": "No se pudieron cargar las tasas de metal.",
+    "couldNotDeleteRate": "No se pudo eliminar esta tasa.",
+    "couldNotLoadExchanges": "No se pudieron cargar los registros de cambio.",
+    "couldNotDeleteExchange": "No se pudo eliminar este registro de cambio.",
+    "couldNotLinkExchange": "No se pudo marcar este cambio como aplicado.",
+    "couldNotLoadSchemes": "No se pudieron cargar los planes de ahorro de oro.",
+    "couldNotRecordInstallment": "No se pudo registrar esta cuota.",
+    "couldNotRedeemScheme": "No se pudo canjear este plan."
   },
   "distributor": {
     "fieldOrders": {

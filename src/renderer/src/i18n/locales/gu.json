@@ -2125,7 +2125,8 @@
     "couldNotLoad": "આવર્તક પ્રોફાઇલ લોડ કરી શકાઈ નહીં.",
     "couldNotCreate": "આવર્તક પ્રોફાઇલ બનાવી શકાઈ નહીં.",
     "couldNotSave": "ફેરફારો સાચવી શકાયા નહીં.",
-    "couldNotDelete": "આવર્તક પ્રોફાઇલ કાઢી શકાઈ નહીં."
+    "couldNotDelete": "આવર્તક પ્રોફાઇલ કાઢી શકાઈ નહીં.",
+    "couldNotLoadFormData": "ફોર્મ ડેટા લોડ થઈ શક્યો નહીં. કૃપા કરી ફરી પ્રયાસ કરો."
   },
   "locations": {
     "title": "સ્થાનો",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "મેકિંગ-ચાર્જ વિરુદ્ધ ધાતુ-મૂલ્ય માર્જિન",
     "hallmarkCompliance": "હોલમાર્કિંગ / HUID અનુપાલન",
     "metalRateVsSalesVolume": "ધાતુ દર વિરુદ્ધ વેચાણ જથ્થો",
-    "purityAdjustedExchange": "શુદ્ધતા-સમાયોજિત વિનિમય વિશ્લેષણ"
+    "purityAdjustedExchange": "શુદ્ધતા-સમાયોજિત વિનિમય વિશ્લેષણ",
+    "couldNotLoadRates": "ધાતુ દરો લોડ થઈ શક્યા નહીં.",
+    "couldNotDeleteRate": "આ દર કાઢી શકાયો નહીં.",
+    "couldNotLoadExchanges": "એક્સચેન્જ રેકોર્ડ્સ લોડ થઈ શક્યા નહીં.",
+    "couldNotDeleteExchange": "આ એક્સચેન્જ રેકોર્ડ કાઢી શકાયો નહીં.",
+    "couldNotLinkExchange": "આ એક્સચેન્જને લાગુ તરીકે ચિહ્નિત કરી શકાયું નહીં.",
+    "couldNotLoadSchemes": "ગોલ્ડ સેવિંગ્સ યોજનાઓ લોડ થઈ શકી નહીં.",
+    "couldNotRecordInstallment": "આ હપ્તો નોંધી શકાયો નહીં.",
+    "couldNotRedeemScheme": "આ યોજના રિડીમ કરી શકાઈ નહીં."
   },
   "manual": {
     "yourType": "તમારો પ્રકાર",

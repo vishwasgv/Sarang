@@ -2125,7 +2125,8 @@
     "couldNotLoad": "تعذّر تحميل الملفات المتكررة.",
     "couldNotCreate": "تعذّر إنشاء الملف المتكرر.",
     "couldNotSave": "تعذّر حفظ التغييرات.",
-    "couldNotDelete": "تعذّر حذف الملف المتكرر."
+    "couldNotDelete": "تعذّر حذف الملف المتكرر.",
+    "couldNotLoadFormData": "تعذر تحميل بيانات النموذج. يرجى المحاولة مرة أخرى."
   },
   "locations": {
     "title": "المواقع",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "هامش المصنعية مقابل قيمة المعدن",
     "hallmarkCompliance": "الامتثال لدمغة الجودة / HUID",
     "metalRateVsSalesVolume": "سعر المعدن مقابل حجم المبيعات",
-    "purityAdjustedExchange": "تحليل الاستبدال المعدّل حسب النقاء"
+    "purityAdjustedExchange": "تحليل الاستبدال المعدّل حسب النقاء",
+    "couldNotLoadRates": "تعذر تحميل أسعار المعادن.",
+    "couldNotDeleteRate": "تعذر حذف هذا السعر.",
+    "couldNotLoadExchanges": "تعذر تحميل سجلات الاستبدال.",
+    "couldNotDeleteExchange": "تعذر حذف سجل الاستبدال هذا.",
+    "couldNotLinkExchange": "تعذر تمييز هذا الاستبدال كمُطبَّق.",
+    "couldNotLoadSchemes": "تعذر تحميل خطط ادخار الذهب.",
+    "couldNotRecordInstallment": "تعذر تسجيل هذا القسط.",
+    "couldNotRedeemScheme": "تعذر استرداد هذه الخطة."
   },
   "manual": {
     "yourType": "نوعك",

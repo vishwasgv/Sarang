@@ -37,7 +37,7 @@ export function ServiceCombosScreen() {
     try {
       const res = await window.api.serviceCombo.list()
       if (res.success && res.data) setCombos(res.data as ServiceCombo[])
-      else toastError(t('common.error'), res.error?.message ?? t('serviceCombos.couldNotLoad'))
+      else toastError(t('common.error'), t('serviceCombos.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('serviceCombos.couldNotLoad'))
     } finally {
@@ -158,7 +158,7 @@ function ServiceComboFormModal({ combo, onClose, onSaved }: { combo?: ServiceCom
       const res = combo
         ? await window.api.serviceCombo.update({ id: combo.id, comboName: comboName.trim(), description: description.trim() || null, comboPrice: price, isActive, serviceCatalogIds: selectedIds })
         : await window.api.serviceCombo.create({ comboName: comboName.trim(), description: description.trim() || undefined, comboPrice: price, serviceCatalogIds: selectedIds })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('serviceCombos.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('serviceCombos.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       onSaved()
     } catch {

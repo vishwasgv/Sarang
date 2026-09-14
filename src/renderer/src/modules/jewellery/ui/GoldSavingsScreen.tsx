@@ -62,9 +62,9 @@ export function GoldSavingsScreen(): React.JSX.Element {
     try {
       const res = await window.api.goldSavings.list()
       if (res.success) setSchemes((res.data as GoldSavingsScheme[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('jewellery.couldNotLoadSchemes'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('jewellery.couldNotLoadSchemes'))
     } finally {
       setLoading(false)
     }
@@ -121,7 +121,7 @@ export function GoldSavingsScreen(): React.JSX.Element {
         setInstallAmount('')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('jewellery.couldNotRecordInstallment'))
       }
     } finally {
       setInstalling(false)
@@ -140,7 +140,7 @@ export function GoldSavingsScreen(): React.JSX.Element {
         setBonusAmount('0')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('jewellery.couldNotRedeemScheme'))
       }
     } finally {
       setRedeeming(false)

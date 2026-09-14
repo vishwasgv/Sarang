@@ -2125,7 +2125,8 @@
     "couldNotLoad": "Profil berulang tidak dapat dimuat.",
     "couldNotCreate": "Profil berulang tidak dapat dibuat.",
     "couldNotSave": "Perubahan tidak dapat disimpan.",
-    "couldNotDelete": "Profil berulang tidak dapat dihapus."
+    "couldNotDelete": "Profil berulang tidak dapat dihapus.",
+    "couldNotLoadFormData": "Tidak dapat memuat data formulir. Silakan coba lagi."
   },
   "locations": {
     "title": "Lokasi",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "Margin Biaya Pembuatan vs. Nilai Logam",
     "hallmarkCompliance": "Kepatuhan Cap / HUID",
     "metalRateVsSalesVolume": "Harga Logam vs. Volume Penjualan",
-    "purityAdjustedExchange": "Analisis Tukar Tambah Disesuaikan Kemurnian"
+    "purityAdjustedExchange": "Analisis Tukar Tambah Disesuaikan Kemurnian",
+    "couldNotLoadRates": "Tidak dapat memuat harga logam.",
+    "couldNotDeleteRate": "Tidak dapat menghapus harga ini.",
+    "couldNotLoadExchanges": "Tidak dapat memuat catatan tukar tambah.",
+    "couldNotDeleteExchange": "Tidak dapat menghapus catatan tukar tambah ini.",
+    "couldNotLinkExchange": "Tidak dapat menandai tukar tambah ini sebagai diterapkan.",
+    "couldNotLoadSchemes": "Tidak dapat memuat skema tabungan emas.",
+    "couldNotRecordInstallment": "Tidak dapat mencatat cicilan ini.",
+    "couldNotRedeemScheme": "Tidak dapat menukarkan skema ini."
   },
   "manual": {
     "yourType": "Milik Anda",

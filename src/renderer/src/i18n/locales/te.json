@@ -2125,7 +2125,8 @@
     "couldNotLoad": "ఆవర్తన ప్రొఫైల్‌లను లోడ్ చేయడం సాధ్యం కాలేదు.",
     "couldNotCreate": "ఆవర్తన ప్రొఫైల్‌ను సృష్టించడం సాధ్యం కాలేదు.",
     "couldNotSave": "మార్పులను సేవ్ చేయడం సాధ్యం కాలేదు.",
-    "couldNotDelete": "ఆవర్తన ప్రొఫైల్‌ను తొలగించడం సాధ్యం కాలేదు."
+    "couldNotDelete": "ఆవర్తన ప్రొఫైల్‌ను తొలగించడం సాధ్యం కాలేదు.",
+    "couldNotLoadFormData": "ఫారమ్ డేటాను లోడ్ చేయలేకపోయాము. దయచేసి మళ్లీ ప్రయత్నించండి."
   },
   "locations": {
     "title": "స్థానాలు",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "మేకింగ్-ఛార్జ్ vs లోహ-విలువ మార్జిన్",
     "hallmarkCompliance": "హాల్‌మార్కింగ్ / HUID సమ్మతి",
     "metalRateVsSalesVolume": "లోహ రేటు vs అమ్మకాల పరిమాణం",
-    "purityAdjustedExchange": "స్వచ్ఛత-సర్దుబాటు మార్పిడి విశ్లేషణ"
+    "purityAdjustedExchange": "స్వచ్ఛత-సర్దుబాటు మార్పిడి విశ్లేషణ",
+    "couldNotLoadRates": "లోహ రేట్లను లోడ్ చేయలేకపోయాము.",
+    "couldNotDeleteRate": "ఈ రేటును తొలగించలేకపోయాము.",
+    "couldNotLoadExchanges": "మార్పిడి రికార్డులను లోడ్ చేయలేకపోయాము.",
+    "couldNotDeleteExchange": "ఈ మార్పిడి రికార్డును తొలగించలేకపోయాము.",
+    "couldNotLinkExchange": "ఈ మార్పిడిని వర్తింపజేసినట్లు గుర్తించలేకపోయాము.",
+    "couldNotLoadSchemes": "గోల్డ్ సేవింగ్స్ స్కీమ్‌లను లోడ్ చేయలేకపోయాము.",
+    "couldNotRecordInstallment": "ఈ వాయిదాను నమోదు చేయలేకపోయాము.",
+    "couldNotRedeemScheme": "ఈ స్కీమ్‌ను రిడీమ్ చేయలేకపోయాము."
   },
   "manual": {
     "yourType": "మీది",

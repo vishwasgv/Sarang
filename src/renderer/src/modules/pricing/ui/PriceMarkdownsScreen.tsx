@@ -57,7 +57,7 @@ export function PriceMarkdownsScreen() {
         window.api.products.list({ isActive: true, limit: 500 })
       ])
       if (mRes.success) setMarkdowns((mRes.data as PriceMarkdown[]) ?? [])
-      else toastError(t('common.error'), mRes.error?.message ?? t('priceMarkdowns.couldNotLoad'))
+      else toastError(t('common.error'), t('priceMarkdowns.couldNotLoad'))
       if (pRes.success) setProducts(((pRes.data as { products: Product[] }).products ?? []).filter(p => p.productType === 'STANDARD'))
     } catch {
       toastError(t('common.error'), t('priceMarkdowns.couldNotLoad'))
@@ -91,7 +91,7 @@ export function PriceMarkdownsScreen() {
         setShowCreate(false)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('priceMarkdowns.couldNotCreate'))
+        toastError(t('common.error'), t('priceMarkdowns.couldNotCreate'))
       }
     } catch {
       toastError(t('common.error'), t('priceMarkdowns.couldNotCreate'))
@@ -110,7 +110,7 @@ export function PriceMarkdownsScreen() {
         setCancelTarget(null)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('priceMarkdowns.couldNotCancel'))
+        toastError(t('common.error'), t('priceMarkdowns.couldNotCancel'))
       }
     } catch {
       toastError(t('common.error'), t('priceMarkdowns.couldNotCancel'))
@@ -128,7 +128,7 @@ export function PriceMarkdownsScreen() {
         toastSuccess(t('priceMarkdowns.checkComplete'), t('priceMarkdowns.checkCompleteDetail', { reverted: d.reverted, evaluated: d.evaluated }))
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('priceMarkdowns.couldNotCheck'))
+        toastError(t('common.error'), t('priceMarkdowns.couldNotCheck'))
       }
     } catch {
       toastError(t('common.error'), t('priceMarkdowns.couldNotCheck'))

@@ -2125,7 +2125,8 @@
     "couldNotLoad": "Impossible de charger les profils récurrents.",
     "couldNotCreate": "Impossible de créer le profil récurrent.",
     "couldNotSave": "Impossible d'enregistrer les modifications.",
-    "couldNotDelete": "Impossible de supprimer le profil récurrent."
+    "couldNotDelete": "Impossible de supprimer le profil récurrent.",
+    "couldNotLoadFormData": "Impossible de charger les données du formulaire. Veuillez réessayer."
   },
   "locations": {
     "title": "Emplacements",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "Marge des Frais de Façon vs. Valeur du Métal",
     "hallmarkCompliance": "Conformité au Poinçon / HUID",
     "metalRateVsSalesVolume": "Cours du Métal vs. Volume des Ventes",
-    "purityAdjustedExchange": "Analyse de Reprise Ajustée à la Pureté"
+    "purityAdjustedExchange": "Analyse de Reprise Ajustée à la Pureté",
+    "couldNotLoadRates": "Impossible de charger les cours des métaux.",
+    "couldNotDeleteRate": "Impossible de supprimer ce cours.",
+    "couldNotLoadExchanges": "Impossible de charger les reprises.",
+    "couldNotDeleteExchange": "Impossible de supprimer cette reprise.",
+    "couldNotLinkExchange": "Impossible de marquer cette reprise comme appliquée.",
+    "couldNotLoadSchemes": "Impossible de charger les plans d'épargne en or.",
+    "couldNotRecordInstallment": "Impossible d'enregistrer cette mensualité.",
+    "couldNotRedeemScheme": "Impossible de racheter ce plan."
   },
   "manual": {
     "yourType": "Le vôtre",

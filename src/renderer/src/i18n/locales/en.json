@@ -2127,7 +2127,8 @@
     "couldNotLoad": "Could not load recurring profiles.",
     "couldNotCreate": "Could not create recurring profile.",
     "couldNotSave": "Could not save changes.",
-    "couldNotDelete": "Could not delete recurring profile."
+    "couldNotDelete": "Could not delete recurring profile.",
+    "couldNotLoadFormData": "Could not load form data. Please try again."
   },
   "locations": {
     "title": "Locations",
@@ -7128,7 +7129,15 @@
     "makingChargeMargin": "Making-Charge vs. Metal-Value Margin",
     "hallmarkCompliance": "Hallmarking / HUID Compliance",
     "metalRateVsSalesVolume": "Metal Rate vs. Sales Volume",
-    "purityAdjustedExchange": "Purity-Adjusted Exchange Analytics"
+    "purityAdjustedExchange": "Purity-Adjusted Exchange Analytics",
+    "couldNotLoadRates": "Could not load metal rates.",
+    "couldNotDeleteRate": "Could not delete this rate.",
+    "couldNotLoadExchanges": "Could not load exchange records.",
+    "couldNotDeleteExchange": "Could not delete this exchange record.",
+    "couldNotLinkExchange": "Could not mark this exchange as applied.",
+    "couldNotLoadSchemes": "Could not load gold savings schemes.",
+    "couldNotRecordInstallment": "Could not record this installment.",
+    "couldNotRedeemScheme": "Could not redeem this scheme."
   },
   "distributor": {
     "fieldOrders": {

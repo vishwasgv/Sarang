@@ -97,7 +97,7 @@ export function LoyaltyProgramScreen() {
         setShowSettings(false)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('loyaltyProgram.couldNotSave'))
+        toastError(t('common.error'), t('loyaltyProgram.couldNotSave'))
       }
     } catch {
       toastError(t('common.error'), t('loyaltyProgram.couldNotSave'))
@@ -116,7 +116,7 @@ export function LoyaltyProgramScreen() {
         setRedeemTarget(null)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('loyaltyProgram.couldNotRedeem'))
+        toastError(t('common.error'), t('loyaltyProgram.couldNotRedeem'))
       }
     } catch {
       toastError(t('common.error'), t('loyaltyProgram.couldNotRedeem'))

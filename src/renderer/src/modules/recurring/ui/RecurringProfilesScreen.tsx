@@ -61,7 +61,7 @@ export function RecurringProfilesScreen() {
     try {
       const res = await window.api.recurringProfiles.list(typeFilter ? { documentType: typeFilter } : undefined)
       if (res.success && res.data) setProfiles(res.data as RecurringProfile[])
-      else toastError(t('common.error'), res.error?.message ?? t('recurringProfiles.couldNotLoad'))
+      else toastError(t('common.error'), t('recurringProfiles.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('recurringProfiles.couldNotLoad'))
     } finally {
@@ -74,7 +74,7 @@ export function RecurringProfilesScreen() {
   async function toggleActive(profile: RecurringProfile) {
     try {
       const res = await window.api.recurringProfiles.update({ id: profile.id, active: !profile.active })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('recurringProfiles.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('recurringProfiles.couldNotSave')); return }
       load()
     } catch {
       toastError(t('common.error'), t('recurringProfiles.couldNotSave'))
@@ -86,7 +86,7 @@ export function RecurringProfilesScreen() {
     setDeleting(true)
     try {
       const res = await window.api.recurringProfiles.delete(deleteTarget.id)
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('recurringProfiles.couldNotDelete')); return }
+      if (!res.success) { toastError(t('common.error'), t('recurringProfiles.couldNotDelete')); return }
       toastSuccess(t('recurringProfiles.profileDeleted'), '')
       setDeleteTarget(null)
       load()
@@ -224,7 +224,7 @@ function EditScheduleModal({ profile, onClose, onSaved }: { profile: RecurringPr
     setSaving(true)
     try {
       const res = await window.api.recurringProfiles.update({ id: profile.id, cadence, dayOfPeriod, endDate: endDate || null })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('recurringProfiles.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('recurringProfiles.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       onSaved()
     } catch {
@@ -368,7 +368,7 @@ export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () =>
         if (pRes.success) setProducts(((pRes.data as { products: Product[] }).products ?? []).filter(p => p.productType === 'STANDARD'))
         if (cRes.success) setCategories((cRes.data as ExpenseCategory[]) ?? [])
       } catch {
-        toastError(t('common.error'), t('common.error'))
+        toastError(t('common.error'), t('recurringProfiles.couldNotLoadFormData'))
       } finally {
         setLoadingData(false)
       }
@@ -424,7 +424,7 @@ export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () =>
         toastSuccess(t('recurringProfiles.profileCreated'), '')
         onSaved()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('recurringProfiles.couldNotCreate'))
+        toastError(t('common.error'), t('recurringProfiles.couldNotCreate'))
       }
     } catch {
       toastError(t('common.error'), t('recurringProfiles.couldNotCreate'))

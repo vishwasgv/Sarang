@@ -2125,7 +2125,8 @@
     "couldNotLoad": "மீள்நிகழ் சுயவிவரங்களை ஏற்ற முடியவில்லை.",
     "couldNotCreate": "மீள்நிகழ் சுயவிவரத்தை உருவாக்க முடியவில்லை.",
     "couldNotSave": "மாற்றங்களைச் சேமிக்க முடியவில்லை.",
-    "couldNotDelete": "மீள்நிகழ் சுயவிவரத்தை நீக்க முடியவில்லை."
+    "couldNotDelete": "மீள்நிகழ் சுயவிவரத்தை நீக்க முடியவில்லை.",
+    "couldNotLoadFormData": "படிவத் தரவை ஏற்ற முடியவில்லை. மீண்டும் முயற்சிக்கவும்."
   },
   "locations": {
     "title": "இருப்பிடங்கள்",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "செய்கூலி vs உலோக-மதிப்பு லாபவீதம்",
     "hallmarkCompliance": "ஹால்மார்க்கிங் / HUID இணக்கம்",
     "metalRateVsSalesVolume": "உலோக விலை vs விற்பனை அளவு",
-    "purityAdjustedExchange": "தூய்மை-சரிசெய்யப்பட்ட பரிமாற்ற பகுப்பாய்வு"
+    "purityAdjustedExchange": "தூய்மை-சரிசெய்யப்பட்ட பரிமாற்ற பகுப்பாய்வு",
+    "couldNotLoadRates": "உலோக விலைகளை ஏற்ற முடியவில்லை.",
+    "couldNotDeleteRate": "இந்த விலையை நீக்க முடியவில்லை.",
+    "couldNotLoadExchanges": "பரிமாற்ற பதிவுகளை ஏற்ற முடியவில்லை.",
+    "couldNotDeleteExchange": "இந்த பரிமாற்ற பதிவை நீக்க முடியவில்லை.",
+    "couldNotLinkExchange": "இந்த பரிமாற்றத்தை பயன்படுத்தியதாக குறிக்க முடியவில்லை.",
+    "couldNotLoadSchemes": "தங்க சேமிப்பு திட்டங்களை ஏற்ற முடியவில்லை.",
+    "couldNotRecordInstallment": "இந்த தவணையை பதிவு செய்ய முடியவில்லை.",
+    "couldNotRedeemScheme": "இந்த திட்டத்தை மீட்க முடியவில்லை."
   },
   "manual": {
     "yourType": "உங்கள் வகை",

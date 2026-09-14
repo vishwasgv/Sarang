@@ -2125,7 +2125,8 @@
     "couldNotLoad": "Não foi possível carregar os perfis recorrentes.",
     "couldNotCreate": "Não foi possível criar o perfil recorrente.",
     "couldNotSave": "Não foi possível salvar as alterações.",
-    "couldNotDelete": "Não foi possível excluir o perfil recorrente."
+    "couldNotDelete": "Não foi possível excluir o perfil recorrente.",
+    "couldNotLoadFormData": "Não foi possível carregar os dados do formulário. Tente novamente."
   },
   "locations": {
     "title": "Localizações",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "Margem de Taxa de Mão de Obra vs. Valor do Metal",
     "hallmarkCompliance": "Conformidade de Marca / HUID",
     "metalRateVsSalesVolume": "Taxa do Metal vs. Volume de Vendas",
-    "purityAdjustedExchange": "Análise de Troca Ajustada por Pureza"
+    "purityAdjustedExchange": "Análise de Troca Ajustada por Pureza",
+    "couldNotLoadRates": "Não foi possível carregar as taxas de metal.",
+    "couldNotDeleteRate": "Não foi possível excluir esta taxa.",
+    "couldNotLoadExchanges": "Não foi possível carregar os registros de troca.",
+    "couldNotDeleteExchange": "Não foi possível excluir este registro de troca.",
+    "couldNotLinkExchange": "Não foi possível marcar esta troca como aplicada.",
+    "couldNotLoadSchemes": "Não foi possível carregar os planos de poupança em ouro.",
+    "couldNotRecordInstallment": "Não foi possível registrar esta parcela.",
+    "couldNotRedeemScheme": "Não foi possível resgatar este plano."
   },
   "manual": {
     "yourType": "Seu",

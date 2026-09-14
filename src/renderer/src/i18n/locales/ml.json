@@ -2125,7 +2125,8 @@
     "couldNotLoad": "ആവർത്തന പ്രൊഫൈലുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
     "couldNotCreate": "ആവർത്തന പ്രൊഫൈൽ സൃഷ്ടിക്കാൻ കഴിഞ്ഞില്ല.",
     "couldNotSave": "മാറ്റങ്ങൾ സേവ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
-    "couldNotDelete": "ആവർത്തന പ്രൊഫൈൽ ഇല്ലാതാക്കാൻ കഴിഞ്ഞില്ല."
+    "couldNotDelete": "ആവർത്തന പ്രൊഫൈൽ ഇല്ലാതാക്കാൻ കഴിഞ്ഞില്ല.",
+    "couldNotLoadFormData": "ഫോം ഡാറ്റ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല. ദയവായി വീണ്ടും ശ്രമിക്കുക."
   },
   "locations": {
     "title": "ലൊക്കേഷനുകൾ",
@@ -6545,7 +6546,15 @@
     "makingChargeMargin": "മേക്കിംഗ്-ചാർജ് vs ലോഹ-മൂല്യ മാർജിൻ",
     "hallmarkCompliance": "ഹാൾമാർക്കിംഗ് / HUID അനുസരണ",
     "metalRateVsSalesVolume": "ലോഹ നിരക്ക് vs വിൽപ്പന അളവ്",
-    "purityAdjustedExchange": "ശുദ്ധി-ക്രമീകരിച്ച കൈമാറ്റ വിശകലനം"
+    "purityAdjustedExchange": "ശുദ്ധി-ക്രമീകരിച്ച കൈമാറ്റ വിശകലനം",
+    "couldNotLoadRates": "ലോഹ നിരക്കുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "couldNotDeleteRate": "ഈ നിരക്ക് ഇല്ലാതാക്കാൻ കഴിഞ്ഞില്ല.",
+    "couldNotLoadExchanges": "എക്സ്ചേഞ്ച് രേഖകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "couldNotDeleteExchange": "ഈ എക്സ്ചേഞ്ച് രേഖ ഇല്ലാതാക്കാൻ കഴിഞ്ഞില്ല.",
+    "couldNotLinkExchange": "ഈ എക്സ്ചേഞ്ച് പ്രയോഗിച്ചതായി അടയാളപ്പെടുത്താൻ കഴിഞ്ഞില്ല.",
+    "couldNotLoadSchemes": "ഗോൾഡ് സേവിംഗ്സ് സ്കീമുകൾ ലോഡ് ചെയ്യാൻ കഴിഞ്ഞില്ല.",
+    "couldNotRecordInstallment": "ഈ ഇൻസ്റ്റാൾമെന്റ് രേഖപ്പെടുത്താൻ കഴിഞ്ഞില്ല.",
+    "couldNotRedeemScheme": "ഈ സ്കീം റിഡീം ചെയ്യാൻ കഴിഞ്ഞില്ല."
   },
   "manual": {
     "yourType": "നിങ്ങളുടേത്",

@@ -51,7 +51,7 @@ export function PriceListsScreen() {
     try {
       const res = await window.api.priceLists.list(appliesToFilter ? { appliesTo: appliesToFilter } : undefined)
       if (res.success && res.data) setPriceLists(res.data as PriceList[])
-      else toastError(t('common.error'), res.error?.message ?? t('priceLists.couldNotLoad'))
+      else toastError(t('common.error'), t('priceLists.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('priceLists.couldNotLoad'))
     } finally {
@@ -178,7 +178,7 @@ function CreatePriceListModal({ onClose, onSaved }: { onClose: () => void; onSav
     setSaving(true)
     try {
       const res = await window.api.priceLists.create({ name: name.trim(), appliesTo, currencyCode: currencyCode.trim() || 'INR' })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('priceLists.couldNotCreate')); return }
+      if (!res.success) { toastError(t('common.error'), t('priceLists.couldNotCreate')); return }
       toastSuccess(t('priceLists.priceListCreated'), name.trim())
       onSaved()
     } catch {
@@ -219,7 +219,7 @@ function EditPriceListModal({ priceList, onClose, onSaved }: { priceList: PriceL
     setSaving(true)
     try {
       const res = await window.api.priceLists.update({ id: priceList.id, name: name.trim(), isActive })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('priceLists.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('priceLists.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), name.trim())
       onSaved()
     } catch {
@@ -362,7 +362,7 @@ function ManageTiersModal({ priceList, onClose, onSaved }: { priceList: PriceLis
         priceListId: priceList.id,
         items: validRows.map(r => ({ productId: r.productId, minQuantity: r.minQuantity, unitPrice: r.unitPrice }))
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('priceLists.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('priceLists.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), priceList.name)
       onSaved()
     } catch {

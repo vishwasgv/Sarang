@@ -70,7 +70,7 @@ export function CustomDocumentsScreen() {
         setTypes(rows)
         if (!selectedTypeId && rows.length > 0) setSelectedTypeId(rows[0].id)
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('customDocuments.couldNotLoad'))
+        toastError(t('common.error'), t('customDocuments.couldNotLoad'))
       }
     } catch {
       toastError(t('common.error'), t('customDocuments.couldNotLoad'))
@@ -88,7 +88,7 @@ export function CustomDocumentsScreen() {
     try {
       const res = await api.customDocuments.listEntries(selectedTypeId)
       if (res.success) setEntries((res.data as Entry[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('customDocuments.couldNotLoad'))
+      else toastError(t('common.error'), t('customDocuments.couldNotLoad'))
     } catch {
       toastError(t('common.error'), t('customDocuments.couldNotLoad'))
     } finally {
@@ -123,7 +123,7 @@ export function CustomDocumentsScreen() {
       const res = typeEditTarget
         ? await api.customDocuments.updateType({ id: typeEditTarget.id, name: typeForm.name.trim(), description: typeForm.description.trim() || undefined })
         : await api.customDocuments.createType({ name: typeForm.name.trim(), description: typeForm.description.trim() || undefined })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('customDocuments.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('customDocuments.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       setShowTypeModal(false)
       const wasCreate = !typeEditTarget
@@ -151,7 +151,7 @@ export function CustomDocumentsScreen() {
         entityType: documentEntityType, fieldName: fieldForm.fieldName.trim(), fieldType: fieldForm.fieldType,
         selectOptions: fieldForm.fieldType === 'SELECT' ? cleanOptions : undefined
       })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('customFields.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('customFields.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       setShowFieldModal(false)
       loadFields()
@@ -183,7 +183,7 @@ export function CustomDocumentsScreen() {
       const res = entryEditTarget
         ? await api.customDocuments.updateEntry({ id: entryEditTarget.id, entryDate, notes: entryNotes.trim() || undefined, customFields: entryFieldValues })
         : await api.customDocuments.createEntry({ documentTypeId: selectedTypeId, entryDate, notes: entryNotes.trim() || undefined, customFields: entryFieldValues })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('customDocuments.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('customDocuments.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       setShowEntryModal(false)
       loadEntries()
@@ -200,7 +200,7 @@ export function CustomDocumentsScreen() {
     try {
       const res = await api.customDocuments.deleteEntry(deleteTarget.id)
       if (res.success) { toastSuccess(t('common.delete'), ''); setDeleteTarget(null); loadEntries() }
-      else toastError(t('common.error'), res.error?.message ?? t('customDocuments.couldNotDelete'))
+      else toastError(t('common.error'), t('customDocuments.couldNotDelete'))
     } finally {
       setDeleting(false)
     }

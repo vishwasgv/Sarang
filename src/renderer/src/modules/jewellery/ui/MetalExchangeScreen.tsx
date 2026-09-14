@@ -89,9 +89,9 @@ export function MetalExchangeScreen(): React.JSX.Element {
     try {
       const res = await window.api.metalExchange.list()
       if (res.success) setExchanges((res.data as MetalExchange[]) ?? [])
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('jewellery.couldNotLoadExchanges'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('jewellery.couldNotLoadExchanges'))
     } finally {
       setLoading(false)
     }
@@ -144,7 +144,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
     try {
       const res = await window.api.metalExchange.delete({ id: deleteTarget.id })
       if (res.success) { toastSuccess(t('jewellery.deleted'), t('jewellery.rateDeleted')); setDeleteTarget(null); await load() }
-      else toastError(t('common.error'), res.error?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('jewellery.couldNotDeleteExchange'))
     } finally {
       setDeleting(false)
     }
@@ -161,7 +161,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
         setLinkInvoiceNumber('')
         await load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('jewellery.couldNotLinkExchange'))
       }
     } finally {
       setLinking(false)

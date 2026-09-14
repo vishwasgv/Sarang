@@ -87,7 +87,7 @@ export function PricingSchemesScreen() {
         window.api.categories.list()
       ])
       if (sRes.success) setSchemes((sRes.data as PricingScheme[]) ?? [])
-      else toastError(t('common.error'), sRes.error?.message ?? t('pricingSchemes.couldNotLoad'))
+      else toastError(t('common.error'), t('pricingSchemes.couldNotLoad'))
       if (pRes.success) setProducts(((pRes.data as { products: Product[] }).products ?? []).filter(p => p.productType === 'STANDARD'))
       if (cRes.success) setCategories((cRes.data as Category[]) ?? [])
     } catch {
@@ -149,7 +149,7 @@ export function PricingSchemesScreen() {
         setShowCreate(false)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('pricingSchemes.couldNotCreate'))
+        toastError(t('common.error'), t('pricingSchemes.couldNotCreate'))
       }
     } catch {
       toastError(t('common.error'), t('pricingSchemes.couldNotCreate'))
@@ -161,7 +161,7 @@ export function PricingSchemesScreen() {
   async function toggleActive(scheme: PricingScheme) {
     try {
       const res = await window.api.pricingSchemes.update({ id: scheme.id, isActive: !scheme.isActive })
-      if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('pricingSchemes.couldNotSave')); return }
+      if (!res.success) { toastError(t('common.error'), t('pricingSchemes.couldNotSave')); return }
       load()
     } catch {
       toastError(t('common.error'), t('pricingSchemes.couldNotSave'))
@@ -178,7 +178,7 @@ export function PricingSchemesScreen() {
         setDeleteTarget(null)
         load()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('pricingSchemes.couldNotDelete'))
+        toastError(t('common.error'), t('pricingSchemes.couldNotDelete'))
       }
     } catch {
       toastError(t('common.error'), t('pricingSchemes.couldNotDelete'))
