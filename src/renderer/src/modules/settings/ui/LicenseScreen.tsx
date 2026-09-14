@@ -45,9 +45,9 @@ export function LicenseScreen() {
     try {
       const res = await api.license.getStatus()
       if (res.success && res.data) setState(res.data as LicenseStatusData)
-      else toastError(t('common.error'), res.error?.message ?? 'Could not load license status.')
+      else toastError(t('common.error'), t('license.loadStatusError'))
     } catch {
-      toastError(t('common.error'), 'Could not load license status.')
+      toastError(t('common.error'), t('license.loadStatusError'))
     } finally {
       setLoading(false)
     }

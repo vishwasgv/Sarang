@@ -188,6 +188,7 @@
     "loginSubtitle": "Connectez-vous à votre compte professionnel",
     "rememberMe": "Rester connecté",
     "loginError": "Identifiant ou mot de passe incorrect",
+    "loadPermissionsError": "Impossible de charger vos autorisations.",
     "changePassword": "Changer le mot de passe",
     "currentPassword": "Mot de passe actuel",
     "newPassword": "Nouveau mot de passe",
@@ -2232,7 +2233,9 @@
     "couldNotLoad": "Impossible de charger les flux d'approbation.",
     "couldNotCreate": "Impossible de créer le flux d'approbation.",
     "couldNotSave": "Impossible d'enregistrer les modifications.",
-    "couldNotDelete": "Impossible de supprimer le flux d'approbation."
+    "couldNotDelete": "Impossible de supprimer le flux d'approbation.",
+    "couldNotApprove": "Impossible d’approuver cette étape.",
+    "couldNotReject": "Impossible de rejeter cette étape."
   },
   "supplierPayments": {
     "title": "Paiements Effectués",
@@ -4371,7 +4374,9 @@
     "verifyIntegrity": "Vérifier l'intégrité",
     "verifying": "Vérification…",
     "chainIntact": "Chaîne intacte — {{count}} enregistrements vérifiés, aucune falsification détectée.",
-    "chainBroken": "Falsification détectée — la chaîne se rompt à l'enregistrement {{id}}… après {{count}} enregistrements vérifiés. Enquêtez immédiatement."
+    "chainBroken": "Falsification détectée — la chaîne se rompt à l'enregistrement {{id}}… après {{count}} enregistrements vérifiés. Enquêtez immédiatement.",
+    "couldNotLoad": "Impossible de charger les journaux d'audit.",
+    "couldNotVerifyChain": "Impossible de vérifier la chaîne d'audit."
   },
   "settings": {
     "title": "Paramètres",
@@ -4557,7 +4562,9 @@
     "website": "Visiter le site web",
     "privacyNote": "Vos données ne quittent jamais votre appareil. Pas besoin d'internet.",
     "buildInfo": "Informations de version",
-    "legalDisclaimerTitle": "Mentions Légales"
+    "legalDisclaimerTitle": "Mentions Légales",
+    "loadPathsFailed": "Impossible de charger les chemins de stockage.",
+    "savePreferenceFailed": "Impossible d’enregistrer votre préférence. Veuillez réessayer."
   },
   "license": {
     "title": "Licence",
@@ -4582,6 +4589,7 @@
     "activated": "Licence activée pour cet appareil.",
     "invalidKey": "Cette clé de licence n'est pas valide. Vérifiez-la et réessayez.",
     "activateError": "Impossible d'activer cette clé pour le moment. Veuillez réessayer.",
+    "loadStatusError": "Impossible de charger l'état de la licence.",
     "renewTitle": "Renouvelez votre licence",
     "renewIndia": "₹6 999/an (moins de ₹600/mois)",
     "renewIntl": "149 $/an",
@@ -5872,6 +5880,9 @@
     "openingWhatsApp": "Ouverture de WhatsApp…",
     "openingEmail": "Ouverture de votre application e-mail…",
     "revealFailed": "Impossible d'ouvrir le dossier du fichier enregistré.",
+    "exportFailed": "Impossible d’exporter le document.",
+    "emailLinkFailed": "Impossible d’ouvrir votre application de messagerie.",
+    "shareFailed": "Impossible de terminer l'action de partage. Veuillez réessayer.",
     "docTypeInvoice": "Facture",
     "docTypeQuotation": "Devis",
     "docTypeCreditNote": "Avoir",
@@ -5879,7 +5890,8 @@
     "docTypePurchaseOrder": "Bon de Commande"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite est un outil organisationnel gratuit pour les petites entreprises. Ce n'est pas un système de dossiers médicaux, un outil de conseil juridique ou un produit financier agréé. Il inclut des fonctionnalités de comptabilité et de TPS/TVA, mais ne remplace pas un comptable ou un conseiller fiscal agréé. Toutes les informations sont les données propres de l'utilisateur, stockées localement sur son appareil. Aszurex n'offre aucune garantie quant à l'exactitude, l'exhaustivité ou l'adéquation de ce logiciel à des fins réglementées. Les utilisateurs sont seuls responsables du respect des lois et réglementations professionnelles applicables."
+    "legalNotice": "Sarang Business OS Lite est un outil organisationnel gratuit pour les petites entreprises. Ce n'est pas un système de dossiers médicaux, un outil de conseil juridique ou un produit financier agréé. Il inclut des fonctionnalités de comptabilité et de TPS/TVA, mais ne remplace pas un comptable ou un conseiller fiscal agréé. Toutes les informations sont les données propres de l'utilisateur, stockées localement sur son appareil. Aszurex n'offre aucune garantie quant à l'exactitude, l'exhaustivité ou l'adéquation de ce logiciel à des fins réglementées. Les utilisateurs sont seuls responsables du respect des lois et réglementations professionnelles applicables.",
+    "acceptFailed": "Impossible d’enregistrer votre accord. Veuillez réessayer."
   },
   "compliance": {
     "disclaimerLabel": "Avertissement :",
@@ -6563,7 +6575,8 @@
     "groupGettingStarted": "Premiers Pas",
     "groupUniversal": "Fonctionnalités Universelles",
     "groupAi": "Assistant IA",
-    "groupBusiness": "Types d'Entreprise"
+    "groupBusiness": "Types d'Entreprise",
+    "exportFailed": "Impossible d’exporter le manuel."
   },
   "distributor": {
     "fieldOrders": {

@@ -93,9 +93,9 @@ export function ManualScreen() {
 
       const res = await api.export.toPdf({ html, filename: `Sarang-Manual-${locale}.pdf` })
       if (res.success) toastSuccess(t('common.success'), 'Manual exported as PDF.')
-      else toastError(t('common.error'), res.error?.message ?? 'Could not export the manual.')
+      else toastError(t('common.error'), t('manual.exportFailed'))
     } catch {
-      toastError(t('common.error'), 'Could not export the manual.')
+      toastError(t('common.error'), t('manual.exportFailed'))
     } finally {
       setExporting(false)
     }

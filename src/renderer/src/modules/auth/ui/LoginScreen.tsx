@@ -77,10 +77,10 @@ export function LoginScreen() {
       if (permsRes.success && Array.isArray(permsRes.data)) {
         setPermissions(permsRes.data as string[])
       } else {
-        toastError(t('common.error'), permsRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('auth.loadPermissionsError'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('auth.loadPermissionsError'))
     }
   }
 

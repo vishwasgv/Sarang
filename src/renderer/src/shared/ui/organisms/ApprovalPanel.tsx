@@ -105,10 +105,10 @@ export function ApprovalPanel({ documentType, documentId, refreshSignal, onActio
         load()
         onActioned?.()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('approvalWorkflows.couldNotApprove'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('approvalWorkflows.couldNotApprove'))
     } finally {
       setActingStepId(null)
     }
@@ -126,10 +126,10 @@ export function ApprovalPanel({ documentType, documentId, refreshSignal, onActio
         load()
         onActioned?.()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('approvalWorkflows.couldNotReject'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('approvalWorkflows.couldNotReject'))
     } finally {
       setActingStepId(null)
     }

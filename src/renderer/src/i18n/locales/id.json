@@ -188,6 +188,7 @@
     "loginSubtitle": "Masuk ke akun bisnis Anda",
     "rememberMe": "Tetap masuk",
     "loginError": "Nama pengguna atau kata sandi salah",
+    "loadPermissionsError": "Tidak dapat memuat izin Anda.",
     "changePassword": "Ubah Kata Sandi",
     "currentPassword": "Kata Sandi Saat Ini",
     "newPassword": "Kata Sandi Baru",
@@ -2232,7 +2233,9 @@
     "couldNotLoad": "Alur persetujuan tidak dapat dimuat.",
     "couldNotCreate": "Alur persetujuan tidak dapat dibuat.",
     "couldNotSave": "Perubahan tidak dapat disimpan.",
-    "couldNotDelete": "Alur persetujuan tidak dapat dihapus."
+    "couldNotDelete": "Alur persetujuan tidak dapat dihapus.",
+    "couldNotApprove": "Tidak dapat menyetujui langkah ini.",
+    "couldNotReject": "Tidak dapat menolak langkah ini."
   },
   "supplierPayments": {
     "title": "Pembayaran yang Dilakukan",
@@ -4371,7 +4374,9 @@
     "verifyIntegrity": "Verifikasi Integritas",
     "verifying": "Memverifikasi…",
     "chainIntact": "Rantai utuh — {{count}} catatan diverifikasi, tidak ada manipulasi terdeteksi.",
-    "chainBroken": "Manipulasi terdeteksi — rantai terputus pada catatan {{id}}… setelah {{count}} catatan diverifikasi. Segera selidiki."
+    "chainBroken": "Manipulasi terdeteksi — rantai terputus pada catatan {{id}}… setelah {{count}} catatan diverifikasi. Segera selidiki.",
+    "couldNotLoad": "Tidak dapat memuat log audit.",
+    "couldNotVerifyChain": "Tidak dapat memverifikasi rantai audit."
   },
   "settings": {
     "title": "Pengaturan",
@@ -4557,7 +4562,9 @@
     "website": "Kunjungi Website",
     "privacyNote": "Data Anda tidak pernah meninggalkan perangkat. Tidak perlu internet.",
     "buildInfo": "Informasi Build",
-    "legalDisclaimerTitle": "Sangkalan Hukum"
+    "legalDisclaimerTitle": "Sangkalan Hukum",
+    "loadPathsFailed": "Tidak dapat memuat jalur penyimpanan.",
+    "savePreferenceFailed": "Tidak dapat menyimpan preferensi Anda. Silakan coba lagi."
   },
   "license": {
     "title": "Lisensi",
@@ -4582,6 +4589,7 @@
     "activated": "Lisensi diaktifkan untuk perangkat ini.",
     "invalidKey": "Kunci lisensi tersebut tidak valid. Periksa kembali dan coba lagi.",
     "activateError": "Tidak dapat mengaktifkan kunci ini sekarang. Silakan coba lagi.",
+    "loadStatusError": "Tidak dapat memuat status lisensi.",
     "renewTitle": "Perbarui lisensi Anda",
     "renewIndia": "₹6.999/tahun (kurang dari ₹600/bulan)",
     "renewIntl": "$149/tahun",
@@ -5872,6 +5880,9 @@
     "openingWhatsApp": "Membuka WhatsApp…",
     "openingEmail": "Membuka aplikasi email Anda…",
     "revealFailed": "Tidak dapat membuka folder file yang tersimpan.",
+    "exportFailed": "Tidak dapat mengekspor dokumen.",
+    "emailLinkFailed": "Tidak dapat membuka aplikasi email Anda.",
+    "shareFailed": "Tidak dapat menyelesaikan tindakan berbagi. Silakan coba lagi.",
     "docTypeInvoice": "Faktur",
     "docTypeQuotation": "Penawaran",
     "docTypeCreditNote": "Nota Kredit",
@@ -5879,7 +5890,8 @@
     "docTypePurchaseOrder": "Pesanan Pembelian"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite adalah alat organisasi gratis untuk usaha kecil. Ini bukan sistem rekam medis, alat konsultasi hukum, atau produk keuangan berlisensi. Aplikasi ini mencakup fitur akuntansi dan GST, tetapi bukan pengganti akuntan atau konsultan pajak berlisensi. Semua informasi adalah data pengguna sendiri yang disimpan secara lokal di perangkat mereka. Aszurex tidak memberikan jaminan atas keakuratan, kelengkapan, atau kesesuaian perangkat lunak ini untuk tujuan apa pun yang diatur. Pengguna sepenuhnya bertanggung jawab atas kepatuhan terhadap hukum dan peraturan profesional yang berlaku."
+    "legalNotice": "Sarang Business OS Lite adalah alat organisasi gratis untuk usaha kecil. Ini bukan sistem rekam medis, alat konsultasi hukum, atau produk keuangan berlisensi. Aplikasi ini mencakup fitur akuntansi dan GST, tetapi bukan pengganti akuntan atau konsultan pajak berlisensi. Semua informasi adalah data pengguna sendiri yang disimpan secara lokal di perangkat mereka. Aszurex tidak memberikan jaminan atas keakuratan, kelengkapan, atau kesesuaian perangkat lunak ini untuk tujuan apa pun yang diatur. Pengguna sepenuhnya bertanggung jawab atas kepatuhan terhadap hukum dan peraturan profesional yang berlaku.",
+    "acceptFailed": "Tidak dapat mencatat persetujuan Anda. Silakan coba lagi."
   },
   "compliance": {
     "disclaimerLabel": "Sangkalan:",
@@ -6563,7 +6575,8 @@
     "groupGettingStarted": "Memulai",
     "groupUniversal": "Fitur Universal",
     "groupAi": "Asisten AI",
-    "groupBusiness": "Jenis Bisnis"
+    "groupBusiness": "Jenis Bisnis",
+    "exportFailed": "Tidak dapat mengekspor manual."
   },
   "distributor": {
     "fieldOrders": {

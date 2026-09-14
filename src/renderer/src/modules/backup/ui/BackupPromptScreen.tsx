@@ -43,12 +43,12 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
       if (picked.success && picked.data) {
         const res = await api.backup.setDestination({ path: (picked.data as { folderPath: string }).folderPath })
         if (!res.success) {
-          toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('backup.promptSaveLocationFailed'))
+          toastError(t('common.error'), t('backup.promptSaveLocationFailed'))
           setSaving(false)
           return
         }
       } else if (!picked.success) {
-        toastError(t('common.error'), (picked.error as { message?: string })?.message ?? t('backup.promptFolderPickerFailed'))
+        toastError(t('common.error'), t('backup.promptFolderPickerFailed'))
         setSaving(false)
         return
       }

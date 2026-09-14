@@ -67,7 +67,7 @@ export function ShareMenu({
     try {
       const exportRes = await onExportPdf()
       if (!exportRes.success) {
-        toastError(t('common.error'), exportRes.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('share.exportFailed'))
         return
       }
       if (exportRes.cancelled) return // silent abort — the owner backed out of the save dialog
@@ -75,7 +75,7 @@ export function ShareMenu({
       if (exportRes.filePath) {
         const revealRes = await window.api.share.showItemInFolder({ filePath: exportRes.filePath })
         if (!revealRes.success) {
-          toastError(t('common.error'), revealRes.error?.message ?? t('share.revealFailed'))
+          toastError(t('common.error'), t('share.revealFailed'))
           return
         }
       }
@@ -91,14 +91,14 @@ export function ShareMenu({
       } else {
         const linkRes = await window.api.share.buildEmailLink({ email: recipientEmail ?? null, subject: buildEmailSubject(), body: buildEmailBody() })
         if (!linkRes.success || !linkRes.data) {
-          toastError(t('common.error'), t('common.error'))
+          toastError(t('common.error'), t('share.emailLinkFailed'))
           return
         }
         window.open(linkRes.data, '_blank')
         toastInfo(t('share.openingEmail'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('share.shareFailed'))
     } finally {
       setBusy(null)
     }

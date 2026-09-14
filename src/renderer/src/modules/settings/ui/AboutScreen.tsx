@@ -21,9 +21,9 @@ export function AboutScreen() {
   useEffect(() => {
     api.app.getPaths().then((r: any) => {
       if (r?.success && r?.data) setPaths(r.data)
-      else toastError(t('common.error'), r?.error?.message ?? 'Could not load storage paths.')
+      else toastError(t('common.error'), t('about.loadPathsFailed'))
     }).catch(() => {
-      toastError(t('common.error'), 'Could not load storage paths.')
+      toastError(t('common.error'), t('about.loadPathsFailed'))
     })
     // Phase 59.13 — default ON, always shown so it's never a silent
     // background call the user can't see or control.
@@ -36,7 +36,7 @@ export function AboutScreen() {
       await api.app.setAutoUpdateCheckEnabled({ enabled: next })
     } catch {
       setAutoCheckEnabled(!next)
-      toastError(t('common.error'), 'Could not save your preference. Please try again.')
+      toastError(t('common.error'), t('about.savePreferenceFailed'))
     }
   }
 

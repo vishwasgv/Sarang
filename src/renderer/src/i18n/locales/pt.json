@@ -188,6 +188,7 @@
     "loginSubtitle": "Entre na sua conta empresarial",
     "rememberMe": "Manter sessão",
     "loginError": "Usuário ou senha incorretos",
+    "loadPermissionsError": "Não foi possível carregar suas permissões.",
     "changePassword": "Alterar Senha",
     "currentPassword": "Senha Atual",
     "newPassword": "Nova Senha",
@@ -2232,7 +2233,9 @@
     "couldNotLoad": "Não foi possível carregar os fluxos de aprovação.",
     "couldNotCreate": "Não foi possível criar o fluxo de aprovação.",
     "couldNotSave": "Não foi possível salvar as alterações.",
-    "couldNotDelete": "Não foi possível excluir o fluxo de aprovação."
+    "couldNotDelete": "Não foi possível excluir o fluxo de aprovação.",
+    "couldNotApprove": "Não foi possível aprovar esta etapa.",
+    "couldNotReject": "Não foi possível rejeitar esta etapa."
   },
   "supplierPayments": {
     "title": "Pagamentos Efetuados",
@@ -4371,7 +4374,9 @@
     "verifyIntegrity": "Verificar Integridade",
     "verifying": "Verificando…",
     "chainIntact": "Cadeia intacta — {{count}} registros verificados, nenhuma violação detectada.",
-    "chainBroken": "Violação detectada — a cadeia quebra no registro {{id}}… após {{count}} registros verificados. Investigue imediatamente."
+    "chainBroken": "Violação detectada — a cadeia quebra no registro {{id}}… após {{count}} registros verificados. Investigue imediatamente.",
+    "couldNotLoad": "Não foi possível carregar os registros de auditoria.",
+    "couldNotVerifyChain": "Não foi possível verificar a cadeia de auditoria."
   },
   "settings": {
     "title": "Configurações",
@@ -4557,7 +4562,9 @@
     "website": "Visitar o Site",
     "privacyNote": "Seus dados nunca saem do seu dispositivo. Sem necessidade de internet.",
     "buildInfo": "Informações da Versão",
-    "legalDisclaimerTitle": "Aviso Legal"
+    "legalDisclaimerTitle": "Aviso Legal",
+    "loadPathsFailed": "Não foi possível carregar os caminhos de armazenamento.",
+    "savePreferenceFailed": "Não foi possível salvar sua preferência. Por favor, tente novamente."
   },
   "license": {
     "title": "Licença",
@@ -4582,6 +4589,7 @@
     "activated": "Licença ativada para este dispositivo.",
     "invalidKey": "Essa chave de licença não é válida. Verifique e tente novamente.",
     "activateError": "Não foi possível ativar esta chave agora. Por favor, tente novamente.",
+    "loadStatusError": "Não foi possível carregar o status da licença.",
     "renewTitle": "Renove sua licença",
     "renewIndia": "₹6.999/ano (menos de ₹600/mês)",
     "renewIntl": "US$ 149/ano",
@@ -5872,6 +5880,9 @@
     "openingWhatsApp": "Abrindo o WhatsApp…",
     "openingEmail": "Abrindo seu aplicativo de e-mail…",
     "revealFailed": "Não foi possível abrir a pasta do arquivo salvo.",
+    "exportFailed": "Não foi possível exportar o documento.",
+    "emailLinkFailed": "Não foi possível abrir seu aplicativo de e-mail.",
+    "shareFailed": "Não foi possível concluir a ação de compartilhamento. Por favor, tente novamente.",
     "docTypeInvoice": "Nota",
     "docTypeQuotation": "Orçamento",
     "docTypeCreditNote": "Nota de Crédito",
@@ -5879,7 +5890,8 @@
     "docTypePurchaseOrder": "Pedido de Compra"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite é uma ferramenta organizacional gratuita para pequenas empresas. Não é um sistema de registros médicos, ferramenta de aconselhamento jurídico ou produto financeiro licenciado. Inclui recursos de contabilidade e GST, mas não substitui um contador ou consultor fiscal licenciado. Todas as informações são dados próprios do usuário, armazenados localmente em seu dispositivo. A Aszurex não oferece garantias quanto à precisão, integridade ou adequação deste software para qualquer finalidade regulamentada. Os usuários são os únicos responsáveis pelo cumprimento das leis e regulamentações profissionais aplicáveis."
+    "legalNotice": "Sarang Business OS Lite é uma ferramenta organizacional gratuita para pequenas empresas. Não é um sistema de registros médicos, ferramenta de aconselhamento jurídico ou produto financeiro licenciado. Inclui recursos de contabilidade e GST, mas não substitui um contador ou consultor fiscal licenciado. Todas as informações são dados próprios do usuário, armazenados localmente em seu dispositivo. A Aszurex não oferece garantias quanto à precisão, integridade ou adequação deste software para qualquer finalidade regulamentada. Os usuários são os únicos responsáveis pelo cumprimento das leis e regulamentações profissionais aplicáveis.",
+    "acceptFailed": "Não foi possível registrar sua aceitação. Por favor, tente novamente."
   },
   "compliance": {
     "disclaimerLabel": "Aviso:",
@@ -6563,7 +6575,8 @@
     "groupGettingStarted": "Primeiros Passos",
     "groupUniversal": "Recursos Universais",
     "groupAi": "Assistente de IA",
-    "groupBusiness": "Tipos de Negócio"
+    "groupBusiness": "Tipos de Negócio",
+    "exportFailed": "Não foi possível exportar o manual."
   },
   "distributor": {
     "fieldOrders": {

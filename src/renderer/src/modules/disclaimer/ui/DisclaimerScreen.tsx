@@ -25,11 +25,11 @@ export function DisclaimerScreen({ onAccepted }: DisclaimerScreenProps) {
       if (res.success) {
         onAccepted()
       } else {
-        toastError(t('common.error'), res.error?.message ?? t('common.error'))
+        toastError(t('common.error'), t('disclaimer.acceptFailed'))
         setSaving(false)
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('disclaimer.acceptFailed'))
       setSaving(false)
     }
   }

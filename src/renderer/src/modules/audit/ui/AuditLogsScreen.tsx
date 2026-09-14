@@ -61,9 +61,9 @@ export function AuditLogsScreen() {
     try {
       const res = await window.api.audit.verifyChain()
       if (res.success) setVerifyResult(res.data as typeof verifyResult)
-      else toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('common.error'))
+      else toastError(t('common.error'), t('audit.couldNotVerifyChain'))
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('audit.couldNotVerifyChain'))
     } finally {
       setVerifying(false)
     }
@@ -81,10 +81,10 @@ export function AuditLogsScreen() {
         setLogs(hasMore ? rows.slice(0, PAGE_SIZE) : rows)
         setTotal(offset + rows.length)
       } else {
-        toastError(t('common.error'), (res.error as { message?: string })?.message ?? t('common.error'))
+        toastError(t('common.error'), t('audit.couldNotLoad'))
       }
     } catch {
-      toastError(t('common.error'), t('common.error'))
+      toastError(t('common.error'), t('audit.couldNotLoad'))
     } finally {
       setLoading(false)
     }

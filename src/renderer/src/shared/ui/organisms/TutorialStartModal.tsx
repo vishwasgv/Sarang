@@ -34,12 +34,12 @@ export function TutorialStartModal({ open, onClose }: TutorialStartModalProps) {
     try {
       const res = await api.tutorial.start({ businessType: selected })
       if (res.success === false) {
-        toastError(t('common.error'), res.error?.message ?? 'Could not start the tutorial.')
+        toastError(t('common.error'), t('tour.couldNotStartTutorial'))
         setStarting(false)
       }
       // On success the whole app relaunches — nothing more to do here.
     } catch {
-      toastError(t('common.error'), 'Could not start the tutorial.')
+      toastError(t('common.error'), t('tour.couldNotStartTutorial'))
       setStarting(false)
     }
   }

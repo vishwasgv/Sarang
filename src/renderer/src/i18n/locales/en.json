@@ -188,6 +188,7 @@
     "loginSubtitle": "Sign in to your business account",
     "rememberMe": "Stay signed in",
     "loginError": "Invalid username or password",
+    "loadPermissionsError": "Could not load your permissions.",
     "changePassword": "Change Password",
     "currentPassword": "Current Password",
     "newPassword": "New Password",
@@ -2298,7 +2299,9 @@
     "couldNotLoad": "Could not load approval workflows.",
     "couldNotCreate": "Could not create approval workflow.",
     "couldNotSave": "Could not save changes.",
-    "couldNotDelete": "Could not delete approval workflow."
+    "couldNotDelete": "Could not delete approval workflow.",
+    "couldNotApprove": "Could not approve this step.",
+    "couldNotReject": "Could not reject this step."
   },
   "supplierPayments": {
     "title": "Payments Made",
@@ -4945,7 +4948,9 @@
     "verifyIntegrity": "Verify Integrity",
     "verifying": "Verifying…",
     "chainIntact": "Chain intact — {{count}} records verified, no tampering detected.",
-    "chainBroken": "Tampering detected — the chain breaks at record {{id}}… after {{count}} verified records. Investigate immediately."
+    "chainBroken": "Tampering detected — the chain breaks at record {{id}}… after {{count}} verified records. Investigate immediately.",
+    "couldNotLoad": "Could not load audit logs.",
+    "couldNotVerifyChain": "Could not verify the audit chain."
   },
   "settings": {
     "title": "Settings",
@@ -5128,7 +5133,8 @@
     "groupGettingStarted": "Getting Started",
     "groupUniversal": "Universal Features",
     "groupAi": "AI Assistant",
-    "groupBusiness": "Business Types"
+    "groupBusiness": "Business Types",
+    "exportFailed": "Could not export the manual."
   },
   "about": {
     "title": "About Sarang",
@@ -5140,7 +5146,9 @@
     "website": "Visit Website",
     "privacyNote": "Your data never leaves your device. No internet required.",
     "buildInfo": "Build Information",
-    "legalDisclaimerTitle": "Legal Disclaimer"
+    "legalDisclaimerTitle": "Legal Disclaimer",
+    "loadPathsFailed": "Could not load storage paths.",
+    "savePreferenceFailed": "Could not save your preference. Please try again."
   },
   "license": {
     "title": "License",
@@ -5165,6 +5173,7 @@
     "activated": "License activated for this device.",
     "invalidKey": "That license key is not valid. Double-check it and try again.",
     "activateError": "Could not activate this key right now. Please try again.",
+    "loadStatusError": "Could not load license status.",
     "renewTitle": "Renew your license",
     "renewIndia": "₹6,999/year (less than ₹600/month)",
     "renewIntl": "$149/year",
@@ -6455,6 +6464,9 @@
     "openingWhatsApp": "Opening WhatsApp…",
     "openingEmail": "Opening your email app…",
     "revealFailed": "Could not open the folder for the saved file.",
+    "exportFailed": "Could not export the document.",
+    "emailLinkFailed": "Could not open your email app.",
+    "shareFailed": "Could not complete the share action. Please try again.",
     "docTypeInvoice": "Invoice",
     "docTypeQuotation": "Quotation",
     "docTypeCreditNote": "Credit Note",
@@ -6462,7 +6474,8 @@
     "docTypePurchaseOrder": "Purchase Order"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite is a free organisational tool for small businesses. It is not a medical record system, legal advice tool, or licensed financial product. It includes accounting and GST features, but is not a substitute for a licensed accountant or tax advisor. All information is the user's own data stored locally on their device. Aszurex provides no warranties for the accuracy, completeness, or fitness of this software for any regulated purpose. Users are solely responsible for compliance with applicable laws and professional regulations."
+    "legalNotice": "Sarang Business OS Lite is a free organisational tool for small businesses. It is not a medical record system, legal advice tool, or licensed financial product. It includes accounting and GST features, but is not a substitute for a licensed accountant or tax advisor. All information is the user's own data stored locally on their device. Aszurex provides no warranties for the accuracy, completeness, or fitness of this software for any regulated purpose. Users are solely responsible for compliance with applicable laws and professional regulations.",
+    "acceptFailed": "Could not record your acknowledgment. Please try again."
   },
   "compliance": {
     "disclaimerLabel": "Disclaimer:",

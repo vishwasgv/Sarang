@@ -188,6 +188,7 @@
     "loginSubtitle": "Inicia sesión en tu cuenta de negocio",
     "rememberMe": "Mantener sesión",
     "loginError": "Usuario o contraseña incorrectos",
+    "loadPermissionsError": "No se pudieron cargar sus permisos.",
     "changePassword": "Cambiar Contraseña",
     "currentPassword": "Contraseña Actual",
     "newPassword": "Nueva Contraseña",
@@ -2232,7 +2233,9 @@
     "couldNotLoad": "No se pudieron cargar los flujos de aprobación.",
     "couldNotCreate": "No se pudo crear el flujo de aprobación.",
     "couldNotSave": "No se pudieron guardar los cambios.",
-    "couldNotDelete": "No se pudo eliminar el flujo de aprobación."
+    "couldNotDelete": "No se pudo eliminar el flujo de aprobación.",
+    "couldNotApprove": "No se pudo aprobar este paso.",
+    "couldNotReject": "No se pudo rechazar este paso."
   },
   "supplierPayments": {
     "title": "Pagos Realizados",
@@ -4553,7 +4556,9 @@
     "verifyIntegrity": "Verificar Integridad",
     "verifying": "Verificando…",
     "chainIntact": "Cadena intacta — {{count}} registros verificados, no se detectó manipulación.",
-    "chainBroken": "Manipulación detectada — la cadena se rompe en el registro {{id}}… después de {{count}} registros verificados. Investigue de inmediato."
+    "chainBroken": "Manipulación detectada — la cadena se rompe en el registro {{id}}… después de {{count}} registros verificados. Investigue de inmediato.",
+    "couldNotLoad": "No se pudieron cargar los registros de auditoría.",
+    "couldNotVerifyChain": "No se pudo verificar la cadena de auditoría."
   },
   "settings": {
     "title": "Configuración",
@@ -4736,7 +4741,8 @@
     "groupGettingStarted": "Primeros Pasos",
     "groupUniversal": "Funciones Universales",
     "groupAi": "Asistente de IA",
-    "groupBusiness": "Tipos de Negocio"
+    "groupBusiness": "Tipos de Negocio",
+    "exportFailed": "No se pudo exportar el manual."
   },
   "about": {
     "title": "Acerca de Sarang",
@@ -4748,7 +4754,9 @@
     "website": "Visitar Sitio Web",
     "privacyNote": "Sus datos nunca salen de su dispositivo. No requiere internet.",
     "buildInfo": "Información de Compilación",
-    "legalDisclaimerTitle": "Aviso Legal"
+    "legalDisclaimerTitle": "Aviso Legal",
+    "loadPathsFailed": "No se pudieron cargar las rutas de almacenamiento.",
+    "savePreferenceFailed": "No se pudo guardar su preferencia. Por favor, inténtalo de nuevo."
   },
   "license": {
     "title": "Licencia",
@@ -4773,6 +4781,7 @@
     "activated": "Licencia activada para este dispositivo.",
     "invalidKey": "Esa clave de licencia no es válida. Verifícala e inténtalo de nuevo.",
     "activateError": "No se pudo activar esta clave en este momento. Por favor, inténtalo de nuevo.",
+    "loadStatusError": "No se pudo cargar el estado de la licencia.",
     "renewTitle": "Renueva tu licencia",
     "renewIndia": "₹6.999/año (menos de ₹600/mes)",
     "renewIntl": "$149/año",
@@ -6063,6 +6072,9 @@
     "openingWhatsApp": "Abriendo WhatsApp…",
     "openingEmail": "Abriendo tu aplicación de correo…",
     "revealFailed": "No se pudo abrir la carpeta del archivo guardado.",
+    "exportFailed": "No se pudo exportar el documento.",
+    "emailLinkFailed": "No se pudo abrir su aplicación de correo electrónico.",
+    "shareFailed": "No se pudo completar la acción de compartir. Por favor, inténtalo de nuevo.",
     "docTypeInvoice": "Factura",
     "docTypeQuotation": "Cotización",
     "docTypeCreditNote": "Nota de Crédito",
@@ -6070,7 +6082,8 @@
     "docTypePurchaseOrder": "Orden de Compra"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite es una herramienta organizativa gratuita para pequeñas empresas. No es un sistema de registros médicos, herramienta de asesoría legal ni un producto financiero autorizado. Incluye funciones de contabilidad y GST, pero no sustituye a un contador o asesor fiscal con licencia. Toda la información son datos propios del usuario, almacenados localmente en su dispositivo. Aszurex no ofrece garantías sobre la exactitud, integridad o idoneidad de este software para ningún fin regulado. Los usuarios son los únicos responsables de cumplir con las leyes y regulaciones profesionales aplicables."
+    "legalNotice": "Sarang Business OS Lite es una herramienta organizativa gratuita para pequeñas empresas. No es un sistema de registros médicos, herramienta de asesoría legal ni un producto financiero autorizado. Incluye funciones de contabilidad y GST, pero no sustituye a un contador o asesor fiscal con licencia. Toda la información son datos propios del usuario, almacenados localmente en su dispositivo. Aszurex no ofrece garantías sobre la exactitud, integridad o idoneidad de este software para ningún fin regulado. Los usuarios son los únicos responsables de cumplir con las leyes y regulaciones profesionales aplicables.",
+    "acceptFailed": "No se pudo registrar su aceptación. Por favor, inténtalo de nuevo."
   },
   "compliance": {
     "disclaimerLabel": "Aviso legal:",
