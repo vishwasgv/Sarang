@@ -16,6 +16,15 @@
   header h1 { margin: 0; font-size: 18px; font-weight: 700; }
   header p { margin: 3px 0 0; font-size: 12px; opacity: 0.9; }
   main { padding: 16px; max-width: 480px; margin: 0 auto; }
+  /* REAL BUG found+fixed 2026-09-16 (caught by a founder question, not a
+     test): the drawing canvas inherited this 480px cap meant for the
+     landing/queue lists — on an actual tablet (held in either orientation,
+     easily 800-1200px of CSS width) the writing surface never grew past
+     ~448px wide, a genuinely cramped space to hand-write a prescription in.
+     Widened specifically for the canvas view via this modifier class,
+     applied only while writing — the queue/landing views stay comfortably
+     narrow, which suits a simple list/form better than stretching it out. */
+  main.pad-wide { max-width: 900px; }
   .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
   .hint { color: #64748B; font-size: 14px; line-height: 1.6; text-align: center; margin: 0 0 16px; }
   .divider { display: flex; align-items: center; gap: 10px; color: #94A3B8; font-size: 12px; margin: 18px 0; }
@@ -102,13 +111,29 @@
   // A QR-scan deep link (/doctor-pad/<token>/<providerId>) remembers itself
   // immediately, then drops the providerId from the visible URL — from then
   // on this exact same bookmarked page shows the queue with no further scan.
+  //
+  // REAL BUG found+fixed 2026-09-16 (caught while capturing a marketing
+  // screenshot, not by any test): this used to call the generic render()
+  // after the fetch resolved. render() has no branch for "urlProviderId is
+  // set AND we already have the answer" — urlProviderId is a plain JS var
+  // captured once at load and never cleared, so render() always fell into
+  // its last branch (a permanent "Loading…" string) regardless of whether
+  // the fetch succeeded or failed. Every doctor's very first QR scan / deep
+  // link visit got stuck on "Loading…" forever — the page never advances to
+  // renderQueue() without a full manual reload (Doctor Pad's actual
+  // onboarding path, and its whole reason to exist). Fixed by rendering the
+  // known outcome directly instead of re-deriving it through render().
   if (urlProviderId) {
     apiGet('/' + urlProviderId + '/queue').then(function (res) {
       if (res.success) {
         remember(urlProviderId, res.data.providerName)
         window.history.replaceState({}, '', '/doctor-pad/' + token)
+        renderQueue(urlProviderId, res.data.providerName)
+      } else {
+        renderLanding()
       }
-      render()
+    }).catch(function () {
+      renderLanding()
     })
   } else {
     render()
@@ -116,13 +141,12 @@
 
   function render() {
     var remembered = getRemembered()
-    if (!urlProviderId && remembered) { renderQueue(remembered.providerId, remembered.providerName); return }
-    if (!urlProviderId) { renderLanding(); return }
-    // urlProviderId present but the queue fetch above hasn't resolved render() yet — show a loading state
-    root.innerHTML = '<p class="hint">Loading…</p>'
+    if (remembered) { renderQueue(remembered.providerId, remembered.providerName); return }
+    renderLanding()
   }
 
   function renderLanding() {
+    document.querySelector('main').classList.remove('pad-wide')
     document.getElementById('header-sub').textContent = 'Connect this tablet'
     root.innerHTML =
       '<div class="card">' +
@@ -158,6 +182,7 @@
   }
 
   function renderQueue(providerId, providerName) {
+    document.querySelector('main').classList.remove('pad-wide')
     document.getElementById('header-sub').textContent = providerName || ''
     root.innerHTML = '<p class="hint">Loading today\'s patients…</p>'
 
@@ -196,6 +221,7 @@
   var MAX_PAGES = 3
 
   function renderCanvas(appointmentId, patientName) {
+    document.querySelector('main').classList.add('pad-wide')
     document.getElementById('header-sub').textContent = 'Writing note'
     // One entry per page: null while blank, a PNG data URL once that page has been drawn on and left.
     var pages = [null]

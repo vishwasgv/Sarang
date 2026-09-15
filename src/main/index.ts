@@ -14,6 +14,7 @@ import { ensureKitchenDisplayServerState, stopKitchenDisplayServer } from './ser
 import { ensureFieldOrderServerState, stopFieldOrderServer } from './server/field-order-server'
 import { ensureTokenQueueServerState, stopTokenQueueServer } from './server/token-queue-server'
 import { ensureDoctorPadServerState, stopDoctorPadServer } from './server/doctor-pad-server'
+import { ensureOwnerViewServerState, stopOwnerViewServer } from './server/owner-view-server'
 import { initKitchenDisplayWindowWatcher } from './windows/kitchen-display-window'
 import { generateComplianceTasksForAllClients } from './services/compliance-event.service'
 import { recurringProfileService } from './services/recurring-profile.service'
@@ -403,6 +404,13 @@ app.whenReady().then(async () => {
   ensureFieldOrderServerState().catch(e => logger.error('[FieldOrderServer] Startup check failed:', e))
   ensureTokenQueueServerState().catch(e => logger.error('[TokenQueueServer] Startup check failed:', e))
   ensureDoctorPadServerState().catch(e => logger.error('[DoctorPadServer] Startup check failed:', e))
+  // REAL BUG found+fixed 2026-09-16 (caught while restarting the app to test
+  // an unrelated fix, not by any test): Owner View was wired into the 3
+  // toggle-triggered ensure*ServerState() call sites (industry:setTemplate/
+  // changeBusinessType/updateModules) but never into app startup like every
+  // sibling LAN server here — a user who enabled Owner View then restarted
+  // Sarang would find it silently not running until they re-toggled it.
+  ensureOwnerViewServerState().catch(e => logger.error('[OwnerViewServer] Startup check failed:', e))
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -415,6 +423,7 @@ app.on('window-all-closed', () => {
   stopFieldOrderServer().catch(() => {})
   stopTokenQueueServer().catch(() => {})
   stopDoctorPadServer().catch(() => {})
+  stopOwnerViewServer().catch(() => {})
   // REAL BUG found+fixed 2026-07-31: shutdownAi() (disposes the local LLM's
   // native context/model handles) was defined but never called from
   // anywhere — dead code, so the AI Assistant's native resources were never
