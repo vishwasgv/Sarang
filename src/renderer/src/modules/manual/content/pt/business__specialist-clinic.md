@@ -43,3 +43,19 @@ Abra **Reports → Second-Opinion Conversion** para ver, das visitas que você m
 Abra **Reports → Case-Complexity Mix** para ver a divisão entre casos Rotineiros e Complexos em um intervalo de datas — um gráfico de barras empilhadas mês a mês, além do total de casos marcados, as contagens de Rotineiro e Complexo, e a porcentagem geral de Complexo. Somente as visitas em que você definiu o menu Case Complexity são contadas; uma visita não marcada não é considerada Rotineira, ela é simplesmente deixada de fora do mix.
 
 Se você usar **Refer to Another Provider** para enviar um paciente dentro da sua própria clínica, assim que esse profissional finaliza sua própria nota no agendamento de encaminhamento, o resultado aparece automaticamente na sua nota original — sem necessidade de uma busca separada para saber o que aconteceu com um paciente que você encaminhou.
+
+## Doctor Pad — notas manuscritas em um tablet
+
+Muitos especialistas preferem escrever um diagnóstico ou uma receita à mão em vez de digitá-lo. O **Doctor Pad** transforma qualquer tablet no próprio Wi-Fi da sua clínica em um simples bloco de notas — sem hardware extra para comprar, e nada sai da rede da sua clínica.
+
+**Conecte um tablet, uma única vez.** Abra **Provider Schedule**, escolha o especialista, e você verá um painel **Doctor Pad** com três formas de conectar um tablet — use a que for mais fácil:
+
+- **Scan the QR code** exibido na tela.
+- **Bookmark the link** exibido logo abaixo — salve-o na tela inicial do tablet e ele abre direto na fila daquele especialista todas as vezes, sem precisar escanear de novo.
+- **Type the 4-digit PIN** exibido, na página que abre quando o tablet acessa o endereço mostrado — útil quando o tablet não tem câmera ou você está com pressa.
+
+Qualquer que seja a forma escolhida, o tablet lembra o especialista a partir daí, então normalmente essa é uma configuração feita uma única vez por tablet.
+
+**Usando durante uma consulta.** O tablet mostra os agendamentos de hoje daquele especialista. Toque em um paciente, escreva o diagnóstico ou a receita à mão, e toque em **Save** — o desenho é anexado instantaneamente ao agendamento daquele paciente, visível junto à Consultation Note digitada em sua seção **Documents**.
+
+**Se um PIN vazar, ou você estiver aposentando um tablet antigo**, abra **Provider Schedule**, selecione o especialista, e clique em **Change PIN** — o PIN antigo para de funcionar imediatamente. Um tablet que já se conectou via código QR ou link salvo continua funcionando, já que ele nunca mais precisa do PIN.

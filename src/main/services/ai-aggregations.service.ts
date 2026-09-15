@@ -37,13 +37,22 @@ export async function getDeadStock(days = 90): Promise<DeadStockItem[]> {
 
   return products
     .filter((p) => (p.inventory?.quantity ?? 0) > 0)
+    // Filter on the real Date object BEFORE stringifying — comparing
+    // against a re-parsed `new Date(toLocalISODate(...))` re-introduces the
+    // UTC-midnight bug on the round trip (a date-only string always parses
+    // as UTC midnight, up to ~14h behind the real local instant it was
+    // derived from), silently excluding products that genuinely crossed
+    // the cutoff for any timezone ahead of UTC.
+    .filter((p) => {
+      const lastSold = p.invoiceItems[0]?.invoice.invoiceDate
+      return !lastSold || lastSold < cutoff
+    })
     .map((p) => ({
       productName: p.productName,
       sku: p.sku,
       currentStock: p.inventory?.quantity ?? 0,
       lastSoldDate: p.invoiceItems[0]?.invoice.invoiceDate ? toLocalISODate(p.invoiceItems[0].invoice.invoiceDate) : null
     }))
-    .filter((p) => !p.lastSoldDate || new Date(p.lastSoldDate) < cutoff)
     .sort((a, b) => (a.lastSoldDate ?? '').localeCompare(b.lastSoldDate ?? ''))
 }
 
@@ -126,11 +135,14 @@ export async function getCustomersWithNoRecentPurchases(days = 90): Promise<Inac
   })
 
   return customers
-    .map((c) => ({ customerName: c.customerName, phone: c.phone, lastPurchaseDate: c.invoices[0]?.invoiceDate ? toLocalISODate(c.invoices[0].invoiceDate) : null }))
     // Only customers with at least one prior purchase — someone who's never
     // bought anything is a different question (a lead, not a lapsed
     // customer), and would otherwise dominate this list meaninglessly.
-    .filter((c) => c.lastPurchaseDate && new Date(c.lastPurchaseDate) < cutoff)
+    // Filtered on the real Date BEFORE stringifying — see getDeadStock's
+    // comment above for why re-parsing a toLocalISODate() string re-
+    // introduces the UTC-midnight bug.
+    .filter((c) => c.invoices[0]?.invoiceDate && c.invoices[0].invoiceDate < cutoff)
+    .map((c) => ({ customerName: c.customerName, phone: c.phone, lastPurchaseDate: c.invoices[0]?.invoiceDate ? toLocalISODate(c.invoices[0].invoiceDate) : null }))
     .sort((a, b) => (a.lastPurchaseDate ?? '').localeCompare(b.lastPurchaseDate ?? ''))
 }
 
@@ -150,8 +162,10 @@ export async function getInactiveSuppliers(days = 90): Promise<InactiveSupplier[
   })
 
   return suppliers
+    // See getDeadStock's comment above — filtered on the real Date before
+    // stringifying, not re-parsed from a toLocalISODate() string.
+    .filter((s) => s.purchaseOrders[0]?.orderDate && s.purchaseOrders[0].orderDate < cutoff)
     .map((s) => ({ supplierName: s.supplierName, phone: s.phone, lastOrderDate: s.purchaseOrders[0]?.orderDate ? toLocalISODate(s.purchaseOrders[0].orderDate) : null }))
-    .filter((s) => s.lastOrderDate && new Date(s.lastOrderDate) < cutoff)
     .sort((a, b) => (a.lastOrderDate ?? '').localeCompare(b.lastOrderDate ?? ''))
 }
 

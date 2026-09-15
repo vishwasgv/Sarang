@@ -41,3 +41,19 @@ Setiap kali Anda memperbarui recall pasien yang sudah memiliki satu recall terca
 Buka **Reports → Treatment Acceptance Rate** untuk melihat berapa banyak rencana perawatan yang Anda usulkan dalam rentang tanggal yang benar-benar menjadi pendapatan yang ditagih — funnel tiga tahap (Proposed → Accepted → Billed) sebagai grafik batang, ditambah tingkat penerimaan (diterima ÷ diusulkan) dan tingkat penagihan (ditagih ÷ diusulkan) dalam persentase. Ini adalah data rencana sungguhan yang sama dari tab Treatment Plans, diagregasi alih-alih dibaca satu pasien pada satu waktu — gambaran cepat apakah presentasi kasus Anda berhasil dikonversi, dan apakah rencana yang diterima benar-benar sampai pada pembayaran.
 
 Buka **Reports → Recall Compliance** untuk melihat, dari periode panggilan ulang yang ditutup dalam rentang tanggal, berapa persen pasien yang benar-benar kembali pada atau sebelum tanggal jatuh tempo mereka — satu ukuran untuk persentase keseluruhan, ditambah pembagian berdasarkan Jenis Panggilan Ulang (6-Month Hygiene, 12-Month Hygiene, Crown Review, Custom). Hanya periode panggilan ulang yang benar-benar ditutup (pasien dengan panggilan ulang yang ada mendapatkan yang baru) yang dihitung dalam hal ini — panggilan ulang pertama pasien tidak memiliki tanggal jatuh tempo sebelumnya untuk dibandingkan, jadi tidak dihitung di kedua sisi.
+
+## Doctor Pad — catatan tulisan tangan di tablet
+
+Banyak dokter gigi lebih suka menulis catatan singkat dengan tangan daripada mengetiknya. **Doctor Pad** mengubah tablet apa pun di Wi-Fi klinik Anda sendiri menjadi papan tulis sederhana — tidak perlu membeli perangkat keras tambahan, dan tidak ada yang keluar dari jaringan klinik Anda sendiri.
+
+**Hubungkan tablet, sekali saja.** Buka **Provider Schedule**, pilih dokter gigi, dan Anda akan melihat panel **Doctor Pad** dengan tiga cara untuk menghubungkan tablet — gunakan yang paling mudah:
+
+- **Scan the QR code** yang ditampilkan di layar.
+- **Bookmark the link** yang ditampilkan di bawahnya — simpan ke layar utama tablet dan ia akan langsung membuka antrean dokter gigi tersebut setiap kali, tanpa perlu memindai lagi.
+- **Type the 4-digit PIN** yang ditampilkan, pada halaman yang terbuka saat tablet mengunjungi alamat yang ditampilkan — berguna saat tablet tidak memiliki kamera atau Anda sedang terburu-buru.
+
+Apa pun cara Anda menghubungkan, tablet akan mengingat dokter gigi tersebut sejak saat itu, sehingga ini biasanya hanya pengaturan satu kali per tablet.
+
+**Menggunakannya selama kunjungan.** Tablet menampilkan janji temu hari ini untuk dokter gigi tersebut. Ketuk seorang pasien, tulis catatan dengan tangan, lalu ketuk **Save** — gambar langsung terlampir ke janji temu tersebut. Karena Klinik Gigi menggunakan **Tooth Chart** dan **Treatment Plans** sebagai pengganti Consultation Note, lihat gambar tersimpan dari layar **Janji Temu**: klik ikon pena (**Doctor's Pad Notes**) di samping kunjungan tersebut.
+
+**Jika sebuah PIN bocor, atau Anda mempensiunkan tablet lama**, buka **Provider Schedule**, pilih dokter gigi, dan klik **Change PIN** — PIN lama langsung berhenti berfungsi. Tablet yang sudah terhubung lewat kode QR atau tautan yang di-bookmark tetap berfungsi, karena tidak pernah membutuhkan PIN lagi.

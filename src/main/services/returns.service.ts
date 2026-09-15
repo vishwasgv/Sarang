@@ -6,6 +6,8 @@ import { restoreBatchStockFIFO } from './batch.service'
 import { restoreVariantStockTx } from './variant.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { applyLocationDeltaTx } from './inventory.service'
+import { explodeKitComponentsTx } from './kit.service'
 
 export interface ReturnItem {
   productId: string
@@ -199,10 +201,24 @@ export async function createReturn(
         }
       })
 
+      // The whole original invoice was billed from one location (or the
+      // default, if none) — recover it from any of the original sale's own
+      // movements, so restoring stock here credits the same place it was
+      // actually taken from instead of always defaulting. REAL BUG
+      // found+fixed 2026-09-15: this restoration never touched LocationStock
+      // at all before, silently drifting it from the aggregate Inventory.quantity
+      // (same bug class already closed for per-variant stock by
+      // restoreVariantStockTx below — see its own comment).
+      const anySaleMovement = await tx.inventoryMovement.findFirst({
+        where: { referenceType: 'INVOICE', referenceId: original.id, movementType: 'SALE' },
+        select: { locationId: true }
+      })
+      const saleLocationId = anySaleMovement?.locationId ?? undefined
+
       // Restore inventory — one movement per returned item
       for (const ri of items) {
         const orig = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
-        if (orig.product.productType === 'STANDARD') {
+        if (orig.product.productType === 'STANDARD' && !orig.product.isKit) {
           await tx.inventoryMovement.create({
             data: {
               productId: ri.productId,
@@ -211,7 +227,8 @@ export async function createReturn(
               referenceType: 'RETURN',
               referenceId: returnInvoice.id,
               remarks: `Return for invoice ${original.invoiceNumber}`,
-              createdById: userId
+              createdById: userId,
+              locationId: saleLocationId ?? null
             }
           })
           await tx.inventory.upsert({
@@ -219,6 +236,7 @@ export async function createReturn(
             create: { productId: ri.productId, quantity: ri.quantity },
             update: { quantity: { increment: ri.quantity } }
           })
+          await applyLocationDeltaTx(tx, ri.productId, ri.quantity, saleLocationId)
           // Real bug found 2026-07-16: the parent Inventory.quantity above
           // was always restored, but a variant-sold item's specific
           // ProductVariant.stockQty (size/colour) never was — silently
@@ -234,6 +252,40 @@ export async function createReturn(
           // batch-level ledger (used for expiry tracking/alerts) stayed
           // permanently understated. No-op if the product has no batches.
           await restoreBatchStockFIFO(tx, ri.productId, ri.quantity)
+        } else if (orig.product.isKit) {
+          // REAL BUG found+fixed 2026-09-15: a kit's own Inventory.quantity
+          // is never decremented at sale (createInvoice explodes it into
+          // per-component reduceStockTx calls instead — see that branch's
+          // own comment) — crediting orig.productId here (the old behavior,
+          // since isKit products also have productType 'STANDARD') created
+          // phantom stock for a product whose inventory was never touched,
+          // while the real component stock actually taken was never
+          // restored at all. Explode by the CURRENT kit recipe (same helper
+          // createInvoice itself uses) scaled to the quantity actually being
+          // returned, not the original full sale quantity — partial returns
+          // must only restore their own share.
+          const componentLines = await explodeKitComponentsTx(tx, ri.productId, ri.quantity)
+          for (const comp of componentLines) {
+            await tx.inventoryMovement.create({
+              data: {
+                productId: comp.componentProductId,
+                movementType: 'RETURN_IN',
+                quantity: comp.quantity,
+                referenceType: 'RETURN',
+                referenceId: returnInvoice.id,
+                remarks: `Return for invoice ${original.invoiceNumber} (component of kit "${orig.productName}")`,
+                createdById: userId,
+                locationId: saleLocationId ?? null
+              }
+            })
+            await tx.inventory.upsert({
+              where: { productId: comp.componentProductId },
+              create: { productId: comp.componentProductId, quantity: comp.quantity },
+              update: { quantity: { increment: comp.quantity } }
+            })
+            await applyLocationDeltaTx(tx, comp.componentProductId, comp.quantity, saleLocationId)
+            await restoreBatchStockFIFO(tx, comp.componentProductId, comp.quantity)
+          }
         }
       }
 

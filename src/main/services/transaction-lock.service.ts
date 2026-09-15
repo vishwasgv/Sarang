@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, toLocalISODate } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
 
 // profile.lockDate is persisted at local midnight (setLockDate ->
@@ -27,7 +27,10 @@ export async function assertNotLocked(transactionDate: Date): Promise<{ success:
   const profile = await db.businessProfile.findFirst({ select: { lockDate: true } })
   if (!profile?.lockDate) return null
   if (transactionDate.getTime() <= endOfLocalDay(profile.lockDate).getTime()) {
-    const lockDateStr = profile.lockDate.toISOString().slice(0, 10)
+    // toLocalISODate, not .toISOString().slice(0,10) — the latter is the
+    // UTC calendar date, which displays one day earlier than the lock date
+    // an admin actually set for any timezone ahead of UTC.
+    const lockDateStr = toLocalISODate(profile.lockDate)
     return {
       success: false,
       error: { code: 'LOCK-001', message: `This transaction falls on or before the lock date (${lockDateStr}) and cannot be created, edited, voided, or reversed. Ask an administrator to move the lock date if this was a mistake.` }
@@ -47,7 +50,10 @@ export async function assertNotLockedOrThrow(tx: unknown, transactionDate: Date)
   const profile = await db.businessProfile.findFirst({ select: { lockDate: true } })
   if (!profile?.lockDate) return
   if (transactionDate.getTime() <= endOfLocalDay(profile.lockDate).getTime()) {
-    const lockDateStr = profile.lockDate.toISOString().slice(0, 10)
+    // toLocalISODate, not .toISOString().slice(0,10) — the latter is the
+    // UTC calendar date, which displays one day earlier than the lock date
+    // an admin actually set for any timezone ahead of UTC.
+    const lockDateStr = toLocalISODate(profile.lockDate)
     throw new ServiceError('LOCK-001', `This transaction falls on or before the lock date (${lockDateStr}) and cannot be created, edited, voided, or reversed. Ask an administrator to move the lock date if this was a mistake.`)
   }
 }

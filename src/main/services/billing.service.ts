@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
-import { inventoryService } from './inventory.service'
+import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals, allocateGlobalDiscount } from './currency.service'
 import { logAction } from './audit.service'
@@ -1106,14 +1106,54 @@ export const billingService = {
           where: { invoiceId: invoice.id, status: 'SOLD' }
         })
 
-        // Restore inventory for STANDARD products
+        // REAL BUG found+fixed 2026-09-15 — restoring Inventory.quantity by
+        // replaying invoice.items (as this used to do) is wrong for a kit
+        // line: createInvoice's isKit branch explodes a kit into per-
+        // COMPONENT reduceStockTx calls and never decrements the kit
+        // product's own Inventory row at all (see that branch's own
+        // comment). Replaying item.productId here credited the kit's own
+        // inventory instead — phantom stock that was never actually taken —
+        // while the real component stock that WAS decremented was never
+        // restored at all (silently lost on every kit-invoice cancellation).
+        // The original SALE movements (written by reduceStockTx, one per
+        // component for a kit line, one per line otherwise) are the
+        // authoritative record of exactly what was decremented and from
+        // which location — replay those instead, restoring LocationStock
+        // in the same fix (it was also never touched here, silently
+        // drifting from the aggregate — same bug class already closed for
+        // per-variant stock in variant.service.ts's restoreVariantStockTx).
+        const saleMovements = await tx.inventoryMovement.findMany({
+          where: { referenceType: 'INVOICE', referenceId: invoice.id, movementType: 'SALE' }
+        })
+        for (const mv of saleMovements) {
+          const restoredQty = -mv.quantity // SALE movements store a negative quantity
+          await tx.inventory.update({
+            where: { productId: mv.productId },
+            data: { quantity: { increment: restoredQty } }
+          })
+          await applyLocationDeltaTx(tx, mv.productId, restoredQty, mv.locationId ?? undefined)
+          await tx.inventoryMovement.create({
+            data: {
+              productId: mv.productId,
+              movementType: 'RETURN',
+              quantity: restoredQty,
+              referenceType: 'INVOICE_CANCEL',
+              referenceId: invoice.id,
+              remarks: `Cancellation of Invoice ${invoice.invoiceNumber}`,
+              createdById: userId ?? null,
+              locationId: mv.locationId
+            }
+          })
+        }
+
+        // Variant/batch tracking lives on InvoiceItem (variantId) or is
+        // keyed by the sold productId directly (batches) — restored per
+        // invoice.items as before, but only for a real STANDARD, non-kit
+        // line (a kit's own line was never decremented, so it has nothing
+        // to restore here; its components — which were — carry no
+        // variant/batch data of their own on the kit's InvoiceItem row).
         for (const item of invoice.items) {
-          if (item.product.productType === 'STANDARD') {
-            await tx.inventory.update({
-              where: { productId: item.productId },
-              data: { quantity: { increment: item.quantity } }
-            })
-            // Restore per-variant stock (clothing/footwear)
+          if (item.product.productType === 'STANDARD' && !item.product.isKit) {
             if (item.variantId) {
               await tx.productVariant.update({
                 where: { id: item.variantId },
@@ -1124,17 +1164,6 @@ export const billingService = {
             // deduction done at sale time, so a cancelled invoice doesn't
             // leave batch stock permanently understated.
             await restoreBatchStockFIFO(tx, item.productId, item.quantity)
-            await tx.inventoryMovement.create({
-              data: {
-                productId: item.productId,
-                movementType: 'RETURN',
-                quantity: item.quantity,
-                referenceType: 'INVOICE_CANCEL',
-                referenceId: invoice.id,
-                remarks: `Cancellation of Invoice ${invoice.invoiceNumber}`,
-                createdById: userId ?? null
-              }
-            })
           }
         }
 

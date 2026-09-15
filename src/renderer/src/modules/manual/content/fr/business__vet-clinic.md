@@ -41,3 +41,19 @@ Les signes vitaux sont vérifiés par rapport à des **plages normales** qui tie
 Ouvrez **Reports → Vaccination Compliance** pour voir combien de doses de rappel sont réellement arrivées à temps. Cela examine chaque dose administrée dans la plage de dates choisie qui avait une date d'échéance précédente enregistrée — la toute première dose d'un vaccin pour un patient n'a rien à quoi être comparée pour être « à temps », elle est donc exclue du décompte — et affiche le pourcentage arrivé à ou avant cette date d'échéance, sous forme de jauge globale plus une répartition par vaccin. C'est une question différente de la carte de vaccination du Tableau de bord (qui est un instantané en direct de « ce qui est en retard en ce moment ») : ce rapport regarde en arrière sur une période spécifique, utile pour repérer si le calendrier de rappel d'un vaccin particulier dérape constamment.
 
 **Case-Type Volume Trend** trace combien de cas vous traitez par type de cas, mois par mois — une ligne par type. Vos types de cas proviennent directement des catégories que vous avez configurées dans votre propre Catalogue de Services (Consultation, Toilettage, Diagnostic, ou toute autre que vous avez ajoutée, y compris Chirurgie si vous la suivez là-bas), plus une ligne dédiée **Vaccinations** provenant des doses réellement administrées plutôt que des rendez-vous réservés. Seuls les rendez-vous liés à un patient et non annulés comptent comme un cas réel.
+
+## Doctor Pad — notes manuscrites sur tablette
+
+Beaucoup de vétérinaires préfèrent écrire un diagnostic ou une ordonnance à la main plutôt que de le taper. **Doctor Pad** transforme n'importe quelle tablette sur le Wi-Fi de votre clinique en un simple bloc-notes — aucun matériel supplémentaire à acheter, et rien ne quitte le réseau de votre clinique.
+
+**Connecter une tablette, une seule fois.** Ouvrez **Provider Schedule**, choisissez le vétérinaire, et vous verrez un panneau **Doctor Pad** avec trois façons de connecter une tablette — utilisez celle qui vous convient le mieux :
+
+- **Scan the QR code** affiché à l'écran.
+- **Bookmark the link** affiché en dessous — enregistrez-le sur l'écran d'accueil de la tablette, et il s'ouvre directement sur la liste des rendez-vous de ce vétérinaire à chaque fois, sans avoir à scanner à nouveau.
+- **Type the 4-digit PIN** affiché, sur la page qui s'ouvre lorsque la tablette visite l'adresse indiquée — pratique quand la tablette n'a pas d'appareil photo ou que vous êtes pressé.
+
+Quelle que soit la méthode choisie, la tablette se souvient du vétérinaire par la suite, donc il s'agit normalement d'une configuration unique par tablette.
+
+**L'utiliser pendant une consultation.** La tablette affiche les rendez-vous du jour pour ce vétérinaire. Touchez un patient, écrivez le diagnostic ou l'ordonnance à la main, puis touchez **Save** — le dessin s'attache instantanément au rendez-vous, consultable juste à côté de la Note clinique tapée, dans sa section **Documents**.
+
+**En cas de fuite d'un PIN, ou si vous retirez une ancienne tablette**, ouvrez **Provider Schedule**, sélectionnez le vétérinaire, et cliquez sur **Change PIN** — l'ancien PIN cesse immédiatement de fonctionner. Une tablette déjà connectée via le QR code ou le lien mis en favori continue de fonctionner, puisqu'elle n'a plus jamais besoin du PIN.

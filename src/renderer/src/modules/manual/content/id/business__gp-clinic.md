@@ -56,3 +56,19 @@ Untuk pasien dengan kondisi berkelanjutan — diabetes, hipertensi, dan sejenisn
 Ini terpisah dari tanggal **Follow-up** satu kali milik Catatan Konsultasi di atas — itu untuk "kembali setelah kunjungan spesifik ini"; Chronic Recall untuk "pasien ini memiliki kondisi berkelanjutan yang perlu terus saya periksa, kunjungan demi kunjungan."
 
 Angka kepatuhan yang sama juga memiliki laporan khususnya sendiri — buka **Reports → Recall Compliance**, pilih rentang tanggal, dan Anda akan melihat pengukur yang menunjukkan persentase pengingat yang ditutup dalam rentang tersebut dan ditepati tepat waktu, ditambah rincian per kondisi (sehingga Anda dapat mengetahui, misalnya, bahwa pengingat diabetes Anda berjalan di 90% tetapi hipertensi mulai menurun).
+
+## Doctor Pad — catatan tulisan tangan di tablet
+
+Banyak dokter lebih suka menulis diagnosis atau resep dengan tangan daripada mengetiknya. **Doctor Pad** mengubah tablet apa pun di Wi-Fi klinik Anda sendiri menjadi papan tulis sederhana — tidak perlu membeli perangkat keras tambahan, dan tidak ada yang keluar dari jaringan klinik Anda sendiri.
+
+**Hubungkan tablet, sekali saja.** Buka **Provider Schedule**, pilih dokter, dan Anda akan melihat panel **Doctor Pad** dengan tiga cara untuk menghubungkan tablet — gunakan yang paling mudah:
+
+- **Scan the QR code** yang ditampilkan di layar.
+- **Bookmark the link** yang ditampilkan di bawahnya — simpan ke layar utama tablet dan ia akan langsung membuka antrean dokter tersebut setiap kali, tanpa perlu memindai lagi.
+- **Type the 4-digit PIN** yang ditampilkan, pada halaman yang terbuka saat tablet mengunjungi alamat yang ditampilkan — berguna saat tablet tidak memiliki kamera atau Anda sedang terburu-buru.
+
+Apa pun cara Anda menghubungkan, tablet akan mengingat dokter tersebut sejak saat itu, sehingga ini biasanya hanya pengaturan satu kali per tablet.
+
+**Menggunakannya selama konsultasi.** Tablet menampilkan janji temu hari ini untuk dokter tersebut. Ketuk seorang pasien, tulis diagnosis atau resep dengan tangan, lalu ketuk **Save** — gambar langsung terlampir ke janji temu pasien tersebut, dapat dilihat tepat di samping **Consultation Note** yang diketik di bagian **Documents**-nya.
+
+**Jika sebuah PIN bocor, atau Anda mempensiunkan tablet lama**, buka **Provider Schedule**, pilih dokter, dan klik **Change PIN** — PIN lama langsung berhenti berfungsi. Tablet yang sudah terhubung lewat kode QR atau tautan yang di-bookmark tetap berfungsi, karena tidak pernah membutuhkan PIN lagi.

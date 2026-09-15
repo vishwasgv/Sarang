@@ -56,3 +56,19 @@ Para pacientes com condições contínuas — diabetes, hipertensão e similares
 Isso é separado da própria data de **Follow-up** única da Nota de Consulta acima — aquela é para "voltar após esta visita específica"; Chronic Recall é para "este paciente tem uma condição contínua que preciso continuar verificando, visita após visita."
 
 Esse mesmo número de conformidade também tem seu próprio relatório dedicado — abra **Reports → Recall Compliance**, escolha um intervalo de datas, e você verá um medidor mostrando qual porcentagem dos lembretes encerrados nesse período foram cumpridos no prazo, além de uma divisão por condição (para você saber, por exemplo, que seus lembretes de diabetes estão em 90% mas a hipertensão está caindo).
+
+## Doctor Pad — notas manuscritas em um tablet
+
+Muitos médicos preferem escrever um diagnóstico ou uma receita à mão em vez de digitá-lo. O **Doctor Pad** transforma qualquer tablet no próprio Wi-Fi da sua clínica em um simples bloco de notas — sem hardware extra para comprar, e nada sai da rede da sua clínica.
+
+**Conecte um tablet, uma única vez.** Abra **Provider Schedule**, escolha o médico, e você verá um painel **Doctor Pad** com três formas de conectar um tablet — use a que for mais fácil:
+
+- **Scan the QR code** exibido na tela.
+- **Bookmark the link** exibido logo abaixo — salve-o na tela inicial do tablet e ele abre direto na fila daquele médico todas as vezes, sem precisar escanear de novo.
+- **Type the 4-digit PIN** exibido, na página que abre quando o tablet acessa o endereço mostrado — útil quando o tablet não tem câmera ou você está com pressa.
+
+Qualquer que seja a forma escolhida, o tablet lembra o médico a partir daí, então normalmente essa é uma configuração feita uma única vez por tablet.
+
+**Usando durante uma consulta.** O tablet mostra os agendamentos de hoje daquele médico. Toque em um paciente, escreva o diagnóstico ou a receita à mão, e toque em **Save** — o desenho é anexado instantaneamente ao agendamento daquele paciente, visível junto à Consultation Note digitada em sua seção **Documents**.
+
+**Se um PIN vazar, ou você estiver aposentando um tablet antigo**, abra **Provider Schedule**, selecione o médico, e clique em **Change PIN** — o PIN antigo para de funcionar imediatamente. Um tablet que já se conectou via código QR ou link salvo continua funcionando, já que ele nunca mais precisa do PIN.

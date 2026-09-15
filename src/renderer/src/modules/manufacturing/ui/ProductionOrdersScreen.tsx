@@ -3,6 +3,7 @@ import { Factory, Plus, RefreshCw, X, CheckCircle2, PlayCircle, XCircle, FileTex
 import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatNumber, formatDate } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
@@ -128,6 +129,11 @@ const STATUS_FILTERS = ['ALL', 'DRAFT', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']
 export function ProductionOrdersScreen() {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
+  // Zero-bug audit 2026-09-15, finding #14: 'work_orders' was declared and
+  // granted by default but never actually checked anywhere — wired up here
+  // so the flag is honest and an owner can turn step-level work-order
+  // tracking off from Settings (keeping the production order core intact).
+  const workOrdersEnabled = useIndustryStore((s) => s.isModuleEnabled('work_orders'))
   const [orders, setOrders] = useState<ProductionOrder[]>([])
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState('ALL')
@@ -842,7 +848,7 @@ export function ProductionOrdersScreen() {
               )}
 
               {/* Work Orders */}
-              {(workOrders.length > 0 || (detailOrder.status === 'DRAFT' || detailOrder.status === 'IN_PROGRESS')) && (
+              {workOrdersEnabled && (workOrders.length > 0 || (detailOrder.status === 'DRAFT' || detailOrder.status === 'IN_PROGRESS')) && (
                 <div className="mt-4">
                   <div className="flex items-center justify-between mb-2">
                     <h3 className="text-sm font-semibold text-text-primary flex items-center gap-2">

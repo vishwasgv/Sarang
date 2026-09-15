@@ -43,3 +43,19 @@ Buka **Reports → Second-Opinion Conversion** untuk melihat, dari kunjungan yan
 Buka **Reports → Case-Complexity Mix** untuk melihat pembagian antara kasus Rutin dan Kompleks dalam rentang tanggal — grafik batang bertumpuk bulan demi bulan, ditambah total kasus yang ditandai, jumlah Rutin dan Kompleks, serta persentase Kompleks keseluruhan. Hanya kunjungan yang Anda atur dropdown Case Complexity-nya yang dihitung; kunjungan yang tidak ditandai tidak dianggap Rutin, melainkan hanya dikeluarkan dari campuran.
 
 Jika Anda menggunakan **Refer to Another Provider** untuk mengirim pasien dalam klinik Anda sendiri, setelah penyedia tersebut menyelesaikan catatannya sendiri pada janji temu rujukan, hasilnya muncul kembali secara otomatis pada catatan asli Anda — tanpa perlu pencarian terpisah untuk mengetahui apa yang terjadi pada pasien yang Anda rujuk.
+
+## Doctor Pad — catatan tulisan tangan di tablet
+
+Banyak spesialis lebih suka menulis diagnosis atau resep dengan tangan daripada mengetiknya. **Doctor Pad** mengubah tablet apa pun di Wi-Fi klinik Anda sendiri menjadi papan tulis sederhana — tidak perlu membeli perangkat keras tambahan, dan tidak ada yang keluar dari jaringan klinik Anda sendiri.
+
+**Hubungkan tablet, sekali saja.** Buka **Provider Schedule**, pilih spesialis, dan Anda akan melihat panel **Doctor Pad** dengan tiga cara untuk menghubungkan tablet — gunakan yang paling mudah:
+
+- **Scan the QR code** yang ditampilkan di layar.
+- **Bookmark the link** yang ditampilkan di bawahnya — simpan ke layar utama tablet dan ia akan langsung membuka antrean spesialis tersebut setiap kali, tanpa perlu memindai lagi.
+- **Type the 4-digit PIN** yang ditampilkan, pada halaman yang terbuka saat tablet mengunjungi alamat yang ditampilkan — berguna saat tablet tidak memiliki kamera atau Anda sedang terburu-buru.
+
+Apa pun cara Anda menghubungkan, tablet akan mengingat spesialis tersebut sejak saat itu, sehingga ini biasanya hanya pengaturan satu kali per tablet.
+
+**Menggunakannya selama konsultasi.** Tablet menampilkan janji temu hari ini untuk spesialis tersebut. Ketuk seorang pasien, tulis diagnosis atau resep dengan tangan, lalu ketuk **Save** — gambar langsung terlampir ke janji temu pasien tersebut, dapat dilihat tepat di samping **Consultation Note** yang diketik di bagian **Documents**-nya.
+
+**Jika sebuah PIN bocor, atau Anda mempensiunkan tablet lama**, buka **Provider Schedule**, pilih spesialis, dan klik **Change PIN** — PIN lama langsung berhenti berfungsi. Tablet yang sudah terhubung lewat kode QR atau tautan yang di-bookmark tetap berfungsi, karena tidak pernah membutuhkan PIN lagi.

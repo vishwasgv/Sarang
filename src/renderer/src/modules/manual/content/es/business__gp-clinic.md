@@ -56,3 +56,19 @@ Para pacientes con afecciones continuas — diabetes, hipertensión y similares 
 Esto es independiente de la propia fecha de **Follow-up** única de la Nota de Consulta anterior — esa es para "que vuelva después de esta visita específica"; Chronic Recall es para "este paciente tiene una condición continua que necesito seguir revisando, visita tras visita."
 
 Esta misma cifra de cumplimiento también tiene su propio informe dedicado — abra **Reports → Recall Compliance**, elija un rango de fechas, y verá un indicador mostrando qué porcentaje de recordatorios cerrados en ese período se cumplieron a tiempo, además de un desglose por condición (para poder saber, por ejemplo, que sus recordatorios de diabetes están al 90% pero la hipertensión está fallando).
+
+## Doctor Pad — notas escritas a mano en una tableta
+
+Muchos médicos prefieren escribir un diagnóstico o una receta a mano antes que escribirlo a máquina. **Doctor Pad** convierte cualquier tableta conectada al propio Wi-Fi de su clínica en un sencillo bloc de notas — sin hardware adicional que comprar, y nada sale de la red de su propia clínica.
+
+**Conecte una tableta, una sola vez.** Abra **Provider Schedule**, elija al médico, y verá un panel **Doctor Pad** con tres formas de conectar una tableta — use la que le resulte más fácil:
+
+- **Scan the QR code** mostrado en pantalla.
+- **Bookmark the link** que aparece debajo — guárdelo en la pantalla de inicio de la tableta y se abrirá directamente en la cola de ese médico cada vez, sin necesidad de volver a escanear.
+- **Type the 4-digit PIN** mostrado, en la página que se abre cuando la tableta visita la dirección indicada — útil cuando la tableta no tiene cámara o cuando tiene prisa.
+
+Sea cual sea la forma en que la conecte, la tableta recuerda al médico a partir de ese momento, así que normalmente es una configuración de una sola vez por tableta.
+
+**Uso durante una consulta.** La tableta muestra las citas de hoy de ese médico. Toque un paciente, escriba a mano el diagnóstico o la receta, y toque **Save** — el dibujo se adjunta al instante a la cita de ese paciente, visible junto a la **Consultation Note** escrita en su sección de **Documents**.
+
+**Si un PIN se filtra, o si está retirando una tableta antigua**, abra **Provider Schedule**, seleccione al médico, y haga clic en **Change PIN** — el PIN anterior deja de funcionar de inmediato. Una tableta que ya se conectó mediante código QR o enlace guardado sigue funcionando, ya que nunca vuelve a necesitar el PIN.

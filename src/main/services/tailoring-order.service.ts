@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
-import { inventoryService } from './inventory.service'
+import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { createAppointment } from './appointment.service'
 import { createAppointmentReminder } from './notification-queue.service'
 import { roundCurrency } from './currency.service'
@@ -416,6 +416,9 @@ export async function clearOrderFabric(orderId: string) {
         where: { productId: order.fabricProductId! },
         data: { quantity: { increment: order.fabricQuantity! } },
       })
+      // REAL BUG found+fixed 2026-09-15 — see job-card.service.ts's
+      // removeJobCardPart for the full write-up of this bug class.
+      await applyLocationDeltaTx(tx, order.fabricProductId!, order.fabricQuantity!)
       return tx.tailoringOrder.update({
         where: { id: orderId },
         data: { fabricProductId: null, fabricQuantity: null, fabricSupplied: 'CLIENT' },

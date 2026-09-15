@@ -148,6 +148,23 @@ export async function resetToken(id: string) {
   }
 }
 
+// Waiting-room display board (2026-09-15) — a second, read-only screen (TV
+// or monitor) in the waiting area so patients can see which token is being
+// served and what's coming up, without staff having to call names out loud.
+// Deliberately returns token NUMBERS only, never patient names/phone/notes —
+// this page is served over the same unauthenticated LAN endpoint anyone in
+// the waiting room could load, so nothing identifying belongs in the
+// response even though the request itself already carries the per-install
+// secret token.
+export async function getDisplayBoardStatus(date?: string): Promise<{ currentToken: number | null; waitingNumbers: number[] }> {
+  const res = await getTodayQueue(date)
+  if (!res.success || !res.data) return { currentToken: null, waitingNumbers: [] }
+  const items = res.data as { tokenNumber: number; status: string }[]
+  const called = items.find((i) => i.status === 'CALLED')
+  const waitingNumbers = items.filter((i) => i.status === 'WAITING').map((i) => i.tokenNumber)
+  return { currentToken: called ? called.tokenNumber : null, waitingNumbers }
+}
+
 export async function getQueueStats(date?: string) {
   try {
     const db = getPrisma()

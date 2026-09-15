@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../billing.service', () => ({ billingService: { createInvoice: vi.fn() } }))
-vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn() } }))
+vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn() }, applyLocationDeltaTx: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 
 import { getPrisma } from '../../database/db'

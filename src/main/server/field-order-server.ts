@@ -29,6 +29,9 @@ const DEFAULT_PORT = 8422 // one above kitchen-display-server.ts's 8421 so all t
 const RATE_LIMIT_WINDOW_MS = 60_000
 const GET_RATE_LIMIT_MAX_REQUESTS = 30
 const SUBMIT_RATE_LIMIT_MAX_REQUESTS = 10
+// Deliberately low, own strict bucket — a 6-digit code is more brute-forceable
+// than the 24-char hex token, same reasoning as Doctor Pad's PIN_RATE_LIMIT.
+const CODE_RATE_LIMIT_MAX_REQUESTS = 10
 
 let servers: http.Server[] = []
 let activePort: number | null = null
@@ -90,7 +93,39 @@ export async function regenerateFieldOrderToken(): Promise<string> {
   return token
 }
 
-function isRateLimited(ip: string, bucket: 'submit' | 'get', max: number): boolean {
+// Zero-bug audit 2026-09-15 follow-up: same fix as Kitchen Display's own
+// access code, same reasoning as Doctor Pad's PIN — a short, memorable code
+// a frequent (staff-only) field rep can type when onboarding a new phone,
+// instead of the long hex token above.
+function generateAccessCode(): string {
+  return String(Math.floor(100000 + Math.random() * 900000))
+}
+
+export async function getOrCreateFieldOrderAccessCode(): Promise<string> {
+  const db = getPrisma()
+  const existing = await db.setting.findUnique({ where: { settingKey: 'field_order_access_code' } })
+  if (existing?.settingValue) return existing.settingValue
+  const code = generateAccessCode()
+  await db.setting.upsert({
+    where: { settingKey: 'field_order_access_code' },
+    create: { settingKey: 'field_order_access_code', settingValue: code },
+    update: { settingValue: code }
+  })
+  return code
+}
+
+export async function regenerateFieldOrderAccessCode(): Promise<string> {
+  const db = getPrisma()
+  const code = generateAccessCode()
+  await db.setting.upsert({
+    where: { settingKey: 'field_order_access_code' },
+    create: { settingKey: 'field_order_access_code', settingValue: code },
+    update: { settingValue: code }
+  })
+  return code
+}
+
+function isRateLimited(ip: string, bucket: 'submit' | 'get' | 'code', max: number): boolean {
   const key = `${ip}|${bucket}`
   const now = Date.now()
   const timestamps = (requestLog.get(key) ?? []).filter(t => now - t < RATE_LIMIT_WINDOW_MS)
@@ -170,6 +205,35 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       if (html === null) { res.writeHead(404); res.end('Not found'); return }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(html)
+      return
+    }
+
+    // GET /field-order (no token) — same static page, served bare so a
+    // brand-new rep phone with no bookmark yet can reach the "enter the
+    // access code" state the page's own JS renders when it finds no token.
+    if (req.method === 'GET' && parts[0] === 'field-order' && parts.length === 1) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      const html = getCapturePageHtml()
+      if (html === null) { res.writeHead(404); res.end('Not found'); return }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      res.end(html)
+      return
+    }
+
+    // POST /api/field-order/resolve-code — the typed alternative to scanning
+    // the QR / copying the long token when connecting a new phone, same
+    // convention as Doctor Pad's /resolve-pin and Kitchen Display's own.
+    if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'field-order' && parts[2] === 'resolve-code' && parts.length === 3) {
+      if (isRateLimited(ip, 'code', CODE_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many attempts — please wait a moment and ask the office for the current code.' } }); return }
+      if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+      const body = await readBody(req, 2_000)
+      let parsed: { code?: string }
+      try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
+      const code = (parsed.code ?? '').trim()
+      if (!/^\d{6}$/.test(code)) { sendJson(res, 400, { success: false, error: { message: 'Enter the 6-digit code shown in Settings.' } }); return }
+      const expectedCode = await getOrCreateFieldOrderAccessCode()
+      if (!secureTokenEquals(code, expectedCode)) { sendJson(res, 404, { success: false, error: { message: 'That code was not recognized. Ask the office for the current one.' } }); return }
+      sendJson(res, 200, { success: true, data: { token: expectedToken } })
       return
     }
 

@@ -41,3 +41,19 @@ Every time you update a patient's recall who already had one on file, Sarang qui
 Open **Reports → Treatment Acceptance Rate** to see how many of the treatment plans you proposed in a date range actually turned into billed revenue — a three-stage funnel (Proposed → Accepted → Billed) as a bar chart, plus the acceptance rate (accepted ÷ proposed) and the billed rate (billed ÷ proposed) as percentages. This is the same real plan data from the Treatment Plans tab, aggregated instead of read one patient at a time — a quick read on whether your case presentations are converting, and whether accepted plans are actually being followed through to payment.
 
 Open **Reports → Recall Compliance** to see, of the recall periods closed in a date range, what percentage of patients actually came back on or before their due date — a single gauge for the overall percentage, plus a breakdown by Recall Type (6-Month Hygiene, 12-Month Hygiene, Crown Review, Custom). Only recall periods that were genuinely closed out (a patient with an existing recall getting a new one set) count toward this — a patient's very first recall has no prior due date to have been on time or late against, so it isn't counted either way.
+
+## Doctor Pad — handwritten notes on a tablet
+
+Many dentists would rather write a quick note by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+
+**Connect a tablet, once.** Open **Provider Schedule**, pick the dentist, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
+
+- **Scan the QR code** shown on screen.
+- **Bookmark the link** shown underneath it — save it to the tablet's home screen and it opens straight to that dentist's queue every time, no scanning needed again.
+- **Type the 4-digit PIN** shown, on the page that opens when the tablet visits the address shown — handy when the tablet has no camera or you're in a hurry.
+
+Whichever way you connect, the tablet remembers the dentist from then on, so this is normally a one-time setup per tablet.
+
+**Using it during a visit.** The tablet shows today's appointments for that dentist. Tap a patient, write the note by hand, and tap **Save** — the drawing attaches instantly to that appointment. Since Dental Clinic uses the Tooth Chart and Treatment Plans instead of a Consultation Note, view a saved drawing from the **Appointments** screen: click the pen icon (**Doctor's Pad Notes**) next to that visit.
+
+**If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the dentist, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

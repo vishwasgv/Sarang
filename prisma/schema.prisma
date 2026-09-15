@@ -3357,6 +3357,18 @@ model CreditNote {
   invoiceId        String?
   reason           String
   amount           Float
+  // REAL BUG found+fixed 2026-09-15: create() caps how much of `amount`
+  // actually reduces the linked invoice's balance at the invoice's own
+  // balance at that moment (any excess becomes a general, invoice-unlinked
+  // customer-ledger credit instead) — but update()/delete() used to reverse
+  // that invoice-side effect using the full `amount`, not what was actually
+  // applied, silently over-restoring the invoice's balanceAmount whenever
+  // amount exceeded the invoice's balance at creation time (real
+  // overcollection risk — a cashier's recordPayment validates against
+  // invoice.balanceAmount). This column persists the actually-applied
+  // amount so update()/delete() reverse the correct figure. Null for
+  // pre-migration rows and rows never linked to an invoice.
+  appliedToInvoiceAmount Float?
   notes            String?
   createdBy        String
   createdAt        DateTime @default(now())

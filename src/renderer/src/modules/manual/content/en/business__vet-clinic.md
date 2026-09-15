@@ -41,3 +41,19 @@ Vitals are checked against **normal ranges** that account for the patient's spec
 Open **Reports → Vaccination Compliance** to see how many follow-up doses actually came in on time. This looks at every dose given in your chosen date range that had a prior due date on record — a patient's very first dose of a vaccine has nothing to be "on time" against, so it's left out of the count — and shows the percentage that arrived on or before that due date, as an overall gauge plus a breakdown per vaccine. It's a different question from the Dashboard's own vaccination card (which is a live "what's overdue right now" snapshot): this report looks backward at a specific period, useful for spotting whether a particular vaccine's follow-up schedule is consistently slipping.
 
 **Case-Type Volume Trend** charts how many cases you're handling per case type, month by month — one line per type. Your case types come straight from whatever categories you've set up in your own Service Catalog (Consultation, Grooming, Diagnostics, or anything else you've added, including Surgery if you track it there), plus a dedicated **Vaccinations** line sourced from real administered doses rather than booked appointments. Only pet-linked, non-cancelled appointments count as a real case.
+
+## Doctor Pad — handwritten notes on a tablet
+
+Many vets would rather write a diagnosis or prescription by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+
+**Connect a tablet, once.** Open **Provider Schedule**, pick the vet, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
+
+- **Scan the QR code** shown on screen.
+- **Bookmark the link** shown underneath it — save it to the tablet's home screen and it opens straight to that vet's queue every time, no scanning needed again.
+- **Type the 4-digit PIN** shown, on the page that opens when the tablet visits the address shown — handy when the tablet has no camera or you're in a hurry.
+
+Whichever way you connect, the tablet remembers the vet from then on, so this is normally a one-time setup per tablet.
+
+**Using it during a consultation.** The tablet shows today's appointments for that vet. Tap a patient, write the diagnosis or prescription by hand, and tap **Save** — the drawing attaches instantly to that appointment, viewable right alongside the typed Clinical Note in its **Documents** section.
+
+**If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the vet, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

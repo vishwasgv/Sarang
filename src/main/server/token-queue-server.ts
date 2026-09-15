@@ -6,7 +6,7 @@ import { join } from 'path'
 import { app } from 'electron'
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from '../services/industry-template.service'
-import { createToken } from '../services/token-queue.service'
+import { createToken, getDisplayBoardStatus } from '../services/token-queue.service'
 import { getBusinessDisplayInfo } from '../services/field-order.service'
 import { logger } from '../utils/logger'
 import { secureTokenEquals } from '../security/token-compare'
@@ -130,6 +130,22 @@ function getCheckInPageHtml(): string | null {
   return cachedCheckInPageHtml
 }
 
+function getDisplayBoardPagePath(): string {
+  return app.isPackaged
+    ? join(process.resourcesPath, 'token-queue', 'waiting-display.html')
+    : join(__dirname, '../../resources/token-queue/waiting-display.html')
+}
+
+let cachedDisplayBoardPageHtml: string | null | undefined = undefined
+
+function getDisplayBoardPageHtml(): string | null {
+  if (cachedDisplayBoardPageHtml !== undefined) return cachedDisplayBoardPageHtml
+  const pagePath = getDisplayBoardPagePath()
+  if (!existsSync(pagePath)) { cachedDisplayBoardPageHtml = null; return null }
+  cachedDisplayBoardPageHtml = readFileSync(pagePath, 'utf-8')
+  return cachedDisplayBoardPageHtml
+}
+
 function isOriginAllowed(req: http.IncomingMessage): boolean {
   const origin = req.headers.origin
   if (!origin) return true
@@ -177,6 +193,29 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
       const info = await getBusinessDisplayInfo()
       sendJson(res, 200, { success: true, data: info })
+      return
+    }
+
+    // GET /waiting-display/:token — serves the static waiting-room display
+    // board page (a second screen/TV in the waiting area, read-only).
+    if (req.method === 'GET' && parts[0] === 'waiting-display' && parts.length === 2) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[1], expectedToken)) { res.writeHead(404); res.end('Not found'); return }
+      const html = getDisplayBoardPageHtml()
+      if (html === null) { res.writeHead(404); res.end('Not found'); return }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      res.end(html)
+      return
+    }
+
+    // GET /api/token-queue/:token/display-status — polled every few seconds
+    // by the waiting-display page. Token numbers only, never patient names —
+    // see getDisplayBoardStatus's own comment for why.
+    if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'token-queue' && parts[3] === 'display-status' && parts.length === 4) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const status = await getDisplayBoardStatus()
+      sendJson(res, 200, { success: true, data: status })
       return
     }
 
@@ -254,5 +293,6 @@ export async function stopTokenQueueServer(): Promise<void> {
   if (sweepInterval) { clearInterval(sweepInterval); sweepInterval = null }
   requestLog.clear()
   cachedCheckInPageHtml = undefined
+  cachedDisplayBoardPageHtml = undefined
   logger.info('[TokenQueueServer] Stopped.')
 }

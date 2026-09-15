@@ -1,0 +1,350 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Doctor Pad</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F8FAFC; color: #0F172A;
+  }
+  header { background: #00AEEF; color: #fff; padding: 18px 16px; text-align: center; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header p { margin: 3px 0 0; font-size: 12px; opacity: 0.9; }
+  main { padding: 16px; max-width: 480px; margin: 0 auto; }
+  .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
+  .hint { color: #64748B; font-size: 14px; line-height: 1.6; text-align: center; margin: 0 0 16px; }
+  .divider { display: flex; align-items: center; gap: 10px; color: #94A3B8; font-size: 12px; margin: 18px 0; }
+  .divider::before, .divider::after { content: ''; flex: 1; height: 1px; background: #E2E8F0; }
+  label { display: block; font-size: 13px; font-weight: 700; color: #64748B; margin: 0 0 8px; text-align: center; }
+  .pin-input {
+    width: 100%; padding: 16px; border-radius: 10px; border: 1px solid #E2E8F0; background: #fff;
+    font-size: 28px; text-align: center; letter-spacing: 12px; font-weight: 700;
+  }
+  .btn {
+    width: 100%; margin-top: 14px; padding: 15px; border-radius: 12px; border: none;
+    background: #00AEEF; color: #fff; font-weight: 700; font-size: 16px;
+  }
+  .btn:disabled { opacity: 0.5; }
+  .btn-secondary { background: #fff; color: #00AEEF; border: 1.5px solid #00AEEF; }
+  .btn-danger { background: #fff; color: #DC2626; border: 1.5px solid #FCA5A5; }
+  .error-box { background: #FEF2F2; border: 1px solid #FECACA; color: #DC2626; padding: 12px; border-radius: 10px; font-size: 14px; margin-bottom: 12px; display: none; }
+  .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 24px 16px 8px; }
+
+  .queue-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
+  .queue-header h2 { margin: 0; font-size: 16px; }
+  .forget-link { font-size: 12px; color: #94A3B8; background: none; border: none; text-decoration: underline; padding: 4px; }
+  .queue-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
+  }
+  .queue-item .name { font-weight: 700; font-size: 15px; }
+  .queue-item .meta { color: #64748B; font-size: 13px; margin-top: 2px; }
+  .queue-item .time { color: #00AEEF; font-weight: 700; font-size: 14px; white-space: nowrap; margin-left: 10px; }
+  .empty-state { text-align: center; color: #94A3B8; padding: 40px 16px; font-size: 14px; }
+
+  .canvas-toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+  .canvas-toolbar button {
+    flex: 1; padding: 12px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px;
+  }
+  .canvas-toolbar button.active { border-color: #00AEEF; color: #00AEEF; }
+  #drawCanvas { width: 100%; aspect-ratio: 4/3; background: #fff; border-radius: 12px; border: 1.5px solid #E2E8F0; touch-action: none; display: block; }
+  .patient-banner { background: #EFF8FF; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #0369A1; margin-bottom: 12px; text-align: center; }
+  .pen-hint { color: #94A3B8; font-size: 12px; text-align: center; margin: 0 0 10px; }
+  .page-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; }
+  .page-bar button { padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px; }
+  .page-bar button:disabled { opacity: 0.35; }
+  .page-bar .page-label { font-size: 13px; font-weight: 700; color: #0F172A; min-width: 64px; text-align: center; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="business-name">Doctor Pad</h1>
+  <p id="header-sub">Loading…</p>
+</header>
+<main id="app-root"></main>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex · www.aszurex.com</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean) // ['doctor-pad','<token>'] or ['doctor-pad','<token>','<providerId>']
+  var token = pathParts.length >= 2 ? pathParts[1] : ''
+  var urlProviderId = pathParts.length >= 3 ? pathParts[2] : null
+  var STORAGE_KEY = 'sarang-doctor-pad-provider'
+  var root = document.getElementById('app-root')
+
+  function apiGet(path) { return fetch('/api/doctor-pad/' + token + path).then(function (r) { return r.json() }) }
+  function apiPost(path, body) {
+    return fetch('/api/doctor-pad/' + token + path, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body)
+    }).then(function (r) { return r.json() })
+  }
+
+  apiGet('/business').then(function (res) {
+    if (res.success) document.getElementById('business-name').textContent = res.data.businessName
+  }).catch(function () {})
+
+  function getRemembered() {
+    try { return JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null') } catch (e) { return null }
+  }
+  function remember(providerId, providerName) {
+    try { localStorage.setItem(STORAGE_KEY, JSON.stringify({ providerId: providerId, providerName: providerName })) } catch (e) {}
+  }
+  function forget() {
+    try { localStorage.removeItem(STORAGE_KEY) } catch (e) {}
+    render()
+  }
+
+  // A QR-scan deep link (/doctor-pad/<token>/<providerId>) remembers itself
+  // immediately, then drops the providerId from the visible URL — from then
+  // on this exact same bookmarked page shows the queue with no further scan.
+  if (urlProviderId) {
+    apiGet('/' + urlProviderId + '/queue').then(function (res) {
+      if (res.success) {
+        remember(urlProviderId, res.data.providerName)
+        window.history.replaceState({}, '', '/doctor-pad/' + token)
+      }
+      render()
+    })
+  } else {
+    render()
+  }
+
+  function render() {
+    var remembered = getRemembered()
+    if (!urlProviderId && remembered) { renderQueue(remembered.providerId, remembered.providerName); return }
+    if (!urlProviderId) { renderLanding(); return }
+    // urlProviderId present but the queue fetch above hasn't resolved render() yet — show a loading state
+    root.innerHTML = '<p class="hint">Loading…</p>'
+  }
+
+  function renderLanding() {
+    document.getElementById('header-sub').textContent = 'Connect this tablet'
+    root.innerHTML =
+      '<div class="card">' +
+      '<p class="hint">Scan the QR code shown on the clinic computer to connect this tablet — you only need to do this once.</p>' +
+      '<div class="divider">or enter the PIN shown on screen</div>' +
+      '<div class="error-box" id="error-box"></div>' +
+      '<label for="pin-input">4-digit PIN</label>' +
+      '<input class="pin-input" id="pin-input" inputmode="numeric" pattern="[0-9]*" maxlength="4" placeholder="••••">' +
+      '<button class="btn" id="pin-submit">Connect</button>' +
+      '</div>'
+
+    var input = document.getElementById('pin-input')
+    input.addEventListener('input', function () { input.value = input.value.replace(/\D/g, '').slice(0, 4) })
+
+    document.getElementById('pin-submit').addEventListener('click', function () {
+      var pin = input.value.trim()
+      var box = document.getElementById('error-box')
+      box.style.display = 'none'
+      if (pin.length !== 4) { box.textContent = 'Enter the 4-digit PIN.'; box.style.display = 'block'; return }
+      var btn = document.getElementById('pin-submit')
+      btn.disabled = true
+      apiPost('/resolve-pin', { pin: pin }).then(function (res) {
+        btn.disabled = false
+        if (!res.success) { box.textContent = (res.error && res.error.message) || 'Could not connect.'; box.style.display = 'block'; return }
+        remember(res.data.providerId, res.data.providerName)
+        render()
+      }).catch(function () {
+        btn.disabled = false
+        box.textContent = 'Could not connect. Please check your WiFi connection.'
+        box.style.display = 'block'
+      })
+    })
+  }
+
+  function renderQueue(providerId, providerName) {
+    document.getElementById('header-sub').textContent = providerName || ''
+    root.innerHTML = '<p class="hint">Loading today\'s patients…</p>'
+
+    apiGet('/' + providerId + '/queue').then(function (res) {
+      if (!res.success) { renderLanding(); return }
+      var queue = res.data.queue || []
+      var itemsHtml = queue.length === 0
+        ? '<div class="empty-state">No patients on today\'s schedule yet.</div>'
+        : queue.map(function (a) {
+            return '<div class="queue-item" data-id="' + a.id + '">' +
+              '<div><div class="name">' + escapeHtml(a.customerName || 'Walk-in') + '</div>' +
+              '<div class="meta">' + escapeHtml(a.serviceTitle || '') + '</div></div>' +
+              '<div class="time">' + escapeHtml(a.scheduledTime || '') + '</div></div>'
+          }).join('')
+
+      root.innerHTML =
+        '<div class="queue-header"><h2>Today\'s Patients</h2><button class="forget-link" id="forget-btn">Not you? Switch doctor</button></div>' +
+        itemsHtml
+
+      document.getElementById('forget-btn').addEventListener('click', forget)
+      var items = root.querySelectorAll('.queue-item')
+      for (var i = 0; i < items.length; i++) {
+        items[i].addEventListener('click', (function (id, name) {
+          return function () { renderCanvas(id, name) }
+        })(items[i].getAttribute('data-id'), queue[i].customerName))
+      }
+    }).catch(function () { renderLanding() })
+  }
+
+  function escapeHtml(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]
+    })
+  }
+
+  var MAX_PAGES = 3
+
+  function renderCanvas(appointmentId, patientName) {
+    document.getElementById('header-sub').textContent = 'Writing note'
+    // One entry per page: null while blank, a PNG data URL once that page has been drawn on and left.
+    var pages = [null]
+    var currentPage = 0
+
+    root.innerHTML =
+      '<div class="patient-banner">' + escapeHtml(patientName || 'Patient') + '</div>' +
+      '<p class="pen-hint">Works best on a tablet with a stylus/pen — drawing with a finger is clumsy. Long prescriptions can use up to ' + MAX_PAGES + ' pages.</p>' +
+      '<div class="page-bar">' +
+      '<button id="prev-page-btn">&larr;</button>' +
+      '<span class="page-label" id="page-label">Page 1 of 1</span>' +
+      '<button id="next-page-btn">&rarr;</button>' +
+      '</div>' +
+      '<canvas id="drawCanvas"></canvas>' +
+      '<div class="canvas-toolbar">' +
+      '<button id="clear-btn">Clear Page</button>' +
+      '<button id="add-page-btn">+ Add Page</button>' +
+      '<button id="back-btn">Back</button>' +
+      '</div>' +
+      '<div class="error-box" id="error-box"></div>' +
+      '<button class="btn" id="save-btn">Save Note</button>'
+
+    var canvas = document.getElementById('drawCanvas')
+    var ctx = canvas.getContext('2d')
+    var drawing = false
+    var hasDrawnCurrentPage = false
+    var pageLabel = document.getElementById('page-label')
+    var prevBtn = document.getElementById('prev-page-btn')
+    var nextBtn = document.getElementById('next-page-btn')
+    var addPageBtn = document.getElementById('add-page-btn')
+
+    function updatePageBar() {
+      pageLabel.textContent = 'Page ' + (currentPage + 1) + ' of ' + pages.length
+      prevBtn.disabled = currentPage === 0
+      nextBtn.disabled = currentPage === pages.length - 1
+      addPageBtn.disabled = pages.length >= MAX_PAGES
+    }
+
+    // Snapshots the on-screen canvas into pages[currentPage] before we
+    // navigate away from it, so switching pages (or saving) never loses
+    // what was drawn on a page that isn't the one currently visible.
+    function commitCurrentPage() {
+      pages[currentPage] = hasDrawnCurrentPage ? canvas.toDataURL('image/png') : null
+    }
+
+    function loadPage(index) {
+      currentPage = index
+      var rect = canvas.getBoundingClientRect()
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      var stored = pages[index]
+      hasDrawnCurrentPage = !!stored
+      if (stored) {
+        var img = new Image()
+        img.onload = function () { ctx.drawImage(img, 0, 0, rect.width, rect.height) }
+        img.src = stored
+      }
+      updatePageBar()
+    }
+
+    function resizeCanvas() {
+      var rect = canvas.getBoundingClientRect()
+      var scale = window.devicePixelRatio || 1
+      var prevImage = hasDrawnCurrentPage ? canvas.toDataURL() : null
+      canvas.width = rect.width * scale
+      canvas.height = rect.height * scale
+      ctx.scale(scale, scale)
+      ctx.lineWidth = 2.5
+      ctx.lineCap = 'round'
+      ctx.strokeStyle = '#0F172A'
+      if (prevImage) {
+        var img = new Image()
+        img.onload = function () { ctx.drawImage(img, 0, 0, rect.width, rect.height) }
+        img.src = prevImage
+      }
+    }
+    resizeCanvas()
+    window.addEventListener('resize', resizeCanvas)
+    updatePageBar()
+
+    function pos(e) {
+      var rect = canvas.getBoundingClientRect()
+      var t = e.touches ? e.touches[0] : e
+      return { x: t.clientX - rect.left, y: t.clientY - rect.top }
+    }
+    function start(e) { drawing = true; hasDrawnCurrentPage = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault() }
+    function move(e) { if (!drawing) return; var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault() }
+    function end() { drawing = false }
+
+    canvas.addEventListener('mousedown', start)
+    canvas.addEventListener('mousemove', move)
+    window.addEventListener('mouseup', end)
+    canvas.addEventListener('touchstart', start, { passive: false })
+    canvas.addEventListener('touchmove', move, { passive: false })
+    canvas.addEventListener('touchend', end)
+
+    document.getElementById('clear-btn').addEventListener('click', function () {
+      ctx.clearRect(0, 0, canvas.width, canvas.height)
+      hasDrawnCurrentPage = false
+      pages[currentPage] = null
+    })
+    document.getElementById('add-page-btn').addEventListener('click', function () {
+      if (pages.length >= MAX_PAGES) return
+      commitCurrentPage()
+      pages.push(null)
+      loadPage(pages.length - 1)
+    })
+    prevBtn.addEventListener('click', function () {
+      if (currentPage === 0) return
+      commitCurrentPage()
+      loadPage(currentPage - 1)
+    })
+    nextBtn.addEventListener('click', function () {
+      if (currentPage === pages.length - 1) return
+      commitCurrentPage()
+      loadPage(currentPage + 1)
+    })
+    document.getElementById('back-btn').addEventListener('click', function () {
+      var remembered = getRemembered()
+      if (remembered) renderQueue(remembered.providerId, remembered.providerName)
+    })
+    document.getElementById('save-btn').addEventListener('click', function () {
+      var box = document.getElementById('error-box')
+      box.style.display = 'none'
+      commitCurrentPage()
+      var images = pages.filter(function (p) { return !!p })
+      if (images.length === 0) { box.textContent = 'Write something before saving.'; box.style.display = 'block'; return }
+      var btn = document.getElementById('save-btn')
+      btn.disabled = true
+      btn.textContent = 'Saving…'
+      fetch('/api/doctor-pad/' + token + '/' + appointmentId + '/save-drawing', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ images: images })
+      }).then(function (r) { return r.json() }).then(function (res) {
+        if (!res.success) {
+          btn.disabled = false; btn.textContent = 'Save Note'
+          box.textContent = (res.error && res.error.message) || 'Could not save. Please try again.'
+          box.style.display = 'block'
+          return
+        }
+        var remembered = getRemembered()
+        if (remembered) renderQueue(remembered.providerId, remembered.providerName)
+      }).catch(function () {
+        btn.disabled = false; btn.textContent = 'Save Note'
+        box.textContent = 'Could not save. Please check your connection and try again.'
+        box.style.display = 'block'
+      })
+    })
+  }
+})()
+</script>
+</body>
+</html>

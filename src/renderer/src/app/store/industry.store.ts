@@ -143,6 +143,12 @@ export type TemplateModule =
   | 'food_diet_type'
   // 2026-09-02 — Catering event booking (Bakery/Sweet Shop/Catering).
   | 'catering_events'
+  // 2026-09-15 — Doctor Pad: tablet hand-drawn diagnosis/prescription notes,
+  // see industry-template.service.ts's matching comment.
+  | 'doctor_pad'
+  // 2026-09-16 — Owner View: QR-paired read-only phone dashboard, see
+  // industry-template.service.ts's matching comment.
+  | 'owner_view'
 
 interface IndustryState {
   businessType: string

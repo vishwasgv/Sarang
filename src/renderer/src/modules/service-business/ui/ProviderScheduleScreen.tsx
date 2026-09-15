@@ -1,7 +1,9 @@
 import React, { useState, useEffect, useCallback } from 'react'
-import { Calendar, Plus, Trash2, Save, Users } from 'lucide-react'
+import { Calendar, Plus, Trash2, Save, Users, QrCode, Copy, RotateCw, KeyRound, Bookmark, Wifi, Printer } from 'lucide-react'
+import { printLanQrHtml } from '@shared/utils/print-branding'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
@@ -26,8 +28,9 @@ const DEFAULT_SCHEDULE: Omit<Schedule, 'id' | 'providerId'>[] = DAYS.map((_, i) 
 
 export function ProviderScheduleScreen() {
   const { hasPermission } = useAuthStore()
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, success: toastSuccess } = useNotificationStore()
   const canManage = hasPermission('settings.modify')
+  const hasDoctorPad = useIndustryStore((s) => s.isModuleEnabled('doctor_pad'))
 
   const [providers, setProviders] = useState<Provider[]>([])
   const [selectedProviderId, setSelectedProviderId] = useState('')
@@ -39,6 +42,12 @@ export function ProviderScheduleScreen() {
   const [addingHoliday, setAddingHoliday] = useState(false)
   const [confirmHolidayDeleteId, setConfirmHolidayDeleteId] = useState<string | null>(null)
   const [saveError, setSaveError] = useState<string | null>(null)
+
+  // Doctor Pad — per-provider QR / bookmarkable link / PIN for the tablet writing pad.
+  const [padLink, setPadLink] = useState<{ qrDataUrl: string; deepLinkUrl: string; landingUrl: string; pin: string } | null>(null)
+  const [padLoading, setPadLoading] = useState(false)
+  const [padError, setPadError] = useState<string | null>(null)
+  const [padRegenerating, setPadRegenerating] = useState(false)
 
   useEffect(() => {
     api.hr.listEmployees({ isActive: true }).then((res) => {
@@ -79,6 +88,46 @@ export function ProviderScheduleScreen() {
   }, [selectedProviderId, toastError])
 
   useEffect(() => { loadSchedule() }, [loadSchedule])
+
+  const loadPadLink = useCallback(async () => {
+    if (!hasDoctorPad || !selectedProviderId) { setPadLink(null); return }
+    setPadLoading(true)
+    setPadError(null)
+    try {
+      const res = await api.doctorPad.getLinkForProvider({ providerId: selectedProviderId })
+      if (res.success && res.data) {
+        setPadLink(res.data)
+      } else {
+        setPadLink(null)
+        setPadError(res.error?.message ?? 'Doctor Pad is not currently running.')
+      }
+    } catch {
+      setPadLink(null)
+      setPadError('Could not load the Doctor Pad link.')
+    } finally {
+      setPadLoading(false)
+    }
+  }, [hasDoctorPad, selectedProviderId])
+
+  useEffect(() => { loadPadLink() }, [loadPadLink])
+
+  async function handleRegeneratePin() {
+    if (!selectedProviderId) return
+    setPadRegenerating(true)
+    try {
+      const res = await api.doctorPad.regeneratePin({ providerId: selectedProviderId })
+      if (res.success && res.data) {
+        setPadLink((p) => p ? { ...p, pin: res.data!.pin } : p)
+        toastSuccess('PIN changed', 'The old PIN no longer works.')
+      } else {
+        toastError('Error', res.error?.message ?? 'Could not change the PIN.')
+      }
+    } catch {
+      toastError('Error', 'Could not change the PIN.')
+    } finally {
+      setPadRegenerating(false)
+    }
+  }
 
   async function loadHolidays() {
     try {
@@ -246,6 +295,72 @@ export function ProviderScheduleScreen() {
               </div>
             </div>
           </>
+        )}
+
+        {/* Doctor Pad — hand-drawn diagnosis/prescription notes on a tablet */}
+        {hasDoctorPad && selectedProvider && (
+          <div>
+            <h2 className="text-sm font-semibold text-dark dark:text-slate-100 mb-1">
+              Doctor Pad — {selectedProvider.fullName}
+            </h2>
+            <p className="text-xs text-slate-500 dark:text-slate-400 mb-2">
+              Connect a tablet on the same Wi-Fi so {selectedProvider.fullName} can write notes by hand instead of typing. Scan once, or type the PIN once — after that the tablet remembers and no scanning is needed again.
+            </p>
+            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 mb-3 max-w-xl">
+              <Wifi size={13} className="shrink-0 mt-0.5" /> Important: the tablet must be connected to this clinic's Wi-Fi — Sarang runs fully offline on this computer, so it can't be reached over mobile data or a different Wi-Fi network.
+            </p>
+            {padLoading && !padLink && (
+              <p className="text-xs text-slate-400">Loading…</p>
+            )}
+            {padError && !padLink && (
+              <p className="text-xs text-danger bg-danger/5 border border-danger/20 rounded-lg px-3 py-2">{padError}</p>
+            )}
+            {padLink && (
+              <Card padding="md" className="max-w-xl">
+                <div className="flex items-start gap-4">
+                  <img src={padLink.qrDataUrl} alt="Doctor Pad QR code" className="w-32 h-32 shrink-0 rounded-lg border border-slate-200 dark:border-slate-700" />
+                  <div className="min-w-0 flex-1 space-y-3">
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><QrCode size={11} /> Scan on the tablet</p>
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Opens straight to {selectedProvider.fullName}'s queue.</p>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><Bookmark size={11} /> Or bookmark this link</p>
+                      <div className="flex items-center gap-1.5">
+                        <code className="text-xs text-dark dark:text-slate-200 truncate">{padLink.deepLinkUrl}</code>
+                        <button onClick={() => { navigator.clipboard.writeText(padLink.deepLinkUrl); toastSuccess('Copied', 'Link copied to clipboard.') }} className="text-slate-400 hover:text-brand transition-colors shrink-0">
+                          <Copy size={13} />
+                        </button>
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-1 flex items-center gap-1"><KeyRound size={11} /> Or type this PIN once</p>
+                      <div className="flex items-center gap-2">
+                        <code className="text-lg font-black tracking-widest text-brand">{padLink.pin}</code>
+                        <span className="text-xs text-slate-400">at <code className="text-xs">{padLink.landingUrl}</code></span>
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-3">
+                      <button onClick={() => printLanQrHtml({
+                        title: selectedProvider.fullName,
+                        subtitle: 'Scan to connect Doctor Pad',
+                        qrDataUrl: padLink.qrDataUrl,
+                        url: padLink.deepLinkUrl,
+                        disclaimer: 'Important: the tablet must be connected to this clinic\'s Wi-Fi — this only works on this location\'s own network, not mobile data or another Wi-Fi.',
+                      })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+                        <Printer size={12} /> Print
+                      </button>
+                      {canManage && (
+                        <button onClick={handleRegeneratePin} disabled={padRegenerating} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-danger transition-colors disabled:opacity-50">
+                          <RotateCw size={12} /> Change PIN
+                        </button>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            )}
+          </div>
         )}
 
         {/* Business Holidays */}

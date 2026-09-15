@@ -56,3 +56,19 @@ For patients with ongoing conditions — diabetes, hypertension, and similar —
 This is separate from the Consultation Note's own one-time **Follow-up** date above — that's for "come back after this specific visit"; Chronic Recall is for "this patient has an ongoing condition I need to keep checking on, visit after visit."
 
 The same compliance figure also has its own dedicated report — open **Reports → Recall Compliance**, pick a date range, and you'll see a gauge showing what percentage of recalls closed in that window were kept on time, plus a breakdown by condition (so you can tell, for example, that your diabetes recalls are running at 90% but hypertension is slipping).
+
+## Doctor Pad — handwritten notes on a tablet
+
+Many doctors would rather write a diagnosis or prescription by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+
+**Connect a tablet, once.** Open **Provider Schedule**, pick the doctor, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
+
+- **Scan the QR code** shown on screen.
+- **Bookmark the link** shown underneath it — save it to the tablet's home screen and it opens straight to that doctor's queue every time, no scanning needed again.
+- **Type the 4-digit PIN** shown, on the page that opens when the tablet visits the address shown — handy when the tablet has no camera or you're in a hurry.
+
+Whichever way you connect, the tablet remembers the doctor from then on, so this is normally a one-time setup per tablet.
+
+**Using it during a consultation.** The tablet shows today's appointments for that doctor. Tap a patient, write the diagnosis or prescription by hand, and tap **Save** — the drawing attaches instantly to that patient's appointment, viewable right alongside the typed Consultation Note in its **Documents** section.
+
+**If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the doctor, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

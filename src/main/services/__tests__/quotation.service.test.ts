@@ -492,6 +492,27 @@ describe('quotationService.convertToRetainer', () => {
     expect(db.quotation.update).toHaveBeenCalledWith({ where: { id: 'qt-1' }, data: { status: 'ACCEPTED' } })
   })
 
+  // REAL BUG found+fixed 2026-09-15: startDate used
+  // new Date().toISOString().slice(0,10) (the UTC calendar date) instead of
+  // toLocalISODate(new Date()) — for any timezone ahead of UTC, this could
+  // be a full calendar day behind billingDay (already correctly local via
+  // new Date().getDate()), mismatching the pair and driving the wrong first
+  // billing period once createRetainer's own parseLocalDateStart parses it.
+  it('sends a local-calendar-date startDate matching the local billingDay, not the UTC calendar date', async () => {
+    const db = makeRetainerDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(createRetainer).mockResolvedValue({ success: true, data: { id: 'ret-1' } } as never)
+    vi.mocked(generateInvoiceForRetainer).mockResolvedValue({ success: true, data: { invoiceId: 'inv-1', period: '2026-08' } } as never)
+
+    await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    const call = vi.mocked(createRetainer).mock.calls[0][0] as { startDate: string; billingDay: number }
+    const now = new Date()
+    const expectedLocalDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+    expect(call.startDate).toBe(expectedLocalDate)
+    expect(Number(call.startDate.slice(-2))).toBe(call.billingDay)
+  })
+
   it('reuses the customer\'s existing active RetainerAgreement instead of creating a duplicate', async () => {
     const db = makeRetainerDb({ retainerAgreement: { findFirst: vi.fn().mockResolvedValue({ id: 'ret-existing', status: 'ACTIVE' }) } })
     vi.mocked(getPrisma).mockReturnValue(db as never)

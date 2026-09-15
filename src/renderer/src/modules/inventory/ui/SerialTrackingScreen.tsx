@@ -11,6 +11,7 @@ import { useIndustryStore } from '@app/store/industry.store'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
+import { cn } from '@shared/utils/cn'
 
 type SerialStatus = 'AVAILABLE' | 'SOLD' | 'RETURNED' | 'DEFECTIVE'
 
@@ -127,6 +128,12 @@ export function SerialTrackingScreen() {
   // this feature addresses) rather than a hardcoded businessType, so it
   // reaches Electrical too, not only Plumbing.
   const jobSiteAccountsEnabled = useIndustryStore(s => s.isModuleEnabled('job_site_accounts'))
+  // Zero-bug audit 2026-09-15, finding #14: 'warranty_tracking' was declared
+  // and granted by default but never actually checked anywhere — wired up
+  // here, same convention as imeiEnabled/repairRmaEnabled above, so a
+  // business type with serial_tracking but no warranty concept could
+  // eventually turn this off from Settings.
+  const warrantyTrackingEnabled = useIndustryStore(s => s.isModuleEnabled('warranty_tracking'))
   const [serials, setSerials] = useState<SerialRow[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -386,10 +393,10 @@ export function SerialTrackingScreen() {
         )
       }
     },
-    {
+    ...(warrantyTrackingEnabled ? [{
       id: 'warranty',
       header: () => t('inventory.warranty'),
-      cell: ({ row }) => {
+      cell: ({ row }: { row: { original: SerialRow } }) => {
         if (!row.original.warrantyMonths) return <span className="text-sm text-slate-400">—</span>
         const expiry = row.original.warrantyExpiryDate ? new Date(row.original.warrantyExpiryDate) : null
         const expired = expiry ? expiry < new Date() : false
@@ -400,7 +407,7 @@ export function SerialTrackingScreen() {
           </div>
         )
       }
-    },
+    }] : []),
     {
       accessorKey: 'unitCost',
       header: () => t('common.cost'),
@@ -636,13 +643,15 @@ export function SerialTrackingScreen() {
                 </div>
               </div>
             )}
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.warrantyMonths')}</label>
-                <input type="number" value={form.warrantyMonths} onChange={e => setForm(f => ({ ...f, warrantyMonths: e.target.value }))}
-                  placeholder="12" min="0"
-                  className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
-              </div>
+            <div className={cn('grid gap-4', warrantyTrackingEnabled ? 'grid-cols-2' : 'grid-cols-1')}>
+              {warrantyTrackingEnabled && (
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.warrantyMonths')}</label>
+                  <input type="number" value={form.warrantyMonths} onChange={e => setForm(f => ({ ...f, warrantyMonths: e.target.value }))}
+                    placeholder="12" min="0"
+                    className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+              )}
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('purchaseOrders.unitCost')}</label>
                 <input type="number" value={form.unitCost} onChange={e => setForm(f => ({ ...f, unitCost: e.target.value }))}
@@ -677,18 +686,20 @@ export function SerialTrackingScreen() {
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('billing.product')}</label>
               <ProductPicker value={bulkProductId} onChange={id => setBulkProductId(id)} />
             </div>
-            <div className="grid grid-cols-2 gap-4">
+            <div className={cn('grid gap-4', warrantyTrackingEnabled ? 'grid-cols-2' : 'grid-cols-1')}>
               <div className="space-y-1">
                 <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.purchaseDate')}</label>
                 <input type="date" value={bulkPurchaseDate} onChange={e => setBulkPurchaseDate(e.target.value)}
                   className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
               </div>
-              <div className="space-y-1">
-                <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.warrantyMonths')}</label>
-                <input type="number" value={bulkWarrantyMonths} onChange={e => setBulkWarrantyMonths(e.target.value)}
-                  placeholder="12" min="0"
-                  className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
-              </div>
+              {warrantyTrackingEnabled && (
+                <div className="space-y-1">
+                  <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.warrantyMonths')}</label>
+                  <input type="number" value={bulkWarrantyMonths} onChange={e => setBulkWarrantyMonths(e.target.value)}
+                    placeholder="12" min="0"
+                    className="w-full h-11 px-4 text-base border border-slate-200 dark:border-slate-700 rounded-lg focus:outline-none focus:ring-2 focus:ring-brand" />
+                </div>
+              )}
             </div>
             <div className="space-y-1">
               <label className="text-sm font-semibold text-slate-700 dark:text-slate-300">{t('inventory.serialNumbers')}</label>

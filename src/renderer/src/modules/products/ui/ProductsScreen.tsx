@@ -101,7 +101,11 @@ export function ProductsScreen() {
         setArchiveTarget(null)
         loadData()
       } else {
-        toastError(t('common.error'), t('products.archiveFailed'))
+        // Zero-bug audit 2026-09-15, finding #12's fix: archiving can now be
+        // blocked for a specific, actionable reason (remaining stock, active
+        // invoices) — show the real backend message instead of a generic one
+        // so the owner knows what to do next.
+        toastError(t('common.error'), res.error?.message || t('products.archiveFailed'))
       }
     } finally {
       setArchiving(false)

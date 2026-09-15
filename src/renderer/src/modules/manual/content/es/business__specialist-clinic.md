@@ -43,3 +43,19 @@ Abra **Reports → Second-Opinion Conversion** para ver, de las visitas que marc
 Abra **Reports → Case-Complexity Mix** para ver la división entre casos Rutinarios y Complejos en un rango de fechas — un gráfico de barras apiladas mes a mes, más el total de casos etiquetados, los conteos de Rutinario y Complejo, y el porcentaje general de Complejo. Solo se cuentan las visitas donde configuró el menú Case Complexity; una visita sin etiquetar no se asume Rutinaria, simplemente se deja fuera de la mezcla.
 
 Si usa **Refer to Another Provider** para enviar un paciente dentro de su propia clínica, una vez que ese proveedor finaliza su propia nota en la cita de derivación, su resultado aparece automáticamente en su nota original — sin necesidad de una búsqueda separada para saber qué pasó con un paciente que derivó.
+
+## Doctor Pad — notas escritas a mano en una tableta
+
+Muchos especialistas prefieren escribir un diagnóstico o una receta a mano antes que escribirlo a máquina. **Doctor Pad** convierte cualquier tableta conectada al propio Wi-Fi de su clínica en un sencillo bloc de notas — sin hardware adicional que comprar, y nada sale de la red de su propia clínica.
+
+**Conecte una tableta, una sola vez.** Abra **Provider Schedule**, elija al especialista, y verá un panel **Doctor Pad** con tres formas de conectar una tableta — use la que le resulte más fácil:
+
+- **Scan the QR code** mostrado en pantalla.
+- **Bookmark the link** que aparece debajo — guárdelo en la pantalla de inicio de la tableta y se abrirá directamente en la cola de ese especialista cada vez, sin necesidad de volver a escanear.
+- **Type the 4-digit PIN** mostrado, en la página que se abre cuando la tableta visita la dirección indicada — útil cuando la tableta no tiene cámara o cuando tiene prisa.
+
+Sea cual sea la forma en que la conecte, la tableta recuerda al especialista a partir de ese momento, así que normalmente es una configuración de una sola vez por tableta.
+
+**Uso durante una consulta.** La tableta muestra las citas de hoy de ese especialista. Toque un paciente, escriba a mano el diagnóstico o la receta, y toque **Save** — el dibujo se adjunta al instante a la cita de ese paciente, visible junto a la **Consultation Note** escrita en su sección de **Documents**.
+
+**Si un PIN se filtra, o si está retirando una tableta antigua**, abra **Provider Schedule**, seleccione al especialista, y haga clic en **Change PIN** — el PIN anterior deja de funcionar de inmediato. Una tableta que ya se conectó mediante código QR o enlace guardado sigue funcionando, ya que nunca vuelve a necesitar el PIN.

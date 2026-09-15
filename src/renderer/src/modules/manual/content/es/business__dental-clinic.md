@@ -41,3 +41,19 @@ Cada vez que actualiza la recitación de un paciente que ya tenía una registrad
 Abra **Reports → Treatment Acceptance Rate** para ver cuántos de los planes de tratamiento que propuso en un rango de fechas realmente se convirtieron en ingresos facturados — un embudo de tres etapas (Proposed → Accepted → Billed) como gráfico de barras, más la tasa de aceptación (aceptados ÷ propuestos) y la tasa de facturación (facturados ÷ propuestos) como porcentajes. Estos son los mismos datos reales de planes de la pestaña Treatment Plans, agregados en lugar de leídos paciente por paciente — una lectura rápida de si sus presentaciones de casos están convirtiendo, y si los planes aceptados realmente se están cobrando.
 
 Abra **Reports → Recall Compliance** para ver, de los períodos de recitación cerrados en un rango de fechas, qué porcentaje de pacientes realmente regresó en su fecha de vencimiento o antes — un solo indicador para el porcentaje general, más un desglose por Tipo de Recitación (Higiene 6 Meses, Higiene 12 Meses, Revisión de Corona, Personalizado). Solo cuentan los períodos de recitación genuinamente cerrados (un paciente con una recitación existente recibiendo una nueva) — la primera recitación de un paciente no tiene una fecha de vencimiento previa con la que compararse, así que no se cuenta de ninguna manera.
+
+## Doctor Pad — notas escritas a mano en una tableta
+
+Muchos dentistas prefieren escribir una nota rápida a mano antes que escribirla a máquina. **Doctor Pad** convierte cualquier tableta conectada al propio Wi-Fi de su clínica en un sencillo bloc de notas — sin hardware adicional que comprar, y nada sale de la red de su propia clínica.
+
+**Conecte una tableta, una sola vez.** Abra **Provider Schedule**, elija al dentista, y verá un panel **Doctor Pad** con tres formas de conectar una tableta — use la que le resulte más fácil:
+
+- **Scan the QR code** mostrado en pantalla.
+- **Bookmark the link** que aparece debajo — guárdelo en la pantalla de inicio de la tableta y se abrirá directamente en la cola de ese dentista cada vez, sin necesidad de volver a escanear.
+- **Type the 4-digit PIN** mostrado, en la página que se abre cuando la tableta visita la dirección indicada — útil cuando la tableta no tiene cámara o cuando tiene prisa.
+
+Sea cual sea la forma en que la conecte, la tableta recuerda al dentista a partir de ese momento, así que normalmente es una configuración de una sola vez por tableta.
+
+**Uso durante una visita.** La tableta muestra las citas de hoy de ese dentista. Toque un paciente, escriba la nota a mano, y toque **Save** — el dibujo se adjunta al instante a esa cita. Dado que Clínica Dental usa el **Tooth Chart** y los **Treatment Plans** en lugar de una Consultation Note, vea un dibujo guardado desde la pantalla de **Citas**: haga clic en el ícono de lápiz (**Doctor's Pad Notes**) junto a esa visita.
+
+**Si un PIN se filtra, o si está retirando una tableta antigua**, abra **Provider Schedule**, seleccione al dentista, y haga clic en **Change PIN** — el PIN anterior deja de funcionar de inmediato. Una tableta que ya se conectó mediante código QR o enlace guardado sigue funcionando, ya que nunca vuelve a necesitar el PIN.

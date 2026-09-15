@@ -37,3 +37,19 @@ Untuk melihat bagaimana paket sesi Anda digunakan di seluruh pasien, buka **Repo
 Jika seorang pasien datang dirujuk oleh dokter luar, bagian **Detail Rujukan** pada Catatan Konsultasi mencatat siapa yang merujuk, tanggalnya, dan alasannya — kolom teks bebas, karena dokter yang merujuk biasanya sepenuhnya di luar Sarang. Jika sebaliknya Anda mengarahkan pasien ke penyedia lain di dalam klinik Anda sendiri, gunakan **Rujuk ke Penyedia Lain** pada catatan pasien tersebut untuk memesan janji temu tertaut yang sesungguhnya, mekanisme rujukan dalam-aplikasi yang sama yang digunakan di seluruh jenis bisnis klinis Sarang.
 
 Setelah penyedia tersebut menyelesaikan catatannya sendiri pada janji temu rujukan, hasilnya muncul kembali secara otomatis pada catatan asli Anda. Jika catatan itu melacak Skor Nyeri dan Skor Fungsional sepanjang sesi, hasil yang ditampilkan bukan sekadar komentar penutupnya — melainkan perbandingan sebelum-dan-sesudah yang terukur di seluruh perjalanan pengobatan sejak rujukan (misalnya, "Nyeri 7→3, Fungsi 40→75 selama 3 sesi"), sehingga Anda dapat melihat sekilas apakah rujukan itu benar-benar membantu, bukan sekadar bahwa itu terjadi.
+
+## Doctor Pad — catatan tulisan tangan di tablet
+
+Banyak fisioterapis lebih suka menulis catatan dengan tangan — diagram tubuh, sketsa cepat sebuah latihan — daripada mengetiknya. **Doctor Pad** mengubah tablet apa pun di Wi-Fi klinik Anda sendiri menjadi papan tulis sederhana — tidak perlu membeli perangkat keras tambahan, dan tidak ada yang keluar dari jaringan klinik Anda sendiri.
+
+**Hubungkan tablet, sekali saja.** Buka **Provider Schedule**, pilih fisioterapis, dan Anda akan melihat panel **Doctor Pad** dengan tiga cara untuk menghubungkan tablet — gunakan yang paling mudah:
+
+- **Scan the QR code** yang ditampilkan di layar.
+- **Bookmark the link** yang ditampilkan di bawahnya — simpan ke layar utama tablet dan ia akan langsung membuka antrean fisioterapis tersebut setiap kali, tanpa perlu memindai lagi.
+- **Type the 4-digit PIN** yang ditampilkan, pada halaman yang terbuka saat tablet mengunjungi alamat yang ditampilkan — berguna saat tablet tidak memiliki kamera atau Anda sedang terburu-buru.
+
+Apa pun cara Anda menghubungkan, tablet akan mengingat fisioterapis tersebut sejak saat itu, sehingga ini biasanya hanya pengaturan satu kali per tablet.
+
+**Menggunakannya selama sesi.** Tablet menampilkan janji temu hari ini untuk fisioterapis tersebut. Ketuk seorang pasien, gambar atau tulis dengan tangan, lalu ketuk **Save** — gambar langsung terlampir ke janji temu pasien tersebut, dapat dilihat tepat di samping **Consultation Note** yang diketik di bagian **Documents**-nya.
+
+**Jika sebuah PIN bocor, atau Anda mempensiunkan tablet lama**, buka **Provider Schedule**, pilih fisioterapis, dan klik **Change PIN** — PIN lama langsung berhenti berfungsi. Tablet yang sudah terhubung lewat kode QR atau tautan yang di-bookmark tetap berfungsi, karena tidak pernah membutuhkan PIN lagi.

@@ -1,0 +1,303 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+<title>Owner View</title>
+<style>
+  :root { color-scheme: light; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #F8FAFC; color: #0F172A;
+  }
+  header { background: #0F172A; color: #fff; padding: 16px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 5; }
+  header h1 { margin: 0; font-size: 18px; font-weight: 700; }
+  header p { margin: 0; font-size: 12px; color: #94A3B8; }
+  header button { background: none; border: none; color: #94A3B8; font-size: 13px; padding: 6px; }
+  main { padding: 12px; padding-bottom: 40px; }
+  .state-screen { padding: 60px 20px; text-align: center; color: #64748B; }
+  .code-card { max-width: 320px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 16px; border: 1px solid #E2E8F0; text-align: center; }
+  .code-card .hint { font-size: 13px; color: #64748B; margin: 0 0 16px; }
+  .code-card label { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .code-input { width: 100%; font-size: 24px; letter-spacing: 6px; text-align: center; padding: 12px; border: 2px solid #E2E8F0; border-radius: 10px; box-sizing: border-box; }
+  .code-btn { width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 10px; background: #00AEEF; color: #fff; font-weight: 700; font-size: 15px; }
+  .code-btn:disabled { opacity: 0.5; }
+  .code-error { display: none; color: #B91C1C; font-size: 13px; margin-top: 10px; }
+  .kpi-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+  .kpi-card { background: #fff; border-radius: 14px; border: 1px solid #E2E8F0; padding: 14px; }
+  .kpi-card .label { font-size: 11px; font-weight: 700; text-transform: uppercase; color: #94A3B8; letter-spacing: 0.4px; }
+  .kpi-card .value { font-size: 19px; font-weight: 800; margin-top: 4px; }
+  .kpi-card .trend { font-size: 12px; margin-top: 2px; }
+  .trend.up { color: #16A34A; }
+  .trend.down { color: #B91C1C; }
+  .section-title { font-size: 13px; font-weight: 700; text-transform: uppercase; color: #64748B; letter-spacing: 0.4px; margin: 20px 0 8px; }
+  .report-row { display: flex; align-items: center; justify-content: space-between; background: #fff; border-radius: 12px; border: 1px solid #E2E8F0; padding: 14px; margin-bottom: 8px; }
+  .report-row .name { font-size: 15px; font-weight: 600; }
+  .report-row .arrow { color: #94A3B8; font-size: 18px; }
+  .report-row:active { background: #F1F5F9; }
+  .back-btn { display: inline-flex; align-items: center; gap: 4px; color: #00AEEF; font-size: 14px; font-weight: 700; padding: 8px 0; }
+  .date-bar { display: flex; gap: 8px; margin-bottom: 14px; align-items: flex-end; flex-wrap: wrap; }
+  .date-bar .field { flex: 1; min-width: 130px; }
+  .date-bar label { display: block; font-size: 11px; font-weight: 700; color: #64748B; margin-bottom: 4px; }
+  .date-bar input { width: 100%; padding: 10px; border-radius: 8px; border: 1px solid #E2E8F0; font-size: 14px; }
+  .date-bar button { padding: 10px 14px; border-radius: 8px; border: none; background: #00AEEF; color: #fff; font-weight: 700; font-size: 13px; }
+  .stat-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-bottom: 14px; }
+  .stat { background: #fff; border-radius: 10px; border: 1px solid #E2E8F0; padding: 10px; }
+  .stat .k { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #94A3B8; }
+  .stat .v { font-size: 14px; font-weight: 700; margin-top: 2px; word-break: break-word; }
+  .subsection { font-size: 13px; font-weight: 700; color: #334155; margin: 14px 0 6px; }
+  table { width: 100%; border-collapse: collapse; background: #fff; border-radius: 10px; overflow: hidden; margin-bottom: 14px; font-size: 13px; }
+  th, td { text-align: left; padding: 8px 10px; border-bottom: 1px solid #F1F5F9; }
+  th { background: #F8FAFC; font-size: 10px; text-transform: uppercase; color: #64748B; font-weight: 700; }
+  tr:last-child td { border-bottom: none; }
+  .table-wrap { overflow-x: auto; }
+  .empty { text-align: center; color: #94A3B8; font-size: 13px; padding: 20px 0; }
+  .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1 id="business-name">Owner View</h1>
+    <p id="header-sub">Read-only · Live</p>
+  </div>
+  <button id="back-btn" hidden>Home</button>
+</header>
+<main id="root">
+  <div class="state-screen">Loading…</div>
+</main>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex · www.aszurex.com</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean)
+  var token = pathParts.length >= 2 ? pathParts[1] : ''
+  var root = document.getElementById('root')
+  var backBtn = document.getElementById('back-btn')
+  backBtn.addEventListener('click', function () { renderHome() })
+
+  function escapeHtml(s) {
+    var div = document.createElement('div'); div.textContent = s == null ? '' : String(s); return div.innerHTML
+  }
+
+  function apiGet(path) {
+    return fetch('/api/owner-view/' + token + path).then(function (r) { return r.json() })
+  }
+
+  // ── Code-entry (no token yet) ─────────────────────────────────────────
+
+  function renderCodeEntry() {
+    root.innerHTML =
+      '<div class="code-card">' +
+      '<p class="hint">Scan the QR code shown in Settings to connect your phone — or, if that\'s not handy, enter the 6-digit access code instead. You only need to do this once. This view is read-only — nothing you see here can be edited or changed.</p>' +
+      '<label for="code-input">6-digit access code</label>' +
+      '<input class="code-input" id="code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••">' +
+      '<button class="code-btn" id="code-submit">Connect</button>' +
+      '<div class="code-error" id="code-error"></div>' +
+      '</div>'
+    var input = document.getElementById('code-input')
+    input.addEventListener('input', function () { input.value = input.value.replace(/\D/g, '').slice(0, 6) })
+    document.getElementById('code-submit').addEventListener('click', function () {
+      var code = input.value.trim()
+      var box = document.getElementById('code-error')
+      box.style.display = 'none'
+      if (code.length !== 6) { box.textContent = 'Enter the 6-digit code.'; box.style.display = 'block'; return }
+      var btn = document.getElementById('code-submit')
+      btn.disabled = true
+      fetch('/api/owner-view/resolve-code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code })
+      }).then(function (r) { return r.json() }).then(function (res) {
+        btn.disabled = false
+        if (!res.success) { box.textContent = (res.error && res.error.message) || 'Could not connect.'; box.style.display = 'block'; return }
+        window.location.href = '/owner-view/' + res.data.token
+      }).catch(function () {
+        btn.disabled = false
+        box.textContent = 'Could not connect. Please check your WiFi connection.'
+        box.style.display = 'block'
+      })
+    })
+  }
+
+  // ── Home: KPI summary + report list ───────────────────────────────────
+
+  function fmtMoney(n) {
+    if (typeof n !== 'number') return String(n)
+    return '₹' + n.toLocaleString('en-IN', { maximumFractionDigits: 0 })
+  }
+
+  function kpiCardHtml(label, value, trend) {
+    var trendHtml = (typeof trend === 'number')
+      ? '<div class="trend ' + (trend >= 0 ? 'up' : 'down') + '">' + (trend >= 0 ? '▲' : '▼') + ' ' + Math.abs(trend).toFixed(1) + '%</div>'
+      : ''
+    return '<div class="kpi-card"><div class="label">' + escapeHtml(label) + '</div><div class="value">' + escapeHtml(value) + '</div>' + trendHtml + '</div>'
+  }
+
+  var CATEGORY_LABEL = { sales: 'Sales', finance: 'Finance & Accounting', inventory: 'Inventory', suppliers: 'Suppliers & Purchases' }
+
+  function renderHome() {
+    backBtn.hidden = true
+    document.getElementById('header-sub').textContent = 'Read-only · Live'
+    root.innerHTML = '<div class="state-screen">Loading…</div>'
+    Promise.all([apiGet('/summary'), apiGet('/reports')]).then(function (results) {
+      var summaryRes = results[0], reportsRes = results[1]
+      var html = ''
+      if (summaryRes.success) {
+        var k = summaryRes.data
+        html += '<div class="section-title">Today at a glance</div><div class="kpi-grid">' +
+          kpiCardHtml('Today\'s Sales', fmtMoney(k.todaySales), k.todayTrend) +
+          kpiCardHtml('This Week', fmtMoney(k.weekSales), k.weekTrend) +
+          kpiCardHtml('This Month', fmtMoney(k.monthSales), k.monthTrend) +
+          kpiCardHtml('Outstanding', fmtMoney(k.outstanding)) +
+          kpiCardHtml('Inventory Value', fmtMoney(k.inventoryValue)) +
+          kpiCardHtml('Est. Profit (Month)', fmtMoney(k.estimatedProfit), k.profitTrend) +
+          kpiCardHtml('Low Stock Items', k.lowStockCount) +
+          kpiCardHtml('Customers', k.customerCount) +
+          '</div>'
+      }
+      if (reportsRes.success) {
+        var byCategory = {}
+        reportsRes.data.forEach(function (r) {
+          byCategory[r.category] = byCategory[r.category] || []
+          byCategory[r.category].push(r)
+        })
+        Object.keys(byCategory).forEach(function (cat) {
+          html += '<div class="section-title">' + escapeHtml(CATEGORY_LABEL[cat] || cat) + '</div>'
+          byCategory[cat].forEach(function (r) {
+            html += '<div class="report-row" data-report="' + escapeHtml(r.id) + '" data-needs-range="' + r.requiresDateRange + '" data-label="' + escapeHtml(r.label) + '">' +
+              '<span class="name">' + escapeHtml(r.label) + '</span><span class="arrow">›</span></div>'
+          })
+        })
+      }
+      root.innerHTML = html || '<div class="empty">Nothing to show.</div>'
+      var rows = document.querySelectorAll('.report-row')
+      for (var i = 0; i < rows.length; i++) {
+        rows[i].addEventListener('click', function () {
+          renderReport(this.getAttribute('data-report'), this.getAttribute('data-label'), this.getAttribute('data-needs-range') === 'true')
+        })
+      }
+    }).catch(function () {
+      root.innerHTML = '<div class="state-screen">Could not load. Ask a staff member for help.</div>'
+    })
+  }
+
+  // ── Generic report viewer ─────────────────────────────────────────────
+
+  function isPlainObject(v) { return v !== null && typeof v === 'object' && !Array.isArray(v) }
+
+  function renderArrayAsTable(arr) {
+    if (arr.length === 0) return '<div class="empty">No rows.</div>'
+    var scalarKeys = Object.keys(arr[0]).filter(function (k) {
+      var v = arr[0][k]
+      return v === null || typeof v !== 'object'
+    })
+    if (scalarKeys.length === 0) return '<div class="empty">No displayable columns.</div>'
+    var html = '<div class="table-wrap"><table><thead><tr>'
+    scalarKeys.forEach(function (k) { html += '<th>' + escapeHtml(k) + '</th>' })
+    html += '</tr></thead><tbody>'
+    arr.slice(0, 200).forEach(function (row) {
+      html += '<tr>'
+      scalarKeys.forEach(function (k) {
+        var v = row[k]
+        html += '<td>' + escapeHtml(typeof v === 'number' ? (Math.abs(v) >= 1000 || (k.toLowerCase().indexOf('amount') >= 0 || k.toLowerCase().indexOf('outstanding') >= 0 || k.toLowerCase().indexOf('total') >= 0 || k.toLowerCase().indexOf('value') >= 0) ? fmtMoney(v) : v) : v) + '</td>'
+      })
+      html += '</tr>'
+    })
+    html += '</tbody></table></div>'
+    if (arr.length > 200) html += '<p class="empty">Showing first 200 of ' + arr.length + ' rows.</p>'
+    return html
+  }
+
+  // Recursively renders whatever shape a report function returns: scalar
+  // fields become a stat-card grid, array fields become tables, nested
+  // objects become their own labeled subsection — no bespoke code needed
+  // per report, matching the original Phase 72 spec's own "one generic
+  // renderer, not a bespoke page per report" design.
+  function renderGeneric(data, depth) {
+    if (data == null) return ''
+    if (Array.isArray(data)) return renderArrayAsTable(data)
+    if (!isPlainObject(data)) return '<div class="stat"><div class="v">' + escapeHtml(data) + '</div></div>'
+
+    var scalarEntries = [], arrayEntries = [], objectEntries = []
+    Object.keys(data).forEach(function (k) {
+      var v = data[k]
+      if (v === null || v === undefined || typeof v !== 'object') scalarEntries.push([k, v])
+      else if (Array.isArray(v)) arrayEntries.push([k, v])
+      else objectEntries.push([k, v])
+    })
+
+    var html = ''
+    if (scalarEntries.length > 0) {
+      html += '<div class="stat-grid">'
+      scalarEntries.forEach(function (entry) {
+        var k = entry[0], v = entry[1]
+        var display = typeof v === 'number' ? fmtMoney(v) : v
+        html += '<div class="stat"><div class="k">' + escapeHtml(k) + '</div><div class="v">' + escapeHtml(display) + '</div></div>'
+      })
+      html += '</div>'
+    }
+    objectEntries.forEach(function (entry) {
+      html += '<div class="subsection">' + escapeHtml(entry[0]) + '</div>' + renderGeneric(entry[1], (depth || 0) + 1)
+    })
+    arrayEntries.forEach(function (entry) {
+      html += '<div class="subsection">' + escapeHtml(entry[0]) + ' (' + entry[1].length + ')</div>' + renderArrayAsTable(entry[1])
+    })
+    return html
+  }
+
+  function todayMinus(days) {
+    var d = new Date(); d.setDate(d.getDate() - days)
+    return d.toISOString().slice(0, 10)
+  }
+
+  function renderReport(reportId, label, needsRange) {
+    backBtn.hidden = false
+    document.getElementById('header-sub').textContent = label
+    var dateFrom = todayMinus(30), dateTo = todayMinus(0)
+
+    function load() {
+      root.innerHTML = '<div class="state-screen">Loading…</div>'
+      var qs = needsRange ? ('?dateFrom=' + dateFrom + '&dateTo=' + dateTo) : ''
+      apiGet('/reports/' + reportId + qs).then(function (res) {
+        var bar = ''
+        if (needsRange) {
+          bar = '<div class="date-bar">' +
+            '<div class="field"><label>From</label><input type="date" id="date-from" value="' + dateFrom + '"></div>' +
+            '<div class="field"><label>To</label><input type="date" id="date-to" value="' + dateTo + '"></div>' +
+            '<button id="date-apply">Apply</button></div>'
+        }
+        if (!res.success) {
+          root.innerHTML = bar + '<div class="state-screen">' + escapeHtml((res.error && res.error.message) || 'Could not load this report.') + '</div>'
+        } else {
+          root.innerHTML = bar + renderGeneric(res.data)
+        }
+        if (needsRange) {
+          document.getElementById('date-apply').addEventListener('click', function () {
+            dateFrom = document.getElementById('date-from').value || dateFrom
+            dateTo = document.getElementById('date-to').value || dateTo
+            load()
+          })
+        }
+      }).catch(function () {
+        root.innerHTML = '<div class="state-screen">Connection issue. Please try again.</div>'
+      })
+    }
+    load()
+  }
+
+  // ── Boot ───────────────────────────────────────────────────────────────
+
+  if (!token) {
+    renderCodeEntry()
+  } else {
+    apiGet('/business').then(function (res) {
+      if (res.success && res.data && res.data.businessName) {
+        document.getElementById('business-name').textContent = res.data.businessName
+      }
+    }).catch(function () {})
+    renderHome()
+  }
+})()
+</script>
+</body>
+</html>

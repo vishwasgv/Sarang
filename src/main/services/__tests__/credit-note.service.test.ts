@@ -199,11 +199,29 @@ describe('creditNoteService.create — invoice balance reconciliation', () => {
     expect(res.success).toBe(true)
     expect(db.__invoiceUpdateCalls).toHaveLength(0)
   })
+
+  // REAL BUG found+fixed 2026-09-15 — see delete()'s matching test for the
+  // full write-up. This is the write side of the fix: the capped, actually-
+  // applied amount must be persisted so a later update()/delete() can
+  // reverse the correct figure instead of the full (uncapped) amount.
+  it('persists the capped, actually-applied amount, not the full credit note amount', async () => {
+    const db = makeDb(EXISTING, { balanceAmount: 200, totalAmount: 1000, paymentStatus: 'PARTIAL', paidAmount: 800 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Discount', amount: 500 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 0, paymentStatus: 'PAID' })
+    const appliedUpdateCall = db.__txClient.creditNote.update.mock.calls.find(
+      (call) => (call[0] as { data: Record<string, unknown> }).data.appliedToInvoiceAmount !== undefined
+    ) as [{ data: { appliedToInvoiceAmount: number } }] | undefined
+    expect(appliedUpdateCall?.[0].data.appliedToInvoiceAmount).toBe(200)
+  })
 })
 
 describe('creditNoteService.delete — invoice balance restoration', () => {
   it('restores the invoice balance by the voided credit note amount', async () => {
-    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 200 }
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 200, appliedToInvoiceAmount: 200 }
     const db = makeDb(existingWithInvoice, { balanceAmount: 300, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -214,7 +232,39 @@ describe('creditNoteService.delete — invoice balance restoration', () => {
   })
 
   it('caps the restored balance at the invoice total', async () => {
-    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 400 }
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 400, appliedToInvoiceAmount: 400 }
+    const db = makeDb(existingWithInvoice, { balanceAmount: 300, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.delete('cn-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 500, paymentStatus: 'UNPAID' })
+  })
+
+  // REAL BUG found+fixed 2026-09-15: create() caps how much of `amount`
+  // actually reduces the invoice (any excess becomes a general,
+  // invoice-unlinked ledger credit) — delete() used to reverse using the
+  // full `amount` regardless, over-restoring the invoice balance. These
+  // guard the fix: reversal must use the persisted appliedToInvoiceAmount,
+  // not the credit note's full amount.
+  it('restores only what was actually applied to the invoice, not the full credit note amount', async () => {
+    // amount=500 was capped to appliedToInvoiceAmount=200 at creation time
+    // (invoice only had a 200 balance then); balance has since moved to 0
+    // (fully paid off some other way). Correct restoration is +200 -> 200,
+    // NOT +500 -> 500.
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 500, appliedToInvoiceAmount: 200 }
+    const db = makeDb(existingWithInvoice, { balanceAmount: 0, totalAmount: 1000, paymentStatus: 'PAID', paidAmount: 1000 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.delete('cn-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__invoiceUpdateCalls).toContainEqual({ balanceAmount: 200, paymentStatus: 'PARTIAL' })
+  })
+
+  it('falls back to the full amount for legacy rows with no appliedToInvoiceAmount persisted', async () => {
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 200, appliedToInvoiceAmount: null }
     const db = makeDb(existingWithInvoice, { balanceAmount: 300, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -238,6 +288,25 @@ describe('creditNoteService.update — invoice balance reconciliation', () => {
     expect(db.__txClient.invoice.findUniqueOrThrow).toHaveBeenCalled()
     const finalCall = db.__invoiceUpdateCalls[db.__invoiceUpdateCalls.length - 1]
     expect(finalCall).toEqual({ balanceAmount: 150, paymentStatus: 'UNPAID' })
+  })
+})
+
+describe('creditNoteService.update — invoice balance reconciliation', () => {
+  // REAL BUG found+fixed 2026-09-15 — same class as delete()'s fix: the
+  // "reverse old" half of update() must use the persisted
+  // appliedToInvoiceAmount, not the full stored amount.
+  it('reverses only what was actually applied when editing a credit note whose amount had been capped', async () => {
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 500, appliedToInvoiceAmount: 200 }
+    const db = makeDb(existingWithInvoice, { balanceAmount: 0, totalAmount: 1000, paymentStatus: 'PAID', paidAmount: 1000 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    // Reverse old (only 200 was ever applied): 0 -> 200. Then reapply new
+    // amount=300 against the now-200 balance: 200 -> 0 (fully covered again).
+    const res = await creditNoteService.update('cn-1', { amount: 300 }, 'user-1')
+
+    expect(res.success).toBe(true)
+    const finalCall = db.__invoiceUpdateCalls[db.__invoiceUpdateCalls.length - 1]
+    expect(finalCall).toEqual({ balanceAmount: 0, paymentStatus: 'PAID' })
   })
 })
 

@@ -7,6 +7,7 @@ import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { useAuthStore } from '@app/store/auth.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
@@ -34,7 +35,12 @@ export function TripBookingScreen(): React.JSX.Element {
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const canManage = hasPermission('tripBooking.manage')
-  const canManageDuty = hasPermission('driverDutyLog.manage')
+  // Zero-bug audit 2026-09-15, finding #14: 'driver_duty_settlement' was
+  // declared and granted by default but never actually checked anywhere —
+  // wired up here alongside the existing permission check so the flag is
+  // honest and an owner can turn duty-log tracking off from Settings.
+  const driverDutyModuleEnabled = useIndustryStore((s) => s.isModuleEnabled('driver_duty_settlement'))
+  const canManageDuty = hasPermission('driverDutyLog.manage') && driverDutyModuleEnabled
 
   const [bookings, setBookings] = useState<TripBooking[]>([])
   const [vehicles, setVehicles] = useState<Vehicle[]>([])

@@ -1,4 +1,6 @@
-import { dialog, shell } from 'electron'
+import { dialog, shell, BrowserWindow, app } from 'electron'
+import { writeFile, unlink } from 'fs/promises'
+import { join } from 'path'
 import * as documentService from '../../services/document.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
@@ -57,5 +59,36 @@ export function register(handle: HandleFn): void {
     const errMsg = await shell.openPath(res.data.filePath)
     if (errMsg) return { success: false, error: { code: 'DOC-010', message: `Could not open file: ${errMsg}` } }
     return { success: true }
+  })
+
+  // Prints an image-type document (e.g. a Doctor Pad hand-drawn note)
+  // directly, without relying on an external viewer's own print command —
+  // same hidden-BrowserWindow + webContents.print() mechanism every other
+  // print:* handler in this app already uses.
+  handle('documents:print', async (payload) => {
+    const deny = await requirePermission('documents.view'); if (deny) return deny
+    const { id } = payload as { id: string }
+    if (!id) return { success: false, error: { code: 'VAL-001', message: 'id is required.' } }
+    const res = await documentService.getDocumentPath(id)
+    if (!res.success || !res.data) return res
+    if (!res.data.mimeType.startsWith('image/')) {
+      return { success: false, error: { code: 'DOC-011', message: 'Only image documents can be printed directly — open the file instead.' } }
+    }
+    const { pathToFileURL } = await import('url')
+    const imgSrc = pathToFileURL(res.data.filePath).href
+    const html = `<!doctype html><html><head><meta charset="utf-8"><style>body{margin:0;display:flex;align-items:center;justify-content:center}img{max-width:100%;max-height:100vh}</style></head><body><img src="${imgSrc}"></body></html>`
+    const tmpPath = join(app.getPath('temp'), `sarang_doc_print_${Date.now()}.html`)
+    await writeFile(tmpPath, html, 'utf-8')
+    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
+      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
+      win.loadFile(tmpPath)
+      win.webContents.once('did-finish-load', () => {
+        win.webContents.print({ silent: false, printBackground: true }, (success: boolean) => {
+          win.close()
+          unlink(tmpPath).catch(() => {})
+          resolve({ success, data: { printed: success } })
+        })
+      })
+    })
   })
 }

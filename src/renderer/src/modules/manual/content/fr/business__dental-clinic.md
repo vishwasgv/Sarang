@@ -41,3 +41,19 @@ Chaque fois que vous mettez à jour le recall d'un patient qui en avait déjà u
 Ouvrez **Reports → Treatment Acceptance Rate** pour voir combien de plans de traitement que vous avez proposés sur une plage de dates sont réellement devenus des revenus facturés — un entonnoir en trois étapes (Proposed → Accepted → Billed) sous forme de graphique en barres, plus le taux d'acceptation (acceptés ÷ proposés) et le taux de facturation (facturés ÷ proposés) en pourcentages. Ce sont les mêmes données réelles de plans que celles de l'onglet Treatment Plans, agrégées au lieu d'être lues patient par patient — un aperçu rapide pour savoir si vos présentations de cas convertissent, et si les plans acceptés aboutissent réellement au paiement.
 
 Ouvrez **Reports → Recall Compliance** pour voir, parmi les périodes de recall clôturées sur une plage de dates, quel pourcentage de patients est réellement revenu à sa date d'échéance ou avant — une seule jauge pour le pourcentage global, plus une répartition par Type de Rappel (Hygiène 6 mois, Hygiène 12 mois, Révision de couronne, Personnalisé). Seules les périodes de recall réellement clôturées comptent (un patient ayant déjà un recall qui en reçoit un nouveau) — le tout premier recall d'un patient n'a pas de date d'échéance antérieure à laquelle se comparer, donc il n'est compté ni dans un sens ni dans l'autre.
+
+## Doctor Pad — notes manuscrites sur tablette
+
+Beaucoup de dentistes préfèrent écrire une note rapide à la main plutôt que de la taper. **Doctor Pad** transforme n'importe quelle tablette sur le Wi-Fi de votre clinique en un simple bloc-notes — aucun matériel supplémentaire à acheter, et rien ne quitte le réseau de votre clinique.
+
+**Connecter une tablette, une seule fois.** Ouvrez **Provider Schedule**, choisissez le dentiste, et vous verrez un panneau **Doctor Pad** avec trois façons de connecter une tablette — utilisez celle qui vous convient le mieux :
+
+- **Scan the QR code** affiché à l'écran.
+- **Bookmark the link** affiché en dessous — enregistrez-le sur l'écran d'accueil de la tablette, et il s'ouvre directement sur la liste des rendez-vous de ce dentiste à chaque fois, sans avoir à scanner à nouveau.
+- **Type the 4-digit PIN** affiché, sur la page qui s'ouvre lorsque la tablette visite l'adresse indiquée — pratique quand la tablette n'a pas d'appareil photo ou que vous êtes pressé.
+
+Quelle que soit la méthode choisie, la tablette se souvient du dentiste par la suite, donc il s'agit normalement d'une configuration unique par tablette.
+
+**L'utiliser pendant une visite.** La tablette affiche les rendez-vous du jour pour ce dentiste. Touchez un patient, écrivez la note à la main, puis touchez **Save** — le dessin s'attache instantanément à ce rendez-vous. Comme Clinique Dentaire utilise le **Tooth Chart** et les **Treatment Plans** au lieu d'une Note de Consultation, consultez un dessin enregistré depuis l'écran **Rendez-vous** : cliquez sur l'icône stylo (**Doctor's Pad Notes**) à côté de cette visite.
+
+**En cas de fuite d'un PIN, ou si vous retirez une ancienne tablette**, ouvrez **Provider Schedule**, sélectionnez le dentiste, et cliquez sur **Change PIN** — l'ancien PIN cesse immédiatement de fonctionner. Une tablette déjà connectée via le QR code ou le lien mis en favori continue de fonctionner, puisqu'elle n'a plus jamais besoin du PIN.

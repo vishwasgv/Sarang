@@ -116,6 +116,24 @@ describe('assertNotLocked', () => {
 
     expect(res).toBeNull()
   })
+
+  // REAL BUG found+fixed 2026-09-15: the error message displayed
+  // profile.lockDate.toISOString().slice(0,10) — the UTC calendar date,
+  // which shows one day EARLIER than the local date an admin actually set
+  // for any timezone ahead of UTC. This test uses a local lock date whose
+  // UTC calendar date differs (Dec 31 local vs. Jan 1 UTC round-trips
+  // safely either way at local midnight, so use a date + local constructor
+  // that only differs when read back via toISOString in a positive-offset
+  // timezone — the message must always echo the local date back.
+  it('shows the lock date in the error message as the local date it was set to, not the UTC-shifted one', async () => {
+    const lockDate = new Date(2025, 11, 31) // Dec 31, 2025 local
+    vi.mocked(getPrisma).mockReturnValue(makeDb(lockDate) as never)
+
+    const res = await assertNotLocked(new Date(2025, 11, 31))
+
+    const expectedLocalDate = `${lockDate.getFullYear()}-${String(lockDate.getMonth() + 1).padStart(2, '0')}-${String(lockDate.getDate()).padStart(2, '0')}`
+    expect(res?.error.message).toContain(expectedLocalDate)
+  })
 })
 
 describe('assertNotLockedOrThrow', () => {

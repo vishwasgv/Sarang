@@ -42,6 +42,13 @@
   .ticket button:disabled { opacity: 0.5; }
   .state-screen { padding: 60px 20px; text-align: center; color: #64748B; }
   .brand-footer { text-align: center; font-size: 11px; color: #94A3B8; padding: 16px; }
+  .code-card { max-width: 320px; margin: 40px auto; padding: 24px; background: #fff; border-radius: 16px; border: 1px solid #E2E8F0; text-align: center; }
+  .code-card .hint { font-size: 13px; color: #64748B; margin: 0 0 16px; }
+  .code-card label { display: block; font-size: 12px; font-weight: 700; color: #334155; margin-bottom: 6px; }
+  .code-input { width: 100%; font-size: 24px; letter-spacing: 6px; text-align: center; padding: 12px; border: 2px solid #E2E8F0; border-radius: 10px; box-sizing: border-box; }
+  .code-btn { width: 100%; margin-top: 12px; padding: 12px; border: none; border-radius: 10px; background: #00AEEF; color: #fff; font-weight: 700; font-size: 15px; }
+  .code-btn:disabled { opacity: 0.5; }
+  .code-error { display: none; color: #B91C1C; font-size: 13px; margin-top: 10px; }
 </style>
 </head>
 <body>
@@ -138,11 +145,39 @@
     }).then(function () { busyId = null; load() }).catch(function () { busyId = null; load() })
   }
 
+  function renderCodeEntry() {
+    document.getElementById('board-root').innerHTML =
+      '<div class="code-card">' +
+      '<p class="hint">Scan the QR code shown in Settings to connect this device — or, if that\'s not handy, enter the 6-digit access code instead. You only need to do this once.</p>' +
+      '<label for="code-input">6-digit access code</label>' +
+      '<input class="code-input" id="code-input" inputmode="numeric" pattern="[0-9]*" maxlength="6" placeholder="••••••">' +
+      '<button class="code-btn" id="code-submit">Connect</button>' +
+      '<div class="code-error" id="code-error"></div>' +
+      '</div>'
+    var input = document.getElementById('code-input')
+    input.addEventListener('input', function () { input.value = input.value.replace(/\D/g, '').slice(0, 6) })
+    document.getElementById('code-submit').addEventListener('click', function () {
+      var code = input.value.trim()
+      var box = document.getElementById('code-error')
+      box.style.display = 'none'
+      if (code.length !== 6) { box.textContent = 'Enter the 6-digit code.'; box.style.display = 'block'; return }
+      var btn = document.getElementById('code-submit')
+      btn.disabled = true
+      fetch('/api/kitchen/resolve-code', {
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ code: code })
+      }).then(function (r) { return r.json() }).then(function (res) {
+        btn.disabled = false
+        if (!res.success) { box.textContent = (res.error && res.error.message) || 'Could not connect.'; box.style.display = 'block'; return }
+        window.location.href = '/kitchen/' + res.data.token
+      }).catch(function () {
+        btn.disabled = false
+        box.textContent = 'Could not connect. Please check your WiFi connection.'
+        box.style.display = 'block'
+      })
+    })
+  }
+
   function load() {
-    if (!token) {
-      document.getElementById('board-root').innerHTML = '<div class="state-screen">Kitchen Display link is invalid. Ask a staff member to re-share it from Settings.</div>'
-      return
-    }
     fetch('/api/kitchen/' + token + '/board').then(function (r) { return r.json() }).then(function (res) {
       if (res.success) {
         render(res.data)
@@ -155,8 +190,15 @@
     })
   }
 
-  load()
-  setInterval(load, POLL_MS)
+  if (token) {
+    load()
+    setInterval(load, POLL_MS)
+  } else {
+    // No re-polling here — the code-entry form is a one-time state and must
+    // not be wiped out from under someone mid-type by the same 5s refresh
+    // the live board uses once connected.
+    renderCodeEntry()
+  }
 })()
 </script>
 </body>

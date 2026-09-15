@@ -3,7 +3,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../inventory.service', () => ({
-  inventoryService: { reduceStockTx: vi.fn(), addStockTx: vi.fn() }
+  inventoryService: { reduceStockTx: vi.fn(), addStockTx: vi.fn() },
+  applyLocationDeltaTx: vi.fn()
 }))
 vi.mock('../customer-ledger.service', () => ({
   customerLedgerService: { addEntry: vi.fn().mockResolvedValue(undefined), calculateBalance: vi.fn().mockResolvedValue(300) }
@@ -38,7 +39,7 @@ let sharedTx: {
   journalEntry: { findFirst: ReturnType<typeof vi.fn> }
   invoice: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> }
   inventory: { update: ReturnType<typeof vi.fn> }
-  inventoryMovement: { create: ReturnType<typeof vi.fn> }
+  inventoryMovement: { create: ReturnType<typeof vi.fn>; findMany: ReturnType<typeof vi.fn> }
   customerLedger: { findMany: ReturnType<typeof vi.fn> }
   payment: { updateMany: ReturnType<typeof vi.fn> }
   productBatch: { findFirst: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
@@ -47,6 +48,15 @@ let sharedTx: {
 }
 
 function makeDb(invoiceOverride?: Record<string, unknown>) {
+  const invoiceFixture = makeActiveInvoice(invoiceOverride ?? {})
+  // REAL BUG found+fixed 2026-09-15: cancelInvoice now restores stock by
+  // replaying the original SALE InventoryMovement rows, not invoice.items
+  // directly (wrong for a kit line — see billing.service.ts's own comment).
+  // Derived straight from the same items fixture so every test below stays
+  // in sync automatically; a test overriding items must not need to
+  // separately remember to override this too.
+  const saleMovements = (invoiceFixture.items as Array<{ productId: string; quantity: number }>)
+    .map((item) => ({ productId: item.productId, quantity: -item.quantity, locationId: null }))
   sharedTx = {
     // Phase 62 — Transaction Locking's assertNotLockedOrThrow reads this
     // inside the same transaction; a null lockDate means "not locked."
@@ -56,7 +66,7 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
     // (this invoice fixture predates GL auto-posting), a valid no-op.
     journalEntry: { findFirst: vi.fn().mockResolvedValue(null) },
     invoice: {
-      findUnique: vi.fn().mockResolvedValue(makeActiveInvoice(invoiceOverride ?? {})),
+      findUnique: vi.fn().mockResolvedValue(invoiceFixture),
       update: vi.fn().mockResolvedValue({}),
       // releaseTablesForInvoiceTx (2026-07-30 split-group fix) resolves the
       // invoice's split group via findMany before releasing its table(s) —
@@ -65,7 +75,7 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
       findMany: vi.fn().mockResolvedValue([{ id: 'inv-1', status: 'CANCELLED', paymentStatus: 'PAID' }])
     },
     inventory: { update: vi.fn().mockResolvedValue({ quantity: 52 }) },
-    inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }) },
+    inventoryMovement: { create: vi.fn().mockResolvedValue({ id: 'mov-1' }), findMany: vi.fn().mockResolvedValue(saleMovements) },
     customerLedger: { findMany: vi.fn().mockResolvedValue([]) },
     payment: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
     // Batch/serial restoration on cancel — no batches/sold-serials in these

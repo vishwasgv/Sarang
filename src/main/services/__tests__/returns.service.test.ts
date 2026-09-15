@@ -61,8 +61,14 @@ function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: u
         Promise.resolve({ id: 'ret-inv-1', ...data })
       ),
     },
-    inventoryMovement: { create: vi.fn() },
+    inventoryMovement: { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
     inventory: { upsert: vi.fn() },
+    // applyLocationDeltaTx (inventory.service.ts) — called for every stock
+    // restoration now (REAL BUG fix, 2026-09-15: LocationStock used to never
+    // be touched on returns at all). Falls back to the default Location when
+    // no explicit locationId is recovered from the original sale's movements.
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-default', isDefault: true }) },
+    locationStock: { upsert: vi.fn() },
     productBatch: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
     // restoreVariantStockTx (variant.service.ts) takes `tx` directly rather
     // than calling getPrisma() itself, so it runs for real against this same
@@ -389,6 +395,49 @@ describe('returns.service.createReturn', () => {
 
       expect(res.success).toBe(false)
       expect((res as { error: { code: string } }).error.code).toBe('RET-007')
+    })
+  })
+
+  // REAL BUG found+fixed 2026-09-15: a returned kit line used to credit the
+  // kit's own (never-decremented) Inventory row — createInvoice explodes a
+  // kit into per-component reduceStockTx calls and never touches the kit
+  // product's own stock at all — creating phantom stock while the real
+  // component stock actually taken was never restored. Fixed by exploding
+  // the kit (same helper createInvoice itself uses) scaled to the quantity
+  // actually being returned, restoring the real components instead.
+  describe('kit-aware returns (real bug fix)', () => {
+    function makeKitInvoice() {
+      return makeOriginalInvoice({
+        items: [
+          {
+            id: 'item-kit', productId: 'kit-1', quantity: 5, unitPrice: 500,
+            discountAmount: 0, taxRate: 18, variantId: null,
+            productName: 'Diwali Hamper',
+            product: { id: 'kit-1', productName: 'Diwali Hamper', productType: 'STANDARD', isKit: true }
+          },
+        ]
+      })
+    }
+
+    it('restores the real components (scaled to the quantity returned), never the kit\'s own stock', async () => {
+      const db = makeMockDb({ original: makeKitInvoice() })
+      db.kitComponent = { findMany: vi.fn().mockResolvedValue([
+        { componentProductId: 'comp-1', quantity: 2 },
+        { componentProductId: 'comp-2', quantity: 1 },
+      ]) }
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      // Returning 2 of the 5 kits sold — must restore 2*2=4 of comp-1 and 2*1=2 of comp-2.
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'kit-1', quantity: 2 }], 'Unwanted hamper')
+
+      expect(res.success).toBe(true)
+      expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        where: { productId: 'comp-1' }, update: { quantity: { increment: 4 } },
+      }))
+      expect(db.inventory.upsert).toHaveBeenCalledWith(expect.objectContaining({
+        where: { productId: 'comp-2' }, update: { quantity: { increment: 2 } },
+      }))
+      expect(db.inventory.upsert).not.toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'kit-1' } }))
     })
   })
 })

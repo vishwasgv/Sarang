@@ -1,11 +1,12 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Inbox, RefreshCw, QrCode, RotateCw, Copy } from 'lucide-react'
+import { Inbox, RefreshCw, QrCode, RotateCw, Copy, Wifi, Printer } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { printLanQrHtml } from '@shared/utils/print-branding'
 
 // Phase 58 §2 — Distributor field-rep order capture. Structural mirror of
 // KOTScreen.tsx's "Incoming Orders" panel (QR table ordering) — a rep's LAN
@@ -179,6 +180,18 @@ export function FieldOrdersScreen() {
                       <Copy size={13} />
                     </button>
                   </div>
+                  <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 mt-2">
+                    <Wifi size={13} className="shrink-0 mt-0.5" /> {t('distributor.fieldOrders.sameWifiDisclaimer')}
+                  </p>
+                  <button onClick={() => qrDataUrl && printLanQrHtml({
+                    title: 'Field Order Capture',
+                    subtitle: 'Scan to submit an order',
+                    qrDataUrl,
+                    url: captureUrl,
+                    disclaimer: t('distributor.fieldOrders.sameWifiDisclaimer'),
+                  })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors mt-2">
+                    <Printer size={12} /> {t('distributor.fieldOrders.print')}
+                  </button>
                 </div>
               </div>
             )}

@@ -87,4 +87,20 @@ export function register(handle: HandleFn): void {
     const qrDataUrl = await QRCode.toDataURL(captureUrl, { margin: 1, width: 320 })
     return { success: true, data: { qrDataUrl, captureUrl } }
   })
+
+  // Waiting-room display board (2026-09-15) — a second screen/TV in the
+  // waiting area, opened once and left running; no scanning needed after
+  // that (it's a kiosk display, nobody "logs in" to it).
+  handle('tokenQueue:generateDisplayLink', async () => {
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
+    const status = getTokenQueueServerStatus()
+    if (!status.running || status.lanUrls.length === 0) {
+      return { success: false, error: { code: 'TQ-041', message: 'Token queue is not currently running. Enable the Token Queue module in Settings first.' } }
+    }
+    const token = await getOrCreateTokenQueueToken()
+    const displayUrl = `${status.lanUrls[0]}/waiting-display/${token}`
+    const QRCode = await import('qrcode')
+    const qrDataUrl = await QRCode.toDataURL(displayUrl, { margin: 1, width: 320 })
+    return { success: true, data: { qrDataUrl, displayUrl } }
+  })
 }

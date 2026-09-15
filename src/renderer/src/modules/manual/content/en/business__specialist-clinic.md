@@ -43,3 +43,19 @@ Open **Reports → Second-Opinion Conversion** to see, of the visits you flagged
 Open **Reports → Case-Complexity Mix** to see the split between Routine and Complex cases over a date range — a stacked bar chart month by month, plus the total cases tagged, the Routine and Complex counts, and the overall Complex percentage. Only visits where you set the Case Complexity dropdown are counted; an untagged visit isn't assumed Routine, it's simply left out of the mix.
 
 If you use **Refer to Another Provider** to send a patient on within your own clinic, once that provider finalizes their own note on the referral appointment, its outcome appears back on your original note automatically — no separate lookup needed to find out what happened to a patient you referred out.
+
+## Doctor Pad — handwritten notes on a tablet
+
+Many specialists would rather write a diagnosis or prescription by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+
+**Connect a tablet, once.** Open **Provider Schedule**, pick the specialist, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
+
+- **Scan the QR code** shown on screen.
+- **Bookmark the link** shown underneath it — save it to the tablet's home screen and it opens straight to that specialist's queue every time, no scanning needed again.
+- **Type the 4-digit PIN** shown, on the page that opens when the tablet visits the address shown — handy when the tablet has no camera or you're in a hurry.
+
+Whichever way you connect, the tablet remembers the specialist from then on, so this is normally a one-time setup per tablet.
+
+**Using it during a consultation.** The tablet shows today's appointments for that specialist. Tap a patient, write the diagnosis or prescription by hand, and tap **Save** — the drawing attaches instantly to that patient's appointment, viewable right alongside the typed Consultation Note in its **Documents** section.
+
+**If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the specialist, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

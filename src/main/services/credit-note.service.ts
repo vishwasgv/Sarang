@@ -127,6 +127,9 @@ export const creditNoteService = {
               paymentStatus: newBalance <= 0.01 ? 'PAID' : currentInvoice.paymentStatus
             }
           })
+          // Persisted so update()/delete() can reverse exactly this figure
+          // later, not the full `amount` — see the field's own schema comment.
+          await tx.creditNote.update({ where: { id: created.id }, data: { appliedToInvoiceAmount: appliedToInvoice } })
         }
       }
 
@@ -247,7 +250,12 @@ export const creditNoteService = {
             where: { id: existing.invoiceId },
             select: { balanceAmount: true, totalAmount: true, paidAmount: true }
           })
-          const restoredBalance = Math.min(oldInv.totalAmount, oldInv.balanceAmount + existing.amount)
+          // Reverse exactly what was actually applied at creation/last-edit
+          // time (persisted on the row), not the full `amount` — `amount`
+          // can exceed what create()/this same block actually applied,
+          // since that's capped at the invoice's balance at the time. See
+          // the appliedToInvoiceAmount field's own schema comment.
+          const restoredBalance = Math.min(oldInv.totalAmount, oldInv.balanceAmount + (existing.appliedToInvoiceAmount ?? existing.amount))
           await tx.invoice.update({
             where: { id: existing.invoiceId },
             data: {
@@ -256,14 +264,15 @@ export const creditNoteService = {
             }
           })
         }
+        let newAppliedToInvoice: number | null = null
         if (newInvoiceId) {
           const newInv = await tx.invoice.findUniqueOrThrow({
             where: { id: newInvoiceId },
             select: { balanceAmount: true, paymentStatus: true }
           })
           if (newInv.balanceAmount > 0) {
-            const appliedToInvoice = Math.min(newInv.balanceAmount, newAmount)
-            const newBalance = newInv.balanceAmount - appliedToInvoice
+            newAppliedToInvoice = Math.min(newInv.balanceAmount, newAmount)
+            const newBalance = newInv.balanceAmount - newAppliedToInvoice
             await tx.invoice.update({
               where: { id: newInvoiceId },
               data: {
@@ -273,6 +282,7 @@ export const creditNoteService = {
             })
           }
         }
+        await tx.creditNote.update({ where: { id }, data: { appliedToInvoiceAmount: newAppliedToInvoice } })
       }
 
       return result
@@ -322,7 +332,10 @@ export const creditNoteService = {
           where: { id: cn.invoiceId },
           select: { balanceAmount: true, totalAmount: true, paidAmount: true }
         })
-        const restoredBalance = Math.min(inv.totalAmount, inv.balanceAmount + cn.amount)
+        // Reverse exactly what was actually applied, not the full `amount`
+        // — see appliedToInvoiceAmount's own schema comment (mirrors update()'s
+        // identical fix).
+        const restoredBalance = Math.min(inv.totalAmount, inv.balanceAmount + (cn.appliedToInvoiceAmount ?? cn.amount))
         await tx.invoice.update({
           where: { id: cn.invoiceId },
           data: {

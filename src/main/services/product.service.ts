@@ -467,6 +467,17 @@ export async function archiveProduct(id: string): Promise<ApiResponse> {
     if (activeInvoiceItems > 0) {
       return { success: false, error: { code: 'PRD-004', message: 'Cannot archive: product has active invoices.' } }
     }
+    // Zero-bug audit 2026-09-15, finding #12: getInventoryValue()/listInventory()
+    // both filter isActive:true, so archiving a product with real remaining stock
+    // silently dropped its cost-basis value from every inventory report while
+    // archived (the stock itself isn't lost — it reappears if reactivated — but
+    // owned value was understated in the meantime). Require stock to be cleared
+    // first, same "resolve the real-world state before hiding the record"
+    // convention as the active-invoice check right above.
+    const remainingStock = await db.inventory.findUnique({ where: { productId: id }, select: { quantity: true } })
+    if (remainingStock && remainingStock.quantity > 0) {
+      return { success: false, error: { code: 'PRD-006', message: `Cannot archive: ${remainingStock.quantity} unit(s) still in stock. Reduce stock to 0 first, or transfer/sell it, before archiving.` } }
+    }
     await db.product.update({ where: { id }, data: { isActive: false } })
     await logAction({ userId: getCurrentSession()?.userId, action: 'PRODUCT_ARCHIVED', entityType: 'Product', entityId: id })
     return { success: true }

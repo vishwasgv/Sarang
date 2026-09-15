@@ -8,13 +8,22 @@ import { buildWifiQrPayload } from '../../utils/wifi-qr.util'
 import { ensureQrOrderServerState, getServerStatus } from '../../server/qr-order-server'
 import {
   ensureKitchenDisplayServerState, getKitchenDisplayServerStatus,
-  getOrCreateKitchenDisplayToken, regenerateKitchenDisplayToken
+  getOrCreateKitchenDisplayToken, regenerateKitchenDisplayToken,
+  getOrCreateKitchenDisplayAccessCode, regenerateKitchenDisplayAccessCode
 } from '../../server/kitchen-display-server'
 import {
   ensureFieldOrderServerState, getFieldOrderServerStatus,
-  getOrCreateFieldOrderToken, regenerateFieldOrderToken
+  getOrCreateFieldOrderToken, regenerateFieldOrderToken,
+  getOrCreateFieldOrderAccessCode, regenerateFieldOrderAccessCode
 } from '../../server/field-order-server'
 import { ensureTokenQueueServerState } from '../../server/token-queue-server'
+import { ensureDoctorPadServerState, getDoctorPadServerStatus } from '../../server/doctor-pad-server'
+import { ensureOwnerViewServerState, getOwnerViewServerStatus } from '../../server/owner-view-server'
+import {
+  getOrCreateOwnerViewToken, regenerateOwnerViewToken,
+  getOrCreateOwnerViewAccessCode, regenerateOwnerViewAccessCode
+} from '../../services/owner-view.service'
+import * as doctorPadService from '../../services/doctor-pad.service'
 import * as fieldOrderService from '../../services/field-order.service'
 import * as distributorBeatService from '../../services/distributor-beat.service'
 import { getCustomerCreditRisk } from '../../services/distributor-credit-risk.service'
@@ -59,7 +68,7 @@ export function register(handle: HandleFn): void {
     const parsed = ChangeBusinessTypeSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
-    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState() }
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState(); await ensureDoctorPadServerState(); await ensureOwnerViewServerState() }
     return result
   })
 
@@ -70,7 +79,7 @@ export function register(handle: HandleFn): void {
     const result = await industryService.changeBusinessType(parsed.data.businessType, getCurrentSession()?.userId)
     // Phase 47: a business-type switch changes which enabledModules apply —
     // resync the QR-ordering server's running state either way.
-    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState() }
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState(); await ensureDoctorPadServerState(); await ensureOwnerViewServerState() }
     return result
   })
 
@@ -81,7 +90,7 @@ export function register(handle: HandleFn): void {
     const result = await industryService.updateEnabledModules(parsed.data.modules as industryService.TemplateModule[], getCurrentSession()?.userId)
     // Phase 47: toggling qr_table_ordering on/off must take effect immediately —
     // starts/stops the local HTTP server without requiring an app restart.
-    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState() }
+    if (result.success) { await ensureQrOrderServerState(); await ensureKitchenDisplayServerState(); await ensureFieldOrderServerState(); await ensureTokenQueueServerState(); await ensureDoctorPadServerState(); await ensureOwnerViewServerState() }
     return result
   })
 
@@ -125,7 +134,12 @@ export function register(handle: HandleFn): void {
   })
 
   handle('restaurant:createKOT', async (payload) => {
-    const deny = await requirePermission('restaurant.viewKOT'); if (deny) return deny
+    // Gated on restaurant.updateKOT, not the view-tier restaurant.viewKOT —
+    // this creates a new KOT row, and every default role granting viewKOT
+    // also grants updateKOT today, but a future view-only role must not be
+    // able to fabricate arbitrary KOTs. Same convention as print:kot in
+    // billing.handler.ts.
+    const deny = await requirePermission('restaurant.updateKOT'); if (deny) return deny
     const parsed = CreateKOTSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     // "Send to Kitchen" from an already-existing invoice (InvoiceDetailScreen)
@@ -297,6 +311,83 @@ export function register(handle: HandleFn): void {
     return { success: true, data: { qrDataUrl, orderUrl, wifiQrDataUrl, wifiSsid: wifiConfig?.ssid ?? null } }
   })
 
+  // 2026-09-15 — Doctor Pad. Founder was explicit that scanning a QR for
+  // every single patient visit, all day, is clumsy — so the desktop side
+  // offers BOTH a QR (fastest first-time connect) and a plain 4-digit PIN
+  // (works without a working camera/QR scanner) for the SAME one-time
+  // "connect this tablet" step; either one lands the tablet on a page that
+  // remembers itself via localStorage and never needs reconnecting.
+  handle('doctorPad:getEligibleProviders', async () => {
+    const deny = await requirePermission('appointments.manage'); if (deny) return deny
+    const providers = await doctorPadService.listDoctorPadEligibleProviders()
+    return { success: true, data: providers }
+  })
+
+  handle('doctorPad:getLinkForProvider', async (payload) => {
+    const deny = await requirePermission('appointments.manage'); if (deny) return deny
+    const { providerId } = (payload as { providerId?: string }) ?? {}
+    if (!providerId) return { success: false, error: { code: 'VAL-001', message: 'Provider is required.' } }
+
+    const status = getDoctorPadServerStatus()
+    if (!status.running || status.lanUrls.length === 0) {
+      return { success: false, error: { code: 'DP-010', message: 'Doctor Pad is not currently running. Enable it for this business type first.' } }
+    }
+    const [token, pin] = await Promise.all([
+      doctorPadService.getOrCreateDoctorPadToken(),
+      doctorPadService.getOrCreateProviderPin(providerId)
+    ])
+    const deepLinkUrl = `${status.lanUrls[0]}/doctor-pad/${token}/${providerId}`
+    const landingUrl = `${status.lanUrls[0]}/doctor-pad/${token}`
+    const QRCode = await import('qrcode')
+    const qrDataUrl = await QRCode.toDataURL(deepLinkUrl, { margin: 1, width: 320 })
+    return { success: true, data: { qrDataUrl, deepLinkUrl, landingUrl, pin } }
+  })
+
+  handle('doctorPad:regeneratePin', async (payload) => {
+    const deny = await requirePermission('appointments.manage'); if (deny) return deny
+    const { providerId } = (payload as { providerId?: string }) ?? {}
+    if (!providerId) return { success: false, error: { code: 'VAL-001', message: 'Provider is required.' } }
+    const pin = await doctorPadService.regenerateProviderPin(providerId)
+    return { success: true, data: { pin } }
+  })
+
+  // ── Owner View (phone/tablet, LAN, read-only) — Phase 72, built 2026-09-16 ──
+  // Universal/cross-cutting (not vertical-specific), gated on settings.modify
+  // like the module toggle itself, not a narrower vertical permission.
+
+  handle('ownerView:getStatus', async () => {
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
+    const status = getOwnerViewServerStatus()
+    const token = status.running ? await getOrCreateOwnerViewToken() : null
+    const accessCode = status.running ? await getOrCreateOwnerViewAccessCode() : null
+    return { success: true, data: { ...status, token, accessCode } }
+  })
+
+  handle('ownerView:regenerateToken', async () => {
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
+    const token = await regenerateOwnerViewToken()
+    return { success: true, data: { token } }
+  })
+
+  handle('ownerView:regenerateAccessCode', async () => {
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
+    const accessCode = await regenerateOwnerViewAccessCode()
+    return { success: true, data: { accessCode } }
+  })
+
+  handle('ownerView:generateQr', async () => {
+    const deny = await requirePermission('settings.modify'); if (deny) return deny
+    const status = getOwnerViewServerStatus()
+    if (!status.running || status.lanUrls.length === 0) {
+      return { success: false, error: { code: 'OV-010', message: 'Owner View is not currently running. Enable it in Settings first.' } }
+    }
+    const token = await getOrCreateOwnerViewToken()
+    const viewUrl = `${status.lanUrls[0]}/owner-view/${token}`
+    const QRCode = await import('qrcode')
+    const qrDataUrl = await QRCode.toDataURL(viewUrl, { margin: 1, width: 320 })
+    return { success: true, data: { qrDataUrl, viewUrl } }
+  })
+
   handle('restaurant:getWifiConfig', async () => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
     const config = await readWifiConfig()
@@ -343,13 +434,26 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
     const status = getKitchenDisplayServerStatus()
     const token = status.running ? await getOrCreateKitchenDisplayToken() : null
-    return { success: true, data: { ...status, token } }
+    const accessCode = status.running ? await getOrCreateKitchenDisplayAccessCode() : null
+    return { success: true, data: { ...status, token, accessCode } }
   })
 
   handle('restaurant:regenerateKitchenDisplayToken', async () => {
     const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
     const token = await regenerateKitchenDisplayToken()
     return { success: true, data: { token } }
+  })
+
+  // Zero-bug audit 2026-09-15 follow-up — same reasoning as Doctor Pad's PIN:
+  // a short code a frequent staff user can type when onboarding a new
+  // device, instead of the long hex token. Deliberately a separate secret
+  // from the token (regenerating one doesn't force re-onboarding devices
+  // that already used the other), same convention as Doctor Pad's provider
+  // PIN being independent of the doctor-pad token itself.
+  handle('restaurant:regenerateKitchenDisplayAccessCode', async () => {
+    const deny = await requirePermission('restaurant.manageTables'); if (deny) return deny
+    const accessCode = await regenerateKitchenDisplayAccessCode()
+    return { success: true, data: { accessCode } }
   })
 
   handle('restaurant:generateKitchenDisplayQr', async () => {
@@ -393,13 +497,22 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
     const status = getFieldOrderServerStatus()
     const token = status.running ? await getOrCreateFieldOrderToken() : null
-    return { success: true, data: { ...status, token } }
+    const accessCode = status.running ? await getOrCreateFieldOrderAccessCode() : null
+    return { success: true, data: { ...status, token, accessCode } }
   })
 
   handle('distributor:regenerateFieldOrderToken', async () => {
     const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
     const token = await regenerateFieldOrderToken()
     return { success: true, data: { token } }
+  })
+
+  // Zero-bug audit 2026-09-15 follow-up — same reasoning as Kitchen
+  // Display's own access code / Doctor Pad's PIN.
+  handle('distributor:regenerateFieldOrderAccessCode', async () => {
+    const deny = await requirePermission('distributor.manageFieldOrders'); if (deny) return deny
+    const accessCode = await regenerateFieldOrderAccessCode()
+    return { success: true, data: { accessCode } }
   })
 
   handle('distributor:generateFieldOrderQr', async () => {

@@ -37,3 +37,19 @@ Para ver como seus pacotes de sessões estão sendo usados entre todos os pacien
 Se um paciente vier encaminhado por um médico externo, a seção **Detalhes do Encaminhamento** da Nota de Consulta registra quem o encaminhou, a data e o motivo — campos de texto livre, já que o médico que encaminha geralmente está totalmente fora do Sarang. Se, em vez disso, você estiver direcionando um paciente a outro profissional dentro da sua própria clínica, use **Encaminhar para Outro Profissional** na nota dele para reservar um agendamento real vinculado, o mesmo mecanismo de encaminhamento interno usado em todos os tipos de negócio clínicos do Sarang.
 
 Assim que esse profissional finaliza sua própria nota no agendamento encaminhado, o resultado aparece automaticamente na sua nota original. Se essa nota estiver acompanhando o Escore de Dor e o Escore Funcional ao longo das sessões, o resultado mostrado não é apenas o comentário final dele — é um antes-e-depois quantificado ao longo de todo o curso do tratamento desde o encaminhamento (por exemplo, "Dor 7→3, Função 40→75 em 3 sessões"), para que você veja rapidamente se o encaminhamento realmente ajudou, não apenas que ele aconteceu.
+
+## Doctor Pad — notas manuscritas em um tablet
+
+Muitos fisioterapeutas preferem escrever uma nota à mão — um diagrama corporal, um esboço rápido de um exercício — em vez de digitá-la. O **Doctor Pad** transforma qualquer tablet no próprio Wi-Fi da sua clínica em um simples bloco de notas — sem hardware extra para comprar, e nada sai da rede da sua clínica.
+
+**Conecte um tablet, uma única vez.** Abra **Provider Schedule**, escolha o fisioterapeuta, e você verá um painel **Doctor Pad** com três formas de conectar um tablet — use a que for mais fácil:
+
+- **Scan the QR code** exibido na tela.
+- **Bookmark the link** exibido logo abaixo — salve-o na tela inicial do tablet e ele abre direto na fila daquele fisioterapeuta todas as vezes, sem precisar escanear de novo.
+- **Type the 4-digit PIN** exibido, na página que abre quando o tablet acessa o endereço mostrado — útil quando o tablet não tem câmera ou você está com pressa.
+
+Qualquer que seja a forma escolhida, o tablet lembra o fisioterapeuta a partir daí, então normalmente essa é uma configuração feita uma única vez por tablet.
+
+**Usando durante uma sessão.** O tablet mostra os agendamentos de hoje daquele fisioterapeuta. Toque em um paciente, desenhe ou escreva à mão, e toque em **Save** — o desenho é anexado instantaneamente ao agendamento daquele paciente, visível junto à Consultation Note digitada em sua seção **Documents**.
+
+**Se um PIN vazar, ou você estiver aposentando um tablet antigo**, abra **Provider Schedule**, selecione o fisioterapeuta, e clique em **Change PIN** — o PIN antigo para de funcionar imediatamente. Um tablet que já se conectou via código QR ou link salvo continua funcionando, já que ele nunca mais precisa do PIN.

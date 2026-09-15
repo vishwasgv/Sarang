@@ -639,6 +639,7 @@ const api: IpcChannels = {
     setWifiConfig: (p) => invoke('restaurant:setWifiConfig', p),
     getKitchenDisplayStatus: () => invoke('restaurant:getKitchenDisplayStatus'),
     regenerateKitchenDisplayToken: () => invoke('restaurant:regenerateKitchenDisplayToken'),
+    regenerateKitchenDisplayAccessCode: () => invoke('restaurant:regenerateKitchenDisplayAccessCode'),
     generateKitchenDisplayQr: () => invoke('restaurant:generateKitchenDisplayQr'),
     mergeTableIntoInvoice: (p) => invoke('restaurant:mergeTableIntoInvoice', p),
     getTableOrderSummary: (p) => invoke('restaurant:getTableOrderSummary', p),
@@ -652,6 +653,17 @@ const api: IpcChannels = {
     delete: (p) => invoke('reservations:delete', p),
     upcomingByTable: (p) => invoke('reservations:upcomingByTable', p),
   },
+  doctorPad: {
+    getEligibleProviders: () => invoke('doctorPad:getEligibleProviders'),
+    getLinkForProvider: (p) => invoke('doctorPad:getLinkForProvider', p),
+    regeneratePin: (p) => invoke('doctorPad:regeneratePin', p),
+  },
+  ownerView: {
+    getStatus: () => invoke('ownerView:getStatus'),
+    regenerateToken: () => invoke('ownerView:regenerateToken'),
+    regenerateAccessCode: () => invoke('ownerView:regenerateAccessCode'),
+    generateQr: () => invoke('ownerView:generateQr'),
+  },
   kitchenDisplay: {
     listDisplays: () => invoke('kitchenDisplay:listDisplays'),
     open: (p) => invoke('kitchenDisplay:open', p),
@@ -661,6 +673,7 @@ const api: IpcChannels = {
   distributor: {
     getFieldOrderStatus: () => invoke('distributor:getFieldOrderStatus'),
     regenerateFieldOrderToken: () => invoke('distributor:regenerateFieldOrderToken'),
+    regenerateFieldOrderAccessCode: () => invoke('distributor:regenerateFieldOrderAccessCode'),
     generateFieldOrderQr: () => invoke('distributor:generateFieldOrderQr'),
     listFieldOrderRequests: (p) => invoke('distributor:listFieldOrderRequests', p),
     acceptFieldOrderRequest: (p) => invoke('distributor:acceptFieldOrderRequest', p),
@@ -850,6 +863,7 @@ const api: IpcChannels = {
     listAll: (p) => invoke('documents:listAll', p),
     delete: (p) => invoke('documents:delete', p),
     open: (p) => invoke('documents:open', p),
+    print: (p) => invoke('documents:print', p),
   },
   // Phase 17 — HR & Attendance
   hr: {
@@ -1164,6 +1178,7 @@ const api: IpcChannels = {
     getServerStatus: () => invoke('tokenQueue:getServerStatus'),
     regenerateServerToken: () => invoke('tokenQueue:regenerateServerToken'),
     generateServerQr: () => invoke('tokenQueue:generateServerQr'),
+    generateDisplayLink: () => invoke('tokenQueue:generateDisplayLink'),
   },
   // Phase 50 — Diagnostic & Pathology Labs
   labTestOrders: {

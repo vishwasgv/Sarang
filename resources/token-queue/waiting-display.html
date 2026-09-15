@@ -1,0 +1,79 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Now Serving</title>
+<style>
+  :root { color-scheme: dark; }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body {
+    margin: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+    background: #0F172A; color: #fff; display: flex; flex-direction: column; align-items: center;
+    justify-content: center; text-align: center; padding: 24px;
+  }
+  h1 { font-size: clamp(20px, 3vw, 32px); font-weight: 700; margin: 0 0 8px; color: #94A3B8; }
+  .now-serving-label { font-size: clamp(16px, 2.2vw, 24px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #38BDF8; margin: 0 0 16px; }
+  .now-serving-number { font-size: clamp(90px, 22vw, 260px); font-weight: 900; color: #00AEEF; line-height: 1; margin: 0; }
+  .empty-note { font-size: clamp(24px, 4vw, 48px); color: #64748B; font-weight: 700; margin: 20px 0; }
+  .up-next { margin-top: 48px; }
+  .up-next-label { font-size: clamp(14px, 1.6vw, 20px); font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; color: #64748B; margin: 0 0 14px; }
+  .up-next-numbers { display: flex; gap: 16px; justify-content: center; flex-wrap: wrap; }
+  .up-next-numbers span {
+    font-size: clamp(28px, 5vw, 56px); font-weight: 800; color: #E2E8F0;
+    background: #1E293B; border-radius: 16px; padding: 8px 28px;
+  }
+  .brand-footer { position: fixed; bottom: 14px; left: 0; right: 0; text-align: center; font-size: 13px; color: #475569; }
+</style>
+</head>
+<body>
+<h1 id="business-name">Loading…</h1>
+<div class="now-serving-label">Now Serving</div>
+<div id="serving-area">
+  <p class="now-serving-number">—</p>
+</div>
+<div class="up-next" id="up-next-area"></div>
+<div class="brand-footer">Powered by Sarang Business OS Lite · Aszurex</div>
+
+<script>
+(function () {
+  var pathParts = window.location.pathname.split('/').filter(Boolean) // ['waiting-display','<token>']
+  var token = pathParts.length >= 2 ? pathParts[1] : ''
+  var POLL_MS = 4000
+
+  function apiGet(path) { return fetch('/api/token-queue/' + token + path).then(function (r) { return r.json() }) }
+
+  apiGet('/business').then(function (res) {
+    if (res.success) document.getElementById('business-name').textContent = res.data.businessName
+  }).catch(function () {})
+
+  function render(data) {
+    var servingArea = document.getElementById('serving-area')
+    servingArea.innerHTML = data.currentToken
+      ? '<p class="now-serving-number">' + data.currentToken + '</p>'
+      : '<p class="empty-note">No token called yet</p>'
+
+    var upNextArea = document.getElementById('up-next-area')
+    var upcoming = (data.waitingNumbers || []).slice(0, 6)
+    if (upcoming.length === 0) {
+      upNextArea.innerHTML = ''
+      return
+    }
+    upNextArea.innerHTML =
+      '<div class="up-next-label">Up Next</div>' +
+      '<div class="up-next-numbers">' + upcoming.map(function (n) { return '<span>' + n + '</span>' }).join('') + '</div>'
+  }
+
+  function poll() {
+    apiGet('/display-status').then(function (res) {
+      if (res.success) render(res.data)
+    }).catch(function () {}).then(function () {
+      setTimeout(poll, POLL_MS)
+    })
+  }
+  poll()
+})()
+</script>
+</body>
+</html>

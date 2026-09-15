@@ -93,6 +93,9 @@ export function BackupPromptScreen({ onDone }: BackupPromptScreenProps) {
           <p className="text-sm text-slate-600 dark:text-slate-300">
             {t('backup.promptAdvice')}
           </p>
+          <p className="text-xs text-slate-400">
+            {t('backup.storageTip')}
+          </p>
 
           <div className="flex flex-col sm:flex-row gap-3 pt-2">
             <Button

@@ -2,7 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber, SequenceContendedError } from './sequence.service'
 import { billingService } from './billing.service'
-import { inventoryService } from './inventory.service'
+import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { sumCurrency } from './currency.service'
 
@@ -443,6 +443,15 @@ export async function removeJobCardPart(id: string, userId?: string) {
         where: { productId: part.productId },
         data: { quantity: { increment: part.quantity } },
       })
+      // REAL BUG found+fixed 2026-09-15: the original consumption
+      // (addJobCardPart -> reduceStockTx) also decrements LocationStock —
+      // this reversal restored the aggregate Inventory.quantity but never
+      // had a counterpart for LocationStock, letting it silently drift low
+      // forever (same bug class variant.service.ts's restoreVariantStockTx
+      // already closed for per-variant stock; see that function's own
+      // comment). addJobCardPart never passes a locationId, so it defaults
+      // to the default location — restore there too.
+      await applyLocationDeltaTx(tx, part.productId, part.quantity)
       await tx.jobCardPart.delete({ where: { id } })
     })
 

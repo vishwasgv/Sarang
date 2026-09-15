@@ -564,6 +564,7 @@ export function BackupScreen() {
             <p className="font-mono text-xs bg-slate-100 dark:bg-slate-800 px-2 py-1.5 rounded break-all">
               {destination?.effectiveDir ?? '…'}
             </p>
+            <p className="text-xs text-slate-400">{t('backup.storageTip')}</p>
             {destination?.usedFallback && destination.configuredDir && (
               <p className="text-xs text-amber-600 dark:text-amber-400 flex items-center gap-1">
                 <AlertTriangle size={12} /> {t('backup.destinationUnreachable', { path: destination.configuredDir })}

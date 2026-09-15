@@ -2,7 +2,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
-vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn() } }))
+vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn() }, applyLocationDeltaTx: vi.fn() }))
 vi.mock('../customer-ledger.service', () => ({ customerLedgerService: { addEntry: vi.fn() } }))
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
 vi.mock('../notification.service', () => ({ createNotification: vi.fn() }))
@@ -21,7 +21,7 @@ vi.mock('../restaurant.service', async () => {
 
 import { getPrisma } from '../../database/db'
 import { isModuleEnabled } from '../industry-template.service'
-import { inventoryService } from '../inventory.service'
+import { inventoryService, applyLocationDeltaTx } from '../inventory.service'
 import { billingService } from '../billing.service'
 import { generateLicenseKey } from '../license.service'
 import { getCustomerCreditRisk } from '../distributor-credit-risk.service'
@@ -1443,5 +1443,103 @@ describe('billingService.getFrequentlySoldProducts', () => {
     const products = (res as { data: { products: Array<{ id: string }> } }).data.products
     expect(products).toHaveLength(1)
     expect(products[0].id).toBe('p1')
+  })
+})
+
+// REAL BUG found+fixed 2026-09-15: cancelInvoice used to restore stock by
+// replaying invoice.items directly — wrong for a kit line (createInvoice
+// never decrements the kit's own Inventory row at all, only its exploded
+// components, so replaying credited phantom stock to the kit and never
+// restored the real component stock that was taken) and never touched
+// LocationStock at all (silently drifting it from the aggregate
+// Inventory.quantity on every cancellation). Fixed by replaying the
+// original SALE InventoryMovement rows instead — the authoritative record
+// of exactly what was decremented, from which location, kit or not.
+describe('billingService.cancelInvoice — inventory/location restoration', () => {
+  function makeCancelDb(opts: {
+    items?: Array<{ id: string; productId: string; quantity: number; variantId?: string | null; product: Record<string, unknown> }>
+    saleMovements?: Array<{ productId: string; quantity: number; locationId: string | null }>
+    customerId?: string | null
+  } = {}) {
+    const db: Record<string, any> = {
+      invoice: {
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'inv-1', invoiceNumber: 'INV-000001', invoiceType: 'RETAIL', status: 'ACTIVE',
+          customerId: opts.customerId ?? null, notes: null, invoiceDate: new Date(),
+          items: opts.items ?? [{ id: 'item-1', productId: 'prod-1', quantity: 5, variantId: null, product: { productType: 'STANDARD', isKit: false } }],
+          payments: [],
+        }),
+        // releaseTablesForInvoiceTx (restaurant.service.ts) runs for real
+        // and queries the split-invoice group — empty group, trivially
+        // "all settled" (Array.prototype.every on []), harmless no-op here.
+        findMany: vi.fn().mockResolvedValue([]),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ lockDate: null }) },
+      journalEntry: { findFirst: vi.fn().mockResolvedValue(null) },
+      inventoryMovement: {
+        findMany: vi.fn().mockResolvedValue(opts.saleMovements?.map((m, i) => ({ id: `mv-${i}`, ...m })) ?? []),
+        create: vi.fn().mockResolvedValue({}),
+      },
+      inventory: { update: vi.fn().mockResolvedValue({}) },
+      productVariant: { update: vi.fn().mockResolvedValue({}) },
+      productBatch: { findFirst: vi.fn().mockResolvedValue(null) },
+      productSerial: { findMany: vi.fn().mockResolvedValue([]) },
+      customerLedger: { findMany: vi.fn().mockResolvedValue([]) },
+      payment: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    }
+    db.$transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(db))
+    return db
+  }
+
+  it('restores a plain STANDARD line from its own sale movement, including LocationStock', async () => {
+    const db = makeCancelDb({
+      items: [{ id: 'item-1', productId: 'prod-1', quantity: 5, variantId: null, product: { productType: 'STANDARD', isKit: false } }],
+      saleMovements: [{ productId: 'prod-1', quantity: -5, locationId: 'loc-2' }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.cancelInvoice({ invoiceId: 'inv-1', reason: 'Customer changed mind' })
+
+    expect(res.success).toBe(true)
+    expect(db.inventory.update).toHaveBeenCalledWith({ where: { productId: 'prod-1' }, data: { quantity: { increment: 5 } } })
+    expect(applyLocationDeltaTx).toHaveBeenCalledWith(db, 'prod-1', 5, 'loc-2')
+  })
+
+  it('restores a kit line by crediting the real components, never the kit\'s own (never-decremented) stock', async () => {
+    const db = makeCancelDb({
+      items: [{ id: 'item-1', productId: 'kit-1', quantity: 3, variantId: null, product: { productType: 'STANDARD', isKit: true } }],
+      // Mirrors what reduceStockTx actually wrote at sale time for a kit
+      // line: one SALE movement per exploded component, never one for the
+      // kit's own productId.
+      saleMovements: [
+        { productId: 'comp-1', quantity: -6, locationId: null },
+        { productId: 'comp-2', quantity: -3, locationId: null },
+      ],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.cancelInvoice({ invoiceId: 'inv-1', reason: 'Damaged hamper' })
+
+    expect(res.success).toBe(true)
+    expect(db.inventory.update).toHaveBeenCalledWith({ where: { productId: 'comp-1' }, data: { quantity: { increment: 6 } } })
+    expect(db.inventory.update).toHaveBeenCalledWith({ where: { productId: 'comp-2' }, data: { quantity: { increment: 3 } } })
+    expect(db.inventory.update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'kit-1' } }))
+    expect(applyLocationDeltaTx).toHaveBeenCalledWith(db, 'comp-1', 6, undefined)
+    expect(applyLocationDeltaTx).toHaveBeenCalledWith(db, 'comp-2', 3, undefined)
+  })
+
+  it('restores per-variant stock only for a real non-kit line', async () => {
+    const db = makeCancelDb({
+      items: [{ id: 'item-1', productId: 'prod-1', quantity: 2, variantId: 'var-1', product: { productType: 'STANDARD', isKit: false } }],
+      saleMovements: [{ productId: 'prod-1', quantity: -2, locationId: null }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.cancelInvoice({ invoiceId: 'inv-1', reason: 'Wrong size' })
+
+    expect(res.success).toBe(true)
+    expect(db.productVariant.update).toHaveBeenCalledWith({ where: { id: 'var-1' }, data: { stockQty: { increment: 2 } } })
   })
 })

@@ -37,3 +37,19 @@ Pour voir comment vos forfaits de séances sont utilisés parmi tous les patient
 Si un patient vient chez vous référé par un médecin extérieur, la section **Détails de Référence** de la Note de Consultation enregistre qui l'a référé, la date, et pourquoi — des champs en texte libre, puisque le médecin référent est généralement entièrement extérieur à Sarang. Si à l'inverse vous orientez un patient vers un autre praticien au sein de votre propre clinique, utilisez **Référer à un Autre Praticien** sur sa note pour réserver un vrai rendez-vous lié, le même mécanisme de référence intégré à l'application utilisé dans tous les types d'activité cliniques de Sarang.
 
 Une fois que ce praticien finalise sa propre note sur le rendez-vous référé, son résultat apparaît automatiquement sur votre note d'origine. Si cette note suit le Score de Douleur et le Score Fonctionnel au fil des séances, le résultat affiché n'est pas juste sa remarque finale — c'est un avant-après quantifié sur tout le parcours de traitement depuis la référence (par exemple, « Douleur 7→3, Fonction 40→75 sur 3 séances »), pour que vous puissiez voir d'un coup d'œil si la référence a réellement aidé, pas seulement qu'elle a eu lieu.
+
+## Doctor Pad — notes manuscrites sur tablette
+
+Beaucoup de physiothérapeutes préfèrent écrire une note à la main — un schéma corporel, un croquis rapide d'un exercice — plutôt que de la taper. **Doctor Pad** transforme n'importe quelle tablette sur le Wi-Fi de votre clinique en un simple bloc-notes — aucun matériel supplémentaire à acheter, et rien ne quitte le réseau de votre clinique.
+
+**Connecter une tablette, une seule fois.** Ouvrez **Provider Schedule**, choisissez le physiothérapeute, et vous verrez un panneau **Doctor Pad** avec trois façons de connecter une tablette — utilisez celle qui vous convient le mieux :
+
+- **Scan the QR code** affiché à l'écran.
+- **Bookmark the link** affiché en dessous — enregistrez-le sur l'écran d'accueil de la tablette, et il s'ouvre directement sur la liste des rendez-vous de ce physiothérapeute à chaque fois, sans avoir à scanner à nouveau.
+- **Type the 4-digit PIN** affiché, sur la page qui s'ouvre lorsque la tablette visite l'adresse indiquée — pratique quand la tablette n'a pas d'appareil photo ou que vous êtes pressé.
+
+Quelle que soit la méthode choisie, la tablette se souvient du physiothérapeute par la suite, donc il s'agit normalement d'une configuration unique par tablette.
+
+**L'utiliser pendant une séance.** La tablette affiche les rendez-vous du jour pour ce physiothérapeute. Touchez un patient, dessinez ou écrivez à la main, puis touchez **Save** — le dessin s'attache instantanément au rendez-vous de ce patient, consultable juste à côté de la Note de Consultation tapée, dans sa section **Documents**.
+
+**En cas de fuite d'un PIN, ou si vous retirez une ancienne tablette**, ouvrez **Provider Schedule**, sélectionnez le physiothérapeute, et cliquez sur **Change PIN** — l'ancien PIN cesse immédiatement de fonctionner. Une tablette déjà connectée via le QR code ou le lien mis en favori continue de fonctionner, puisqu'elle n'a plus jamais besoin du PIN.

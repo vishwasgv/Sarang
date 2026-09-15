@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Paperclip, Trash2, ExternalLink, FileText, Image, FileSpreadsheet, RefreshCw, UploadCloud } from 'lucide-react'
+import { Paperclip, Trash2, ExternalLink, FileText, Image, FileSpreadsheet, RefreshCw, UploadCloud, Printer } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -46,6 +46,7 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState<DocRecord | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [printingId, setPrintingId] = useState<string | null>(null)
 
   useEffect(() => { if (entityId) load() }, [entityId])
 
@@ -134,6 +135,23 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
     }
   }
 
+  async function handlePrint(id: string) {
+    setPrintingId(id)
+    try {
+      const res = await api.documents.print({ id })
+      if (!res.success) {
+        const msg = t('documents.couldNotPrint')
+        setError(msg)
+        toastError(t('common.error'), msg)
+      }
+    } catch {
+      setError(t('documents.couldNotPrint'))
+      toastError(t('common.error'), t('documents.couldNotPrint'))
+    } finally {
+      setPrintingId(null)
+    }
+  }
+
   return (
     <div className={cn('space-y-3', compact ? '' : 'mt-4')}>
       <div className="flex items-center justify-between">
@@ -182,6 +200,13 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
                   title={t('documents.open')}>
                   <ExternalLink size={13} />
                 </button>
+                {doc.mimeType.startsWith('image/') && (
+                  <button onClick={() => handlePrint(doc.id)} disabled={printingId === doc.id}
+                    className="p-1.5 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/5 transition-colors disabled:opacity-50"
+                    title={t('documents.print')}>
+                    {printingId === doc.id ? <RefreshCw size={13} className="animate-spin" /> : <Printer size={13} />}
+                  </button>
+                )}
                 <button onClick={() => setConfirmDelete(doc)} disabled={deletingId === doc.id}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-danger hover:bg-danger/5 transition-colors"
                   title={t('documents.delete')}>

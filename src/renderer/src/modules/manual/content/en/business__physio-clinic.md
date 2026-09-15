@@ -37,3 +37,19 @@ To see how your session packs are being used across every patient, open **Report
 If a patient comes to you referred by an outside doctor, the Consultation Note's **Referral Details** section records who referred them, the date, and why — free-text fields, since the referring doctor is usually outside Sarang entirely. If instead you're routing a patient to another provider within your own clinic, use **Refer to Another Provider** on their note to book a real linked appointment, the same in-app referral mechanism used across Sarang's clinical business types.
 
 Once that provider finalizes their own note on the referral appointment, its outcome appears back on your original note automatically. If that note is tracking Pain Score and Functional Score across sessions, the outcome shown isn't just their closing remark — it's a quantified before-and-after across the whole course of treatment since the referral (for example, "Pain 7→3, Function 40→75 across 3 sessions"), so you can see at a glance whether the referral actually helped, not just that it happened.
+
+## Doctor Pad — handwritten notes on a tablet
+
+Many physiotherapists would rather write a note by hand — a body diagram, a quick sketch of an exercise — than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+
+**Connect a tablet, once.** Open **Provider Schedule**, pick the physiotherapist, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
+
+- **Scan the QR code** shown on screen.
+- **Bookmark the link** shown underneath it — save it to the tablet's home screen and it opens straight to that physiotherapist's queue every time, no scanning needed again.
+- **Type the 4-digit PIN** shown, on the page that opens when the tablet visits the address shown — handy when the tablet has no camera or you're in a hurry.
+
+Whichever way you connect, the tablet remembers the physiotherapist from then on, so this is normally a one-time setup per tablet.
+
+**Using it during a session.** The tablet shows today's appointments for that physiotherapist. Tap a patient, draw or write by hand, and tap **Save** — the drawing attaches instantly to that patient's appointment, viewable right alongside the typed Consultation Note in its **Documents** section.
+
+**If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the physiotherapist, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

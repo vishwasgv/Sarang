@@ -3,7 +3,7 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
-import { createToken, getTodayQueue } from '../token-queue.service'
+import { createToken, getTodayQueue, getDisplayBoardStatus } from '../token-queue.service'
 
 // Regression coverage for the Phase 24 re-audit finding: createToken's
 // "read the last token number, then create" wasn't wrapped in a transaction —
@@ -109,5 +109,48 @@ describe('token-queue.service — isUrgent', () => {
     expect(db.tokenQueue.findMany).toHaveBeenCalledWith(expect.objectContaining({
       orderBy: [{ isUrgent: 'desc' }, { tokenNumber: 'asc' }],
     }))
+  })
+})
+
+// Waiting-room display board — must never leak patient names/phone/notes,
+// since this feeds an unauthenticated LAN page anyone in the waiting room can load.
+describe('token-queue.service — getDisplayBoardStatus', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('returns the CALLED token number as currentToken and WAITING numbers only, in order', async () => {
+    const db = {
+      tokenQueue: {
+        findMany: vi.fn().mockResolvedValue([
+          { tokenNumber: 3, status: 'CALLED', patientName: 'Should Not Appear' },
+          { tokenNumber: 4, status: 'WAITING', patientName: 'Should Not Appear' },
+          { tokenNumber: 5, status: 'WAITING', patientName: 'Should Not Appear' },
+          { tokenNumber: 2, status: 'SEEN', patientName: 'Should Not Appear' },
+        ]),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getDisplayBoardStatus('2026-09-15')
+
+    expect(result).toEqual({ currentToken: 3, waitingNumbers: [4, 5] })
+    expect(JSON.stringify(result)).not.toContain('Should Not Appear')
+  })
+
+  it('returns null currentToken when nothing has been called yet', async () => {
+    const db = { tokenQueue: { findMany: vi.fn().mockResolvedValue([{ tokenNumber: 1, status: 'WAITING' }]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getDisplayBoardStatus()
+
+    expect(result).toEqual({ currentToken: null, waitingNumbers: [1] })
+  })
+
+  it('degrades to an empty board instead of throwing when the query fails', async () => {
+    const db = { tokenQueue: { findMany: vi.fn().mockRejectedValue(new Error('db down')) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await getDisplayBoardStatus()
+
+    expect(result).toEqual({ currentToken: null, waitingNumbers: [] })
   })
 })

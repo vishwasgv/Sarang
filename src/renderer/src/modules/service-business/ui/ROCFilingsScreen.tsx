@@ -7,6 +7,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { useIndustryStore } from '@app/store/industry.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
@@ -201,6 +202,11 @@ function currentFinancialYear(): string {
 
 export default function ROCFilingsScreen(): React.JSX.Element {
   const { error: toastError, success: toastSuccess, info: toastInfo } = useNotificationStore()
+  // Zero-bug audit 2026-09-15, finding #14: 'board_meetings' was declared and
+  // granted by default but never actually checked anywhere — wired up here so
+  // the flag is honest and an owner can turn Board Meetings off from Settings
+  // without it silently doing nothing.
+  const boardMeetingsEnabled = useIndustryStore((s) => s.isModuleEnabled('board_meetings'))
   const [tab, setTab] = useState<'filings' | 'meetings' | 'rollup'>('filings')
 
   // ROC Filings state
@@ -659,12 +665,12 @@ export default function ROCFilingsScreen(): React.JSX.Element {
         <div className="grid grid-cols-3 gap-3 mt-4">
           <KpiCard label="Pending Filings" value={pendingFilings} color="warning" />
           <KpiCard label="Filed / Acknowledged" value={filedFilings} color="success" />
-          <KpiCard label="Meetings in 30 Days" value={upcomingMtgs} color="brand" />
+          {boardMeetingsEnabled && <KpiCard label="Meetings in 30 Days" value={upcomingMtgs} color="brand" />}
         </div>
 
         {/* Tabs */}
         <div className="flex gap-1 mt-4 border-b border-gray-200 dark:border-slate-700">
-          {[{ key: 'filings', label: 'ROC Filings', icon: FileStack }, { key: 'meetings', label: 'Board Meetings', icon: Calendar }, { key: 'rollup', label: 'Compliance Rollup', icon: CheckSquare }].map(({ key, label, icon: Icon }) => (
+          {[{ key: 'filings', label: 'ROC Filings', icon: FileStack }, ...(boardMeetingsEnabled ? [{ key: 'meetings', label: 'Board Meetings', icon: Calendar }] : []), { key: 'rollup', label: 'Compliance Rollup', icon: CheckSquare }].map(({ key, label, icon: Icon }) => (
             <button
               key={key}
               onClick={() => setTab(key as 'filings' | 'meetings' | 'rollup')}

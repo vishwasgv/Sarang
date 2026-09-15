@@ -1070,6 +1070,12 @@ export function VisitNoteScreen() {
               <DocumentPanel entityType="VISIT_NOTE" entityId={note.id} compact />
             </Section>
           )}
+
+          {appointmentId && (
+            <Section title="Doctor Pad Notes">
+              <DocumentPanel entityType="APPOINTMENT" entityId={appointmentId} compact />
+            </Section>
+          )}
         </div>
       </div>
 

@@ -43,3 +43,19 @@ Ouvrez **Reports → Second-Opinion Conversion** pour voir, parmi les visites qu
 Ouvrez **Reports → Case-Complexity Mix** pour voir la répartition entre cas Routiniers et Complexes sur une plage de dates — un graphique en barres empilées mois par mois, plus le total des cas étiquetés, les décomptes Routinier et Complexe, et le pourcentage global de Complexe. Seules les visites où vous avez défini le menu Case Complexity sont comptées ; une visite non étiquetée n'est pas supposée Routinière, elle est simplement laissée de côté du mix.
 
 Si vous utilisez **Refer to Another Provider** pour envoyer un patient au sein de votre propre clinique, une fois que ce praticien finalise sa propre note sur le rendez-vous de référence, son résultat apparaît automatiquement sur votre note d'origine — sans recherche séparée nécessaire pour savoir ce qui est arrivé à un patient que vous avez référé.
+
+## Doctor Pad — notes manuscrites sur tablette
+
+Beaucoup de spécialistes préfèrent écrire un diagnostic ou une ordonnance à la main plutôt que de le taper. **Doctor Pad** transforme n'importe quelle tablette sur le Wi-Fi de votre clinique en un simple bloc-notes — aucun matériel supplémentaire à acheter, et rien ne quitte le réseau de votre clinique.
+
+**Connecter une tablette, une seule fois.** Ouvrez **Provider Schedule**, choisissez le spécialiste, et vous verrez un panneau **Doctor Pad** avec trois façons de connecter une tablette — utilisez celle qui vous convient le mieux :
+
+- **Scan the QR code** affiché à l'écran.
+- **Bookmark the link** affiché en dessous — enregistrez-le sur l'écran d'accueil de la tablette, et il s'ouvre directement sur la liste des rendez-vous de ce spécialiste à chaque fois, sans avoir à scanner à nouveau.
+- **Type the 4-digit PIN** affiché, sur la page qui s'ouvre lorsque la tablette visite l'adresse indiquée — pratique quand la tablette n'a pas d'appareil photo ou que vous êtes pressé.
+
+Quelle que soit la méthode choisie, la tablette se souvient du spécialiste par la suite, donc il s'agit normalement d'une configuration unique par tablette.
+
+**L'utiliser pendant une consultation.** La tablette affiche les rendez-vous du jour pour ce spécialiste. Touchez un patient, écrivez le diagnostic ou l'ordonnance à la main, puis touchez **Save** — le dessin s'attache instantanément au rendez-vous de ce patient, consultable juste à côté de la Note de Consultation tapée, dans sa section **Documents**.
+
+**En cas de fuite d'un PIN, ou si vous retirez une ancienne tablette**, ouvrez **Provider Schedule**, sélectionnez le spécialiste, et cliquez sur **Change PIN** — l'ancien PIN cesse immédiatement de fonctionner. Une tablette déjà connectée via le QR code ou le lien mis en favori continue de fonctionner, puisqu'elle n'a plus jamais besoin du PIN.

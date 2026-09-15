@@ -34,6 +34,9 @@ const GET_RATE_LIMIT_MAX_REQUESTS = 30
 // behaviour here (unlike qr-order-server.ts's POST /api/order, submitted at
 // most once per table visit) — a materially higher cap than that endpoint's.
 const STATUS_RATE_LIMIT_MAX_REQUESTS = 60
+// Deliberately low, own strict bucket — a 6-digit code is more brute-forceable
+// than the 24-char hex token, same reasoning as Doctor Pad's PIN_RATE_LIMIT.
+const CODE_RATE_LIMIT_MAX_REQUESTS = 10
 
 let servers: http.Server[] = []
 let activePort: number | null = null
@@ -102,7 +105,42 @@ export async function regenerateKitchenDisplayToken(): Promise<string> {
   return token
 }
 
-function isRateLimited(ip: string, bucket: 'status' | 'get', max: number): boolean {
+// Zero-bug audit 2026-09-15 follow-up: the 24-character hex token above is
+// fine to bookmark once via QR, but genuinely painful to type by hand when
+// onboarding a NEW device (a replacement kitchen tablet, a second staff
+// phone) with no working camera. Same fix already shipped for Doctor Pad —
+// a short, memorable access code that resolves to the real token, so a
+// frequent (staff-only — never shown to customers) user can type a few
+// digits instead of a long hex string or hunting for the QR sheet again.
+function generateAccessCode(): string {
+  return String(Math.floor(100000 + Math.random() * 900000)) // 6 digits, never zero-padded-looking
+}
+
+export async function getOrCreateKitchenDisplayAccessCode(): Promise<string> {
+  const db = getPrisma()
+  const existing = await db.setting.findUnique({ where: { settingKey: 'kitchen_display_access_code' } })
+  if (existing?.settingValue) return existing.settingValue
+  const code = generateAccessCode()
+  await db.setting.upsert({
+    where: { settingKey: 'kitchen_display_access_code' },
+    create: { settingKey: 'kitchen_display_access_code', settingValue: code },
+    update: { settingValue: code }
+  })
+  return code
+}
+
+export async function regenerateKitchenDisplayAccessCode(): Promise<string> {
+  const db = getPrisma()
+  const code = generateAccessCode()
+  await db.setting.upsert({
+    where: { settingKey: 'kitchen_display_access_code' },
+    create: { settingKey: 'kitchen_display_access_code', settingValue: code },
+    update: { settingValue: code }
+  })
+  return code
+}
+
+function isRateLimited(ip: string, bucket: 'status' | 'get' | 'code', max: number): boolean {
   const key = `${ip}|${bucket}`
   const now = Date.now()
   const timestamps = (requestLog.get(key) ?? []).filter(t => now - t < RATE_LIMIT_WINDOW_MS)
@@ -205,6 +243,35 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
       if (html === null) { res.writeHead(404); res.end('Not found'); return }
       res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
       res.end(html)
+      return
+    }
+
+    // GET /kitchen (no token) — same static page, served bare so a brand-new
+    // device with no bookmark yet can reach the "enter the access code"
+    // state the page's own JS renders when it finds no token in the URL.
+    if (req.method === 'GET' && parts[0] === 'kitchen' && parts.length === 1) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      const html = getBoardPageHtml()
+      if (html === null) { res.writeHead(404); res.end('Not found'); return }
+      res.writeHead(200, { 'Content-Type': 'text/html; charset=utf-8' })
+      res.end(html)
+      return
+    }
+
+    // POST /api/kitchen/resolve-code — the typed alternative to scanning the
+    // QR / copying the long token when connecting a new device, same
+    // convention as Doctor Pad's /resolve-pin.
+    if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'kitchen' && parts[2] === 'resolve-code' && parts.length === 3) {
+      if (isRateLimited(ip, 'code', CODE_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many attempts — please wait a moment and ask a manager for the current code.' } }); return }
+      if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+      const body = await readBody(req, 2_000)
+      let parsed: { code?: string }
+      try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
+      const code = (parsed.code ?? '').trim()
+      if (!/^\d{6}$/.test(code)) { sendJson(res, 400, { success: false, error: { message: 'Enter the 6-digit code shown in Settings.' } }); return }
+      const expectedCode = await getOrCreateKitchenDisplayAccessCode()
+      if (!secureTokenEquals(code, expectedCode)) { sendJson(res, 404, { success: false, error: { message: 'That code was not recognized. Ask a manager for the current one.' } }); return }
+      sendJson(res, 200, { success: true, data: { token: expectedToken } })
       return
     }
 

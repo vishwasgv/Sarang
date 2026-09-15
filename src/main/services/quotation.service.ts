@@ -1,6 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, toLocalISODate } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
@@ -463,7 +463,14 @@ export const quotationService = {
           retainerType: q.retainerType,
           monthlyAmount: q.totalAmount,
           billingDay: new Date().getDate(),
-          startDate: new Date().toISOString().slice(0, 10),
+          // toLocalISODate, not .toISOString().slice(0,10) — the latter is
+          // the UTC calendar date, which can be a full day behind local
+          // time (e.g. IST, any timezone ahead of UTC) for roughly the
+          // first several hours of every local day, mismatching billingDay
+          // above (already correctly local) and driving the wrong first
+          // billing period once fed into createRetainer's own
+          // parseLocalDateStart(startDate).
+          startDate: toLocalISODate(new Date()),
           notes: q.notes ?? undefined
         })
         if (!created.success || !created.data) return created

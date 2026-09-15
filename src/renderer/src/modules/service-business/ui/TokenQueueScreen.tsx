@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle, QrCode, RotateCw, Copy } from 'lucide-react'
+import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle, QrCode, RotateCw, Copy, Wifi, Printer } from 'lucide-react'
+import { printLanQrHtml } from '@shared/utils/print-branding'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
 import { useIndustryStore } from '@app/store/industry.store'
@@ -70,6 +71,12 @@ export function TokenQueueScreen() {
   const [regenerateConfirmOpen, setRegenerateConfirmOpen] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
 
+  // Waiting-room display board (2026-09-15) — a second screen/TV in the
+  // waiting area showing Now Serving + Up Next, read-only.
+  const [displayQrDataUrl, setDisplayQrDataUrl] = useState<string | null>(null)
+  const [displayUrl, setDisplayUrl] = useState<string | null>(null)
+  const [displayLinkError, setDisplayLinkError] = useState<string | null>(null)
+
   const today = new Date().toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })
 
   const load = useCallback(async () => {
@@ -113,6 +120,21 @@ export function TokenQueueScreen() {
       }
     } catch {
       toastError('Error', 'Could not generate QR code.')
+    }
+  }
+
+  async function handleShowDisplayLink() {
+    setDisplayLinkError(null)
+    try {
+      const res = await api.tokenQueue.generateDisplayLink()
+      if (res.success && res.data) {
+        const d = res.data as { qrDataUrl: string; displayUrl: string }
+        setDisplayQrDataUrl(d.qrDataUrl); setDisplayUrl(d.displayUrl)
+      } else {
+        setDisplayLinkError(res.error?.message ?? 'Token queue is not currently running.')
+      }
+    } catch {
+      setDisplayLinkError('Could not generate the display link.')
     }
   }
 
@@ -260,6 +282,57 @@ export function TokenQueueScreen() {
                     <Copy size={13} />
                   </button>
                 </div>
+                <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 mt-2">
+                  <Wifi size={13} className="shrink-0 mt-0.5" /> Important: the patient's phone must be connected to this clinic's Wi-Fi — Sarang runs fully offline on this computer, so it can't be reached over mobile data or a different Wi-Fi network.
+                </p>
+                <button onClick={() => qrDataUrl && printLanQrHtml({
+                  title: 'Patient Self Check-in',
+                  subtitle: 'Scan to check in',
+                  qrDataUrl,
+                  url: captureUrl,
+                  disclaimer: 'Important: your phone must be connected to this clinic\'s Wi-Fi — this only works on this location\'s own network, not mobile data or another Wi-Fi.',
+                })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors mt-2">
+                  <Printer size={12} /> Print
+                </button>
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
+      {/* Waiting-room display board — second screen/TV in the waiting area */}
+      {canManageCheckIn && serverStatus?.running && (
+        <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 shrink-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 me-1">Waiting-room display:</p>
+            <button onClick={handleShowDisplayLink} className="flex items-center gap-2 px-3 py-1.5 rounded-lg bg-brand text-white text-xs font-semibold hover:bg-brand/90 transition-colors">
+              <QrCode size={13} /> Show Display Link
+            </button>
+          </div>
+          {displayLinkError && <p className="text-xs text-danger mt-2">{displayLinkError}</p>}
+          {displayUrl && (
+            <div className="flex items-center gap-3 mt-2 p-3 rounded-xl border border-slate-200 dark:border-slate-700 max-w-md">
+              {displayQrDataUrl && <img src={displayQrDataUrl} alt="Waiting-room display QR code" className="w-28 h-28" />}
+              <div className="min-w-0">
+                <p className="text-xs text-slate-400 mb-1">Open this link on a TV or monitor in the waiting area — it shows "Now Serving" and the next few token numbers, and refreshes itself automatically.</p>
+                <div className="flex items-center gap-1.5">
+                  <code className="text-xs text-dark dark:text-slate-200 truncate">{displayUrl}</code>
+                  <button onClick={() => { navigator.clipboard.writeText(displayUrl); toastSuccess('Copied', 'Link copied to clipboard.') }} className="text-slate-400 hover:text-brand transition-colors shrink-0">
+                    <Copy size={13} />
+                  </button>
+                </div>
+                <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 mt-2">
+                  <Wifi size={13} className="shrink-0 mt-0.5" /> Important: the TV/monitor must be connected to this clinic's Wi-Fi — Sarang runs fully offline on this computer, so it can't be reached over mobile data or a different Wi-Fi network.
+                </p>
+                <button onClick={() => displayQrDataUrl && printLanQrHtml({
+                  title: 'Waiting-Room Display',
+                  subtitle: 'Scan or open this link on the TV/monitor',
+                  qrDataUrl: displayQrDataUrl,
+                  url: displayUrl,
+                  disclaimer: 'Important: the TV/monitor must be connected to this clinic\'s Wi-Fi — this only works on this location\'s own network, not mobile data or another Wi-Fi.',
+                })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors mt-2">
+                  <Printer size={12} /> Print
+                </button>
               </div>
             </div>
           )}

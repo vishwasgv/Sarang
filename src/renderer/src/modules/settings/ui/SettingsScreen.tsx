@@ -2,8 +2,9 @@ import React, { useState, useEffect, useCallback } from 'react'
 import {
   Building2, Users, Receipt, BadgeDollarSign, HardDrive,
   Info, Shield, Plus, Edit2, Trash2, Check, X, Star, Layers, RefreshCw, Globe, Moon, Printer,
-  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode, GraduationCap, ListPlus
+  ChevronRight, Eye, EyeOff, Barcode, ToggleRight, Sparkles, Monitor, Smartphone, QrCode, GraduationCap, ListPlus, Wifi, KeyRound
 } from 'lucide-react'
+import { printLanQrHtml } from '@shared/utils/print-branding'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
@@ -2131,6 +2132,7 @@ function AppearanceSection() {
       </Card>
       {isRestaurant && <KitchenDisplayWebSection />}
       {isDistributor && <FieldOrderCaptureSection />}
+      <OwnerViewSection />
       <p className="text-xs text-slate-400">Your preference is saved automatically and will be remembered next time you open Sarang.</p>
     </div>
   )
@@ -2148,12 +2150,18 @@ function KitchenDisplayWebSection() {
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const kdWebEnabled = enabledModules.includes('kitchen_display_web')
   const [toggling, setToggling] = useState(false)
-  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null } | null>(null)
+  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null; accessCode: string | null } | null>(null)
   const [qr, setQr] = useState<{ qrDataUrl: string; boardUrl: string } | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
   const [showQr, setShowQr] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  // Zero-bug audit 2026-09-15 follow-up — short typed alternative to the
+  // long hex token/URL, mirroring Doctor Pad's provider PIN. Its own
+  // regenerate action, deliberately independent of the token above (see
+  // that IPC handler's comment for why).
+  const [regeneratingCode, setRegeneratingCode] = useState(false)
+  const [confirmRegenerateCode, setConfirmRegenerateCode] = useState(false)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -2217,6 +2225,24 @@ function KitchenDisplayWebSection() {
     }
   }
 
+  async function regenerateCode() {
+    setRegeneratingCode(true)
+    try {
+      const res = await window.api.restaurant.regenerateKitchenDisplayAccessCode()
+      if (res.success) {
+        toastSuccess(t('settings.kitchenDisplayWeb.codeRegeneratedTitle'), t('settings.kitchenDisplayWeb.codeRegeneratedDesc'))
+        await loadStatus()
+      } else {
+        toastError(t('common.error'), t('settings.kitchenDisplayWeb.codeRegenerateFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('settings.kitchenDisplayWeb.codeRegenerateFailed'))
+    } finally {
+      setRegeneratingCode(false)
+      setConfirmRegenerateCode(false)
+    }
+  }
+
   return (
     <Card padding="lg" className="space-y-3">
       <div className="flex items-center justify-between">
@@ -2246,12 +2272,36 @@ function KitchenDisplayWebSection() {
               </button>
               <button onClick={() => setConfirmRegenerate(true)} disabled={regenerating}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors disabled:opacity-50">
-                <RefreshCw size={13} /> Regenerate access code
+                <RefreshCw size={13} /> {t('settings.kitchenDisplayWeb.regenerateLinkButton')}
               </button>
             </div>
+            {status.accessCode && status.lanUrls.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1"><KeyRound size={11} /> Or type this code once — no camera needed</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-lg font-black tracking-widest text-brand">{status.accessCode}</code>
+                  <span className="text-xs text-slate-400">at <code className="text-xs">{status.lanUrls[0]}/kitchen</code></span>
+                </div>
+                <button onClick={() => setConfirmRegenerateCode(true)} disabled={regeneratingCode}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-danger transition-colors disabled:opacity-50">
+                  <RefreshCw size={12} /> {t('settings.kitchenDisplayWeb.codeRegenerateButton')}
+                </button>
+              </div>
+            )}
+            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 max-w-md">
+              <Wifi size={13} className="shrink-0 mt-0.5" /> Important: the phone/laptop must be connected to this shop's Wi-Fi — Sarang runs fully offline on this computer, so it can't be reached over mobile data or a different Wi-Fi network.
+            </p>
             {showQr && qr && (
-              <div className="pt-2">
+              <div className="pt-2 space-y-2">
                 <img src={qr.qrDataUrl} alt="Kitchen Display QR code" className="w-40 h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+                <button onClick={() => printLanQrHtml({
+                  title: 'Kitchen Display',
+                  subtitle: 'Scan to open the live KOT board',
+                  qrDataUrl: qr.qrDataUrl,
+                  disclaimer: 'Important: the phone/laptop must be connected to this shop\'s Wi-Fi — this only works on this location\'s own network, not mobile data or another Wi-Fi.',
+                })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+                  <Printer size={12} /> Print
+                </button>
               </div>
             )}
           </div>
@@ -2267,6 +2317,15 @@ function KitchenDisplayWebSection() {
         title={t('settings.kitchenDisplayWeb.regenerateConfirmTitle')}
         message={t('settings.kitchenDisplayWeb.regenerateConfirmMessage')}
         confirmLabel={t('settings.kitchenDisplayWeb.regenerateAction')}
+      />
+      <ConfirmDialog
+        open={confirmRegenerateCode}
+        onClose={() => setConfirmRegenerateCode(false)}
+        onConfirm={regenerateCode}
+        loading={regeneratingCode}
+        title={t('settings.kitchenDisplayWeb.codeRegenerateConfirmTitle')}
+        message={t('settings.kitchenDisplayWeb.codeRegenerateConfirmMessage')}
+        confirmLabel={t('settings.kitchenDisplayWeb.codeRegenerateAction')}
       />
     </Card>
   )
@@ -2284,12 +2343,16 @@ function FieldOrderCaptureSection() {
   const { enabledModules, updateEnabledModules } = useIndustryStore()
   const focEnabled = enabledModules.includes('field_order_capture')
   const [toggling, setToggling] = useState(false)
-  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null } | null>(null)
+  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null; accessCode: string | null } | null>(null)
   const [qr, setQr] = useState<{ qrDataUrl: string; captureUrl: string } | null>(null)
   const [qrLoading, setQrLoading] = useState(false)
   const [showQr, setShowQr] = useState(false)
   const [regenerating, setRegenerating] = useState(false)
   const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  // Zero-bug audit 2026-09-15 follow-up — short typed alternative to the
+  // long hex token/URL, mirroring Doctor Pad's provider PIN.
+  const [regeneratingCode, setRegeneratingCode] = useState(false)
+  const [confirmRegenerateCode, setConfirmRegenerateCode] = useState(false)
 
   const loadStatus = useCallback(async () => {
     try {
@@ -2352,6 +2415,24 @@ function FieldOrderCaptureSection() {
     }
   }
 
+  async function regenerateCode() {
+    setRegeneratingCode(true)
+    try {
+      const res = await window.api.distributor.regenerateFieldOrderAccessCode()
+      if (res.success) {
+        toastSuccess(t('settings.fieldOrderCapture.codeRegeneratedTitle'), t('settings.fieldOrderCapture.codeRegeneratedDesc'))
+        await loadStatus()
+      } else {
+        toastError(t('common.error'), t('settings.fieldOrderCapture.codeRegenerateFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('settings.fieldOrderCapture.codeRegenerateFailed'))
+    } finally {
+      setRegeneratingCode(false)
+      setConfirmRegenerateCode(false)
+    }
+  }
+
   return (
     <Card padding="lg" className="space-y-3">
       <div className="flex items-center justify-between">
@@ -2381,12 +2462,36 @@ function FieldOrderCaptureSection() {
               </button>
               <button onClick={() => setConfirmRegenerate(true)} disabled={regenerating}
                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors disabled:opacity-50">
-                <RefreshCw size={13} /> Regenerate access code
+                <RefreshCw size={13} /> {t('settings.fieldOrderCapture.regenerateLinkButton')}
               </button>
             </div>
+            {status.accessCode && status.lanUrls.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1"><KeyRound size={11} /> Or type this code once — no camera needed</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-lg font-black tracking-widest text-brand">{status.accessCode}</code>
+                  <span className="text-xs text-slate-400">at <code className="text-xs">{status.lanUrls[0]}/field-order</code></span>
+                </div>
+                <button onClick={() => setConfirmRegenerateCode(true)} disabled={regeneratingCode}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-danger transition-colors disabled:opacity-50">
+                  <RefreshCw size={12} /> {t('settings.fieldOrderCapture.codeRegenerateButton')}
+                </button>
+              </div>
+            )}
+            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 max-w-md">
+              <Wifi size={13} className="shrink-0 mt-0.5" /> Important: the rep's phone must be connected to this shop's Wi-Fi — Sarang runs fully offline on this computer, so it can't be reached over mobile data or a different Wi-Fi network.
+            </p>
             {showQr && qr && (
-              <div className="pt-2">
+              <div className="pt-2 space-y-2">
                 <img src={qr.qrDataUrl} alt="Field order QR code" className="w-40 h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+                <button onClick={() => printLanQrHtml({
+                  title: 'Field Order Capture',
+                  subtitle: 'Scan to submit an order',
+                  qrDataUrl: qr.qrDataUrl,
+                  disclaimer: 'Important: the rep\'s phone must be connected to this shop\'s Wi-Fi — this only works on this location\'s own network, not mobile data or another Wi-Fi.',
+                })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+                  <Printer size={12} /> Print
+                </button>
               </div>
             )}
           </div>
@@ -2402,6 +2507,204 @@ function FieldOrderCaptureSection() {
         title={t('settings.fieldOrderCapture.regenerateConfirmTitle')}
         message={t('settings.fieldOrderCapture.regenerateConfirmMessage')}
         confirmLabel={t('settings.fieldOrderCapture.regenerateAction')}
+      />
+      <ConfirmDialog
+        open={confirmRegenerateCode}
+        onClose={() => setConfirmRegenerateCode(false)}
+        onConfirm={regenerateCode}
+        loading={regeneratingCode}
+        title={t('settings.fieldOrderCapture.codeRegenerateConfirmTitle')}
+        message={t('settings.fieldOrderCapture.codeRegenerateConfirmMessage')}
+        confirmLabel={t('settings.fieldOrderCapture.codeRegenerateAction')}
+      />
+    </Card>
+  )
+}
+
+// 2026-09-16 — Owner View (Phase 72, built on explicit founder go-ahead): a
+// QR-paired, read-only LAN dashboard so an owner can check today's numbers
+// from their own phone without interrupting whoever's on the desktop
+// billing. Universal/cross-cutting, unlike Kitchen Display/Field Order
+// Capture above — shown to every business type, not gated on isRestaurant/
+// isDistributor. Same status-polling/QR/regenerate-token/regenerate-code UI
+// shape as those two, plus the same code-entry fallback pattern.
+function OwnerViewSection() {
+  const { t } = useTranslation()
+  const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const { enabledModules, updateEnabledModules } = useIndustryStore()
+  const ownerViewEnabled = enabledModules.includes('owner_view')
+  const [toggling, setToggling] = useState(false)
+  const [status, setStatus] = useState<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null; accessCode: string | null } | null>(null)
+  const [qr, setQr] = useState<{ qrDataUrl: string; viewUrl: string } | null>(null)
+  const [qrLoading, setQrLoading] = useState(false)
+  const [showQr, setShowQr] = useState(false)
+  const [regenerating, setRegenerating] = useState(false)
+  const [confirmRegenerate, setConfirmRegenerate] = useState(false)
+  const [regeneratingCode, setRegeneratingCode] = useState(false)
+  const [confirmRegenerateCode, setConfirmRegenerateCode] = useState(false)
+
+  const loadStatus = useCallback(async () => {
+    try {
+      const res = await window.api.ownerView.getStatus()
+      if (res.success && res.data) setStatus(res.data)
+    } catch {
+      // status stays null — falls through to the "not yet running" hint below
+    }
+  }, [])
+
+  useEffect(() => { loadStatus() }, [loadStatus])
+
+  async function toggle(on: boolean) {
+    setToggling(true)
+    try {
+      const next = on ? [...enabledModules, 'owner_view'] : enabledModules.filter(m => m !== 'owner_view')
+      const res = await updateEnabledModules(next as typeof enabledModules)
+      if (!res.success) toastError(t('common.error'), t('settings.ownerView.updateFailed'))
+      await loadStatus()
+      setQr(null)
+      setShowQr(false)
+    } catch {
+      toastError(t('common.error'), t('settings.ownerView.updateFailed'))
+    } finally {
+      setToggling(false)
+    }
+  }
+
+  async function loadQr() {
+    setShowQr(true)
+    setQrLoading(true)
+    try {
+      const res = await window.api.ownerView.generateQr()
+      if (res.success && res.data) setQr(res.data)
+      else toastError(t('common.error'), t('settings.ownerView.qrGenerateFailed'))
+    } catch {
+      toastError(t('common.error'), t('settings.ownerView.qrGenerateFailed'))
+    } finally {
+      setQrLoading(false)
+    }
+  }
+
+  async function regenerate() {
+    setRegenerating(true)
+    try {
+      const res = await window.api.ownerView.regenerateToken()
+      if (res.success) {
+        toastSuccess(t('settings.ownerView.linkRegeneratedTitle'), t('settings.ownerView.linkRegeneratedDesc'))
+        setQr(null)
+        await loadStatus()
+        if (showQr) await loadQr()
+      } else {
+        toastError(t('common.error'), t('settings.ownerView.linkRegenerateFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('settings.ownerView.linkRegenerateFailed'))
+    } finally {
+      setRegenerating(false)
+      setConfirmRegenerate(false)
+    }
+  }
+
+  async function regenerateCode() {
+    setRegeneratingCode(true)
+    try {
+      const res = await window.api.ownerView.regenerateAccessCode()
+      if (res.success) {
+        toastSuccess(t('settings.ownerView.codeRegeneratedTitle'), t('settings.ownerView.codeRegeneratedDesc'))
+        await loadStatus()
+      } else {
+        toastError(t('common.error'), t('settings.ownerView.codeRegenerateFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('settings.ownerView.codeRegenerateFailed'))
+    } finally {
+      setRegeneratingCode(false)
+      setConfirmRegenerateCode(false)
+    }
+  }
+
+  return (
+    <Card padding="lg" className="space-y-3">
+      <div className="flex items-center justify-between">
+        <div>
+          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 flex items-center gap-2"><Smartphone size={16} /> Owner View — phone / tablet (read-only)</h3>
+          <p className="text-xs text-slate-400 mt-1">Check today's sales, outstanding, inventory and other reports from your own phone on your shop WiFi — view only, nothing can be changed or billed from here.</p>
+        </div>
+        <button
+          onClick={() => toggle(!ownerViewEnabled)}
+          disabled={toggling}
+          className={cn('px-4 py-2 rounded-xl text-sm font-semibold transition-colors disabled:opacity-50 shrink-0',
+            ownerViewEnabled ? 'bg-success/10 text-success border border-success/20' : 'bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400')}>
+          {toggling ? 'Updating…' : ownerViewEnabled ? 'Enabled' : 'Enable'}
+        </button>
+      </div>
+      {ownerViewEnabled && (
+        status?.running ? (
+          <div className="space-y-2">
+            <p className="text-xs text-success">Running — open one of these on your phone's browser, or scan the QR code:</p>
+            <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-0.5">
+              {status.lanUrls.map(u => <li key={u} className="font-mono">{u}/owner-view/{status.token}</li>)}
+            </ul>
+            <div className="flex gap-2 pt-1">
+              <button onClick={loadQr} disabled={qrLoading}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-600 dark:text-slate-300 hover:border-slate-300 transition-colors disabled:opacity-50">
+                <QrCode size={13} /> {qrLoading ? 'Generating…' : 'Show QR code'}
+              </button>
+              <button onClick={() => setConfirmRegenerate(true)} disabled={regenerating}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-slate-200 dark:border-slate-700 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-danger hover:text-danger transition-colors disabled:opacity-50">
+                <RefreshCw size={13} /> {t('settings.ownerView.regenerateLinkButton')}
+              </button>
+            </div>
+            {status.accessCode && status.lanUrls.length > 0 && (
+              <div className="pt-2 border-t border-slate-100 dark:border-slate-800 space-y-1">
+                <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 flex items-center gap-1"><KeyRound size={11} /> Or type this code once — no camera needed</p>
+                <div className="flex items-center gap-2">
+                  <code className="text-lg font-black tracking-widest text-brand">{status.accessCode}</code>
+                  <span className="text-xs text-slate-400">at <code className="text-xs">{status.lanUrls[0]}/owner-view</code></span>
+                </div>
+                <button onClick={() => setConfirmRegenerateCode(true)} disabled={regeneratingCode}
+                  className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-danger transition-colors disabled:opacity-50">
+                  <RefreshCw size={12} /> {t('settings.ownerView.codeRegenerateButton')}
+                </button>
+              </div>
+            )}
+            <p className="flex items-start gap-1.5 text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2 max-w-md">
+              <Wifi size={13} className="shrink-0 mt-0.5" /> Important: your phone must be connected to this shop's Wi-Fi — Sarang runs fully offline on this computer, so it can't be reached over mobile data or a different Wi-Fi network.
+            </p>
+            {showQr && qr && (
+              <div className="pt-2 space-y-2">
+                <img src={qr.qrDataUrl} alt="Owner View QR code" className="w-40 h-40 rounded-xl border border-slate-200 dark:border-slate-700" />
+                <button onClick={() => printLanQrHtml({
+                  title: 'Owner View',
+                  subtitle: 'Scan to check business status (read-only)',
+                  qrDataUrl: qr.qrDataUrl,
+                  disclaimer: 'Important: your phone must be connected to this shop\'s Wi-Fi — this only works on this location\'s own network, not mobile data or another Wi-Fi.',
+                })} className="flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+                  <Printer size={12} /> Print
+                </button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <p className="text-xs text-warning">Enabled but not yet running — check that another app isn't already using the same port, or try refreshing.</p>
+        )
+      )}
+      <ConfirmDialog
+        open={confirmRegenerate}
+        onClose={() => setConfirmRegenerate(false)}
+        onConfirm={regenerate}
+        loading={regenerating}
+        title={t('settings.ownerView.linkRegenerateConfirmTitle')}
+        message={t('settings.ownerView.linkRegenerateConfirmMessage')}
+        confirmLabel={t('settings.ownerView.linkRegenerateAction')}
+      />
+      <ConfirmDialog
+        open={confirmRegenerateCode}
+        onClose={() => setConfirmRegenerateCode(false)}
+        onConfirm={regenerateCode}
+        loading={regeneratingCode}
+        title={t('settings.ownerView.codeRegenerateConfirmTitle')}
+        message={t('settings.ownerView.codeRegenerateConfirmMessage')}
+        confirmLabel={t('settings.ownerView.codeRegenerateAction')}
       />
     </Card>
   )

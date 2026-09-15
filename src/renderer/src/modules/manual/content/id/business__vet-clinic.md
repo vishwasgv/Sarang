@@ -41,3 +41,19 @@ Tanda vital diperiksa terhadap **normal ranges** yang memperhitungkan spesies pa
 Buka **Reports → Vaccination Compliance** untuk melihat berapa banyak dosis lanjutan yang benar-benar datang tepat waktu. Ini melihat setiap dosis yang diberikan dalam rentang tanggal pilihan Anda yang memiliki tanggal jatuh tempo sebelumnya tercatat — dosis pertama sebuah vaksin untuk seekor pasien tidak memiliki apa pun untuk dibandingkan sebagai "tepat waktu", jadi tidak dihitung — dan menampilkan persentase yang datang pada atau sebelum tanggal jatuh tempo itu, sebagai indikator keseluruhan ditambah rincian per vaksin. Ini adalah pertanyaan berbeda dari kartu vaksinasi Dashboard Anda sendiri (yang merupakan snapshot langsung "apa yang terlambat sekarang"): laporan ini melihat ke belakang pada periode tertentu, berguna untuk melihat apakah jadwal lanjutan vaksin tertentu terus-menerus meleset.
 
 **Case-Type Volume Trend** menggambarkan berapa banyak kasus yang Anda tangani per jenis kasus, bulan demi bulan — satu garis per jenis. Jenis kasus Anda berasal langsung dari kategori yang telah Anda atur di Service Catalog Anda sendiri (Consultation, Grooming, Diagnostics, atau lainnya yang telah Anda tambahkan, termasuk Surgery jika Anda melacaknya di sana), ditambah garis khusus **Vaccinations** yang bersumber dari dosis yang benar-benar diberikan, bukan janji temu yang dipesan. Hanya janji temu yang tertaut ke pasien dan tidak dibatalkan yang dihitung sebagai kasus nyata.
+
+## Doctor Pad — catatan tulisan tangan di tablet
+
+Banyak dokter hewan lebih suka menulis diagnosis atau resep dengan tangan daripada mengetiknya. **Doctor Pad** mengubah tablet apa pun di Wi-Fi klinik Anda sendiri menjadi papan tulis sederhana — tidak perlu membeli perangkat keras tambahan, dan tidak ada yang keluar dari jaringan klinik Anda sendiri.
+
+**Hubungkan tablet, sekali saja.** Buka **Provider Schedule**, pilih dokter hewan, dan Anda akan melihat panel **Doctor Pad** dengan tiga cara untuk menghubungkan tablet — gunakan yang paling mudah:
+
+- **Scan the QR code** yang ditampilkan di layar.
+- **Bookmark the link** yang ditampilkan di bawahnya — simpan ke layar utama tablet dan ia akan langsung membuka antrean dokter hewan tersebut setiap kali, tanpa perlu memindai lagi.
+- **Type the 4-digit PIN** yang ditampilkan, pada halaman yang terbuka saat tablet mengunjungi alamat yang ditampilkan — berguna saat tablet tidak memiliki kamera atau Anda sedang terburu-buru.
+
+Apa pun cara Anda menghubungkan, tablet akan mengingat dokter hewan tersebut sejak saat itu, sehingga ini biasanya hanya pengaturan satu kali per tablet.
+
+**Menggunakannya selama konsultasi.** Tablet menampilkan janji temu hari ini untuk dokter hewan tersebut. Ketuk seorang pasien, tulis diagnosis atau resep dengan tangan, lalu ketuk **Save** — gambar langsung terlampir ke janji temu tersebut, dapat dilihat tepat di samping **Catatan Klinis** yang diketik di bagian **Documents**-nya.
+
+**Jika sebuah PIN bocor, atau Anda mempensiunkan tablet lama**, buka **Provider Schedule**, pilih dokter hewan, dan klik **Change PIN** — PIN lama langsung berhenti berfungsi. Tablet yang sudah terhubung lewat kode QR atau tautan yang di-bookmark tetap berfungsi, karena tidak pernah membutuhkan PIN lagi.

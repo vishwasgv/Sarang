@@ -41,3 +41,19 @@ Los signos vitales se comparan con **rangos normales** que tienen en cuenta la e
 Abra **Reports → Vaccination Compliance** para ver cuántas dosis de seguimiento llegaron realmente a tiempo. Esto examina cada dosis aplicada en el rango de fechas elegido que tenía una fecha de vencimiento anterior registrada — la primera dosis de una vacuna de un paciente no tiene nada contra qué compararse como "a tiempo", así que queda fuera del conteo — y muestra el porcentaje que llegó en o antes de esa fecha de vencimiento, como un medidor general más un desglose por vacuna. Es una pregunta diferente a la tarjeta de vacunación propia del Panel (que es una instantánea en vivo de "qué está vencido ahora mismo"): este informe mira hacia atrás en un período específico, útil para detectar si el calendario de seguimiento de una vacuna en particular se está retrasando de forma constante.
 
 **Case-Type Volume Trend** grafica cuántos casos maneja por tipo de caso, mes a mes — una línea por tipo. Sus tipos de caso provienen directamente de las categorías que haya configurado en su propio Catálogo de Servicios (Consulta, Peluquería, Diagnóstico, o cualquier otra que haya agregado, incluida Cirugía si la rastrea ahí), más una línea dedicada de **Vaccinations** proveniente de dosis realmente administradas en lugar de citas reservadas. Solo las citas vinculadas a un paciente y no canceladas cuentan como un caso real.
+
+## Doctor Pad — notas escritas a mano en una tableta
+
+Muchos veterinarios prefieren escribir un diagnóstico o una receta a mano antes que escribirlo a máquina. **Doctor Pad** convierte cualquier tableta conectada al propio Wi-Fi de su clínica en un sencillo bloc de notas — sin hardware adicional que comprar, y nada sale de la red de su propia clínica.
+
+**Conecte una tableta, una sola vez.** Abra **Provider Schedule**, elija al veterinario, y verá un panel **Doctor Pad** con tres formas de conectar una tableta — use la que le resulte más fácil:
+
+- **Scan the QR code** mostrado en pantalla.
+- **Bookmark the link** que aparece debajo — guárdelo en la pantalla de inicio de la tableta y se abrirá directamente en la cola de ese veterinario cada vez, sin necesidad de volver a escanear.
+- **Type the 4-digit PIN** mostrado, en la página que se abre cuando la tableta visita la dirección indicada — útil cuando la tableta no tiene cámara o cuando tiene prisa.
+
+Sea cual sea la forma en que la conecte, la tableta recuerda al veterinario a partir de ese momento, así que normalmente es una configuración de una sola vez por tableta.
+
+**Uso durante una consulta.** La tableta muestra las citas de hoy de ese veterinario. Toque un paciente, escriba a mano el diagnóstico o la receta, y toque **Save** — el dibujo se adjunta al instante a esa cita, visible junto a las **Notas clínicas** escritas en su sección de **Documents**.
+
+**Si un PIN se filtra, o si está retirando una tableta antigua**, abra **Provider Schedule**, seleccione al veterinario, y haga clic en **Change PIN** — el PIN anterior deja de funcionar de inmediato. Una tableta que ya se conectó mediante código QR o enlace guardado sigue funcionando, ya que nunca vuelve a necesitar el PIN.

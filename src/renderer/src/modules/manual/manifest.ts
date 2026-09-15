@@ -54,6 +54,9 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'cash-close', group: 'universal', title: 'Cash Close' },
   { slug: 'documents', group: 'universal', title: 'Document Management' },
   { slug: 'import-wizard', group: 'universal', title: 'Data Import Wizard' },
+  // Owner View (Phase 72, built 2026-09-16) — cross-cutting, opt-in, same
+  // convention as ai-assistant directly below.
+  { slug: 'owner-view', group: 'universal', title: 'Owner View (Phone Dashboard)' },
 
   // AI Assistant (Phase 57) — cross-cutting, opt-in
   { slug: 'ai-assistant', group: 'ai', title: 'Ask Sarang (AI Assistant)' },

@@ -841,8 +841,11 @@ export interface IpcChannels {
     setWifiConfig: (payload: { ssid?: string; password?: string; open?: boolean }) => Promise<ApiResponse>
     // Kitchen Display (phone/laptop, LAN) — additive to KOT printing and the
     // second-monitor board, same qr-order-server.ts LAN-trust model.
-    getKitchenDisplayStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
+    getKitchenDisplayStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null; accessCode: string | null }>>
     regenerateKitchenDisplayToken: () => Promise<ApiResponse<{ token: string }>>
+    // Zero-bug audit 2026-09-15 follow-up — short typed alternative to the
+    // long hex token, same convention as Doctor Pad's provider PIN.
+    regenerateKitchenDisplayAccessCode: () => Promise<ApiResponse<{ accessCode: string }>>
     generateKitchenDisplayQr: () => Promise<ApiResponse<{ qrDataUrl: string; boardUrl: string }>>
     // Phase 58 §2 (2026-07-21) — ad-hoc table merge (mid-service, after an
     // order is already running); merging AT order-open time instead goes
@@ -858,6 +861,23 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     upcomingByTable: (payload?: { withinHours?: number }) => Promise<ApiResponse>
   }
+  // 2026-09-15 — Doctor Pad: a tablet on the clinic's own WiFi, hand-drawn
+  // diagnosis/prescription notes instead of typing. Same LAN-only local
+  // server pattern as qr-order-server.ts/token-queue-server.ts.
+  doctorPad: {
+    getEligibleProviders: () => Promise<ApiResponse<Array<{ id: string; fullName: string }>>>
+    getLinkForProvider: (payload: { providerId: string }) => Promise<ApiResponse<{ qrDataUrl: string; deepLinkUrl: string; landingUrl: string; pin: string }>>
+    regeneratePin: (payload: { providerId: string }) => Promise<ApiResponse<{ pin: string }>>
+  }
+  // 2026-09-16 — Owner View (Phase 72): QR-paired, read-only LAN phone
+  // dashboard. Same LAN-only local server pattern as the other 4, but with
+  // no write route at all — every route it exposes only ever reads.
+  ownerView: {
+    getStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null; accessCode: string | null }>>
+    regenerateToken: () => Promise<ApiResponse<{ token: string }>>
+    regenerateAccessCode: () => Promise<ApiResponse<{ accessCode: string }>>
+    generateQr: () => Promise<ApiResponse<{ qrDataUrl: string; viewUrl: string }>>
+  }
   // Kitchen Display (second monitor, same billing PC) — opens/closes a
   // BrowserWindow showing the #/kitchen-display board on a chosen display.
   kitchenDisplay: {
@@ -869,8 +889,11 @@ export interface IpcChannels {
   // Phase 58 §2 — Distributor field-rep order capture (phone/laptop, LAN),
   // same qr-order-server.ts/kitchen-display-server.ts LAN-trust model.
   distributor: {
-    getFieldOrderStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
+    getFieldOrderStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null; accessCode: string | null }>>
     regenerateFieldOrderToken: () => Promise<ApiResponse<{ token: string }>>
+    // Zero-bug audit 2026-09-15 follow-up — short typed alternative to the
+    // long hex token, same convention as Doctor Pad's provider PIN.
+    regenerateFieldOrderAccessCode: () => Promise<ApiResponse<{ accessCode: string }>>
     generateFieldOrderQr: () => Promise<ApiResponse<{ qrDataUrl: string; captureUrl: string }>>
     listFieldOrderRequests: (payload?: { status?: string }) => Promise<ApiResponse>
     acceptFieldOrderRequest: (payload: { requestId: string; paymentMethod: string }) => Promise<ApiResponse>
@@ -1080,6 +1103,7 @@ export interface IpcChannels {
     listAll: (payload?: { entityType?: string; limit?: number }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
     open: (payload: { id: string }) => Promise<ApiResponse>
+    print: (payload: { id: string }) => Promise<ApiResponse<{ printed: boolean }>>
   }
   // Phase 17 — HR & Attendance
   hr: {
@@ -1425,6 +1449,7 @@ export interface IpcChannels {
     getServerStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>
     regenerateServerToken: () => Promise<ApiResponse<{ token: string }>>
     generateServerQr: () => Promise<ApiResponse<{ qrDataUrl: string; captureUrl: string }>>
+    generateDisplayLink: () => Promise<ApiResponse<{ qrDataUrl: string; displayUrl: string }>>
   }
   // Phase 50 — Diagnostic & Pathology Labs
   labTestOrders: {

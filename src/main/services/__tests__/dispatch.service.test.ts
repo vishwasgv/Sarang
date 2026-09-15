@@ -6,7 +6,7 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 import { getPrisma } from '../../database/db'
 import { updateDispatchStatus } from '../dispatch.service'
 
-function makeDb(opts: { outerStatus: string; freshStatus: string; quantity?: number; availableQty?: number }) {
+function makeDb(opts: { outerStatus: string; freshStatus: string; quantity?: number; availableQty?: number; allowNegativeSetting?: { settingKey: string; settingValue: string } | null }) {
   const txClient: Record<string, any> = {
     dispatchRecord: {
       findUniqueOrThrow: vi.fn().mockResolvedValue({
@@ -19,7 +19,13 @@ function makeDb(opts: { outerStatus: string; freshStatus: string; quantity?: num
       findUnique: vi.fn().mockResolvedValue({ quantity: opts.availableQty ?? 100 }),
       update: vi.fn().mockResolvedValue({})
     },
-    inventoryMovement: { create: vi.fn().mockResolvedValue({}) }
+    inventoryMovement: { create: vi.fn().mockResolvedValue({}) },
+    // applyLocationDeltaTx (inventory.service.ts, real implementation runs
+    // here — no module mock) — REAL BUG fix 2026-09-15: the DISPATCHED
+    // decrement never kept LocationStock in sync before. Falls back to the
+    // default Location.
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-default', isDefault: true }) },
+    locationStock: { upsert: vi.fn().mockResolvedValue({}) }
   }
   const db: Record<string, any> = {
     dispatchRecord: {
@@ -28,6 +34,11 @@ function makeDb(opts: { outerStatus: string; freshStatus: string; quantity?: num
         dispatchNumber: 'DSP-001', destination: 'Warehouse B'
       })
     },
+    // getAllowNegative() (inventory.service.ts) calls getPrisma() itself
+    // (not the tx client) — REAL BUG fix 2026-09-15: this decrement path used
+    // to ignore this setting entirely. Defaults to disabled, same as every
+    // other decrement path's default.
+    setting: { findUnique: vi.fn().mockResolvedValue(opts.allowNegativeSetting ?? null) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient))
   }
   db.__txClient = txClient
@@ -90,6 +101,25 @@ describe('dispatch.service.updateDispatchStatus', () => {
 
     expect(res.success).toBe(false)
     expect(db.__txClient.inventory.update).not.toHaveBeenCalled()
+  })
+
+  // Zero-bug audit 2026-09-15, finding #13: this was the only decrement path
+  // that ignored allow_negative_inventory — every sibling path (reduceStockTx,
+  // adjustStock, transferStock) already respects it.
+  it('allows the dispatch to go negative when allow_negative_inventory is enabled', async () => {
+    const db = makeDb({
+      outerStatus: 'READY', freshStatus: 'READY', quantity: 20, availableQty: 5,
+      allowNegativeSetting: { settingKey: 'allow_negative_inventory', settingValue: 'true' }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateDispatchStatus({ id: 'dsp-1', status: 'DISPATCHED' }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(db.__txClient.inventory.update).toHaveBeenCalledWith({
+      where: { productId: 'prod-1' },
+      data: { quantity: { decrement: 20 } }
+    })
   })
 
   it('returns DSP-004 for a non-existent dispatch record', async () => {

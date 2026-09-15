@@ -140,6 +140,8 @@ async function run() {
 
       const bodyText = await page.locator('body').innerText().catch(() => '')
       r.log('qr-preview-shown', bodyText.includes('scan this to check themselves in'))
+      r.log('checkin-same-wifi-disclaimer-shown', bodyText.includes("must be connected to this clinic's Wi-Fi"))
+      r.log('checkin-print-button-present', await page.getByRole('button', { name: 'Print', exact: true }).count() > 0)
 
       await page.getByRole('button', { name: 'Regenerate Link' }).click()
       await page.waitForTimeout(400)
@@ -150,6 +152,45 @@ async function run() {
 
       const bodyTextAfter = await page.locator('body').innerText().catch(() => '')
       r.log('regenerate-success-message-shown', bodyTextAfter.includes('Link regenerated'))
+    })
+
+    await r.step('waiting-room-display-board-via-real-ui-and-real-http', async () => {
+      const statusRes = await page.evaluate(async () => window.api.tokenQueue.getServerStatus())
+      const running = statusRes?.data?.running === true
+      if (!running) return r.log('display-link-no-crash', true, 'token_queue server not running in this environment, skipped')
+
+      await page.reload().catch(() => {})
+      await h.gotoHash(page, '#/clinical/queue')
+      await page.waitForTimeout(900)
+
+      await page.getByRole('button', { name: 'Show Display Link' }).click()
+      await page.waitForTimeout(900)
+      r.log('display-link-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('display-link-hint-shown', bodyText.includes('Now Serving'))
+      r.log('display-same-wifi-disclaimer-shown', bodyText.includes("must be connected to this clinic's Wi-Fi"))
+      r.log('display-print-button-present', await page.getByRole('button', { name: 'Print', exact: true }).count() > 0)
+
+      const linkRes = await page.evaluate(async () => window.api.tokenQueue.generateDisplayLink())
+      r.log('generate-display-link-succeeds', !!linkRes?.success && !!linkRes?.data?.displayUrl, JSON.stringify(linkRes?.error || ''))
+      const displayUrl = linkRes?.data?.displayUrl
+      if (!displayUrl) return
+
+      const pageRes = await fetch(displayUrl)
+      const pageHtml = await pageRes.text().catch(() => '')
+      r.log('display-board-page-served', pageRes.status === 200 && pageHtml.includes('Now Serving'))
+
+      const urlObj = new URL(displayUrl)
+      const parts = urlObj.pathname.split('/').filter(Boolean) // ['waiting-display', '<token>']
+      const statusApiUrl = `${urlObj.protocol}//${urlObj.host}/api/token-queue/${parts[1]}/display-status`
+      const statusRes2 = await fetch(statusApiUrl)
+      const statusBody = await statusRes2.json().catch(() => null)
+      r.log('display-status-api-succeeds', statusRes2.status === 200 && statusBody?.success === true, JSON.stringify(statusBody))
+      const shapeOk = statusBody?.data && ('currentToken' in statusBody.data) && Array.isArray(statusBody.data.waitingNumbers)
+      r.log('display-status-shape-correct', !!shapeOk, JSON.stringify(statusBody?.data))
+      const noNameLeak = !JSON.stringify(statusBody).includes(`${TEST_PREFIX} Patient`)
+      r.log('display-status-does-not-leak-patient-names', noNameLeak)
     })
 
     await r.step('restore-business-type', async () => {

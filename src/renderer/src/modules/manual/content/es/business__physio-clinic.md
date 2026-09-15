@@ -37,3 +37,19 @@ Para ver cómo se están usando sus paquetes de sesiones en todos los pacientes,
 Si un paciente llega derivado por un médico externo, la sección **Detalles de Referencia** de la Nota de Consulta registra quién lo derivó, la fecha y el motivo — campos de texto libre, ya que el médico que deriva suele estar fuera de Sarang por completo. Si en cambio está enviando un paciente a otro proveedor dentro de su propia clínica, use **Derivar a Otro Proveedor** en su nota para reservar una cita real vinculada, el mismo mecanismo de derivación dentro de la app usado en los tipos de negocio clínicos de Sarang.
 
 Una vez que ese proveedor finaliza su propia nota en la cita derivada, su resultado aparece automáticamente en su nota original. Si esa nota está siguiendo el Puntaje de Dolor y el Puntaje Funcional a lo largo de las sesiones, el resultado mostrado no es solo su comentario final — es un antes-y-después cuantificado a lo largo de todo el curso del tratamiento desde la derivación (por ejemplo, "Dolor 7→3, Función 40→75 en 3 sesiones"), para que pueda ver de un vistazo si la derivación realmente ayudó, no solo que ocurrió.
+
+## Doctor Pad — notas escritas a mano en una tableta
+
+Muchos fisioterapeutas prefieren escribir una nota a mano — un diagrama corporal, un boceto rápido de un ejercicio — antes que escribirla a máquina. **Doctor Pad** convierte cualquier tableta conectada al propio Wi-Fi de su clínica en un sencillo bloc de notas — sin hardware adicional que comprar, y nada sale de la red de su propia clínica.
+
+**Conecte una tableta, una sola vez.** Abra **Provider Schedule**, elija al fisioterapeuta, y verá un panel **Doctor Pad** con tres formas de conectar una tableta — use la que le resulte más fácil:
+
+- **Scan the QR code** mostrado en pantalla.
+- **Bookmark the link** que aparece debajo — guárdelo en la pantalla de inicio de la tableta y se abrirá directamente en la cola de ese fisioterapeuta cada vez, sin necesidad de volver a escanear.
+- **Type the 4-digit PIN** mostrado, en la página que se abre cuando la tableta visita la dirección indicada — útil cuando la tableta no tiene cámara o cuando tiene prisa.
+
+Sea cual sea la forma en que la conecte, la tableta recuerda al fisioterapeuta a partir de ese momento, así que normalmente es una configuración de una sola vez por tableta.
+
+**Uso durante una sesión.** La tableta muestra las citas de hoy de ese fisioterapeuta. Toque un paciente, dibuje o escriba a mano, y toque **Save** — el dibujo se adjunta al instante a la cita de ese paciente, visible junto a la **Consultation Note** escrita en su sección de **Documents**.
+
+**Si un PIN se filtra, o si está retirando una tableta antigua**, abra **Provider Schedule**, seleccione al fisioterapeuta, y haga clic en **Change PIN** — el PIN anterior deja de funcionar de inmediato. Una tableta que ya se conectó mediante código QR o enlace guardado sigue funcionando, ya que nunca vuelve a necesitar el PIN.

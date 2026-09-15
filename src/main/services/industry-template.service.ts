@@ -91,6 +91,12 @@ export type TemplateModule =
   | 'vet_patients'
   // Phase 24 modules (template-specific)
   | 'visit_notes' | 'token_queue'
+  // 2026-09-15 — Doctor Pad (founder idea): a tablet on the clinic's own
+  // WiFi lets a doctor hand-write a diagnosis/prescription instead of
+  // typing. Every clinic vertical with a doctor examining a patient
+  // in-person gets this, regardless of which clinical-notes model (or none)
+  // that vertical otherwise uses.
+  | 'doctor_pad'
   // Phase 25 modules (template-specific)
   | 'dental_chart' | 'dental_recall'
   // Phase 26 modules (template-specific)
@@ -193,6 +199,13 @@ export type TemplateModule =
   // barcode_generation/barcode_printing/loose_billing): an owner turns it on
   // explicitly in Settings, until then this phase is entirely dormant.
   | 'ai_assistant'
+  // 2026-09-16 — Owner View. Originally spec'd as "Phase 72" (2026-08-13),
+  // built now on explicit founder go-ahead: a QR-paired, read-only LAN
+  // dashboard so an owner can check today's numbers/reports from their own
+  // phone without interrupting whoever's on the desktop billing. Same
+  // universal opt-in convention as ai_assistant — cross-cutting, never in
+  // TEMPLATE_DEFAULTS, toggled explicitly in Settings.
+  | 'owner_view'
   // Phase 58 §2 — Distributor field-rep order capture (structural mirror of
   // qr_table_ordering's LAN server, but for a travelling rep instead of a
   // dine-in customer). Unlike the opt-in-only modules above, this ships as
@@ -455,20 +468,20 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // PHYSIO_CLINIC already use sitting right there, already wired to
   // Appointment.petId (added back in Phase 23) — the module flag was simply
   // never turned on for this vertical.
-  VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'visit_notes', 'token_queue'],
+  VET_CLINIC:         [...SERVICE_BASE_MODULES, 'vet_patients', 'visit_notes', 'token_queue', 'doctor_pad'],
   // Phase 67 §9.1 item 19.5 — GP Clinic gained 'specialist_referral' this
   // phase to unlock the already-built "Refer to Another Provider" +
   // referral-outcome UI (previously SPECIALIST_CLINIC-only) for GPs
   // referring patients out — a real, previously-missing capability, not
   // just a report.
-  GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue', 'chronic_recall', 'diagnosis_categories', 'specialist_referral'],
+  GP_CLINIC:          [...SERVICE_BASE_MODULES, 'visit_notes', 'token_queue', 'chronic_recall', 'diagnosis_categories', 'specialist_referral', 'doctor_pad'],
   // 'specialist_referral' (Phase 46) is the flag distinguishing this vertical's extra
   // referral fields on the visit note. Phase 67 §9.1 item 20.3 — 'case_complexity'
   // is deliberately its OWN flag, not folded into 'specialist_referral': that flag
   // is shared with GP_CLINIC/PHYSIO_CLINIC (Phase 67 items 19.5/22.5), but the
   // Case-Complexity Mix report is scoped to Specialist Clinic alone.
-  SPECIALIST_CLINIC:  [...SERVICE_BASE_MODULES, 'visit_notes', 'specialist_referral', 'case_complexity', 'referral_urgency', 'token_queue'],
-  DENTAL_CLINIC:      [...SERVICE_BASE_MODULES, 'dental_chart', 'dental_recall', 'token_queue'],
+  SPECIALIST_CLINIC:  [...SERVICE_BASE_MODULES, 'visit_notes', 'specialist_referral', 'case_complexity', 'referral_urgency', 'token_queue', 'doctor_pad'],
+  DENTAL_CLINIC:      [...SERVICE_BASE_MODULES, 'dental_chart', 'dental_recall', 'token_queue', 'doctor_pad'],
   // Phase 67 §9.1 item 22.5 — PHYSIO_CLINIC gained 'specialist_referral' this
   // phase too, for the same reason GP_CLINIC did above: unlocks inbound
   // referredBy capture plus the already-built outbound "Refer to Another
@@ -476,7 +489,7 @@ const TEMPLATE_DEFAULTS: Record<string, TemplateModule[]> = {
   // has something to attach to. `listReferralsForVisitNote()`'s outcome
   // enrichment additionally surfaces a quantified pain/functional-score
   // before/after for physio recipients specifically (item 1's own data).
-  PHYSIO_CLINIC:      [...SERVICE_BASE_MODULES, 'visit_notes', 'physio_notes', 'session_packs', 'token_queue', 'specialist_referral'],
+  PHYSIO_CLINIC:      [...SERVICE_BASE_MODULES, 'visit_notes', 'physio_notes', 'session_packs', 'token_queue', 'specialist_referral', 'doctor_pad'],
   // Phase 50 — Diagnostic & Pathology Labs. Test/panel catalog reuses
   // service_catalog (already in SERVICE_BASE_MODULES) rather than a parallel
   // catalog module.

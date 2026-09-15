@@ -1,4 +1,4 @@
-import { toLocalISODate } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 import { reportService } from './report.service'
 import { getOccupancyReport } from './hotel.service'
 import { getFeeKPIs } from './coaching-fee.service'
@@ -199,7 +199,7 @@ export async function getVerticalSpotlightKpis(businessType: string): Promise<{ 
       const db = getPrisma()
       const { dateFrom, dateTo } = thisMonthRange()
       const notes = await db.visitNote.findMany({
-        where: { referredBy: { not: null }, appointment: { scheduledDate: { gte: new Date(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } } },
+        where: { referredBy: { not: null }, appointment: { scheduledDate: { gte: parseLocalDateStart(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } } },
         select: { referredBy: true }
       })
       const counts = new Map<string, number>()
@@ -229,7 +229,7 @@ export async function getVerticalSpotlightKpis(businessType: string): Promise<{ 
       const notes = await db.visitNote.findMany({
         where: {
           OR: [{ painScore: { not: null } }, { functionalScore: { not: null } }],
-          appointment: { scheduledDate: { gte: new Date(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } }
+          appointment: { scheduledDate: { gte: parseLocalDateStart(dateFrom), lte: new Date(`${dateTo}T23:59:59.999`) } }
         },
         select: { painScore: true, functionalScore: true }
       })

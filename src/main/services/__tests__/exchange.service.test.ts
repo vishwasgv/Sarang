@@ -67,8 +67,13 @@ function makeMockDb(opts: { variants?: Record<string, Record<string, unknown>>; 
         Promise.resolve({ id: RETURN_INVOICE_ID, ...data })
       ),
     },
-    inventoryMovement: { create: vi.fn() },
+    inventoryMovement: { create: vi.fn(), findFirst: vi.fn().mockResolvedValue(null) },
     inventory: { upsert: vi.fn() },
+    // applyLocationDeltaTx (inventory.service.ts, real implementation runs
+    // here via the real createReturn — REAL BUG fix 2026-09-15: returns
+    // never kept LocationStock in sync before). Falls back to the default Location.
+    location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-default', isDefault: true }) },
+    locationStock: { upsert: vi.fn() },
     productBatch: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
     productVariant: {
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => variants[where.id] ?? null),

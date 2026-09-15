@@ -211,6 +211,24 @@ describe('getVerticalSpotlightKpis', () => {
     expect(res.data).toEqual({ kind: 'referral', totalReferredThisMonth: 0, topReferrerName: null, topReferrerCount: 0 })
   })
 
+  // REAL BUG found+fixed 2026-09-15: the month's lower bound used
+  // `new Date(dateFrom)` (a bare "YYYY-MM-DD" string, parsed as UTC
+  // midnight) instead of parseLocalDateStart(dateFrom) — for any timezone
+  // ahead of UTC, the first several hours of every month were silently
+  // excluded from the "referred this month" count.
+  it('queries the month lower bound as local midnight, not UTC midnight', async () => {
+    const db = { visitNote: { findMany: vi.fn().mockResolvedValue([]) } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await getVerticalSpotlightKpis('SPECIALIST_CLINIC')
+
+    const call = db.visitNote.findMany.mock.calls[0][0] as { where: { appointment: { scheduledDate: { gte: Date } } } }
+    const gte = call.where.appointment.scheduledDate.gte
+    expect(gte.getHours()).toBe(0)
+    expect(gte.getMinutes()).toBe(0)
+    expect(gte.getDate()).toBe(1)
+  })
+
   it('routes PHYSIO_CLINIC to a VisitNote.painScore/functionalScore aggregate (outcomeProgress branch), not the generic appointment branch', async () => {
     const db = {
       visitNote: {

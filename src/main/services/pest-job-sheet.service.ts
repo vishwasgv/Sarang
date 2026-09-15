@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
-import { inventoryService } from './inventory.service'
+import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { logAction } from './audit.service'
 import { parseLocalDateStart } from '../utils/date.util'
 
@@ -376,6 +376,11 @@ export async function removeJobSheetPesticide(id: string, userId?: string) {
           where: { productId: line.productId },
           data: { quantity: { increment: line.quantityUsed } },
         })
+        // REAL BUG found+fixed 2026-09-15 — see job-card.service.ts's
+        // removeJobCardPart for the full write-up of this bug class
+        // (LocationStock silently drifting from Inventory.quantity on
+        // reversal paths that never had a counterpart).
+        await applyLocationDeltaTx(tx, line.productId, line.quantityUsed)
       }
       await tx.pestJobSheetPesticide.delete({ where: { id } })
     })

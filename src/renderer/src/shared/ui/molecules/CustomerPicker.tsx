@@ -8,6 +8,7 @@ export interface CustomerLite {
   customerName: string
   phone: string | null
   email?: string | null
+  customerCode?: string | null
 }
 
 interface CustomerPickerProps {
@@ -90,7 +91,11 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
         <div className="flex items-center justify-between gap-2 border border-gray-300 dark:border-slate-600 rounded-lg px-3 py-2 bg-white dark:bg-slate-900">
           <div className="min-w-0">
             <p className="text-sm font-medium text-gray-900 dark:text-slate-100 truncate">{value.customerName}</p>
-            {value.phone && <p className="text-xs text-gray-500 dark:text-slate-400">{value.phone}</p>}
+            <p className="text-xs text-gray-500 dark:text-slate-400">
+              {value.customerCode && <span className="font-mono">{value.customerCode}</span>}
+              {value.customerCode && value.phone && ' · '}
+              {value.phone}
+            </p>
           </div>
           <button type="button" onClick={() => { onChange(null); setQuery('') }} className="text-gray-400 hover:text-red-600 shrink-0">
             <X size={14} />
@@ -125,8 +130,11 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
                     onClick={() => { onChange(c); setQuery(''); setShowDropdown(false); setResults([]) }}
                     className="w-full flex items-center justify-between px-3 py-2 hover:bg-gray-50 dark:hover:bg-slate-800 text-start border-b border-gray-50 dark:border-slate-800 last:border-0 text-sm"
                   >
-                    <span className="font-medium text-gray-900 dark:text-slate-100">{c.customerName}</span>
-                    {c.phone && <span className="text-xs text-gray-400 dark:text-slate-500">{c.phone}</span>}
+                    <span className="min-w-0">
+                      <span className="block font-medium text-gray-900 dark:text-slate-100 truncate">{c.customerName}</span>
+                      {c.customerCode && <span className="block text-[11px] font-mono text-gray-400 dark:text-slate-500">{c.customerCode}</span>}
+                    </span>
+                    {c.phone && <span className="text-xs text-gray-400 dark:text-slate-500 shrink-0 ms-2">{c.phone}</span>}
                   </button>
                 ))}
               </div>

@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
+import { applyLocationDeltaTx, getAllowNegative } from './inventory.service'
 
 export interface DispatchRecord {
   id: string
@@ -147,13 +148,25 @@ export async function updateDispatchStatus(payload: {
       if (payload.status === 'DISPATCHED' && fresh.status === 'READY') {
         const currentInv = await tx.inventory.findUnique({ where: { productId: fresh.productId }, select: { quantity: true } })
         const available = currentInv?.quantity ?? 0
-        if (available < fresh.quantity) {
+        // Zero-bug audit 2026-09-15, finding #13: this was the only decrement
+        // path in the codebase that ignored the owner's allow_negative_inventory
+        // setting (every other one — reduceStockTx, adjustStock, transferStock —
+        // respects it via getAllowNegative()). A business that has deliberately
+        // turned that setting on (e.g. dispatching against a confirmed inbound
+        // shipment before it's physically logged) gets the same allowance here.
+        const allowNegative = await getAllowNegative()
+        if (!allowNegative && available < fresh.quantity) {
           throw new Error(`Insufficient stock to dispatch. Available: ${available}, required: ${fresh.quantity}.`)
         }
         await tx.inventory.update({
           where: { productId: fresh.productId },
           data: { quantity: { decrement: fresh.quantity } }
         })
+        // REAL BUG found+fixed 2026-09-15 — see job-card.service.ts's
+        // removeJobCardPart for the full write-up of this bug class
+        // (LocationStock silently drifting from Inventory.quantity on
+        // any raw tx.inventory.update that skips this helper).
+        await applyLocationDeltaTx(tx, fresh.productId, -fresh.quantity)
         await tx.inventoryMovement.create({
           data: {
             productId: fresh.productId,

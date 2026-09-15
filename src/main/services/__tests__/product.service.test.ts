@@ -43,7 +43,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     },
     invoiceItem: { count: vi.fn().mockResolvedValue(0) },
     invoice: { count: vi.fn().mockResolvedValue(0) },
-    inventory: { create: vi.fn().mockResolvedValue({ quantity: 0 }) },
+    inventory: { create: vi.fn().mockResolvedValue({ quantity: 0 }), findUnique: vi.fn().mockResolvedValue({ quantity: 0 }) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx)),
     _tx: tx,
     ...overrides
@@ -375,6 +375,31 @@ describe('productService.archiveProduct', () => {
 
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('PRD-004')
+  })
+
+  // Zero-bug audit 2026-09-15, finding #12: archiving with real remaining
+  // stock used to silently drop that stock's value from getInventoryValue()/
+  // listInventory() (both filter isActive:true) while archived.
+  it('blocks archiving a product that still has stock on hand (PRD-006)', async () => {
+    const db = makeDb()
+    db.inventory.findUnique = vi.fn().mockResolvedValue({ quantity: 12 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.archiveProduct('prod-1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('PRD-006')
+    expect(db.product.update).not.toHaveBeenCalled()
+  })
+
+  it('allows archiving once stock is back to 0', async () => {
+    const db = makeDb()
+    db.inventory.findUnique = vi.fn().mockResolvedValue({ quantity: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await productService.archiveProduct('prod-1')
+
+    expect(result.success).toBe(true)
   })
 })
 

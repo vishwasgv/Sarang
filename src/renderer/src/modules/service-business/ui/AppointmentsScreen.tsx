@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { CalendarDays, Plus, ChevronLeft, ChevronRight, Clock, User, Tag, CheckCircle2, XCircle, AlertCircle, RefreshCw, FileText, Smile, Activity, Package, X, Receipt, Camera, Trash2 } from 'lucide-react'
+import { CalendarDays, Plus, ChevronLeft, ChevronRight, Clock, User, Tag, CheckCircle2, XCircle, AlertCircle, RefreshCw, FileText, Smile, Activity, Package, X, Receipt, Camera, Trash2, PenLine } from 'lucide-react'
 import { useNavigate } from 'react-router-dom'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
@@ -105,6 +105,8 @@ export function AppointmentsScreen() {
   const hasStaffCommission = useIndustryStore((s) => s.isModuleEnabled('staff_commission'))
   // Phase 58 §2 — Beauty Salon: before/after photo attachment per appointment.
   const hasMultiServiceBooking = useIndustryStore((s) => s.isModuleEnabled('multi_service_booking'))
+  // Doctor Pad — hand-drawn diagnosis/prescription notes captured on a tablet.
+  const hasDoctorPad = useIndustryStore((s) => s.isModuleEnabled('doctor_pad'))
   const currSym = useBusinessStore((s) => s.profile?.currencySymbol ?? '₹')
   const navigate = useNavigate()
   const { error: toastError } = useNotificationStore()
@@ -127,6 +129,8 @@ export function AppointmentsScreen() {
   const [checkoutAppt, setCheckoutAppt] = useState<Appointment | null>(null)
   // Phase 58 §2 — before/after photo attachment per appointment.
   const [photosAppt, setPhotosAppt] = useState<Appointment | null>(null)
+  // Doctor Pad — view hand-drawn notes saved from the tablet for this appointment.
+  const [notesAppt, setNotesAppt] = useState<Appointment | null>(null)
   // Cancelling is a one-way action from this screen (CANCELLED has no
   // NEXT_STATUS, so there's no in-UI way back) — confirm before firing it,
   // matching the ConfirmDialog pattern used for destructive actions elsewhere.
@@ -489,6 +493,17 @@ export function AppointmentsScreen() {
                     </button>
                   )}
 
+                  {/* Doctor Pad — hand-drawn notes captured on the tablet */}
+                  {hasDoctorPad && canSeeNotes && (
+                    <button
+                      onClick={() => setNotesAppt(appt)}
+                      title="Doctor's Pad Notes"
+                      className="shrink-0 p-1.5 text-slate-400 hover:text-brand hover:bg-brand/5 rounded-lg transition-colors"
+                    >
+                      <PenLine size={14} />
+                    </button>
+                  )}
+
                   {/* Actions */}
                   {canCreate && nextStatus && (
                     <button
@@ -552,6 +567,24 @@ export function AppointmentsScreen() {
             </div>
             <div className="p-6">
               <DocumentPanel entityType="APPOINTMENT" entityId={photosAppt.id} />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Doctor Pad — hand-drawn notes captured on the tablet */}
+      {notesAppt && (
+        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50 p-4">
+          <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-lg max-h-[85vh] overflow-auto">
+            <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between">
+              <div>
+                <h2 className="text-base font-bold text-dark dark:text-slate-100">Doctor's Pad Notes</h2>
+                <p className="text-xs text-slate-500 dark:text-slate-400">{notesAppt.appointmentNumber} · {notesAppt.serviceTitle}</p>
+              </div>
+              <button onClick={() => setNotesAppt(null)} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={20} /></button>
+            </div>
+            <div className="p-6">
+              <DocumentPanel entityType="APPOINTMENT" entityId={notesAppt.id} />
             </div>
           </div>
         </div>

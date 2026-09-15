@@ -946,6 +946,9 @@ export function RestaurantTablesScreen() {
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('restaurantTables.scanToOrder')}</p>
                 <img src={qrImage.qrDataUrl} alt="Table QR code" className="w-56 h-56 mx-auto" />
                 <p className="text-xs text-slate-400 break-all">{qrImage.orderUrl}</p>
+                <p className="flex items-start gap-1.5 text-left text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+                  <Wifi size={13} className="shrink-0 mt-0.5" /> {t('restaurantTables.sameWifiDisclaimer')}
+                </p>
                 <button onClick={() => printTableQr(qrModalTable, qrImage.qrDataUrl, qrImage.wifiQrDataUrl, qrImage.wifiSsid)}
                   className="w-full px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
                   {t('restaurantTables.print')}
@@ -972,6 +975,9 @@ export function RestaurantTablesScreen() {
                 <p className="text-xs font-semibold text-slate-500 dark:text-slate-400">{t('restaurantTables.scanToOpenTableView')}</p>
                 <img src={waiterQrImage.qrDataUrl} alt="Waiter QR code" className="w-56 h-56 mx-auto" />
                 <p className="text-xs text-slate-400 break-all">{waiterQrImage.captureUrl}</p>
+                <p className="flex items-start gap-1.5 text-left text-xs text-amber-600 dark:text-amber-400 bg-amber-50 dark:bg-amber-900/20 rounded-lg p-2">
+                  <Wifi size={13} className="shrink-0 mt-0.5" /> {t('restaurantTables.sameWifiDisclaimer')}
+                </p>
                 <button onClick={() => printWaiterQr(waiterQrTarget.fullName, waiterQrImage.qrDataUrl)}
                   className="w-full px-4 py-2.5 rounded-xl bg-brand text-white text-sm font-semibold hover:bg-brand/90 transition-colors">
                   {t('restaurantTables.print')}
