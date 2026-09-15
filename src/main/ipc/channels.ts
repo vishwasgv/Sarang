@@ -674,7 +674,7 @@ export interface IpcChannels {
     getRevenueTrend: (payload: { period: '1d' | '7d' | '30d' | '90d' | '12m' | 'custom'; customFrom?: string; customTo?: string }) => Promise<ApiResponse>
     getTopProducts: (payload: { limit: number }) => Promise<ApiResponse>
     getRecentActivity: () => Promise<ApiResponse>
-    getDashboardAlerts: () => Promise<ApiResponse>
+    getDashboardAlerts: (lang?: string) => Promise<ApiResponse>
     getTopOutstanding: (payload: { limit: number }) => Promise<ApiResponse>
     getTopCategories: (payload: { limit: number }) => Promise<ApiResponse>
     getEstimatedProfit: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>

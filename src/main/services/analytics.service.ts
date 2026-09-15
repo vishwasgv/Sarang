@@ -4,6 +4,7 @@ import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 import { getLicenseState, LICENSE_WARNING_WINDOW_DAYS } from './license.service'
 import { checkForUpdatesIfDue } from './update-check.service'
 import { getProductCostsBatch } from './valuation.service'
+import { formatDashboardAlert } from '../i18n/dashboardAlerts'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -527,7 +528,7 @@ async function getBackupReminderDays(): Promise<number> {
   }
 }
 
-export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
+export async function getDashboardAlerts(lang: string = 'en'): Promise<DashboardAlert[]> {
   const db = getPrisma()
   const alerts: DashboardAlert[] = []
 
@@ -568,20 +569,20 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (lowStockCount > 0) {
     alerts.push({
       type: 'LOW_STOCK',
-      message: `${lowStockCount} product${lowStockCount > 1 ? 's are' : ' is'} at or below reorder level`,
+      message: formatDashboardAlert(lang, 'lowStock', lowStockCount),
       severity: lowStockCount >= 5 ? 'danger' : 'warning'
     })
   }
 
   // No backup / overdue backup alert
   if (!lastBackup) {
-    alerts.push({ type: 'NO_BACKUP', message: 'No backup found. Create a backup to protect your data.', severity: 'warning' })
+    alerts.push({ type: 'NO_BACKUP', message: formatDashboardAlert(lang, 'noBackupEver', undefined), severity: 'warning' })
   } else {
     const daysSince = Math.floor((Date.now() - new Date(lastBackup.backupDate).getTime()) / 86400000)
     if (daysSince >= reminderDays) {
       alerts.push({
         type: 'NO_BACKUP',
-        message: `Last backup was ${daysSince} day${daysSince > 1 ? 's' : ''} ago. Consider backing up now.`,
+        message: formatDashboardAlert(lang, 'noBackupDays', daysSince, { days: daysSince }),
         severity: daysSince >= reminderDays * 2 ? 'danger' : 'warning'
       })
     }
@@ -594,7 +595,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (outstanding >= warningThreshold) {
     alerts.push({
       type: 'LARGE_OUTSTANDING',
-      message: `Total customer outstanding exceeds ${currencySymbol}${(outstanding / 1000).toFixed(0)}K. Review pending payments.`,
+      message: formatDashboardAlert(lang, 'largeOutstanding', undefined, { symbol: currencySymbol, amountK: (outstanding / 1000).toFixed(0) }),
       severity: outstanding >= dangerThreshold ? 'danger' : 'warning'
     })
   }
@@ -610,7 +611,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (pendingReminderCount > 0) {
     alerts.push({
       type: 'PENDING_REMINDERS',
-      message: `${pendingReminderCount} reminder${pendingReminderCount > 1 ? 's are' : ' is'} waiting to be sent.`,
+      message: formatDashboardAlert(lang, 'pendingReminders', pendingReminderCount),
       severity: pendingReminderCount >= 10 ? 'danger' : 'warning'
     })
   }
@@ -619,7 +620,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (auditLogFailure) {
     alerts.push({
       type: 'AUDIT_LOG_FAILURE',
-      message: 'A recent action could not be recorded in the audit log. Check disk space and file permissions.',
+      message: formatDashboardAlert(lang, 'auditLogFailure', undefined),
       severity: 'danger'
     })
   }
@@ -628,7 +629,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (overdueRentalCount > 0) {
     alerts.push({
       type: 'RENTAL_OVERDUE',
-      message: `${overdueRentalCount} rental${overdueRentalCount > 1 ? 's are' : ' is'} overdue for return.`,
+      message: formatDashboardAlert(lang, 'rentalOverdue', overdueRentalCount),
       severity: overdueRentalCount >= 5 ? 'danger' : 'warning'
     })
   }
@@ -639,7 +640,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (overdueRmaCount > 0) {
     alerts.push({
       type: 'RMA_OVERDUE',
-      message: `${overdueRmaCount} unit${overdueRmaCount > 1 ? 's are' : ' is'} overdue from vendor RMA (past the 30-day SLA).`,
+      message: formatDashboardAlert(lang, 'rmaOverdue', overdueRmaCount),
       severity: overdueRmaCount >= 5 ? 'danger' : 'warning'
     })
   }
@@ -657,8 +658,8 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   const licenseState = await getLicenseState()
   if (licenseState.status === 'WARNING' && licenseState.daysRemaining !== null) {
     const message = licenseState.tier === 'PAID'
-      ? `Your license renews in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
-      : `Your free trial ends in ${licenseState.daysRemaining} day${licenseState.daysRemaining === 1 ? '' : 's'}. Renew to keep creating new invoices.`
+      ? formatDashboardAlert(lang, 'licenseExpiringPaid', licenseState.daysRemaining, { days: licenseState.daysRemaining })
+      : formatDashboardAlert(lang, 'licenseExpiringTrial', licenseState.daysRemaining, { days: licenseState.daysRemaining })
     alerts.push({
       type: 'LICENSE_EXPIRING',
       message,
@@ -666,8 +667,8 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
     })
   } else if (licenseState.status === 'EXPIRED') {
     const message = licenseState.tier === 'PAID'
-      ? 'Your license has expired. Renew to keep creating new invoices — all your existing data stays fully accessible.'
-      : 'Your free trial has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.'
+      ? formatDashboardAlert(lang, 'licenseExpiredPaid', undefined)
+      : formatDashboardAlert(lang, 'licenseExpiredTrial', undefined)
     alerts.push({
       type: 'LICENSE_EXPIRED',
       message,
@@ -683,7 +684,7 @@ export async function getDashboardAlerts(): Promise<DashboardAlert[]> {
   if (updateResult?.hasUpdate) {
     alerts.push({
       type: 'UPDATE_AVAILABLE',
-      message: `Version ${updateResult.latestVersion} of Sarang is available (you're on ${updateResult.currentVersion}).`,
+      message: formatDashboardAlert(lang, 'updateAvailable', undefined, { latestVersion: updateResult.latestVersion, currentVersion: updateResult.currentVersion }),
       severity: 'warning'
     })
   }

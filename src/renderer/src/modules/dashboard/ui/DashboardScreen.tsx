@@ -107,7 +107,7 @@ const NAMED_PERIODS: { label: string; value: Exclude<Period, 'custom'> }[] = [
 ]
 
 export function DashboardScreen() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const profile = useBusinessStore((s) => s.profile)
   const numberFormat = useBusinessStore((s) => s.getSetting('number_format', 'IN'))
   const hasPermission = useAuthStore((s) => s.hasPermission)
@@ -176,7 +176,7 @@ export function DashboardScreen() {
       const [kpiRes, actRes, alertRes, outRes, catRes, retRes, expRes] = await Promise.all([
         api.analytics.getDashboardKpis(forceRefresh ? { forceRefresh: true } : undefined),
         api.analytics.getRecentActivity(),
-        api.analytics.getDashboardAlerts(),
+        api.analytics.getDashboardAlerts(i18n.language),
         api.analytics.getTopOutstanding({ limit: 5 }),
         canViewInventory ? api.analytics.getTopCategories({ limit: 5 }) : Promise.resolve({ success: true, data: [] }),
         wantsReturnsWidget ? api.returns.todaySummary() : Promise.resolve({ success: true, data: null }),

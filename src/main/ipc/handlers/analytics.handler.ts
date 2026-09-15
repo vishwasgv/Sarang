@@ -72,9 +72,10 @@ export function register(handle: HandleFn): void {
     return { success: true, data }
   })
 
-  handle('analytics:getDashboardAlerts', async () => {
+  handle('analytics:getDashboardAlerts', async (payload) => {
     const deny = await requirePermission('analytics.viewDashboard'); if (deny) return deny
-    const data = await analyticsService.getDashboardAlerts()
+    const lang = payload as string | undefined
+    const data = await analyticsService.getDashboardAlerts(lang)
     return { success: true, data }
   })
 
