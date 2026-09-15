@@ -19,7 +19,8 @@
     "licenseExpiringTrial_other": "Your free trial ends in {{days}} days. Renew to keep creating new invoices.",
     "licenseExpiredPaid": "Your license has expired. Renew to keep creating new invoices — all your existing data stays fully accessible.",
     "licenseExpiredTrial": "Your free trial has ended. Renew your license to keep creating new invoices — all your existing data stays fully accessible.",
-    "updateAvailable": "Version {{latestVersion}} of Sarang is available (you're on {{currentVersion}})."
+    "updateAvailable": "Version {{latestVersion}} of Sarang is available (you're on {{currentVersion}}).",
+    "updateReady": "Version {{latestVersion}} has been downloaded and is ready to install. Restart Sarang to apply it."
   },
   "hi": {
     "lowStock_one": "{{count}} उत्पाद पुनर्ऑर्डर स्तर पर या उससे नीचे है",
@@ -41,7 +42,8 @@
     "licenseExpiringTrial_other": "आपका निःशुल्क ट्रायल {{days}} दिनों में समाप्त हो जाएगा। नए इनवॉइस बनाना जारी रखने के लिए नवीनीकृत करें।",
     "licenseExpiredPaid": "आपका लाइसेंस समाप्त हो गया है। नए इनवॉइस बनाना जारी रखने के लिए नवीनीकृत करें — आपका मौजूदा डेटा पूरी तरह से सुलभ रहेगा।",
     "licenseExpiredTrial": "आपका निःशुल्क ट्रायल समाप्त हो गया है। नए इनवॉइस बनाना जारी रखने के लिए अपना लाइसेंस नवीनीकृत करें — आपका मौजूदा डेटा पूरी तरह से सुलभ रहेगा।",
-    "updateAvailable": "Sarang का वर्शन {{latestVersion}} उपलब्ध है (आप वर्तमान में {{currentVersion}} पर हैं)।"
+    "updateAvailable": "Sarang का वर्शन {{latestVersion}} उपलब्ध है (आप वर्तमान में {{currentVersion}} पर हैं)।",
+    "updateReady": "वर्शन {{latestVersion}} डाउनलोड हो चुका है और इंस्टॉल के लिए तैयार है। इसे लागू करने के लिए Sarang को पुनः आरंभ करें।"
   },
   "mr": {
     "lowStock_one": "{{count}} उत्पादन पुनर्ऑर्डर पातळीवर किंवा त्याखाली आहे",
@@ -63,7 +65,8 @@
     "licenseExpiringTrial_other": "तुमचा मोफत ट्रायल {{days}} दिवसांत संपेल. नवीन इनव्हॉइस तयार करणे सुरू ठेवण्यासाठी नूतनीकरण करा.",
     "licenseExpiredPaid": "तुमचा परवाना कालबाह्य झाला आहे. नवीन इनव्हॉइस तयार करणे सुरू ठेवण्यासाठी नूतनीकरण करा — तुमचा सर्व विद्यमान डेटा पूर्णपणे उपलब्ध राहील.",
     "licenseExpiredTrial": "तुमचा मोफत ट्रायल संपला आहे. नवीन इनव्हॉइस तयार करणे सुरू ठेवण्यासाठी तुमचा परवाना नूतनीकृत करा — तुमचा सर्व विद्यमान डेटा पूर्णपणे उपलब्ध राहील.",
-    "updateAvailable": "Sarang ची आवृत्ती {{latestVersion}} उपलब्ध आहे (तुम्ही सध्या {{currentVersion}} वर आहात)."
+    "updateAvailable": "Sarang ची आवृत्ती {{latestVersion}} उपलब्ध आहे (तुम्ही सध्या {{currentVersion}} वर आहात).",
+    "updateReady": "आवृत्ती {{latestVersion}} डाउनलोड झाली असून इंस्टॉल करण्यासाठी तयार आहे. ती लागू करण्यासाठी Sarang पुन्हा सुरू करा."
   },
   "gu": {
     "lowStock_one": "{{count}} ઉત્પાદન રિ-ઓર્ડર સ્તર પર અથવા તેનાથી નીચે છે",
@@ -85,7 +88,8 @@
     "licenseExpiringTrial_other": "તમારી મફત ટ્રાયલ {{days}} દિવસોમાં પૂરી થશે. નવા ઇનવોઇસ બનાવવાનું ચાલુ રાખવા રિન્યૂ કરો.",
     "licenseExpiredPaid": "તમારું લાઇસન્સ સમાપ્ત થઈ ગયું છે. નવા ઇનવોઇસ બનાવવાનું ચાલુ રાખવા રિન્યૂ કરો — તમારો હાલનો તમામ ડેટા સંપૂર્ણપણે ઉપલબ્ધ રહેશે.",
     "licenseExpiredTrial": "તમારી મફત ટ્રાયલ પૂરી થઈ ગઈ છે. નવા ઇનવોઇસ બનાવવાનું ચાલુ રાખવા તમારું લાઇસન્સ રિન્યૂ કરો — તમારો હાલનો તમામ ડેટા સંપૂર્ણપણે ઉપલબ્ધ રહેશે.",
-    "updateAvailable": "Sarang નું વર્ઝન {{latestVersion}} ઉપલબ્ધ છે (તમે હાલમાં {{currentVersion}} પર છો)."
+    "updateAvailable": "Sarang નું વર્ઝન {{latestVersion}} ઉપલબ્ધ છે (તમે હાલમાં {{currentVersion}} પર છો).",
+    "updateReady": "વર્ઝન {{latestVersion}} ડાઉનલોડ થઈ ગયું છે અને ઇન્સ્ટોલ કરવા માટે તૈયાર છે. તેને લાગુ કરવા માટે Sarang ફરીથી શરૂ કરો."
   },
   "ta": {
     "lowStock_one": "{{count}} தயாரிப்பு மறு-ஆர்டர் நிலையில் அல்லது அதற்குக் கீழே உள்ளது",
@@ -107,7 +111,8 @@
     "licenseExpiringTrial_other": "உங்கள் இலவச சோதனை {{days}} நாட்களில் முடிவடையும். புதிய விலைப்பட்டியல்களை உருவாக்கத் தொடர புதுப்பிக்கவும்.",
     "licenseExpiredPaid": "உங்கள் உரிமத்தின் காலம் முடிந்துவிட்டது. புதிய விலைப்பட்டியல்களை உருவாக்கத் தொடர புதுப்பிக்கவும் — உங்கள் தற்போதைய தரவு அனைத்தும் முழுமையாக அணுகக்கூடியதாக இருக்கும்.",
     "licenseExpiredTrial": "உங்கள் இலவச சோதனை முடிந்துவிட்டது. புதிய விலைப்பட்டியல்களை உருவாக்கத் தொடர உங்கள் உரிமத்தைப் புதுப்பிக்கவும் — உங்கள் தற்போதைய தரவு அனைத்தும் முழுமையாக அணுகக்கூடியதாக இருக்கும்.",
-    "updateAvailable": "Sarang-இன் பதிப்பு {{latestVersion}} கிடைக்கிறது (நீங்கள் தற்போது {{currentVersion}}-இல் உள்ளீர்கள்)."
+    "updateAvailable": "Sarang-இன் பதிப்பு {{latestVersion}} கிடைக்கிறது (நீங்கள் தற்போது {{currentVersion}}-இல் உள்ளீர்கள்).",
+    "updateReady": "பதிப்பு {{latestVersion}} பதிவிறக்கம் செய்யப்பட்டு நிறுவத் தயாராக உள்ளது. அதைப் பயன்படுத்த Sarang-ஐ மீண்டும் தொடங்கவும்."
   },
   "te": {
     "lowStock_one": "{{count}} ఉత్పత్తి రీఆర్డర్ స్థాయిలో లేదా అంతకంటే తక్కువగా ఉంది",
@@ -129,7 +134,8 @@
     "licenseExpiringTrial_other": "మీ ఉచిత ట్రయల్ {{days}} రోజుల్లో ముగుస్తుంది. కొత్త ఇన్‌వాయిస్‌లు సృష్టించడం కొనసాగించడానికి రెన్యూ చేయండి.",
     "licenseExpiredPaid": "మీ లైసెన్స్ గడువు ముగిసింది. కొత్త ఇన్‌వాయిస్‌లు సృష్టించడం కొనసాగించడానికి రెన్యూ చేయండి — మీ ప్రస్తుత డేటా మొత్తం పూర్తిగా అందుబాటులో ఉంటుంది.",
     "licenseExpiredTrial": "మీ ఉచిత ట్రయల్ ముగిసింది. కొత్త ఇన్‌వాయిస్‌లు సృష్టించడం కొనసాగించడానికి మీ లైసెన్స్‌ను రెన్యూ చేయండి — మీ ప్రస్తుత డేటా మొత్తం పూర్తిగా అందుబాటులో ఉంటుంది.",
-    "updateAvailable": "Sarang వెర్షన్ {{latestVersion}} అందుబాటులో ఉంది (మీరు ప్రస్తుతం {{currentVersion}}లో ఉన్నారు)."
+    "updateAvailable": "Sarang వెర్షన్ {{latestVersion}} అందుబాటులో ఉంది (మీరు ప్రస్తుతం {{currentVersion}}లో ఉన్నారు).",
+    "updateReady": "వెర్షన్ {{latestVersion}} డౌన్‌లోడ్ అయ్యింది మరియు ఇన్‌స్టాల్ చేయడానికి సిద్ధంగా ఉంది. దీన్ని వర్తింపజేయడానికి Sarangని పునఃప్రారంభించండి."
   },
   "kn": {
     "lowStock_one": "{{count}} ಉತ್ಪನ್ನವು ಮರುಆದೇಶ ಮಟ್ಟದಲ್ಲಿ ಅಥವಾ ಅದಕ್ಕಿಂತ ಕಡಿಮೆ ಇದೆ",
@@ -151,7 +157,8 @@
     "licenseExpiringTrial_other": "ನಿಮ್ಮ ಉಚಿತ ಟ್ರಯಲ್ {{days}} ದಿನಗಳಲ್ಲಿ ಮುಗಿಯುತ್ತದೆ. ಹೊಸ ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ರಚಿಸುವುದನ್ನು ಮುಂದುವರಿಸಲು ನವೀಕರಿಸಿ.",
     "licenseExpiredPaid": "ನಿಮ್ಮ ಪರವಾನಗಿ ಅವಧಿ ಮುಗಿದಿದೆ. ಹೊಸ ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ರಚಿಸುವುದನ್ನು ಮುಂದುವರಿಸಲು ನವೀಕರಿಸಿ — ನಿಮ್ಮ ಎಲ್ಲಾ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಡೇಟಾ ಸಂಪೂರ್ಣವಾಗಿ ಪ್ರವೇಶಿಸಬಹುದಾಗಿ ಉಳಿಯುತ್ತದೆ.",
     "licenseExpiredTrial": "ನಿಮ್ಮ ಉಚಿತ ಟ್ರಯಲ್ ಮುಗಿದಿದೆ. ಹೊಸ ಇನ್‌ವಾಯ್ಸ್‌ಗಳನ್ನು ರಚಿಸುವುದನ್ನು ಮುಂದುವರಿಸಲು ನಿಮ್ಮ ಪರವಾನಗಿಯನ್ನು ನವೀಕರಿಸಿ — ನಿಮ್ಮ ಎಲ್ಲಾ ಅಸ್ತಿತ್ವದಲ್ಲಿರುವ ಡೇಟಾ ಸಂಪೂರ್ಣವಾಗಿ ಪ್ರವೇಶಿಸಬಹುದಾಗಿ ಉಳಿಯುತ್ತದೆ.",
-    "updateAvailable": "Sarang ನ ಆವೃತ್ತಿ {{latestVersion}} ಲಭ್ಯವಿದೆ (ನೀವು ಪ್ರಸ್ತುತ {{currentVersion}} ನಲ್ಲಿದ್ದೀರಿ)."
+    "updateAvailable": "Sarang ನ ಆವೃತ್ತಿ {{latestVersion}} ಲಭ್ಯವಿದೆ (ನೀವು ಪ್ರಸ್ತುತ {{currentVersion}} ನಲ್ಲಿದ್ದೀರಿ).",
+    "updateReady": "ಆವೃತ್ತಿ {{latestVersion}} ಡೌನ್‌ಲೋಡ್ ಆಗಿದ್ದು ಸ್ಥಾಪಿಸಲು ಸಿದ್ಧವಾಗಿದೆ. ಅದನ್ನು ಅನ್ವಯಿಸಲು Sarang ಅನ್ನು ಮರುಪ್ರಾರಂಭಿಸಿ."
   },
   "ml": {
     "lowStock_one": "{{count}} ഉൽപ്പന്നം റീഓർഡർ നിലയിലോ അതിനു താഴെയോ ആണ്",
@@ -173,7 +180,8 @@
     "licenseExpiringTrial_other": "നിങ്ങളുടെ സൗജന്യ ട്രയൽ {{days}} ദിവസങ്ങൾക്കുള്ളിൽ അവസാനിക്കും. പുതിയ ഇൻവോയ്‌സുകൾ സൃഷ്ടിക്കുന്നത് തുടരാൻ പുതുക്കുക.",
     "licenseExpiredPaid": "നിങ്ങളുടെ ലൈസൻസ് കാലാവധി കഴിഞ്ഞു. പുതിയ ഇൻവോയ്‌സുകൾ സൃഷ്ടിക്കുന്നത് തുടരാൻ പുതുക്കുക — നിങ്ങളുടെ നിലവിലുള്ള എല്ലാ ഡാറ്റയും പൂർണ്ണമായി ലഭ്യമായി തുടരും.",
     "licenseExpiredTrial": "നിങ്ങളുടെ സൗജന്യ ട്രയൽ അവസാനിച്ചു. പുതിയ ഇൻവോയ്‌സുകൾ സൃഷ്ടിക്കുന്നത് തുടരാൻ നിങ്ങളുടെ ലൈസൻസ് പുതുക്കുക — നിങ്ങളുടെ നിലവിലുള്ള എല്ലാ ഡാറ്റയും പൂർണ്ണമായി ലഭ്യമായി തുടരും.",
-    "updateAvailable": "Sarang-ന്റെ പതിപ്പ് {{latestVersion}} ലഭ്യമാണ് (നിങ്ങൾ ഇപ്പോൾ {{currentVersion}}-ൽ ആണ്)."
+    "updateAvailable": "Sarang-ന്റെ പതിപ്പ് {{latestVersion}} ലഭ്യമാണ് (നിങ്ങൾ ഇപ്പോൾ {{currentVersion}}-ൽ ആണ്).",
+    "updateReady": "പതിപ്പ് {{latestVersion}} ഡൗൺലോഡ് ചെയ്ത് ഇൻസ്റ്റാൾ ചെയ്യാൻ തയ്യാറാണ്. ഇത് പ്രാബല്യത്തിൽ വരുത്താൻ Sarang പുനരാരംഭിക്കുക."
   },
   "ar": {
     "lowStock_one": "{{count}} منتج عند مستوى إعادة الطلب أو أقل منه",
@@ -195,7 +203,8 @@
     "licenseExpiringTrial_other": "تنتهي فترتك التجريبية المجانية خلال {{days}} أيام. جدّد اشتراكك لمواصلة إنشاء فواتير جديدة.",
     "licenseExpiredPaid": "انتهت صلاحية ترخيصك. جدّده لمواصلة إنشاء فواتير جديدة — ستظل جميع بياناتك الحالية متاحة بالكامل.",
     "licenseExpiredTrial": "انتهت فترتك التجريبية المجانية. جدّد ترخيصك لمواصلة إنشاء فواتير جديدة — ستظل جميع بياناتك الحالية متاحة بالكامل.",
-    "updateAvailable": "الإصدار {{latestVersion}} من Sarang متاح الآن (أنت تستخدم حاليًا {{currentVersion}})."
+    "updateAvailable": "الإصدار {{latestVersion}} من Sarang متاح الآن (أنت تستخدم حاليًا {{currentVersion}}).",
+    "updateReady": "تم تنزيل الإصدار {{latestVersion}} وهو جاهز للتثبيت. أعد تشغيل Sarang لتطبيقه."
   },
   "es": {
     "lowStock_one": "{{count}} producto está en el nivel de reposición o por debajo",
@@ -217,7 +226,8 @@
     "licenseExpiringTrial_other": "Su prueba gratuita termina en {{days}} días. Renueve para seguir creando nuevas facturas.",
     "licenseExpiredPaid": "Su licencia ha caducado. Renuévela para seguir creando nuevas facturas: todos sus datos existentes permanecen totalmente accesibles.",
     "licenseExpiredTrial": "Su prueba gratuita ha finalizado. Renueve su licencia para seguir creando nuevas facturas: todos sus datos existentes permanecen totalmente accesibles.",
-    "updateAvailable": "La versión {{latestVersion}} de Sarang está disponible (usted tiene la {{currentVersion}})."
+    "updateAvailable": "La versión {{latestVersion}} de Sarang está disponible (usted tiene la {{currentVersion}}).",
+    "updateReady": "La versión {{latestVersion}} se ha descargado y está lista para instalarse. Reinicie Sarang para aplicarla."
   },
   "fr": {
     "lowStock_one": "{{count}} produit est au niveau de réapprovisionnement ou en dessous",
@@ -239,7 +249,8 @@
     "licenseExpiringTrial_other": "Votre essai gratuit se termine dans {{days}} jours. Renouvelez pour continuer à créer de nouvelles factures.",
     "licenseExpiredPaid": "Votre licence a expiré. Renouvelez-la pour continuer à créer de nouvelles factures — toutes vos données existantes restent entièrement accessibles.",
     "licenseExpiredTrial": "Votre essai gratuit est terminé. Renouvelez votre licence pour continuer à créer de nouvelles factures — toutes vos données existantes restent entièrement accessibles.",
-    "updateAvailable": "La version {{latestVersion}} de Sarang est disponible (vous avez la {{currentVersion}})."
+    "updateAvailable": "La version {{latestVersion}} de Sarang est disponible (vous avez la {{currentVersion}}).",
+    "updateReady": "La version {{latestVersion}} a été téléchargée et est prête à être installée. Redémarrez Sarang pour l'appliquer."
   },
   "pt": {
     "lowStock_one": "{{count}} produto está no nível de reposição ou abaixo",
@@ -261,7 +272,8 @@
     "licenseExpiringTrial_other": "Seu teste gratuito termina em {{days}} dias. Renove para continuar criando novas faturas.",
     "licenseExpiredPaid": "Sua licença expirou. Renove para continuar criando novas faturas — todos os seus dados existentes permanecem totalmente acessíveis.",
     "licenseExpiredTrial": "Seu teste gratuito terminou. Renove sua licença para continuar criando novas faturas — todos os seus dados existentes permanecem totalmente acessíveis.",
-    "updateAvailable": "A versão {{latestVersion}} do Sarang está disponível (você está na {{currentVersion}})."
+    "updateAvailable": "A versão {{latestVersion}} do Sarang está disponível (você está na {{currentVersion}}).",
+    "updateReady": "A versão {{latestVersion}} foi baixada e está pronta para instalar. Reinicie o Sarang para aplicá-la."
   },
   "id": {
     "lowStock_one": "{{count}} produk berada di level pemesanan ulang atau di bawahnya",
@@ -283,6 +295,7 @@
     "licenseExpiringTrial_other": "Masa uji coba gratis Anda berakhir dalam {{days}} hari. Perbarui untuk terus membuat faktur baru.",
     "licenseExpiredPaid": "Lisensi Anda telah berakhir. Perbarui untuk terus membuat faktur baru — semua data Anda yang ada tetap dapat diakses sepenuhnya.",
     "licenseExpiredTrial": "Masa uji coba gratis Anda telah berakhir. Perbarui lisensi Anda untuk terus membuat faktur baru — semua data Anda yang ada tetap dapat diakses sepenuhnya.",
-    "updateAvailable": "Versi {{latestVersion}} dari Sarang tersedia (Anda menggunakan {{currentVersion}})."
+    "updateAvailable": "Versi {{latestVersion}} dari Sarang tersedia (Anda menggunakan {{currentVersion}}).",
+    "updateReady": "Versi {{latestVersion}} telah diunduh dan siap dipasang. Mulai ulang Sarang untuk menerapkannya."
   }
 }

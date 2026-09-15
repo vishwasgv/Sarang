@@ -17,6 +17,8 @@ export function AboutScreen() {
   const [updateResult, setUpdateResult] = useState<{ hasUpdate: boolean; latestVersion: string; downloadUrl?: string } | null>(null)
   const [updateError, setUpdateError] = useState<string | null>(null)
   const [autoCheckEnabled, setAutoCheckEnabled] = useState(true)
+  const [readyVersion, setReadyVersion] = useState<string | null>(null)
+  const [restarting, setRestarting] = useState(false)
 
   useEffect(() => {
     api.app.getPaths().then((r: any) => {
@@ -28,7 +30,21 @@ export function AboutScreen() {
     // Phase 59.13 — default ON, always shown so it's never a silent
     // background call the user can't see or control.
     api.app.isAutoUpdateCheckEnabled().then((r) => { if (r.success) setAutoCheckEnabled(r.data !== false) }).catch(() => {})
+    // 2026-09-15 — only ever non-null for an eligible (paid, active) install
+    // that already finished a background differential download; see
+    // update-check.service.ts's isEligibleForAutoUpdate().
+    api.app.getUpdateReadyVersion().then((r) => { if (r.success) setReadyVersion(r.data ?? null) }).catch(() => {})
   }, [toastError, t])
+
+  async function handleRestartAndInstall() {
+    setRestarting(true)
+    try {
+      await api.app.restartAndInstallUpdate()
+    } catch {
+      setRestarting(false)
+      toastError(t('common.error'), t('about.restartFailed'))
+    }
+  }
 
   async function handleToggleAutoCheck(next: boolean) {
     setAutoCheckEnabled(next) // optimistic — this is a low-stakes preference, not worth a loading spinner
@@ -143,7 +159,7 @@ export function AboutScreen() {
         <p className="text-sm text-slate-500 mb-1">Check if a newer version of Sarang is available.</p>
         <p className="text-xs text-slate-400 mb-3">
           {autoCheckEnabled
-            ? "Checks automatically, at most once a day — sends nothing but the app's own version number, no business or customer data. You'll see a Dashboard notice if an update is available; nothing ever downloads or installs automatically."
+            ? "Checks automatically, at most once a day — sends nothing but the app's own version number, no business or customer data. If you're on an active paid license, updates download in the background automatically; you'll be asked to restart when ready. Free/trial licenses see a Dashboard notice with a manual download link instead."
             : "Automatic checking is off. Only runs when you click the button below — sends nothing but the app's own version number, no business or customer data."}
         </p>
         <label className="flex items-center gap-2 mb-4 cursor-pointer w-fit">
@@ -151,14 +167,25 @@ export function AboutScreen() {
           <span className="text-xs text-slate-600 dark:text-slate-300">Automatically check for updates</span>
         </label>
 
-        <Button variant="secondary" onClick={handleCheckForUpdates} loading={checking} icon={<RefreshCw size={16} />}>
-          Check for Updates
-        </Button>
+        {readyVersion ? (
+          <div className="flex items-center gap-3">
+            <p className="text-sm text-brand font-medium">
+              Version {readyVersion} has been downloaded and is ready to install.
+            </p>
+            <Button variant="primary" onClick={handleRestartAndInstall} loading={restarting}>
+              Restart & Install
+            </Button>
+          </div>
+        ) : (
+          <Button variant="secondary" onClick={handleCheckForUpdates} loading={checking} icon={<RefreshCw size={16} />}>
+            Check for Updates
+          </Button>
+        )}
 
         {updateResult && !updateResult.hasUpdate && (
           <p className="mt-3 text-sm text-success font-medium">You are using the latest version.</p>
         )}
-        {updateResult && updateResult.hasUpdate && (
+        {updateResult && updateResult.hasUpdate && !readyVersion && (
           <div className="mt-3 flex items-center gap-3">
             <p className="text-sm text-brand font-medium">
               Version {updateResult.latestVersion} is available.

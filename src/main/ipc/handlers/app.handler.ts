@@ -6,7 +6,7 @@ import { logger } from '../../utils/logger'
 import { requireSession } from '../permission-guard'
 import { logoToBase64DataUri, generateUpiQr, canShowUpiQr } from '../../services/print.service'
 import { OpenFileDialogSchema, GenerateUpiPaymentQrSchema } from '../../validation/app.validation'
-import { fetchLatestReleaseInfo, isAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled } from '../../services/update-check.service'
+import { fetchLatestReleaseInfo, isAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, getUpdateReadyVersion, restartAndInstallUpdate } from '../../services/update-check.service'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -143,6 +143,30 @@ export function register(handle: HandleFn): void {
     } catch (err) {
       logger.error('[App] setAutoUpdateCheckEnabled error:', err)
       return { success: false, error: { code: 'SYS-001', message: 'Could not save your preference. Please try again.' } }
+    }
+  })
+
+  // 2026-09-15 — real differential auto-download (see update-check.service.ts's
+  // header comment for the full eligibility rationale). Only ever non-null
+  // for an eligible, currently-paying install — ineligible installs never
+  // trigger a background download in the first place, so this simply has
+  // nothing to report for them.
+  handle('app:getUpdateReadyVersion', async () => {
+    try {
+      return { success: true, data: await getUpdateReadyVersion() }
+    } catch (err) {
+      logger.error('[App] getUpdateReadyVersion error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+    }
+  })
+
+  handle('app:restartAndInstallUpdate', async () => {
+    try {
+      await restartAndInstallUpdate()
+      return { success: true }
+    } catch (err) {
+      logger.error('[App] restartAndInstallUpdate error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Could not restart to install the update. Please try again.' } }
     }
   })
 

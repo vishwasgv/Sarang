@@ -2,7 +2,7 @@ import { getPrisma } from '../database/db'
 import { isModuleEnabled } from './industry-template.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 import { getLicenseState, LICENSE_WARNING_WINDOW_DAYS } from './license.service'
-import { checkForUpdatesIfDue } from './update-check.service'
+import { checkForUpdatesIfDue, getUpdateReadyVersion } from './update-check.service'
 import { getProductCostsBatch } from './valuation.service'
 import { formatDashboardAlert } from '../i18n/dashboardAlerts'
 
@@ -52,7 +52,7 @@ export interface ActivityItem {
 }
 
 export interface DashboardAlert {
-  type: 'LOW_STOCK' | 'NO_BACKUP' | 'LARGE_OUTSTANDING' | 'PENDING_REMINDERS' | 'AUDIT_LOG_FAILURE' | 'RENTAL_OVERDUE' | 'RMA_OVERDUE' | 'LICENSE_EXPIRING' | 'LICENSE_EXPIRED' | 'UPDATE_AVAILABLE'
+  type: 'LOW_STOCK' | 'NO_BACKUP' | 'LARGE_OUTSTANDING' | 'PENDING_REMINDERS' | 'AUDIT_LOG_FAILURE' | 'RENTAL_OVERDUE' | 'RMA_OVERDUE' | 'LICENSE_EXPIRING' | 'LICENSE_EXPIRED' | 'UPDATE_AVAILABLE' | 'UPDATE_READY'
   message: string
   severity: 'warning' | 'danger'
 }
@@ -680,13 +680,31 @@ export async function getDashboardAlerts(lang: string = 'en'): Promise<Dashboard
   // inside checkForUpdatesIfDue() itself, so this call is cheap and safe on
   // every dashboard load — same reuse-the-existing-alerts-list approach as
   // the license alert above, not a new banner mechanism.
-  const updateResult = await checkForUpdatesIfDue()
-  if (updateResult?.hasUpdate) {
+  //
+  // 2026-09-15 — getUpdateReadyVersion() is a plain Setting read (cheap on
+  // every load, unlike the throttled network check above) so "restart to
+  // install" shows up the moment a background download finishes, not just
+  // on the next once-a-day check. A ready-to-install download always wins
+  // over the plain "available" notice — showing both would be redundant
+  // (and for an eligible, currently-downloading install, checkForUpdatesIfDue
+  // would otherwise briefly re-report the same version as merely "available"
+  // between its download starting and finishing).
+  const readyVersion = await getUpdateReadyVersion()
+  if (readyVersion) {
     alerts.push({
-      type: 'UPDATE_AVAILABLE',
-      message: formatDashboardAlert(lang, 'updateAvailable', undefined, { latestVersion: updateResult.latestVersion, currentVersion: updateResult.currentVersion }),
+      type: 'UPDATE_READY',
+      message: formatDashboardAlert(lang, 'updateReady', undefined, { latestVersion: readyVersion }),
       severity: 'warning'
     })
+  } else {
+    const updateResult = await checkForUpdatesIfDue()
+    if (updateResult?.hasUpdate) {
+      alerts.push({
+        type: 'UPDATE_AVAILABLE',
+        message: formatDashboardAlert(lang, 'updateAvailable', undefined, { latestVersion: updateResult.latestVersion, currentVersion: updateResult.currentVersion }),
+        severity: 'warning'
+      })
+    }
   }
 
   return alerts

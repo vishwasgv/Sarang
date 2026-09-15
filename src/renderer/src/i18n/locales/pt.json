@@ -4581,7 +4581,8 @@
     "buildInfo": "Informações da Versão",
     "legalDisclaimerTitle": "Aviso Legal",
     "loadPathsFailed": "Não foi possível carregar os caminhos de armazenamento.",
-    "savePreferenceFailed": "Não foi possível salvar sua preferência. Por favor, tente novamente."
+    "savePreferenceFailed": "Não foi possível salvar sua preferência. Por favor, tente novamente.",
+    "restartFailed": "Não foi possível reiniciar para instalar a atualização. Tente novamente."
   },
   "license": {
     "title": "Licença",

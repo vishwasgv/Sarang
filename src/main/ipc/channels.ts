@@ -735,6 +735,8 @@ export interface IpcChannels {
     checkForUpdates: () => Promise<ApiResponse<{ hasUpdate: boolean; latestVersion: string; currentVersion: string }>>
     isAutoUpdateCheckEnabled: () => Promise<ApiResponse<boolean>>
     setAutoUpdateCheckEnabled: (payload: { enabled: boolean }) => Promise<ApiResponse>
+    getUpdateReadyVersion: () => Promise<ApiResponse<string | null>>
+    restartAndInstallUpdate: () => Promise<ApiResponse>
     acknowledgeDisclaimer: () => Promise<ApiResponse>
     isDisclaimerAccepted: () => Promise<ApiResponse<boolean>>
     isBackupPromptDismissed: () => Promise<ApiResponse<boolean>>

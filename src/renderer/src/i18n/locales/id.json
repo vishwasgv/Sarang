@@ -4581,7 +4581,8 @@
     "buildInfo": "Informasi Build",
     "legalDisclaimerTitle": "Sangkalan Hukum",
     "loadPathsFailed": "Tidak dapat memuat jalur penyimpanan.",
-    "savePreferenceFailed": "Tidak dapat menyimpan preferensi Anda. Silakan coba lagi."
+    "savePreferenceFailed": "Tidak dapat menyimpan preferensi Anda. Silakan coba lagi.",
+    "restartFailed": "Tidak dapat memulai ulang untuk memasang pembaruan. Silakan coba lagi."
   },
   "license": {
     "title": "Lisensi",

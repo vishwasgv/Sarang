@@ -5165,7 +5165,8 @@
     "buildInfo": "Build Information",
     "legalDisclaimerTitle": "Legal Disclaimer",
     "loadPathsFailed": "Could not load storage paths.",
-    "savePreferenceFailed": "Could not save your preference. Please try again."
+    "savePreferenceFailed": "Could not save your preference. Please try again.",
+    "restartFailed": "Could not restart to install the update. Please try again."
   },
   "license": {
     "title": "License",

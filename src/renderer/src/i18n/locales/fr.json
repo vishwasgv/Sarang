@@ -4581,7 +4581,8 @@
     "buildInfo": "Informations de version",
     "legalDisclaimerTitle": "Mentions Légales",
     "loadPathsFailed": "Impossible de charger les chemins de stockage.",
-    "savePreferenceFailed": "Impossible d’enregistrer votre préférence. Veuillez réessayer."
+    "savePreferenceFailed": "Impossible d’enregistrer votre préférence. Veuillez réessayer.",
+    "restartFailed": "Impossible de redémarrer pour installer la mise à jour. Veuillez réessayer."
   },
   "license": {
     "title": "Licence",

@@ -447,7 +447,7 @@ export function DashboardScreen() {
                 {t('dashboard.renewLicense')}
               </button>
             )}
-            {alert.type === 'UPDATE_AVAILABLE' && (
+            {(alert.type === 'UPDATE_AVAILABLE' || alert.type === 'UPDATE_READY') && (
               <button onClick={() => navigate('/about')} className="text-xs font-semibold underline shrink-0">
                 {t('dashboard.viewUpdate')}
               </button>

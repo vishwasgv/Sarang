@@ -202,8 +202,22 @@ const config: Configuration = {
   // LZMA compression — reduces installer size by ~20-30% vs the ZLIB default
   compression: 'maximum',
 
-  // No auto-update — fully offline, no telemetry, no cloud
-  publish: null
+  // 2026-09-15 — was `publish: null` ("no auto-update — fully offline, no
+  // telemetry, no cloud"). That positioning changes with this release: a
+  // PAID, currently-active install now opportunistically checks GitHub
+  // Releases (the exact same hosting the manual "Download Update" link
+  // already pointed at) at most once/day and, only if online, downloads a
+  // differential patch in the background — never blocking or nagging when
+  // offline, and never for a trial/expired/free install (see
+  // update-check.service.ts's isEligibleForAutoUpdate()). Setting this
+  // (rather than leaving it null) is what makes electron-builder emit the
+  // latest.yml + .blockmap files electron-updater needs for a differential
+  // download instead of re-fetching the full ~1GB installer every time.
+  publish: {
+    provider: 'github',
+    owner: 'vishwasgv',
+    repo: 'Sarang'
+  }
 }
 
 export default config

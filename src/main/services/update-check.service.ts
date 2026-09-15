@@ -1,11 +1,95 @@
 import { app } from 'electron'
+import { autoUpdater } from 'electron-updater'
 import { getPrisma } from '../database/db'
+import { getLicenseState } from './license.service'
+import { logger } from '../utils/logger'
 
 // Phase 59.13 — Update-check: default to automatic, not manual-only.
-// PHASE_59_MONETIZATION_LICENSING_MASTER_PROMPT.md Section 59.13. Scope is
-// deliberately check-and-notify only, never silent auto-download-install
-// (that reverses electron-builder.config.ts's explicit `publish: null` / "no
-// auto-update, ever" stance and deserves its own separate decision).
+// PHASE_59_MONETIZATION_LICENSING_MASTER_PROMPT.md Section 59.13.
+//
+// 2026-09-15 — upgraded from check-and-notify-only (a raw GitHub Releases API
+// fetch, pointing the user at a manual full-installer download page) to a
+// real differential auto-download via electron-updater, reusing the exact
+// same GitHub Releases hosting the manual flow already used (electron-builder
+// now emits latest.yml + a .blockmap alongside the installer — see
+// electron-builder.config.ts's `publish` field — so electron-updater can
+// fetch only the changed blocks instead of the full ~1GB installer).
+//
+// Gating, per the founder's explicit 2026-09-10 ask ("never to free/trial
+// users, never to lapsed/unrenewed subscribers"): eligible = tier PAID AND
+// status ACTIVE or WARNING (still paying, inside the pre-expiry grace
+// window) — TRIAL, EXPIRED, and NOT_ACTIVATED never trigger a download.
+// This is enforced the same way every other license check in this app is
+// (see license.service.ts's own header comment: a disclosed, honest trust
+// mechanism re-derived from the locally-verified signed key, not hardened
+// DRM) — proportionate to, and consistent with, the rest of this codebase's
+// stated licensing threat model, not a new stricter standard invented just
+// for this feature. Ineligible installs keep today's exact prior behavior
+// unchanged: manual "Check for Updates" button, manual full-installer link.
+const AUTO_UPDATE_READY_VERSION_KEY = 'auto_update_ready_version'
+
+export async function isEligibleForAutoUpdate(): Promise<boolean> {
+  const state = await getLicenseState()
+  return state.tier === 'PAID' && (state.status === 'ACTIVE' || state.status === 'WARNING')
+}
+
+let autoUpdaterConfigured = false
+function configureAutoUpdaterOnce(): void {
+  if (autoUpdaterConfigured) return
+  autoUpdaterConfigured = true
+  autoUpdater.autoDownload = false // we decide when to download, only after the eligibility gate above
+  autoUpdater.autoInstallOnAppQuit = false // never surprise-install on a normal quit; only via the explicit "Restart & Install" action
+  autoUpdater.logger = null // this app's own `logger` util is used at each call site below instead
+  autoUpdater.on('update-downloaded', (info) => {
+    const db = getPrisma()
+    db.setting.upsert({
+      where: { settingKey: AUTO_UPDATE_READY_VERSION_KEY },
+      update: { settingValue: info.version },
+      create: { settingKey: AUTO_UPDATE_READY_VERSION_KEY, settingValue: info.version, settingType: 'STRING' }
+    }).catch((err) => logger.warn('[AutoUpdate] failed to persist ready-version setting:', err))
+  })
+  autoUpdater.on('error', (err) => logger.warn('[AutoUpdate] electron-updater error (non-fatal, silently ignored):', err))
+}
+
+/** The version already downloaded and waiting for a restart, if any (null if none, or the current install is already on it). */
+export async function getUpdateReadyVersion(): Promise<string | null> {
+  const db = getPrisma()
+  try {
+    const row = await db.setting.findUnique({ where: { settingKey: AUTO_UPDATE_READY_VERSION_KEY } })
+    if (!row?.settingValue || row.settingValue === app.getVersion()) return null
+    return row.settingValue
+  } catch {
+    // Called unconditionally on every dashboard load (analytics.service.ts) —
+    // a transient DB error here must never take down the whole dashboard.
+    return null
+  }
+}
+
+/** Quits and installs the already-downloaded update. No-op (never throws) if nothing is actually ready. */
+export async function restartAndInstallUpdate(): Promise<void> {
+  const ready = await getUpdateReadyVersion()
+  if (!ready) return
+  autoUpdater.quitAndInstall()
+}
+
+/**
+ * Eligibility-gated differential download, called from the same once-per-day
+ * cadence as checkForUpdatesIfDue() below. Never throws, never surfaces an
+ * error to the user — a failed background download attempt should be
+ * invisible, not alarming (matches this file's pre-existing offline-silent
+ * convention).
+ */
+async function downloadUpdateIfEligible(): Promise<void> {
+  try {
+    if (!(await isEligibleForAutoUpdate())) return
+    configureAutoUpdaterOnce()
+    const checkResult = await autoUpdater.checkForUpdates()
+    if (!checkResult) return
+    await autoUpdater.downloadUpdate()
+  } catch (err) {
+    logger.warn('[AutoUpdate] eligible download attempt failed (non-fatal):', err)
+  }
+}
 
 const RELEASES_URL = 'https://api.github.com/repos/vishwasgv/Sarang/releases/latest'
 export const DOWNLOAD_URL = 'https://aszurex.com/sarang'
@@ -74,6 +158,12 @@ export async function checkForUpdatesIfDue(): Promise<UpdateCheckResult | null> 
       update: { settingValue: new Date().toISOString() },
       create: { settingKey: LAST_AUTO_CHECK_SETTING_KEY, settingValue: new Date().toISOString(), settingType: 'STRING' }
     })
+    if (result.hasUpdate) {
+      // Fire-and-forget, same convention as license.service.ts's own
+      // background pings — never awaited, never allowed to slow down or fail
+      // the dashboard-alert path this function feeds.
+      void downloadUpdateIfEligible()
+    }
     return result.hasUpdate ? result : null
   } catch {
     return null // offline, GitHub unreachable, etc. — never surfaced as an error
