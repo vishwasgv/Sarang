@@ -237,6 +237,11 @@ async function run() {
         r.log('hearing-actually-gone', !(after?.data || []).some((x) => x.id === hearing1Id))
       }
       if (disbursementId) {
+        // Billed disbursements can't be deleted (CD68-009 — preserves the audit
+        // trail once a disbursement is reflected in a client's bill), so undo
+        // the earlier mark-billed step before attempting delete, same as a real
+        // user would have to via the UI.
+        await page.evaluate((id) => window.api.caseDisbursement.markBilled({ id, isBilledToClient: false }), disbursementId)
         const res = await page.evaluate((id) => window.api.caseDisbursement.delete({ id }), disbursementId)
         r.log('disbursement-delete-succeeds', !!res?.success, JSON.stringify(res?.error || ''))
         const after = await page.evaluate((cid) => window.api.caseDisbursement.list({ caseId: cid }), caseId)

@@ -103,7 +103,15 @@ async function run() {
     })
 
     await r.step('verify-multi-service-appointment-via-api', async () => {
-      const listRes = await page.evaluate(async () => window.api.appointments.list({}))
+      // Real bug found 2026-09-15: appointments.list({}) with no date filter
+      // orders ascending by scheduledDate and returns only the first page (50
+      // rows) — on a dev DB with 50+ accumulated older appointments (normal
+      // after many E2E runs, and plausible for a real long-running business
+      // too), a freshly booked future appointment silently falls off page 1.
+      // Scope the lookup to the actual booked date, same as the real
+      // Appointments screen does, instead of relying on an unbounded page 1.
+      const tomorrow = h.toLocalISODate(new Date(Date.now() + 24 * 3600000))
+      const listRes = await page.evaluate(async (d) => window.api.appointments.list({ dateFrom: d, dateTo: d }), tomorrow)
       const items = listRes?.data?.items || []
       const found = items.find((a) => (a.customerName === 'E2E Salon Client' || a.customer?.customerName === 'E2E Salon Client'))
       r.log('appointment-findable-via-api', !!found, JSON.stringify({ totalAmount: found?.totalAmount, services: found?.services }))

@@ -266,7 +266,13 @@ async function run() {
       const calls = await getCalls(app, page)
       r.log('failed-export-aborts-before-reveal-or-link-or-open', calls.length === 1 && calls[0][0] === 'export', JSON.stringify(calls))
       const bodyText = await page.locator('body').innerText()
-      r.log('error-toast-shows-export-failure-message', bodyText.includes('E2E simulated disk error'), bodyText.slice(-300))
+      // Real i18n fix 2026-09-15 (Phase C): the toast now always shows the
+      // translated generic fallback (share.exportFailed) instead of the raw
+      // backend error message, so non-English users never see untranslated
+      // English error text. This deliberately replaces the old assertion
+      // that the raw simulated message ('E2E simulated disk error') would
+      // leak into the toast — that was the exact bug Phase C fixed.
+      r.log('error-toast-shows-export-failure-message', bodyText.includes('Could not export the document'), bodyText.slice(-300))
     })
 
     // ── Reports: Share renders for a report type the user can view ───────

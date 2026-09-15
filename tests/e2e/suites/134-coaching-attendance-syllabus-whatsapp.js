@@ -122,7 +122,7 @@ async function run() {
       r.log('attendance-record-persisted-with-student-marked-absent', absentIds.includes(customerId), JSON.stringify(getRes?.data))
 
       const datesRes = await page.evaluate((bid) => window.api.coachingAttendance.listDates({ batchId: bid }), batchId)
-      r.log('attendance-date-listed', (datesRes?.data || []).some((d) => new Date(d.attendanceDate).toISOString().slice(0, 10) === today), JSON.stringify(datesRes?.data))
+      r.log('attendance-date-listed', (datesRes?.data || []).some((d) => h.toLocalISODate(new Date(d.attendanceDate)) === today), JSON.stringify(datesRes?.data))
     })
 
     await r.step('send-progress-report-whatsapp-via-ui', async () => {

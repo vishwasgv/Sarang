@@ -103,7 +103,14 @@ async function run() {
       r.log('appointment-booked-no-crash', !(await h.hasErrorBoundary(page)))
       await h.shot(page, 'appointment-booked')
 
-      const listRes = await page.evaluate(async () => window.api.appointments.list({}))
+      // Real bug found 2026-09-15: appointments.list({}) with no date filter
+      // orders ascending by scheduledDate and returns only the first page (50
+      // rows) — on a dev DB with 50+ accumulated older appointments (normal
+      // after many E2E runs, and plausible for a real long-running business
+      // too), a freshly booked future appointment silently falls off page 1.
+      // Scope the lookup to the actual booked date, same as the real
+      // Appointments screen does, instead of relying on an unbounded page 1.
+      const listRes = await page.evaluate(async (d) => window.api.appointments.list({ dateFrom: d, dateTo: d }), dateStr)
       const items = listRes?.data?.items || []
       const created = items.find((a) => a.customerName === 'E2E Svc Client' || a.clientName === 'E2E Svc Client' || a.customer?.customerName === 'E2E Svc Client')
       appointmentId = created?.id
@@ -175,7 +182,10 @@ async function run() {
         // correct, intended behavior, not something to assert a visible
         // "Cancelled" badge for. Verify the actual status via API instead.
         r.log('row-removed-from-day-view-after-cancel', await page.locator('p', { hasText: 'E2E Svc Client' }).count() === 0)
-        const afterRes = await page.evaluate(async () => window.api.appointments.list({}))
+        // Same page-1-pagination issue as the earlier findable-via-api check —
+        // scope to the appointment's actual date instead of an unbounded list.
+        const cancelDateStr = h.toLocalISODate(new Date(Date.now() + 24 * 3600000))
+        const afterRes = await page.evaluate(async (d) => window.api.appointments.list({ dateFrom: d, dateTo: d }), cancelDateStr)
         const afterAppt = afterRes?.data?.items?.find((a) => a.id === appointmentId)
         r.log('status-is-cancelled-via-api', afterAppt?.status === 'CANCELLED', JSON.stringify(afterAppt?.status))
       } else {
