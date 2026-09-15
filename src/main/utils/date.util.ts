@@ -57,6 +57,22 @@ export function parseLocalDateEnd(dateOnly: string): Date {
   return new Date(y, (m ?? 1) - 1, d ?? 1, 23, 59, 59, 999)
 }
 
+// Real bug found live 2026-09-15: coaching-progress.service.ts compared a
+// date-only `attendanceDate` (always start-of-local-day, via
+// parseLocalDateStart) against `enrollment.enrolledDate` using a bare
+// `{ gte: enr.enrolledDate } }` — but enrolledDate defaults to `new Date()`
+// (a precise, same-moment timestamp) when no explicit date is supplied at
+// enrollment time. A same-day enrollment + same-day attendance record then
+// has attendanceDate (local midnight) chronologically BEFORE enrolledDate
+// (mid-day), so `gte` silently excludes that day's attendance — the parent
+// WhatsApp report and admin-facing attendance/performance report both showed
+// "no sessions recorded yet" despite a session having just been marked.
+// Truncate to local start-of-day before using a Date (not a date-only
+// string) as a query bound, so same-day activity is never excluded.
+export function startOfLocalDay(date: Date): Date {
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate())
+}
+
 // Real bug found live 2026-07-28 (professional-services/PM service-vertical
 // audit): several calendar-date-only fields written via parseLocalDateStart
 // (constructing LOCAL midnight, correctly) were then returned across

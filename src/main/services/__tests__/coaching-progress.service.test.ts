@@ -6,6 +6,7 @@ vi.mock('../notification-queue.service', () => ({ buildReminderWhatsAppLink: vi.
 import { getPrisma } from '../../database/db'
 import { buildReminderWhatsAppLink } from '../notification-queue.service'
 import { getStudentProgressReport, sendProgressReportWhatsApp } from '../coaching-progress.service'
+import { startOfLocalDay } from '../../utils/date.util'
 
 // Phase 58 §2 — Coaching Institute: a real parent-facing progress report.
 // The one genuinely non-trivial piece of logic here is the per-student
@@ -106,14 +107,19 @@ describe('coaching-progress.service — getStudentProgressReport', () => {
     expect(batch.attendance.totalSessions).toBe(1)
   })
 
-  it('only counts attendance from on/after the enrollment date', async () => {
+  it('only counts attendance from on/after the enrollment date (local calendar day, not the raw enrolledDate instant)', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     await getStudentProgressReport('stu-1')
 
+    // Real bug found 2026-09-15: enrolledDate defaults to `new Date()` (a
+    // precise instant) when no explicit date is given at enrollment time, so
+    // comparing attendanceDate (always local start-of-day) against the raw
+    // enrolledDate instant silently excluded same-day attendance. Must
+    // truncate to local start-of-day before using it as the query bound.
     expect(db.coachingBatchAttendance.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { batchId: 'batch-1', attendanceDate: { gte: new Date('2026-01-01') } },
+      where: { batchId: 'batch-1', attendanceDate: { gte: startOfLocalDay(new Date('2026-01-01')) } },
     }))
   })
 

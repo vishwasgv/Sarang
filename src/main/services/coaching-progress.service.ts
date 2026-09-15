@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { startOfLocalDay } from '../utils/date.util'
 
 // Phase 58 §2 — Coaching Institute: a real parent-facing progress report,
 // aggregating attendance, academic test scores, and fee status per batch a
@@ -47,7 +48,7 @@ export async function getStudentProgressReport(studentId: string) {
     const batches = await Promise.all(enrollments.map(async (enr) => {
       const [attendanceRows, testScores, feeRecords] = await Promise.all([
         db.coachingBatchAttendance.findMany({
-          where: { batchId: enr.batchId, attendanceDate: { gte: enr.enrolledDate } },
+          where: { batchId: enr.batchId, attendanceDate: { gte: startOfLocalDay(enr.enrolledDate) } },
           select: { presentStudentIds: true, absentStudentIds: true },
         }),
         db.studentTestScore.findMany({
@@ -99,7 +100,7 @@ export async function sendProgressReportWhatsApp(enrollmentId: string) {
 
     const [attendanceRows, testScores, feeRecords] = await Promise.all([
       db.coachingBatchAttendance.findMany({
-        where: { batchId: enrollment.batchId, attendanceDate: { gte: enrollment.enrolledDate } },
+        where: { batchId: enrollment.batchId, attendanceDate: { gte: startOfLocalDay(enrollment.enrolledDate) } },
         select: { presentStudentIds: true, absentStudentIds: true },
       }),
       db.studentTestScore.findMany({ where: { enrollmentId }, orderBy: { testDate: 'desc' }, take: 3 }),

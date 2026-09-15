@@ -1,7 +1,7 @@
 import { getPrisma } from '../database/db'
 import { INGREDIENT_DEDUCTION_REMARKS_PREFIX, getDishIngredientCostsBatch, getRecipeImpliedIngredientUsageBatch } from './restaurant.service'
 import { roundCurrency, sumCurrency } from './currency.service'
-import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd, startOfLocalDay } from '../utils/date.util'
 import { getProductCostsBatch } from './valuation.service'
 import { generateChronicRecallComplianceReport as generateChronicRecallComplianceReportImpl } from './chronic-condition-record.service'
 import { generateDentalRecallComplianceReport as generateDentalRecallComplianceReportImpl } from './recall-record.service'
@@ -5172,7 +5172,7 @@ async function generateAttendancePerformanceCorrelationReport(batchId?: string):
   const rows: AttendancePerformanceRow[] = await Promise.all(enrollments.map(async (enr) => {
     const [attendanceRows, testScores] = await Promise.all([
       db.coachingBatchAttendance.findMany({
-        where: { batchId: enr.batchId, attendanceDate: { gte: enr.enrolledDate } },
+        where: { batchId: enr.batchId, attendanceDate: { gte: startOfLocalDay(enr.enrolledDate) } },
         select: { presentStudentIds: true, absentStudentIds: true },
       }),
       db.studentTestScore.findMany({ where: { enrollmentId: enr.id }, select: { marksObtained: true, maxMarks: true } }),

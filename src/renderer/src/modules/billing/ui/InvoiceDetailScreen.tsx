@@ -646,7 +646,7 @@ export function InvoiceDetailScreen() {
       {invoice.payments.length > 0 && (
         <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 overflow-hidden">
           <div className="px-5 py-4 border-b border-slate-50 dark:border-slate-800">
-            <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('billing.paymentHistory')}</p>
+            <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('billing.paymentHistory.title')}</p>
           </div>
           <div className="divide-y divide-slate-50 dark:divide-slate-800">
             {invoice.payments.map(pmt => (
