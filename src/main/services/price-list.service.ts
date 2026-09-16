@@ -122,7 +122,12 @@ export const priceListService = {
         if (!customer) return { success: false, error: { code: 'CUST-001', message: 'Customer not found.' } }
 
         if (customer.priceListId) {
-          const tiers = await db.priceListItem.findMany({ where: { priceListId: customer.priceListId, productId: payload.productId } })
+          // Real bug found+fixed in the zero-logical-errors audit: this never
+          // checked the parent PriceList's own isActive — deactivating a
+          // seasonal/promotional list (the normal way to "turn it off"
+          // without reassigning every customer) silently kept applying its
+          // prices forever, with no way for the owner to notice from the UI.
+          const tiers = await db.priceListItem.findMany({ where: { priceListId: customer.priceListId, productId: payload.productId, priceList: { isActive: true } } })
           const best = tiers.filter(t => t.minQuantity <= payload.quantity).sort((a, b) => b.minQuantity - a.minQuantity)[0]
           if (best) return { success: true, data: { unitPrice: best.unitPrice, source: 'PRICE_LIST' as const } }
         }
@@ -141,7 +146,7 @@ export const priceListService = {
       if (!supplier) return { success: false, error: { code: 'SUP-001', message: 'Supplier not found.' } }
 
       if (supplier.priceListId) {
-        const tiers = await db.priceListItem.findMany({ where: { priceListId: supplier.priceListId, productId: payload.productId } })
+        const tiers = await db.priceListItem.findMany({ where: { priceListId: supplier.priceListId, productId: payload.productId, priceList: { isActive: true } } })
         const best = tiers.filter(t => t.minQuantity <= payload.quantity).sort((a, b) => b.minQuantity - a.minQuantity)[0]
         if (best) return { success: true, data: { unitPrice: best.unitPrice, source: 'PRICE_LIST' as const } }
       }

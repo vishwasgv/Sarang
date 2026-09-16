@@ -144,5 +144,36 @@ export const loyaltyProgramService = {
     } catch {
       // A punch is a bonus, never a blocker — the sale itself must never fail because of this.
     }
+  },
+
+  // Called from billing.service.ts's cancelInvoice, INSIDE its own open
+  // transaction — mirrors recordPunchTx's own "never opens its own
+  // transaction" rule. Real gap found+fixed in the zero-logical-errors
+  // audit: recordPunchTx had no reversal counterpart at all — cancelling a
+  // sale that earned a punch left it on the customer's card forever, and if
+  // it was the punch that crossed punchesRequired, the customer became
+  // eligible to redeem a real reward for a sale that no longer exists in
+  // the books. Never throws — same "a punch is a bonus, never a blocker"
+  // invariant applies to reversing one; invoice cancellation must never
+  // fail because of a loyalty-side correction.
+  async reversePunchTx(tx: TxClient, invoiceId: string) {
+    try {
+      const events = await tx.loyaltyPunchEvent.findMany({ where: { invoiceId } })
+      for (const event of events) {
+        const card = await tx.loyaltyCard.findUnique({ where: { id: event.loyaltyCardId } })
+        if (card) {
+          await tx.loyaltyCard.update({
+            where: { id: card.id },
+            data: {
+              currentPunches: Math.max(0, card.currentPunches - 1),
+              totalPunchesEarned: Math.max(0, card.totalPunchesEarned - 1)
+            }
+          })
+        }
+        await tx.loyaltyPunchEvent.delete({ where: { id: event.id } })
+      }
+    } catch {
+      // Same invariant as recordPunchTx — never blocks the cancellation itself.
+    }
   }
 }

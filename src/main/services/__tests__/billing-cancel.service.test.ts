@@ -45,6 +45,8 @@ let sharedTx: {
   productBatch: { findFirst: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
   productSerial: { findMany: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
   restaurantTable: { updateMany: ReturnType<typeof vi.fn> }
+  loyaltyPunchEvent: { findMany: ReturnType<typeof vi.fn>; delete: ReturnType<typeof vi.fn> }
+  loyaltyCard: { findUnique: ReturnType<typeof vi.fn>; update: ReturnType<typeof vi.fn> }
 }
 
 function makeDb(invoiceOverride?: Record<string, unknown>) {
@@ -85,7 +87,11 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
     // Phase 58 §2 — cancelInvoice releases any restaurant table(s) still
     // pointing at this invoice; count: 0 here (no tables involved) matches
     // a plain non-restaurant invoice fixture.
-    restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) }
+    restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+    // No punch earned in these fixtures by default — a real gap test below
+    // overrides this to verify the reversal wiring.
+    loyaltyPunchEvent: { findMany: vi.fn().mockResolvedValue([]), delete: vi.fn().mockResolvedValue({}) },
+    loyaltyCard: { findUnique: vi.fn().mockResolvedValue(null), update: vi.fn().mockResolvedValue({}) }
   }
 
   const db = sharedTx as unknown as Record<string, any>
@@ -278,5 +284,35 @@ describe('billingService.cancelInvoice', () => {
       where: { currentInvoiceId: { in: ['inv-1'] } },
       data: { currentInvoiceId: null, status: 'AVAILABLE' }
     })
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: a loyalty punch
+  // earned at sale time was never reversed on cancellation — a customer
+  // could redeem a real reward for a sale that no longer exists in the books.
+  it('reverses a loyalty punch earned at sale time when cancelling the invoice', async () => {
+    const db = makeDb()
+    sharedTx.loyaltyPunchEvent.findMany = vi.fn().mockResolvedValue([{ id: 'punch-1', loyaltyCardId: 'card-1', invoiceId: 'inv-1' }])
+    sharedTx.loyaltyCard.findUnique = vi.fn().mockResolvedValue({ id: 'card-1', currentPunches: 3, totalPunchesEarned: 5 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await billingService.cancelInvoice(makeCancelPayload())
+
+    expect(result.success).toBe(true)
+    expect(sharedTx.loyaltyCard.update).toHaveBeenCalledWith({
+      where: { id: 'card-1' },
+      data: { currentPunches: 2, totalPunchesEarned: 4 }
+    })
+    expect(sharedTx.loyaltyPunchEvent.delete).toHaveBeenCalledWith({ where: { id: 'punch-1' } })
+  })
+
+  it('does nothing to loyalty when the sale never earned a punch', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await billingService.cancelInvoice(makeCancelPayload())
+
+    expect(result.success).toBe(true)
+    expect(sharedTx.loyaltyCard.update).not.toHaveBeenCalled()
+    expect(sharedTx.loyaltyPunchEvent.delete).not.toHaveBeenCalled()
   })
 })

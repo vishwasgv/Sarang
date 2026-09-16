@@ -243,6 +243,21 @@ export const quotationService = {
 
     try {
       const invoice = await db.$transaction(async (tx) => {
+        // Real race found in the zero-logical-errors audit: q.invoice/
+        // q.salesOrder above were read from a plain pre-transaction query —
+        // two concurrent conversions of the same Quotation (one to Invoice,
+        // one to Sales Order, or a double-click firing this twice) could
+        // both pass the QT-002/QT-006 guard before either write commits,
+        // leaving one Quotation pointing at BOTH a real Invoice and a real
+        // Sales Order — which can itself later be invoiced again via
+        // createInvoiceFromSalesOrder, billing the same goods twice. Same
+        // TOCTOU class already fixed for receivePO/PDC/fixed-asset/landed-cost
+        // this session — re-check fresh, inside the transaction, right
+        // before the write.
+        const fresh = await tx.quotation.findUnique({ where: { id }, select: { invoice: { select: { id: true } }, salesOrder: { select: { id: true } } } })
+        if (fresh?.invoice) throw new ServiceError('QT-002', 'Quotation already converted to an invoice.')
+        if (fresh?.salesOrder) throw new ServiceError('QT-006', 'Quotation already converted to a Sales Order. Invoice from the Sales Order instead.')
+
         if (q.customerId && creditLimitModuleEnabled) {
           const customer = await tx.customer.findUnique({ where: { id: q.customerId } })
           if (customer && customer.creditLimit > 0) {
@@ -403,6 +418,13 @@ export const quotationService = {
 
     try {
       const salesOrder = await db.$transaction(async (tx) => {
+        // Same TOCTOU race fix as convertToInvoice's own re-check above —
+        // q.invoice/q.salesOrder were read from a plain pre-transaction
+        // query at the top of this function.
+        const fresh = await tx.quotation.findUnique({ where: { id }, select: { invoice: { select: { id: true } }, salesOrder: { select: { id: true } } } })
+        if (fresh?.invoice) throw new ServiceError('QT-002', 'Quotation already converted to an invoice.')
+        if (fresh?.salesOrder) throw new ServiceError('QT-008', 'Quotation already converted to a Sales Order.')
+
         const soNumber = await generateSONumber(tx)
 
         const so = await tx.salesOrder.create({

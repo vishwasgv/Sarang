@@ -163,4 +163,44 @@ describe('priceListService.resolvePrice — three-tier resolution, most-specific
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('PRD-001')
   })
+
+  // Real bug found+fixed in the zero-logical-errors audit: this never
+  // checked the parent PriceList's own isActive — deactivating a seasonal/
+  // promotional list (the normal way to "turn it off" without reassigning
+  // every customer) silently kept applying its prices forever.
+  it('queries priceListItem with the parent PriceList.isActive filter, for both customer and supplier lookups', async () => {
+    const dbCustomer = makeDb({
+      customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1', priceListId: 'pl-1', customerClass: null }) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(dbCustomer as never)
+    await priceListService.resolvePrice({ counterpartyId: 'cust-1', for: 'CUSTOMER', productId: 'prod-1', quantity: 1 })
+    expect(dbCustomer.priceListItem.findMany).toHaveBeenCalledWith({
+      where: { priceListId: 'pl-1', productId: 'prod-1', priceList: { isActive: true } }
+    })
+
+    const dbSupplier = makeDb({
+      supplier: { findUnique: vi.fn().mockResolvedValue({ id: 'sup-1', priceListId: 'pl-2' }) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(dbSupplier as never)
+    await priceListService.resolvePrice({ counterpartyId: 'sup-1', for: 'SUPPLIER', productId: 'prod-1', quantity: 1 })
+    expect(dbSupplier.priceListItem.findMany).toHaveBeenCalledWith({
+      where: { priceListId: 'pl-2', productId: 'prod-1', priceList: { isActive: true } }
+    })
+  })
+
+  it('falls through to DEFAULT when the assigned PriceList has been deactivated (never a stale price)', async () => {
+    const db = makeDb({
+      customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1', priceListId: 'pl-1', customerClass: null }) },
+      // Simulates Prisma's own where-clause filtering: a deactivated
+      // PriceList's items never match priceList:{isActive:true}, so the
+      // (real) query returns nothing for this list.
+      priceListItem: { findMany: vi.fn().mockResolvedValue([]) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await priceListService.resolvePrice({ counterpartyId: 'cust-1', for: 'CUSTOMER', productId: 'prod-1', quantity: 1 })
+
+    expect(res.success).toBe(true)
+    expect((res as { data: { unitPrice: number; source: string } }).data).toEqual({ unitPrice: 100, source: 'DEFAULT' })
+  })
 })

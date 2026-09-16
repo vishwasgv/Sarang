@@ -39,6 +39,15 @@ function makeDb(invoiceOverride?: Record<string, unknown>) {
       updateMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
     restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
+    // customerLedgerService is the REAL module here (not mocked) — addEntry()
+    // internally reads customerLedger.aggregate (calculateBalance) then
+    // writes customerLedger.create + customer.update.
+    customerLedger: {
+      findMany: vi.fn().mockResolvedValue([]),
+      aggregate: vi.fn().mockResolvedValue({ _sum: { debitAmount: 0, creditAmount: 0 } }),
+      create: vi.fn().mockResolvedValue({}),
+    },
+    customer: { update: vi.fn().mockResolvedValue({}) },
   }
   db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
   return db
@@ -268,5 +277,96 @@ describe('billingService.splitInvoice', () => {
     const calls = vi.mocked(db.invoice.create).mock.calls
     expect(calls[0][0].data.customerId).toBe('cust-2')
     expect(calls[1][0].data.customerId).toBe('cust-1') // falls back to original.customerId
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: this function
+  // zeroed the original invoice's own totals but never touched
+  // CustomerLedger. If the original was a CREDIT sale (a real debit posted
+  // at createInvoice time), that debit stayed on the original customer's
+  // ledger forever even though the value "moved" to the new split invoices
+  // — permanently overstating outstandingBalance, the exact field
+  // credit-limit enforcement compares against. And since every split
+  // invoice starts UNPAID and is only ever settled later via
+  // payment.service.ts's recordPayment (which unconditionally CREDITS the
+  // ledger whenever customerId is set), a split invoice with no matching
+  // debit drove that customer's balance negative the moment it was paid.
+  describe('splitInvoice — CustomerLedger correctness', () => {
+    it('reverses the original customer\'s existing CREDIT-sale ledger debit before creating split invoices', async () => {
+      const db = makeDb()
+      db.customerLedger.findMany = vi.fn().mockImplementation(({ where }: { where: { referenceType: string; referenceId: string } }) =>
+        Promise.resolve(where.referenceType === 'INVOICE' && where.referenceId === 'inv-1'
+          ? [{ id: 'led-1', customerId: 'cust-1', referenceType: 'INVOICE', referenceId: 'inv-1', debitAmount: 798, creditAmount: 0 }]
+          : [])
+      )
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await billingService.splitInvoice({
+        invoiceId: 'inv-1',
+        splits: [
+          { allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+          { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+        ],
+      })
+
+      expect(res.success).toBe(true)
+      const reversalCall = vi.mocked(db.customerLedger.create).mock.calls.find(
+        (c: any) => c[0].data.referenceType === 'INVOICE_SPLIT'
+      )
+      expect(reversalCall).toBeDefined()
+      expect(reversalCall![0].data).toMatchObject({ customerId: 'cust-1', debitAmount: 0, creditAmount: 798 })
+    })
+
+    it('does not attempt a reversal when the original had no ledger entry (a plain non-credit sale)', async () => {
+      const db = makeDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      await billingService.splitInvoice({
+        invoiceId: 'inv-1',
+        splits: [
+          { allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+          { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+        ],
+      })
+
+      const reversalCalls = vi.mocked(db.customerLedger.create).mock.calls.filter(
+        (c: any) => c[0].data.referenceType === 'INVOICE_SPLIT'
+      )
+      expect(reversalCalls).toHaveLength(0)
+    })
+
+    it('posts a matching CustomerLedger debit for each split invoice\'s own customer', async () => {
+      const db = makeDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      await billingService.splitInvoice({
+        invoiceId: 'inv-1',
+        splits: [
+          { customerId: 'cust-2', allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+          { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+        ],
+      })
+
+      const debitCalls = vi.mocked(db.customerLedger.create).mock.calls
+        .filter((c: any) => c[0].data.referenceType === 'INVOICE')
+        .map((c: any) => c[0].data)
+      expect(debitCalls).toHaveLength(2)
+      expect(debitCalls.find((d: any) => d.customerId === 'cust-2')).toMatchObject({ debitAmount: 630, creditAmount: 0 })
+      expect(debitCalls.find((d: any) => d.customerId === 'cust-1')).toMatchObject({ debitAmount: 168, creditAmount: 0 })
+    })
+
+    it('does not post a ledger debit for a split with no customerId (walk-in)', async () => {
+      const db = makeDb({ customerId: null })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      await billingService.splitInvoice({
+        invoiceId: 'inv-1',
+        splits: [
+          { allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+          { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+        ],
+      })
+
+      expect(db.customerLedger.create).not.toHaveBeenCalled()
+    })
   })
 })

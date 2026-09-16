@@ -120,7 +120,7 @@ describe('quotationService.convertToInvoice — float precision fix', () => {
     const txClient: Record<string, any> = {
       invoice: { create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv-1', ...data })) },
       invoiceItem: { create: vi.fn().mockResolvedValue({}) },
-      quotation: { update: vi.fn().mockResolvedValue({}) },
+      quotation: { update: vi.fn().mockResolvedValue({}), findUnique: vi.fn().mockResolvedValue({ invoice: null, salesOrder: null }) },
       setting: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({}) },
       // Phase 63 gap-fix — convertToInvoice now posts a real JournalEntry
       // via billing.service.ts's exported postInvoiceJournalEntry.
@@ -217,7 +217,9 @@ describe('quotationService.convertToInvoice — kit line explosion', () => {
     const txClient: Record<string, any> = {
       invoice: { create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv-1', ...data })) },
       invoiceItem: { create: vi.fn().mockResolvedValue({}) },
-      quotation: { update: vi.fn().mockResolvedValue({}) },
+      // Fresh in-transaction re-check (TOCTOU race fix) — default "still
+      // unconverted," matching the pre-transaction `quotation` fixture.
+      quotation: { update: vi.fn().mockResolvedValue({}), findUnique: vi.fn().mockResolvedValue({ invoice: null, salesOrder: null }) },
       setting: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({}) },
       chartOfAccounts: { findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET', isActive: true }) },
       journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }), findMany: vi.fn().mockResolvedValue([]) },
@@ -254,6 +256,70 @@ describe('quotationService.convertToInvoice — kit line explosion', () => {
     expect(inventoryService.reduceStockTx).toHaveBeenCalledTimes(2)
     expect(inventoryService.reduceStockTx).toHaveBeenCalledWith(txClient, 'comp-1', 10, expect.any(String), 'INVOICE', 'inv-1', 'user-1')
     expect(inventoryService.reduceStockTx).toHaveBeenCalledWith(txClient, 'comp-2', 5, expect.any(String), 'INVOICE', 'inv-1', 'user-1')
+  })
+})
+
+// Real race found+fixed in the zero-logical-errors audit: q.invoice/
+// q.salesOrder were only ever read from a plain pre-transaction query — two
+// concurrent conversions of the same Quotation could both pass the
+// QT-002/QT-006/QT-008 guard before either write committed, leaving one
+// Quotation pointing at BOTH a real Invoice and a real Sales Order (which
+// can itself be invoiced again), double-booking the same goods.
+describe('quotationService — TOCTOU race between convertToInvoice and convertToSalesOrder', () => {
+  it('convertToInvoice re-checks fresh inside the transaction and blocks if another conversion won the race', async () => {
+    const quotation = {
+      id: 'qt-1', quotationNumber: 'QT-00001', customerId: null, invoice: null,
+      subtotal: 100, discountAmount: 0, taxAmount: 0, totalAmount: 100,
+      items: [{ id: 'qi-1', productId: 'prod-1', productName: 'Widget', sku: null, quantity: 1, unitPrice: 100, discount: 0, taxRate: 0, lineTotal: 100 }]
+    }
+    const txClient: Record<string, any> = {
+      invoice: { create: vi.fn() },
+      invoiceItem: { create: vi.fn() },
+      // A concurrent convertToSalesOrder call committed first.
+      quotation: { findUnique: vi.fn().mockResolvedValue({ invoice: null, salesOrder: { id: 'so-race' } }) },
+    }
+    const db: Record<string, any> = {
+      quotation: { findUnique: vi.fn().mockResolvedValue(quotation) },
+      product: { findUnique: vi.fn().mockResolvedValue({ productType: 'STANDARD', isKit: false }) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'ACTIVE', tier: 'PAID', region: 'IN', daysSinceIssue: null, daysRemaining: null, machineMismatch: false
+    })
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-006')
+    expect(txClient.invoice.create).not.toHaveBeenCalled()
+  })
+
+  it('convertToSalesOrder re-checks fresh inside the transaction and blocks if another conversion won the race', async () => {
+    const quotation = {
+      id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', notes: null, invoice: null, salesOrder: null,
+      items: [{ id: 'qi-1', productId: 'prod-1', productName: 'Widget', sku: null, quantity: 1, unitPrice: 100, discount: 0, taxRate: 0 }]
+    }
+    const txClient: Record<string, any> = {
+      salesOrder: { create: vi.fn(), findMany: vi.fn().mockResolvedValue([]) },
+      // A concurrent convertToInvoice call committed first.
+      quotation: { findUnique: vi.fn().mockResolvedValue({ invoice: { id: 'inv-race' }, salesOrder: null }) },
+    }
+    const db: Record<string, any> = {
+      quotation: { findUnique: vi.fn().mockResolvedValue(quotation) },
+      customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1', isActive: true }) },
+      product: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToSalesOrder('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-002')
+    expect(txClient.salesOrder.create).not.toHaveBeenCalled()
   })
 })
 
@@ -355,7 +421,9 @@ describe('quotationService.convertToSalesOrder', () => {
         create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'so-1', ...data })),
         findMany: vi.fn().mockResolvedValue([])
       },
-      quotation: { update: vi.fn().mockResolvedValue({}) },
+      // Fresh in-transaction re-check (TOCTOU race fix) — default "still
+      // unconverted," matching the pre-transaction `quotation` fixture.
+      quotation: { update: vi.fn().mockResolvedValue({}), findUnique: vi.fn().mockResolvedValue({ invoice: null, salesOrder: null }) },
       setting: {
         findUnique: vi.fn(async () => settingRow),
         create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow }),

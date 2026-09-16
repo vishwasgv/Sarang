@@ -1195,6 +1195,13 @@ export const billingService = {
           await markSerialAvailableTx(tx, serial.id)
         }
 
+        // Real gap found+fixed in the zero-logical-errors audit: a loyalty
+        // punch earned at sale time (recordPunchTx above) was never reversed
+        // here — a cancelled sale left its punch on the customer's card
+        // forever, letting them redeem a real reward for a sale that no
+        // longer exists in the books.
+        await loyaltyProgramService.reversePunchTx(tx, invoice.id)
+
         // Reverse ONLY ledger entries that actually exist for this invoice and its payments.
         // Querying first prevents phantom reversals (e.g. cash sale with customer selected has
         // no ledger entry at invoice creation, so nothing to reverse there).
@@ -1311,6 +1318,31 @@ export const billingService = {
         })
         if (claim.count === 0) throw new ServiceError('SPLIT-004', 'This invoice is not in a splittable state (already split or cancelled).')
 
+        // Real bug found+fixed in the zero-logical-errors audit: this
+        // function zeroed the original invoice's own totals above but never
+        // touched CustomerLedger — if the original was a CREDIT sale (a real
+        // debit posted at createInvoice time), that debit stayed on the
+        // original customer's ledger forever even though the value "fully
+        // moved" to the new split invoices, permanently overstating their
+        // outstandingBalance (the exact field credit-limit enforcement
+        // compares against). Query-then-reverse, same idiom cancelInvoice's
+        // own ledger reversal uses just above in this file.
+        if (original.customerId) {
+          const existingLedgerEntries = await tx.customerLedger.findMany({
+            where: { customerId: original.customerId, referenceType: 'INVOICE', referenceId: original.id }
+          })
+          for (const entry of existingLedgerEntries) {
+            await customerLedgerService.addEntry({
+              customerId: original.customerId,
+              referenceType: 'INVOICE_SPLIT',
+              referenceId: original.id,
+              debitAmount: entry.creditAmount,
+              creditAmount: entry.debitAmount,
+              remarks: `Reversed: Invoice ${original.invoiceNumber} split into new invoices`
+            }, tx)
+          }
+        }
+
         // Validate every allocated item belongs to this invoice and the
         // total allocated quantity per line never exceeds what was
         // originally billed on that line.
@@ -1399,6 +1431,24 @@ export const billingService = {
                 lengthUnit: item.lengthUnit,
               }
             })
+          }
+
+          // Every split invoice starts UNPAID/receivable regardless of how
+          // the original was going to be paid (splitting IS deferring
+          // payment to later, per-check) — so unlike createInvoice's own
+          // CREDIT-only debit, a real customer here always gets a matching
+          // CustomerLedger debit for their own share, mirroring exactly what
+          // payment.service.ts assumes already exists when that share is
+          // later paid (it only ever posts the CREDIT side of a payment).
+          if (newInv.customerId && totalAmount > 0) {
+            await customerLedgerService.addEntry({
+              customerId: newInv.customerId,
+              referenceType: 'INVOICE',
+              referenceId: newInv.id,
+              debitAmount: totalAmount,
+              creditAmount: 0,
+              remarks: `Invoice ${invoiceNumber} (split from ${original.invoiceNumber})`
+            }, tx)
           }
 
           createdInvoiceIds.push(newInv.id)
