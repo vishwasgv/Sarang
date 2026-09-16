@@ -650,6 +650,31 @@ describe('getDashboardKpis', () => {
       .toBe(kpis.inventoryStats.total)
   })
 
+  // Real bug found+fixed in the zero-logical-errors audit: inventoryValue
+  // used to hardcode Inventory.averageCost regardless of the product's own
+  // selected valuationMethod, disagreeing with the P&L (getEstimatedProfit
+  // above) and every other cost-reading report, which already correctly
+  // route through getProductCostsBatch.
+  it('values inventoryValue at Product.standardCost, not averageCost, for a STANDARD_COST product', async () => {
+    const { getDashboardKpis, getPrisma: freshGetPrisma } = await freshImport()
+    const db = makeDb()
+    db.inventory.findMany = vi.fn()
+      .mockResolvedValueOnce([
+        { productId: 'p1', quantity: 10, averageCost: 95, product: { isActive: true, costPrice: 90 } }
+      ]) // inventoryItems (value calc) — first call in Promise.all order
+      .mockResolvedValueOnce([]) // allInventory (stats) — second call in Promise.all order
+      .mockResolvedValueOnce([{ productId: 'p1', averageCost: 95, quantity: 10 }]) // getProductCostsBatch's own inventory lookup — third, sequential call
+    db.product.findMany = vi.fn().mockResolvedValue([
+      { id: 'p1', costPrice: 90, valuationMethod: 'STANDARD_COST', standardCost: 80 }
+    ])
+    vi.mocked(freshGetPrisma).mockReturnValue(db as never)
+
+    const kpis = await getDashboardKpis()
+
+    // 10 units * 80 standardCost = 800, NOT 10 * 95 = 950.
+    expect(kpis.inventoryValue).toBe(800)
+  })
+
   it('does not populate restaurant KPIs when the kot module is disabled', async () => {
     const { getDashboardKpis, getPrisma: freshGetPrisma } = await freshImport(false)
     const db = makeDb()

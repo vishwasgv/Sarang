@@ -351,16 +351,20 @@ async function generateInventoryReport(params?: { categoryId?: string; lowStockO
     orderBy: { productName: 'asc' }
   })
 
+  // Real bug found+fixed in the zero-logical-errors audit: this used to
+  // hardcode Inventory.averageCost (weighted-average) regardless of the
+  // product's own selected Product.valuationMethod — disagreeing with
+  // generateProfitAndLossReport (and every other cost-reading report), which
+  // already correctly routes through getProductCostsBatch. A business with a
+  // STANDARD_COST or FIFO product saw two different "what's my stock worth"
+  // numbers on two report screens for the exact same on-hand stock.
+  const costBasisByProduct = await getProductCostsBatch(products.map(p => p.id))
+
   const rows: InventoryReportRow[] = []
   for (const p of products) {
     const stock = p.inventory?.quantity ?? 0
     const lowAlert = p.inventory ? stock <= (p.inventory.reorderLevel ?? 0) && stock > 0 : false
-    // REAL BUG found+fixed 2026-07-30: was Product.costPrice (a static value
-    // never updated by purchases/receiving/adjustments), diverging from the
-    // Inventory screen's "Total Value" (Inventory.averageCost, the live
-    // weighted-average cost basis) for any business with purchase-price
-    // history. See analytics.service.ts's getDashboardKpis for the same fix.
-    const stockValue = stock * (p.inventory?.averageCost ?? p.costPrice)
+    const stockValue = stock * (costBasisByProduct.get(p.id) ?? p.inventory?.averageCost ?? p.costPrice)
 
     if (params?.lowStockOnly && !lowAlert && stock !== 0) continue
 
@@ -681,12 +685,20 @@ async function generatePurchaseRegisterReport(params: { dateFrom: string; dateTo
     orderBy: { billDate: 'asc' }
   })
 
-  const byVendorMap = new Map<string, PurchaseRegisterByVendorRow>()
+  // Real bug found+fixed in the zero-logical-errors audit: per-vendor
+  // totalAmount used to accumulate via raw `+=` instead of this codebase's
+  // own established Decimal-safe sumCurrency (already used for the
+  // summary.totalPurchases/totalTax two lines below). Collect each vendor's
+  // raw bill amounts and sum them via sumCurrency once, not incrementally.
+  const byVendorAmounts = new Map<string, number[]>()
+  const byVendorNames = new Map<string, { supplierName: string; billCount: number }>()
   const rows: PurchaseRegisterRow[] = bills.map(b => {
-    const vendorRow = byVendorMap.get(b.supplier.supplierName) ?? { supplierName: b.supplier.supplierName, totalAmount: 0, billCount: 0 }
-    vendorRow.totalAmount += b.totalAmount
-    vendorRow.billCount += 1
-    byVendorMap.set(b.supplier.supplierName, vendorRow)
+    const amounts = byVendorAmounts.get(b.supplier.supplierName) ?? []
+    amounts.push(b.totalAmount)
+    byVendorAmounts.set(b.supplier.supplierName, amounts)
+    const meta = byVendorNames.get(b.supplier.supplierName) ?? { supplierName: b.supplier.supplierName, billCount: 0 }
+    meta.billCount += 1
+    byVendorNames.set(b.supplier.supplierName, meta)
 
     return {
       billNumber: b.billNumber, date: toLocalISODate(b.billDate), supplier: b.supplier.supplierName, status: b.status,
@@ -694,7 +706,9 @@ async function generatePurchaseRegisterReport(params: { dateFrom: string; dateTo
     }
   })
 
-  const byVendor = Array.from(byVendorMap.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+  const byVendor = Array.from(byVendorNames.values())
+    .map(meta => ({ ...meta, totalAmount: sumCurrency(byVendorAmounts.get(meta.supplierName) ?? []) }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo,
@@ -718,15 +732,21 @@ async function generatePurchasesByVendorReport(params: { dateFrom: string; dateT
     select: { totalAmount: true, supplierId: true, supplier: { select: { supplierName: true } } }
   })
 
-  const byVendor = new Map<string, PurchasesByVendorRow>()
+  // Same sumCurrency fix as generatePurchaseRegisterReport's own byVendor above.
+  const amountsBySupplier = new Map<string, number[]>()
+  const metaBySupplier = new Map<string, { supplierId: string; supplierName: string; billCount: number }>()
   for (const b of bills) {
-    const row = byVendor.get(b.supplierId) ?? { supplierId: b.supplierId, supplierName: b.supplier.supplierName, totalAmount: 0, billCount: 0 }
-    row.totalAmount += b.totalAmount
-    row.billCount += 1
-    byVendor.set(b.supplierId, row)
+    const amounts = amountsBySupplier.get(b.supplierId) ?? []
+    amounts.push(b.totalAmount)
+    amountsBySupplier.set(b.supplierId, amounts)
+    const meta = metaBySupplier.get(b.supplierId) ?? { supplierId: b.supplierId, supplierName: b.supplier.supplierName, billCount: 0 }
+    meta.billCount += 1
+    metaBySupplier.set(b.supplierId, meta)
   }
 
-  const rows = Array.from(byVendor.values()).sort((a, b) => b.totalAmount - a.totalAmount)
+  const rows = Array.from(metaBySupplier.values())
+    .map(meta => ({ ...meta, totalAmount: sumCurrency(amountsBySupplier.get(meta.supplierId) ?? []) }))
+    .sort((a, b) => b.totalAmount - a.totalAmount)
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo,
@@ -1159,17 +1179,35 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
     })
   ])
 
-  const debitByAccount = new Map<string, number>()
-  const creditByAccount = new Map<string, number>()
+  // Real bug found+fixed in the zero-logical-errors audit: these
+  // per-account totals used to accumulate via plain `Map.get() + rawFloat`
+  // instead of this codebase's own established Decimal-safe sumCurrency
+  // (already used for totalDebit/totalCredit two lines below). Trial
+  // Balance is a cumulative as-of-a-date snapshot that only grows for the
+  // lifetime of an install — summing thousands of already-rounded-but-
+  // still-float postings per account via raw `+=` can accumulate visible
+  // drift, potentially flipping `balanced` to false for books that are
+  // actually perfectly balanced. Collect each account's raw postings and
+  // sum them via sumCurrency once, not incrementally.
+  const debitLinesByAccount = new Map<string, number[]>()
+  const creditLinesByAccount = new Map<string, number[]>()
   for (const line of lines) {
-    debitByAccount.set(line.accountId, (debitByAccount.get(line.accountId) ?? 0) + line.debitAmount)
-    creditByAccount.set(line.accountId, (creditByAccount.get(line.accountId) ?? 0) + line.creditAmount)
+    if (line.debitAmount !== 0) {
+      const arr = debitLinesByAccount.get(line.accountId) ?? []
+      arr.push(line.debitAmount)
+      debitLinesByAccount.set(line.accountId, arr)
+    }
+    if (line.creditAmount !== 0) {
+      const arr = creditLinesByAccount.get(line.accountId) ?? []
+      arr.push(line.creditAmount)
+      creditLinesByAccount.set(line.accountId, arr)
+    }
   }
 
   const rows: TrialBalanceRow[] = []
   for (const acct of accounts) {
-    const debitTotal = debitByAccount.get(acct.id) ?? 0
-    const creditTotal = creditByAccount.get(acct.id) ?? 0
+    const debitTotal = sumCurrency(debitLinesByAccount.get(acct.id) ?? [])
+    const creditTotal = sumCurrency(creditLinesByAccount.get(acct.id) ?? [])
     if (debitTotal === 0 && creditTotal === 0) continue // never posted to — omit rather than pad with all-zero rows
     const net = roundCurrency(debitTotal - creditTotal)
     if (Math.abs(net) < 0.005) continue // posted both ways but nets to zero — nothing to show
@@ -1217,26 +1255,40 @@ async function generateCostCentreTreemapReport(params: { dateFrom: string; dateT
     })
   ])
 
-  const revenueByCentre = new Map<string, number>()
-  const expenseByCentre = new Map<string, number>()
-  let untaggedRevenue = 0
-  let untaggedExpense = 0
+  // Real bug found+fixed in the zero-logical-errors audit: these per-centre
+  // (and untagged) totals used to accumulate via plain `Map.get() + net` /
+  // `+=` on raw floats instead of this codebase's own established
+  // Decimal-safe sumCurrency — same fix as generateTrialBalanceReport's own
+  // per-account totals just above. Collect each centre's raw net values and
+  // sum them via sumCurrency once, not incrementally.
+  const revenueByCentre = new Map<string, number[]>()
+  const expenseByCentre = new Map<string, number[]>()
+  const untaggedRevenueLines: number[] = []
+  const untaggedExpenseLines: number[] = []
 
   for (const line of lines) {
     if (line.account.accountType === 'INCOME') {
       const net = line.creditAmount - line.debitAmount
-      if (line.costCentreId) revenueByCentre.set(line.costCentreId, (revenueByCentre.get(line.costCentreId) ?? 0) + net)
-      else untaggedRevenue += net
+      if (line.costCentreId) {
+        const arr = revenueByCentre.get(line.costCentreId) ?? []
+        arr.push(net)
+        revenueByCentre.set(line.costCentreId, arr)
+      } else untaggedRevenueLines.push(net)
     } else if (line.account.accountType === 'EXPENSE') {
       const net = line.debitAmount - line.creditAmount
-      if (line.costCentreId) expenseByCentre.set(line.costCentreId, (expenseByCentre.get(line.costCentreId) ?? 0) + net)
-      else untaggedExpense += net
+      if (line.costCentreId) {
+        const arr = expenseByCentre.get(line.costCentreId) ?? []
+        arr.push(net)
+        expenseByCentre.set(line.costCentreId, arr)
+      } else untaggedExpenseLines.push(net)
     }
   }
+  const untaggedRevenue = sumCurrency(untaggedRevenueLines)
+  const untaggedExpense = sumCurrency(untaggedExpenseLines)
 
   const rows: CostCentreTreemapRow[] = costCentres.map((cc) => {
-    const revenue = roundCurrency(revenueByCentre.get(cc.id) ?? 0)
-    const expense = roundCurrency(expenseByCentre.get(cc.id) ?? 0)
+    const revenue = sumCurrency(revenueByCentre.get(cc.id) ?? [])
+    const expense = sumCurrency(expenseByCentre.get(cc.id) ?? [])
     return { costCentreId: cc.id, costCentreName: cc.name, revenue, expense, margin: roundCurrency(revenue - expense) }
   }).filter((r) => r.revenue !== 0 || r.expense !== 0) // a cost centre nobody has tagged anything against yet — omit, don't pad with a zero rectangle
 

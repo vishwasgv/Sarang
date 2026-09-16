@@ -215,9 +215,18 @@ export async function getDashboardKpis(forceRefresh = false): Promise<DashboardK
   // "inventory value" numbers one click apart in the same app with no
   // indication which is authoritative. averageCost is the correct one —
   // matching it here.
+  //
+  // Real bug found+fixed in the zero-logical-errors audit: still hardcoded
+  // averageCost regardless of the product's own selected valuationMethod —
+  // disagreeing with generateProfitAndLossReport (and every other cost-
+  // reading report), which already correctly routes through
+  // getProductCostsBatch. A STANDARD_COST or FIFO product showed a
+  // different "inventory value" here than on the P&L / Inventory Report.
+  const activeInventoryProductIds = inventoryItems.filter(inv => inv.product.isActive).map(inv => inv.productId)
+  const inventoryCostBasis = await getProductCostsBatch(activeInventoryProductIds)
   const inventoryValue = inventoryItems.reduce((sum, inv) => {
     if (!inv.product.isActive) return sum
-    return sum + inv.quantity * inv.averageCost
+    return sum + inv.quantity * (inventoryCostBasis.get(inv.productId) ?? inv.averageCost)
   }, 0)
 
   const inventoryTotal = allInventory.length

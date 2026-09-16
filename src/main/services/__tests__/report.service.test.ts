@@ -853,6 +853,22 @@ describe('reportService.generatePurchaseRegisterReport', () => {
     expect(result.byVendor[0].supplierName).toBe('Big Vendor')
     expect(result.byVendor[0].totalAmount).toBe(900)
   })
+
+  // Real bug found+fixed in the zero-logical-errors audit: per-vendor
+  // totalAmount used to accumulate via raw `+=` instead of this codebase's
+  // own established Decimal-safe sumCurrency.
+  it('sums float-imprecise bill amounts per vendor to a clean value', async () => {
+    const db = makeDb()
+    db.bill.findMany = vi.fn().mockResolvedValue([
+      makeBill({ id: 'b1', supplierId: 'sup-1', totalAmount: 0.1, supplier: { supplierName: 'Vendor' } }),
+      makeBill({ id: 'b2', supplierId: 'sup-1', totalAmount: 0.2, supplier: { supplierName: 'Vendor' } })
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePurchaseRegisterReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.byVendor[0].totalAmount).toBe(0.3)
+  })
 })
 
 describe('reportService.generatePurchasesByVendorReport', () => {
@@ -868,6 +884,19 @@ describe('reportService.generatePurchasesByVendorReport', () => {
 
     expect(result.rows).toHaveLength(1)
     expect(result.rows[0]).toEqual(expect.objectContaining({ supplierName: 'Acme', totalAmount: 800, billCount: 2 }))
+  })
+
+  it('sums float-imprecise bill amounts per vendor to a clean value', async () => {
+    const db = makeDb()
+    db.bill.findMany = vi.fn().mockResolvedValue([
+      { totalAmount: 0.1, supplierId: 'sup-1', supplier: { supplierName: 'Acme' } },
+      { totalAmount: 0.2, supplierId: 'sup-1', supplier: { supplierName: 'Acme' } }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generatePurchasesByVendorReport({ dateFrom: '2024-01-01', dateTo: '2024-01-31' })
+
+    expect(result.rows[0].totalAmount).toBe(0.3)
   })
 })
 
@@ -3161,6 +3190,42 @@ function makeInventoryProduct(overrides: Record<string, unknown> = {}) {
   }
 }
 
+// Real bug found+fixed in the zero-logical-errors audit: stockValue used to
+// hardcode Inventory.averageCost regardless of the product's own selected
+// valuationMethod, disagreeing with generateProfitAndLossReport (and every
+// other cost-reading report), which already correctly routes through
+// getProductCostsBatch.
+describe('reportService.generateInventoryReport — valuationMethod-aware stock value', () => {
+  it('values stock at Product.standardCost, not averageCost, for a STANDARD_COST product', async () => {
+    const db = makeDb({
+      product: { findMany: vi.fn().mockResolvedValue([
+        makeInventoryProduct({ id: 'prod-1', valuationMethod: 'STANDARD_COST', standardCost: 80, inventory: { quantity: 100, reorderLevel: 20, averageCost: 95 } })
+      ]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'prod-1', averageCost: 95, quantity: 100 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateInventoryReport()
+
+    // 100 units * 80 standardCost = 8000, NOT 100 * 95 = 9500.
+    expect(result.rows[0].stockValue).toBe(8000)
+  })
+
+  it('falls back to averageCost (weighted-average) when valuationMethod is unset', async () => {
+    const db = makeDb({
+      product: { findMany: vi.fn().mockResolvedValue([
+        makeInventoryProduct({ id: 'prod-1', inventory: { quantity: 100, reorderLevel: 20, averageCost: 95 } })
+      ]) },
+      inventory: { findMany: vi.fn().mockResolvedValue([{ productId: 'prod-1', averageCost: 95, quantity: 100 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateInventoryReport()
+
+    expect(result.rows[0].stockValue).toBe(9500)
+  })
+})
+
 describe('reportService.generateInventoryReport — carton breakdown', () => {
   it('leaves cartonBreakdown null for a product not sold by pack', async () => {
     const db = makeDb({ product: { findMany: vi.fn().mockResolvedValue([makeInventoryProduct()]) } })
@@ -3378,6 +3443,35 @@ describe('reportService.generateTrialBalanceReport', () => {
     expect(byAccount['4000 — Sales Revenue'].credit).toBe(300) // the post-dateTo posting is excluded
     expect(result.balanced).toBe(true)
   })
+
+  // Real bug found+fixed in the zero-logical-errors audit: per-account
+  // totals used to accumulate via plain `Map.get() + rawFloat` instead of
+  // this codebase's own established Decimal-safe sumCurrency. Trial Balance
+  // is a cumulative as-of-a-date snapshot that only grows for the lifetime
+  // of an install — many small float-imprecise postings summed via raw
+  // `+=` can drift enough to flip `balanced` to false for books that are
+  // actually perfectly balanced.
+  it('sums many float-imprecise postings per account to a clean value, still balanced', async () => {
+    const db = makeDb({
+      chartOfAccounts: { findMany: vi.fn().mockResolvedValue([CASH, REVENUE]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        // 0.1 + 0.2 = 0.30000000000000004 in raw IEEE754 float math.
+        { accountId: CASH.id, debitAmount: 0.1, creditAmount: 0 },
+        { accountId: CASH.id, debitAmount: 0.2, creditAmount: 0 },
+        { accountId: REVENUE.id, debitAmount: 0, creditAmount: 0.1 },
+        { accountId: REVENUE.id, debitAmount: 0, creditAmount: 0.2 },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const byAccount = Object.fromEntries(result.rows.map(r => [r.account, r]))
+    expect(byAccount['1000 — Cash & Bank'].debit).toBe(0.3)
+    expect(byAccount['4000 — Sales Revenue'].credit).toBe(0.3)
+    expect(result.balanced).toBe(true)
+    expect(result.totalDebit).toBe(result.totalCredit)
+  })
 })
 
 // ─── Cost Centre Treemap P&L (Phase 65) ────────────────────────────────────
@@ -3448,6 +3542,28 @@ describe('reportService.generateCostCentreTreemapReport', () => {
     expect(result.rows).toHaveLength(0)
     expect(result.untaggedRevenue).toBe(0)
     expect(result.untaggedExpense).toBe(0)
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: per-centre (and
+  // untagged) totals used to accumulate via plain `Map.get() + net` / `+=`
+  // on raw floats instead of this codebase's own established Decimal-safe
+  // sumCurrency.
+  it('sums float-imprecise postings per cost centre and untagged bucket to a clean value', async () => {
+    const db = makeDb({
+      costCentre: { findMany: vi.fn().mockResolvedValue([{ id: 'cc-1', name: 'Downtown Branch' }]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { costCentreId: 'cc-1', debitAmount: 0, creditAmount: 0.1, account: REVENUE },
+        { costCentreId: 'cc-1', debitAmount: 0, creditAmount: 0.2, account: REVENUE },
+        { costCentreId: null, debitAmount: 0.1, creditAmount: 0, account: EXPENSE },
+        { costCentreId: null, debitAmount: 0.2, creditAmount: 0, account: EXPENSE },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateCostCentreTreemapReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows[0].revenue).toBe(0.3)
+    expect(result.untaggedExpense).toBe(0.3)
   })
 })
 
