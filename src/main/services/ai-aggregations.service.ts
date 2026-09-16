@@ -21,19 +21,36 @@ export async function getDeadStock(days = 90): Promise<DeadStockItem[]> {
   const db = getPrisma()
   const cutoff = daysAgo(days)
 
-  const products = await db.product.findMany({
-    where: { isActive: true },
-    select: {
-      productName: true, sku: true,
-      inventory: { select: { quantity: true } },
-      invoiceItems: {
-        where: { invoice: { status: 'ACTIVE' } },
-        orderBy: { invoice: { invoiceDate: 'desc' } },
-        take: 1,
-        select: { invoice: { select: { invoiceDate: true } } }
-      }
-    }
-  })
+  // Real bug found+fixed in the zero-logical-errors audit: the per-product
+  // "latest sale date" used to be fetched via a nested invoiceItems relation
+  // with its own orderBy+take:1 (order by a DOUBLY-nested field, invoice.
+  // invoiceDate, inside a to-many relation) — a query shape that reliably
+  // triggers a genuine Prisma query-engine Rust panic ("no entry found for
+  // key") once the product catalog is large (confirmed crashing at ~1,700
+  // active products). Not a business-logic bug — the AI assistant's dead-
+  // stock answer silently failed/threw for any business with a large enough
+  // catalog. Fixed by splitting into two flat queries (no nested relation
+  // take/orderBy) and reducing to "latest per product" in JS instead — same
+  // fix applied to report.service.ts's generateDeadStockClearanceReport,
+  // which had copied this exact query shape from here.
+  const [products, recentInvoiceItems] = await Promise.all([
+    db.product.findMany({
+      where: { isActive: true },
+      select: { id: true, productName: true, sku: true, inventory: { select: { quantity: true } } }
+    }),
+    db.invoiceItem.findMany({
+      where: { invoice: { status: 'ACTIVE' } },
+      select: { productId: true, invoice: { select: { invoiceDate: true } } }
+    })
+  ])
+
+  const lastSoldByProduct = new Map<string, Date>()
+  for (const item of recentInvoiceItems) {
+    if (!item.productId) continue
+    const date = item.invoice.invoiceDate
+    const existing = lastSoldByProduct.get(item.productId)
+    if (!existing || date > existing) lastSoldByProduct.set(item.productId, date)
+  }
 
   return products
     .filter((p) => (p.inventory?.quantity ?? 0) > 0)
@@ -44,14 +61,14 @@ export async function getDeadStock(days = 90): Promise<DeadStockItem[]> {
     // derived from), silently excluding products that genuinely crossed
     // the cutoff for any timezone ahead of UTC.
     .filter((p) => {
-      const lastSold = p.invoiceItems[0]?.invoice.invoiceDate
+      const lastSold = lastSoldByProduct.get(p.id)
       return !lastSold || lastSold < cutoff
     })
     .map((p) => ({
       productName: p.productName,
       sku: p.sku,
       currentStock: p.inventory?.quantity ?? 0,
-      lastSoldDate: p.invoiceItems[0]?.invoice.invoiceDate ? toLocalISODate(p.invoiceItems[0].invoice.invoiceDate) : null
+      lastSoldDate: lastSoldByProduct.has(p.id) ? toLocalISODate(lastSoldByProduct.get(p.id)!) : null
     }))
     .sort((a, b) => (a.lastSoldDate ?? '').localeCompare(b.lastSoldDate ?? ''))
 }

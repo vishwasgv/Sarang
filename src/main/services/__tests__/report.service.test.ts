@@ -1938,23 +1938,31 @@ describe('reportService.generateRecipeWasteVarianceReport', () => {
 
 // Phase 67 §9.1 — Retail: Dead-Stock Clearance List. `db.product.findMany`
 // is called TWICE per report run — once for this report's own
-// product/inventory/invoiceItems query, once internally by
-// getProductCostsBatch's own cost lookup — so these tests chain
-// mockResolvedValueOnce in that exact call order rather than a single
-// mockResolvedValue (which would answer both calls identically and break
-// one of the two shapes).
+// product/inventory query, once internally by getProductCostsBatch's own
+// cost lookup — so these tests chain mockResolvedValueOnce in that exact
+// call order rather than a single mockResolvedValue (which would answer
+// both calls identically and break one of the two shapes).
+//
+// Real bug found+fixed in the zero-logical-errors audit: the per-product
+// "latest sale date" used to be fetched via a nested invoiceItems relation
+// with its own orderBy+take:1 (ordering by a doubly-nested field, invoice.
+// invoiceDate, inside a to-many relation) — a shape that reliably triggers
+// a genuine Prisma query-engine Rust panic once the product catalog is
+// large (confirmed crashing at ~1,700 active products in the real dev DB).
+// Fixed by fetching invoiceItems via a separate flat db.invoiceItem.findMany
+// call and reducing to "latest per product" in JS — these tests now mock
+// that flat call instead of nesting invoiceItems onto the product row.
 describe('reportService.generateDeadStockClearanceReport', () => {
   function makeDeadProduct(overrides: Record<string, unknown> = {}) {
     return {
       id: 'prod-1', productName: 'Old Sweater', sku: 'SW-1', unit: 'PCS',
       inventory: { quantity: 20 },
-      invoiceItems: [],
       ...overrides
     }
   }
 
   it('includes a product with stock and no sale within the lookback window, computing capital locked', async () => {
-    const db = makeDb()
+    const db = makeDb({ invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } })
     db.product.findMany = vi.fn()
       .mockResolvedValueOnce([makeDeadProduct()])
       .mockResolvedValueOnce([{ id: 'prod-1', costPrice: 50, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }])
@@ -1975,9 +1983,11 @@ describe('reportService.generateDeadStockClearanceReport', () => {
   it('excludes a product with stock that sold recently (inside the lookback window)', async () => {
     const recentDate = new Date()
     recentDate.setDate(recentDate.getDate() - 5)
-    const db = makeDb()
+    const db = makeDb({
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([{ productId: 'prod-1', invoice: { invoiceDate: recentDate } }]) }
+    })
     db.product.findMany = vi.fn()
-      .mockResolvedValueOnce([makeDeadProduct({ invoiceItems: [{ invoice: { invoiceDate: recentDate } }] })])
+      .mockResolvedValueOnce([makeDeadProduct()])
       .mockResolvedValueOnce([{ id: 'prod-1', costPrice: 50, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }])
     db.inventory.findMany = vi.fn().mockResolvedValue([{ productId: 'prod-1', averageCost: 50, quantity: 20 }])
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -1988,7 +1998,7 @@ describe('reportService.generateDeadStockClearanceReport', () => {
   })
 
   it('excludes a product that sold recently but happens to have 0 stock left', async () => {
-    const db = makeDb()
+    const db = makeDb({ invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } })
     db.product.findMany = vi.fn()
       .mockResolvedValueOnce([makeDeadProduct({ inventory: { quantity: 0 } })])
       .mockResolvedValueOnce([])
@@ -2001,7 +2011,7 @@ describe('reportService.generateDeadStockClearanceReport', () => {
   })
 
   it('sorts rows by capital locked, highest first', async () => {
-    const db = makeDb()
+    const db = makeDb({ invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } })
     db.product.findMany = vi.fn()
       .mockResolvedValueOnce([
         makeDeadProduct({ id: 'prod-low', productName: 'Low Value', inventory: { quantity: 5 } }),
@@ -2023,7 +2033,7 @@ describe('reportService.generateDeadStockClearanceReport', () => {
   })
 
   it('returns an honest empty result when nothing qualifies as dead stock', async () => {
-    const db = makeDb()
+    const db = makeDb({ invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } })
     db.product.findMany = vi.fn().mockResolvedValueOnce([]).mockResolvedValueOnce([])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -2031,6 +2041,33 @@ describe('reportService.generateDeadStockClearanceReport', () => {
 
     expect(result.rows).toEqual([])
     expect(result.summary).toEqual({ totalCapitalLocked: 0, itemCount: 0 })
+  })
+
+  it('picks the MOST RECENT sale when a product has multiple invoiceItem rows, not just the first', async () => {
+    const older = new Date()
+    older.setDate(older.getDate() - 200) // outside the 90-day default lookback
+    const newer = new Date()
+    newer.setDate(newer.getDate() - 10) // inside the 90-day default lookback
+    const db = makeDb({
+      // Older row listed FIRST — a naive "take the first row" reduction
+      // would wrongly keep the 200-days-ago date and mark this dead.
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([
+        { productId: 'prod-1', invoice: { invoiceDate: older } },
+        { productId: 'prod-1', invoice: { invoiceDate: newer } },
+      ]) }
+    })
+    db.product.findMany = vi.fn()
+      .mockResolvedValueOnce([makeDeadProduct()])
+      .mockResolvedValueOnce([{ id: 'prod-1', costPrice: 50, valuationMethod: 'WEIGHTED_AVERAGE', standardCost: null }])
+    db.inventory.findMany = vi.fn().mockResolvedValue([{ productId: 'prod-1', averageCost: 50, quantity: 20 }])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateDeadStockClearanceReport()
+
+    // The MAX (newer, 10-days-ago) date must win — recently sold, so
+    // excluded from "dead stock," proving the reduction takes the true
+    // latest sale, not just the first row encountered.
+    expect(result.rows).toHaveLength(0)
   })
 })
 

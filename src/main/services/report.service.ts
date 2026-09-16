@@ -2039,19 +2039,38 @@ async function generateDeadStockClearanceReport(params?: { days?: number }): Pro
   const cutoff = new Date()
   cutoff.setDate(cutoff.getDate() - days)
 
-  const products = await db.product.findMany({
-    where: { isActive: true },
-    select: {
-      id: true, productName: true, sku: true, unit: true,
-      inventory: { select: { quantity: true } },
-      invoiceItems: {
-        where: { invoice: { status: 'ACTIVE' } },
-        orderBy: { invoice: { invoiceDate: 'desc' } },
-        take: 1,
-        select: { invoice: { select: { invoiceDate: true } } }
-      }
-    }
-  })
+  // Real bug found+fixed in the zero-logical-errors audit: the per-product
+  // "latest sale date" used to be fetched via a nested invoiceItems relation
+  // with its own orderBy+take:1 (order by a DOUBLY-nested field, invoice.
+  // invoiceDate, inside a to-many relation) — a query shape that reliably
+  // triggers a genuine Prisma query-engine Rust panic ("no entry found for
+  // key") once the product catalog is large (confirmed crashing at ~1,700
+  // active products; the exact threshold is lower, not yet bisected). This
+  // was not a business-logic bug — the report throws/returns nothing at
+  // all, silently omitting every product, once a business's catalog grows
+  // past whatever size trips the engine. Copied from ai-aggregations.
+  // service.ts's own getDeadStock() (see that file for the AI-facing
+  // equivalent, now fixed the same way) rather than a bug original to this
+  // report. Fixed by splitting into two flat queries (no nested relation
+  // take/orderBy) and reducing to "latest per product" in JS instead.
+  const [products, recentInvoiceItems] = await Promise.all([
+    db.product.findMany({
+      where: { isActive: true },
+      select: { id: true, productName: true, sku: true, unit: true, inventory: { select: { quantity: true } } }
+    }),
+    db.invoiceItem.findMany({
+      where: { invoice: { status: 'ACTIVE' } },
+      select: { productId: true, invoice: { select: { invoiceDate: true } } }
+    })
+  ])
+
+  const lastSoldByProduct = new Map<string, Date>()
+  for (const item of recentInvoiceItems) {
+    if (!item.productId) continue
+    const date = item.invoice.invoiceDate
+    const existing = lastSoldByProduct.get(item.productId)
+    if (!existing || date > existing) lastSoldByProduct.set(item.productId, date)
+  }
 
   const withStock = products.filter(p => (p.inventory?.quantity ?? 0) > 0)
   const costs = await getProductCostsBatch(withStock.map(p => p.id))
@@ -2059,7 +2078,8 @@ async function generateDeadStockClearanceReport(params?: { days?: number }): Pro
 
   const rows: DeadStockClearanceRow[] = withStock
     .map(p => {
-      const lastSoldDate = p.invoiceItems[0]?.invoice.invoiceDate ? toLocalISODate(p.invoiceItems[0].invoice.invoiceDate) : null
+      const lastSoldRaw = lastSoldByProduct.get(p.id)
+      const lastSoldDate = lastSoldRaw ? toLocalISODate(lastSoldRaw) : null
       const currentStock = p.inventory?.quantity ?? 0
       const unitCost = costs.get(p.id) ?? 0
       return {
