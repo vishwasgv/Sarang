@@ -15,6 +15,7 @@ Thumbs.db
 coverage/
 .vite/
 release/
+release-testonly/
 /1/
 /2/
 *.sarang-backup

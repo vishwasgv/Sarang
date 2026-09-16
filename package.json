@@ -20,6 +20,7 @@
     "dist": "npm run build && electron-builder --config electron-builder.config.ts",
     "predist:win": "node scripts/check-license-secret.js",
     "dist:win": "npm run build && electron-builder --config electron-builder.config.ts --win",
+    "dist:test-packaged": "npm run build && electron-builder --config electron-builder.test-verify.config.ts --win --publish never",
     "typecheck": "tsc --noEmit -p tsconfig.web.json && tsc --noEmit -p tsconfig.node.json",
     "lint": "eslint .",
     "test": "vitest run",

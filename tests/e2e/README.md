@@ -68,3 +68,38 @@ changes, the WAL/second-connection gotcha above).
   the same live app/DB would produce confusing cross-suite failures.
 - Every suite must use a distinctive test-data name prefix and clean up via
   `cleanupByNamePrefix` — there is no automatic whole-DB safety net anymore.
+
+## Testing the REAL PACKAGED installer (`packaged-*.js` scripts)
+
+`packaged-feature-smoke.js`, `packaged-fresh-install-flow.js`,
+`packaged-backup-restore.js`, `packaged-corrupted-backup.js`, and
+`packaged-locale-check.js` drive the actual installed exe (not the dev
+server) via `_electron.launch({ executablePath: EXE_PATH })`.
+
+**These cannot run against a real shipped installer as of the 2026-09-02
+Electron Fuses hardening.** `electron-builder.config.ts`'s
+`electronFuses.enableNodeCliInspectArguments: false` (closes a
+raw-devtools route to bypassing `license.service.ts`) also blocks the CLI
+inspect/remote-debugging flag Playwright's `_electron.launch()` needs to
+attach at all — the launch just fails ("Process failed to launch!") or
+hangs. Discovered 2026-09-16 while verifying the v1.3.0 installer; none of
+these scripts had been run successfully since that hardening shipped.
+
+**To run them**, build and install the dedicated test-only variant instead
+of the real installer:
+
+```
+npm run dist:test-packaged
+```
+
+This uses `electron-builder.test-verify.config.ts` — identical to the real
+config except output goes to `release-testonly/` (never `release/`) and
+`enableNodeCliInspectArguments` is re-enabled so Playwright can attach.
+**Never publish anything built from this config** — it's for local/CI
+verification only. Install the resulting exe from `release-testonly/`,
+then run whichever `packaged-*.js` script you need (their `EXE_PATH`
+points at the normal install location, e.g.
+`C:\Users\<user>\AppData\Local\Programs\Sarang Business OS Lite\...` — same
+either way since the test-verify build doesn't change the product name).
+Reinstall the real `release/*.exe` afterward to restore the actual
+shippable state on your machine.
