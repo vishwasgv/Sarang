@@ -20,6 +20,9 @@ function makeMockDb() {
       aggregate: vi.fn().mockResolvedValue({ _sum: { balanceAmount: 0 } }),
     },
   }
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
   return db
 }
 
@@ -108,6 +111,19 @@ describe('job-site-account.service.closeJobSiteAccount', () => {
 
     expect(res.success).toBe(true)
     expect(db.jobSiteAccount.update).toHaveBeenCalledWith(expect.objectContaining({ where: { id: 'jsa-1' }, data: { status: 'CLOSED' } }))
+  })
+
+  it('checks the balance and writes CLOSED inside one transaction (TOCTOU guard)', async () => {
+    const db = makeMockDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await closeJobSiteAccount('jsa-1')
+
+    expect(db.$transaction).toHaveBeenCalledTimes(1)
+    // the aggregate re-check and the update must both run through the same tx call,
+    // not as two independent top-level db calls that a concurrent write could split
+    expect(db.invoice.aggregate).toHaveBeenCalled()
+    expect(db.jobSiteAccount.update).toHaveBeenCalled()
   })
 })
 

@@ -545,7 +545,7 @@ export const printService = {
       ${taxHtml}
       ${Math.abs(invoice.roundingAmount) > 0.001 ? `<div class="totals-row"><span>Rounding</span><span>${invoice.roundingAmount >= 0 ? '+' : ''}${formatAmount(invoice.roundingAmount, sym)}</span></div>` : ''}
       <div class="totals-total"><span>Total</span><span>${formatAmount(invoice.totalAmount, sym)}</span></div>
-      ${invoice.foreignCurrencyCode && invoice.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(invoice.foreignCurrencyCode)}</span><span>${invoice.foreignTotalAmount.toFixed(2)}${invoice.foreignExchangeRate ? ` (@ ${invoice.foreignExchangeRate})` : ''}</span></div>` : ''}
+      ${invoice.foreignCurrencyCode && invoice.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(invoice.foreignCurrencyCode)}</span><span>${formatAmount(invoice.foreignTotalAmount, '')}${invoice.foreignExchangeRate ? ` (@ ${invoice.foreignExchangeRate})` : ''}</span></div>` : ''}
       ${invoice.paidAmount > 0 ? `<div class="totals-row"><span>Paid</span><span>${formatAmount(invoice.paidAmount, sym)}</span></div>` : ''}
       ${invoice.balanceAmount > 0.01 ? `<div class="totals-balance"><span>Balance Due</span><span>${formatAmount(invoice.balanceAmount, sym)}</span></div>` : ''}
     </div>
@@ -1332,7 +1332,13 @@ export const printService = {
     // supplier reading this PDF had no way to know to ship to the
     // customer instead of the business's own location.
     dropShipToCustomer?: { customerName: string; address?: string | null; city?: string | null; state?: string | null; phone?: string | null } | null
-    items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } }>
+    // Zero-bug audit 2026-09-16: PurchaseOrderItem.productId is nullable
+    // (Phase 61 — free-text service lines, product null + serviceDescription
+    // set instead, see purchase-order.service.ts's getPO()). This was typed
+    // as always-present and crashed on any PO with a service line — fixed
+    // by mirroring generateBillHtml/generateSalesOrderHtml's own null-safe
+    // pattern, which already handles this correctly.
+    items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
     subtotal: number; taxAmount: number; totalAmount: number
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
@@ -1346,8 +1352,8 @@ export const printService = {
 
     const itemsHtml = po.items.map(item => `
       <tr>
-        <td>${escHtml(item.product.productName)}${item.product.sku ? `<br/><span style="font-size:9px;color:#94a3b8">SKU: ${escHtml(item.product.sku)}</span>` : ''}</td>
-        <td class="right">${item.quantity} ${escHtml(item.product.unit)}</td>
+        <td>${item.product ? escHtml(item.product.productName) + (item.product.sku ? `<br/><span style="font-size:9px;color:#94a3b8">SKU: ${escHtml(item.product.sku)}</span>` : '') : escHtml(item.serviceDescription ?? '')}</td>
+        <td class="right">${item.quantity}${item.product ? ' ' + escHtml(item.product.unit) : ''}</td>
         <td class="right">${formatAmount(item.unitCost, sym)}</td>
         <td class="right">${item.taxRate > 0 ? item.taxRate + '%' : '—'}</td>
         <td class="right bold">${formatAmount(item.total, sym)}</td>
@@ -1580,7 +1586,7 @@ export const printService = {
       <div class="totals-row"><span>Subtotal</span><span>${formatAmount(bill.subtotal, sym)}</span></div>
       ${bill.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(bill.taxAmount, sym)}</span></div>` : ''}
       <div class="totals-total"><span>Total Amount</span><span>${formatAmount(bill.totalAmount, sym)}</span></div>
-      ${bill.foreignCurrencyCode && bill.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(bill.foreignCurrencyCode)}</span><span>${bill.foreignTotalAmount.toFixed(2)}${bill.foreignExchangeRate ? ` (@ ${bill.foreignExchangeRate})` : ''}</span></div>` : ''}
+      ${bill.foreignCurrencyCode && bill.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(bill.foreignCurrencyCode)}</span><span>${formatAmount(bill.foreignTotalAmount, '')}${bill.foreignExchangeRate ? ` (@ ${bill.foreignExchangeRate})` : ''}</span></div>` : ''}
       ${bill.balanceAmount > 0 && bill.balanceAmount !== bill.totalAmount ? `<div class="totals-row"><span>Balance Due</span><span>${formatAmount(bill.balanceAmount, sym)}</span></div>` : ''}
     </div>
   </div>

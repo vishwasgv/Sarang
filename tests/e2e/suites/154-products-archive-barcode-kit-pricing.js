@@ -40,7 +40,11 @@ async function run() {
       const catRes = await page.evaluate(async (name) => window.api.categories.create({ name }), `${TEST_PREFIX} Cat ${suffix}`)
       categoryId = catRes?.data?.id
 
-      const archive = await createTestProduct(page, { productName: `${TEST_PREFIX} Archive Me ${suffix}`, categoryId })
+      // openingQuantity: 0 -- archiveProduct() correctly blocks archiving
+      // while real stock remains (zero-bug audit 2026-09-15 finding #12), and
+      // createTestProduct's own default (100) would trip that block, leaving
+      // the confirm modal open and stalling every step after this one.
+      const archive = await createTestProduct(page, { productName: `${TEST_PREFIX} Archive Me ${suffix}`, categoryId, openingQuantity: 0 })
       archiveProdId = archive?.data?.id
       const barcode = await createTestProduct(page, { productName: `${TEST_PREFIX} Barcode Me ${suffix}`, categoryId })
       barcodeProdId = barcode?.data?.id

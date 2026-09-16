@@ -152,14 +152,22 @@ export async function closeJobSiteAccount(id: string) {
     const db = getPrisma()
     const existing = await db.jobSiteAccount.findUnique({ where: { id } })
     if (!existing) return { success: false, error: { code: 'JSA-002', message: 'Job-site account not found.' } }
-    const openBalance = await db.invoice.aggregate({
-      where: { jobSiteAccountId: id, status: 'ACTIVE', balanceAmount: { gt: 0 } },
-      _sum: { balanceAmount: true },
+
+    // Balance check + status write must be one atomic unit — otherwise a new
+    // CREDIT invoice tagged onto this account (or a payment reversal) between
+    // the two calls could leave the account CLOSED with a real open balance.
+    let overBalance = false
+    const updated = await db.$transaction(async (tx) => {
+      const openBalance = await tx.invoice.aggregate({
+        where: { jobSiteAccountId: id, status: 'ACTIVE', balanceAmount: { gt: 0 } },
+        _sum: { balanceAmount: true },
+      })
+      if ((openBalance._sum.balanceAmount ?? 0) > 0) { overBalance = true; return null }
+      return tx.jobSiteAccount.update({ where: { id }, data: { status: 'CLOSED' } })
     })
-    if ((openBalance._sum.balanceAmount ?? 0) > 0) {
+    if (overBalance) {
       return { success: false, error: { code: 'JSA-007', message: 'Cannot close an account with an outstanding balance. Settle it first.' } }
     }
-    const updated = await db.jobSiteAccount.update({ where: { id }, data: { status: 'CLOSED' } })
     await logAction({ action: 'JOB_SITE_ACCOUNT_CLOSED', entityType: 'JobSiteAccount', entityId: id })
     return { success: true, data: updated }
   } catch (err) {

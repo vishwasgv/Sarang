@@ -19,6 +19,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
   const db: Record<string, any> = {
     businessProfile: { findFirst: vi.fn().mockResolvedValue({ creditInterestEnabled: true, creditInterestRatePercent: 12, creditInterestType: 'SIMPLE' }) },
     customer: { findUnique: vi.fn().mockResolvedValue({ id: 'cust-1', customerName: 'Ramesh Traders' }) },
+    customerLedger: { findFirst: vi.fn().mockResolvedValue(null) },
     invoice: { findMany: vi.fn().mockResolvedValue([]) },
     chartOfAccounts: { findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET', isActive: true }) },
     journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }), findMany: vi.fn().mockResolvedValue([]) },
@@ -141,5 +142,20 @@ describe('creditInterestService.postInterestCharge', () => {
     const totalCredit = lines.reduce((s, l) => s + l.creditAmount, 0)
     expect(totalDebit).toBe(totalCredit)
     expect(totalDebit).toBeGreaterThan(0)
+  })
+
+  it('refuses a same-day double-post instead of charging interest twice (double-click guard)', async () => {
+    const db = makeDb({
+      invoice: { findMany: vi.fn().mockResolvedValue([{ id: 'inv-1', invoiceNumber: 'INV-1', balanceAmount: 10000, dueDate: daysAgo(60) }]) },
+      customerLedger: { findFirst: vi.fn().mockResolvedValue({ id: 'led-already-posted' }) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditInterestService.postInterestCharge('cust-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CI-003')
+    expect(customerLedgerService.addEntry).not.toHaveBeenCalled()
+    expect(db.journalEntry.create).not.toHaveBeenCalled()
   })
 })

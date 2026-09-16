@@ -4,6 +4,7 @@ import { customerLedgerService } from './customer-ledger.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService } from './journal-entry.service'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { startOfLocalDay } from '../utils/date.util'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -76,7 +77,21 @@ export const creditInterestService = {
       const customer = await db.customer.findUnique({ where: { id: customerId } })
       if (!customer) return { success: false, error: { code: 'CUS-001', message: 'Customer not found.' } }
 
+      // Double-click / double-submit guard: the interest amount above is computed
+      // from each overdue invoice's live balanceAmount, which posting interest does
+      // NOT reduce — so two concurrent calls would independently compute the same
+      // totalInterest and, without this check, both post a full separate charge.
+      // Re-checked *inside* the transaction (not before it) so that when SQLite
+      // serializes two concurrent transactions, the second one's check sees the
+      // first one's already-committed row and aborts instead of double-charging.
+      let duplicate = false
       await db.$transaction(async (tx: TxClient) => {
+        const alreadyPostedToday = await tx.customerLedger.findFirst({
+          where: { customerId, referenceType: 'INTEREST_CHARGE', createdAt: { gte: startOfLocalDay(new Date()) } },
+          select: { id: true }
+        })
+        if (alreadyPostedToday) { duplicate = true; return }
+
         await customerLedgerService.addEntry({
           customerId,
           referenceType: 'INTEREST_CHARGE',
@@ -97,6 +112,8 @@ export const creditInterestService = {
           ]
         })
       })
+
+      if (duplicate) return { success: false, error: { code: 'CI-003', message: 'Interest was already posted for this customer today.' } }
 
       await logAction({ userId, action: 'CREDIT_INTEREST_CHARGED', entityType: 'Customer', entityId: customerId, newValue: { totalInterest, invoiceCount: lines.length } })
       return { success: true, data: { totalInterest, invoiceCount: lines.length } }

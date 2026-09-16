@@ -82,6 +82,18 @@ describe('printService.generateInvoiceHtml', () => {
     const html = await printService.generateInvoiceHtml(makeInvoice() as never, profile as never)
     expect(html).toContain('PCS')
   })
+
+  // Zero-bug audit 2026-09-16 — REAL BUG: the foreign-currency-equivalent
+  // total used a raw .toFixed(2) while every other amount on the page goes
+  // through the shared locale-aware formatAmount() — a regression of the
+  // exact ungrouped-digits bug class this file already fixed once (see this
+  // file's own header comment). Fixed to route through formatAmount too.
+  it('digit-groups the foreign-currency equivalent total like every other amount on the page', async () => {
+    const foreignInvoice = { ...makeInvoice(), foreignCurrencyCode: 'USD', foreignTotalAmount: 12345.6, foreignExchangeRate: 83.1 }
+    const html = await printService.generateInvoiceHtml(foreignInvoice as never, profile as never)
+    expect(html).toContain('12,345.60')
+    expect(html).not.toContain('12345.60')
+  })
 })
 
 // Phase 63 — the editable invoice template system. A thin visual layer:
@@ -621,6 +633,16 @@ describe('printService.generateBillHtml', () => {
     const htmlFull = await printService.generateBillHtml(fullyOwed as never, profile as never)
     expect(htmlFull).not.toContain('Balance Due')
   })
+
+  // Zero-bug audit 2026-09-16 — REAL BUG: same ungrouped-digits regression
+  // as generateInvoiceHtml's foreign-currency total (see that test's own
+  // comment) — this one on the Bill (purchase-side) template.
+  it('digit-groups the foreign-currency equivalent total like every other amount on the page', async () => {
+    const foreignBill = { ...bill, foreignCurrencyCode: 'USD', foreignTotalAmount: 12345.6, foreignExchangeRate: 83.1 }
+    const html = await printService.generateBillHtml(foreignBill as never, profile as never)
+    expect(html).toContain('12,345.60')
+    expect(html).not.toContain('12345.60')
+  })
 })
 
 describe('printService.generateSalesOrderHtml', () => {
@@ -687,5 +709,16 @@ describe('printService.generatePurchaseOrderHtml — drop-shipment', () => {
   it('omits the Ship To section entirely when no drop-ship customer is set', async () => {
     const html = await printService.generatePurchaseOrderHtml(po as never, profile as never)
     expect(html).not.toContain('Ship To (Drop-Ship)')
+  })
+
+  // Zero-bug audit 2026-09-16 — REAL BUG: PurchaseOrderItem.productId is
+  // nullable (Phase 61 free-text service lines), but this template assumed
+  // product was always present and crashed on `item.product.productName`
+  // for any PO containing a service line. Fixed to mirror
+  // generateBillHtml/generateSalesOrderHtml's own null-safe pattern.
+  it('renders a service-only line via serviceDescription when product is null, instead of crashing', async () => {
+    const servicePO = { ...po, items: [{ quantity: 1, unitCost: 5000, taxRate: 18, total: 5900, product: null, serviceDescription: 'Site survey fee' }] }
+    const html = await printService.generatePurchaseOrderHtml(servicePO as never, profile as never)
+    expect(html).toContain('Site survey fee')
   })
 })

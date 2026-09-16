@@ -78,6 +78,12 @@
     box.style.display = 'block'
   }
 
+  function escapeHtml(s) {
+    var div = document.createElement('div')
+    div.textContent = s == null ? '' : String(s)
+    return div.innerHTML
+  }
+
   function apiGet(path) {
     return fetch('/api/token-queue/' + token + path).then(function (r) { return r.json() })
   }
@@ -120,7 +126,7 @@
         '<div class="state-screen">' +
         '<p>You\'re checked in</p>' +
         '<div class="token-number">#' + res.data.tokenNumber + '</div>' +
-        '<h2>' + name + '</h2>' +
+        '<h2>' + escapeHtml(name) + '</h2>' +
         '<p>Please wait to be called. You can close this page.</p>' +
         '</div>'
     }).catch(function () {

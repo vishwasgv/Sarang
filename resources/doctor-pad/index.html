@@ -192,7 +192,7 @@
       var itemsHtml = queue.length === 0
         ? '<div class="empty-state">No patients on today\'s schedule yet.</div>'
         : queue.map(function (a) {
-            return '<div class="queue-item" data-id="' + a.id + '">' +
+            return '<div class="queue-item" data-id="' + escapeHtml(a.id) + '">' +
               '<div><div class="name">' + escapeHtml(a.customerName || 'Walk-in') + '</div>' +
               '<div class="meta">' + escapeHtml(a.serviceTitle || '') + '</div></div>' +
               '<div class="time">' + escapeHtml(a.scheduledTime || '') + '</div></div>'
