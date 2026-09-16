@@ -58,6 +58,13 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([]),
       count: vi.fn().mockResolvedValue(0)
     },
+    // Double-count guard (bill.service.ts): createBill re-checks the linked
+    // PO's fresh status via purchaseOrder.findUnique (already mocked above);
+    // voidBill checks whether a debit actually exists via this raw query
+    // before crediting it back — defaults to "yes, a debit exists" so the
+    // existing void test's assertion (a credit IS posted) keeps passing
+    // without every other test needing to know about this table.
+    supplierLedger: { findFirst: vi.fn().mockResolvedValue({ id: 'sl-1' }) },
     productCostHistory: { create: vi.fn().mockResolvedValue({}) },
     setting: {
       findUnique: vi.fn(async () => settingRow),
@@ -319,6 +326,38 @@ describe('billService.createBill', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('BILL-001')
   })
+
+  // Real bug found+fixed 2026-09-16: a Bill linked to a PO that was already
+  // received would debit the supplier ledger a second time for the exact
+  // same money owed -- purchaseOrderService.receivePO already debits it at
+  // receiving time. Both mocked findUnique calls return the SAME status
+  // ('RECEIVED') deliberately -- the fix re-reads status fresh inside the
+  // transaction rather than trusting the pre-transaction read, so this
+  // proves the fresh read is what's actually gating the skip.
+  it('does not double-debit the supplier ledger for a bill linked to an already-received PO', async () => {
+    const db = makeDb()
+    db.purchaseOrder.findUnique = vi.fn().mockResolvedValue({ id: 'po-1', supplierId: 'sup-1', status: 'RECEIVED' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billService.createBill({ supplierId: 'sup-1', purchaseOrderId: 'po-1', items: [productItem], isReverseCharge: false })
+
+    expect(res.success).toBe(true)
+    expect(supplierLedgerService.addEntry).not.toHaveBeenCalled()
+  })
+
+  it('still debits the supplier ledger for a bill linked to a PO that has not been received yet (invoice arrived before the goods)', async () => {
+    const db = makeDb()
+    db.purchaseOrder.findUnique = vi.fn().mockResolvedValue({ id: 'po-1', supplierId: 'sup-1', status: 'APPROVED' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billService.createBill({ supplierId: 'sup-1', purchaseOrderId: 'po-1', items: [productItem], isReverseCharge: false })
+
+    expect(res.success).toBe(true)
+    expect(supplierLedgerService.addEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceType: 'BILL', debitAmount: 1180, creditAmount: 0 }),
+      expect.anything()
+    )
+  })
 })
 
 describe('billService.voidBill', () => {
@@ -355,6 +394,25 @@ describe('billService.voidBill', () => {
       expect.objectContaining({ debitAmount: 0, creditAmount: 1180, referenceType: 'BILL_VOID' }),
       expect.anything()
     )
+    expect(db.bill.update).toHaveBeenCalledWith(expect.objectContaining({
+      data: expect.objectContaining({ status: 'VOID', balanceAmount: 0 })
+    }))
+  })
+
+  // Real bug found+fixed 2026-09-16, the other half of the double-count fix:
+  // a bill that skipped its ledger debit at creation (because it was linked
+  // to an already-received PO) must not have voidBill credit back money
+  // that was never debited -- that would create the exact phantom-balance
+  // problem the reversal exists to prevent, just in the opposite direction.
+  it('does not credit the ledger when voiding a bill that never posted a debit', async () => {
+    const db = makeDb()
+    db.supplierLedger.findFirst = vi.fn().mockResolvedValue(null) // no debit ever recorded for this bill
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billService.voidBill('bill-1', 'Duplicate entry')
+
+    expect(res.success).toBe(true)
+    expect(supplierLedgerService.addEntry).not.toHaveBeenCalled()
     expect(db.bill.update).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ status: 'VOID', balanceAmount: 0 })
     }))

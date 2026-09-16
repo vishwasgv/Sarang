@@ -231,15 +231,30 @@ export const billService = {
 
         // We now owe the supplier this bill's total — a debit on the
         // supplier ledger (matches the same direction PO receiving already
-        // uses: debitAmount = amount we owe).
-        await supplierLedgerService.addEntry({
-          supplierId: payload.supplierId,
-          referenceType: 'BILL',
-          referenceId: created.id,
-          debitAmount: totalAmount,
-          creditAmount: 0,
-          remarks: `Bill ${created.billNumber}`
-        }, tx)
+        // uses: debitAmount = amount we owe). BUT if this bill is linked to
+        // a PO that has already been received, purchaseOrderService.receivePO
+        // already recorded that exact obligation as a debit at receiving
+        // time -- debiting again here would double-count real money owed to
+        // the supplier. Re-read the PO's status fresh inside this same
+        // transaction (not the pre-transaction read above, which could be
+        // stale if the PO was received concurrently) so this check can't
+        // race against a concurrent receivePO() call the same way the
+        // documented double-receive guard in receivePO() itself does.
+        let skipLedgerDebit = false
+        if (payload.purchaseOrderId) {
+          const freshPo = await tx.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId }, select: { status: true } })
+          skipLedgerDebit = freshPo?.status === 'RECEIVED'
+        }
+        if (!skipLedgerDebit) {
+          await supplierLedgerService.addEntry({
+            supplierId: payload.supplierId,
+            referenceType: 'BILL',
+            referenceId: created.id,
+            debitAmount: totalAmount,
+            creditAmount: 0,
+            remarks: `Bill ${created.billNumber}`
+          }, tx)
+        }
 
         // Phase 62 — GL auto-posting.
         await postBillJournalEntry(tx, created)
@@ -321,14 +336,25 @@ export const billService = {
 
         // Reverse the AP debit this bill posted at creation — voiding must
         // not leave a phantom "we owe this" balance on the supplier ledger.
-        await supplierLedgerService.addEntry({
-          supplierId: bill.supplierId,
-          referenceType: 'BILL_VOID',
-          referenceId: bill.id,
-          debitAmount: 0,
-          creditAmount: bill.totalAmount,
-          remarks: `Void: ${reason} (Bill ${bill.billNumber})`
-        }, tx)
+        // BUT a PO-linked bill raised against an already-received PO never
+        // posted a debit in the first place (createBill's own double-count
+        // guard skips it — see that function's comment) — crediting back
+        // money that was never debited would create the exact same
+        // phantom-balance bug this reversal exists to prevent, just in the
+        // other direction. Check the real ledger for whether a debit
+        // actually exists for this bill rather than assuming one always
+        // does, so this stays correct regardless of which path created it.
+        const originalDebit = await tx.supplierLedger.findFirst({ where: { referenceType: 'BILL', referenceId: bill.id } })
+        if (originalDebit) {
+          await supplierLedgerService.addEntry({
+            supplierId: bill.supplierId,
+            referenceType: 'BILL_VOID',
+            referenceId: bill.id,
+            debitAmount: 0,
+            creditAmount: bill.totalAmount,
+            remarks: `Void: ${reason} (Bill ${bill.billNumber})`
+          }, tx)
+        }
 
         // Phase 62 — GL auto-posting: reverse the original Bill's JournalEntry.
         await reverseEntryBySourceTx(tx, 'BILL', bill.id, `Bill ${bill.billNumber} voided: ${reason}`, userId)

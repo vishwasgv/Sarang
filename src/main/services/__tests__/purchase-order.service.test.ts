@@ -67,6 +67,12 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     // workflow configured = requiresApproval:false = zero behavior change,
     // same convention sales-order.service.test.ts's own makeDb established.
     approvalWorkflow: { findFirst: vi.fn().mockResolvedValue(null) },
+    // Double-count guard: receivePO checks whether a Bill was already
+    // raised against this PO (invoice arrived before the goods) before
+    // posting its own supplier-ledger debit — see that function's comment
+    // in purchase-order.service.ts. null = no bill = normal case = zero
+    // behavior change for every test that doesn't explicitly override it.
+    bill: { findFirst: vi.fn().mockResolvedValue(null) },
     ...overrides
   } as Record<string, any>
   db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
@@ -370,6 +376,30 @@ describe('purchaseOrderService.receivePO', () => {
       expect.objectContaining({ debitAmount: 1180 }),
       expect.anything()
     )
+  })
+
+  // Real bug found+fixed 2026-09-16: receiving a PO that already has a Bill
+  // raised against it (the vendor's invoice arrived before the goods did --
+  // a normal real ordering) would double-debit the supplier ledger for the
+  // same money owed, since bill.service.ts's createBill already debited it
+  // when the bill was created. Stock still gets received and costed
+  // normally -- only the ledger debit is skipped.
+  it('does not double-debit the supplier ledger when a Bill was already raised against this PO before receiving', async () => {
+    const db = makeDb()
+    db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(
+      makePO({ status: 'APPROVED', totalAmount: 1180, items: [{ id: 'poi-1', productId: 'prod-1', quantity: 10, unitCost: 100 }] })
+    )
+    db.bill.findFirst = vi.fn().mockResolvedValue({ id: 'bill-1' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const { inventoryService } = await import('../inventory.service')
+    const { supplierLedgerService } = await import('../supplier-ledger.service')
+
+    const result = await purchaseOrderService.receivePO('po-1', 'user-1')
+
+    expect(result.success).toBe(true)
+    expect(inventoryService.addStockTx).toHaveBeenCalled() // stock still receives normally
+    expect(supplierLedgerService.addEntry).not.toHaveBeenCalled()
   })
 
   // Phase 64 — landed cost genuinely raises the received goods' cost basis,

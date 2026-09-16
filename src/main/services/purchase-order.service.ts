@@ -477,15 +477,24 @@ export const purchaseOrderService = {
           )
         }
 
-        // Add supplier ledger entry via supplier-ledger service — we owe supplier po.totalAmount
-        await supplierLedgerService.addEntry({
-          supplierId: po.supplierId,
-          referenceType: 'PURCHASE_ORDER',
-          referenceId: po.id,
-          debitAmount: po.totalAmount,
-          creditAmount: 0,
-          remarks: `PO ${po.poNumber} received`
-        }, tx)
+        // Add supplier ledger entry via supplier-ledger service — we owe
+        // supplier po.totalAmount. BUT if a Bill was already raised against
+        // this PO (the invoice arrived before the goods did — a normal real
+        // sequence), bill.service.ts's own createBill already debited this
+        // exact obligation. Debiting again here would double-count the same
+        // money owed — the mirror image of the guard createBill carries for
+        // the opposite ordering (PO received first, billed after).
+        const existingBill = await tx.bill.findFirst({ where: { purchaseOrderId: po.id } })
+        if (!existingBill) {
+          await supplierLedgerService.addEntry({
+            supplierId: po.supplierId,
+            referenceType: 'PURCHASE_ORDER',
+            referenceId: po.id,
+            debitAmount: po.totalAmount,
+            creditAmount: 0,
+            remarks: `PO ${po.poNumber} received`
+          }, tx)
+        }
 
         // Mark PO as received
         const updated = await tx.purchaseOrder.update({ where: { id }, data: { status: 'RECEIVED' } })
