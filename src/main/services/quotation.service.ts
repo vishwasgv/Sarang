@@ -5,6 +5,7 @@ import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
 import { generateInvoiceNumber, postInvoiceJournalEntry } from './billing.service'
+import { explodeKitComponentsTx } from './kit.service'
 import { generateSONumber } from './sales-order.service'
 import { generateSequenceNumber } from './sequence.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
@@ -195,11 +196,11 @@ export const quotationService = {
     // productType is carried through so only real STANDARD products get stock deducted below.
     const resolvedItems = await Promise.all(q.items.map(async (item) => {
       if (item.productId) {
-        const p = await db.product.findUnique({ where: { id: item.productId }, select: { productType: true } })
-        return { ...item, resolvedProductId: item.productId, resolvedProductType: p?.productType ?? 'STANDARD' }
+        const p = await db.product.findUnique({ where: { id: item.productId }, select: { productType: true, isKit: true } })
+        return { ...item, resolvedProductId: item.productId, resolvedProductType: p?.productType ?? 'STANDARD', resolvedIsKit: p?.isKit ?? false }
       }
       const byName = await db.product.findFirst({ where: { productName: item.productName, isActive: true } })
-      if (byName) return { ...item, resolvedProductId: byName.id, resolvedProductType: byName.productType }
+      if (byName) return { ...item, resolvedProductId: byName.id, resolvedProductType: byName.productType, resolvedIsKit: byName.isKit }
       // No matching product — get or create a system Miscellaneous product
       let misc = await db.product.findFirst({ where: { productName: '__MISC_ITEM__' } })
       if (!misc) {
@@ -207,7 +208,7 @@ export const quotationService = {
           data: { productName: '__MISC_ITEM__', sellingPrice: 0, taxRate: 0, productType: 'SERVICE', unit: 'PCS', isActive: true }
         })
       }
-      return { ...item, resolvedProductId: misc.id, resolvedProductType: misc.productType }
+      return { ...item, resolvedProductId: misc.id, resolvedProductType: misc.productType, resolvedIsKit: false }
     }))
 
     // A converted invoice always starts fully unpaid (the quotation never collected
@@ -285,7 +286,15 @@ export const quotationService = {
             }
           })
 
-          if (item.resolvedProductType === 'STANDARD') {
+          if (item.resolvedIsKit) {
+            const componentLines = await explodeKitComponentsTx(tx, item.resolvedProductId, item.quantity)
+            for (const comp of componentLines) {
+              await inventoryService.reduceStockTx(
+                tx, comp.componentProductId, comp.quantity,
+                `Invoice ${invoiceNumber} (converted from quotation ${q.quotationNumber}, component of kit "${item.productName}")`, 'INVOICE', inv.id, userId
+              )
+            }
+          } else if (item.resolvedProductType === 'STANDARD') {
             await inventoryService.reduceStockTx(
               tx, item.resolvedProductId, item.quantity,
               `Invoice ${invoiceNumber} (converted from quotation ${q.quotationNumber})`, 'INVOICE', inv.id, userId

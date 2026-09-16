@@ -65,6 +65,35 @@ export const kitService = {
     const nonStandard = componentProducts.find(p => p.productType !== 'STANDARD')
     if (nonStandard) return { success: false, error: { code: 'KIT-007', message: `"${nonStandard.productName}" is a service, not a stocked product — only physical (STANDARD) products can be kit components.` } }
 
+    // Real gap found in the zero-logical-errors audit: a kit component has no
+    // way to carry a specific variantId/serialId (KitComponent is just
+    // productId+quantity), so billing.service.ts's kit-sale branch only ever
+    // calls reduceStockTx per component — it never calls
+    // decrementVariantStockTx/markSerialSoldTx the way a standalone line does.
+    // Selling a variant/serial-tracked product through a kit would silently
+    // leave ProductVariant.stockQty / ProductSerial.status permanently
+    // out of sync with real stock (a variant's per-size/color count and a
+    // serial's "AVAILABLE" flag would never move), with no error to the user.
+    // Blocked here at kit-definition time, same as the KIT-007 service check
+    // above — batch tracking is exempt since deductBatchStockFIFO/
+    // hasEnoughNonExpiredBatchStock require no per-line selection and are
+    // wired into the kit-sale branch itself.
+    const [variantCount, serialCount] = await Promise.all([
+      db.productVariant.count({ where: { productId: { in: [...uniqueIds] } } }),
+      db.productSerial.count({ where: { productId: { in: [...uniqueIds] } } })
+    ])
+    if (variantCount > 0 || serialCount > 0) {
+      const trackedIds = new Set<string>()
+      if (variantCount > 0) {
+        for (const v of await db.productVariant.findMany({ where: { productId: { in: [...uniqueIds] } }, select: { productId: true } })) trackedIds.add(v.productId)
+      }
+      if (serialCount > 0) {
+        for (const s of await db.productSerial.findMany({ where: { productId: { in: [...uniqueIds] } }, select: { productId: true } })) trackedIds.add(s.productId)
+      }
+      const trackedProduct = componentProducts.find(p => trackedIds.has(p.id))
+      if (trackedProduct) return { success: false, error: { code: 'KIT-008', message: `"${trackedProduct.productName}" tracks individual variants or serial numbers, which a kit component cannot select — only untracked or batch-tracked products can be kit components.` } }
+    }
+
     await db.$transaction(async (tx) => {
       await tx.kitComponent.deleteMany({ where: { kitProductId: payload.kitProductId } })
       await tx.kitComponent.createMany({

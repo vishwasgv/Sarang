@@ -461,6 +461,34 @@ describe('purchaseOrderService.receivePO', () => {
     )
   })
 
+  // Real bug found+fixed in the zero-logical-errors audit: receivePO ran
+  // the exact same addStockTx loop for a drop-ship PO (goods shipped
+  // straight from the supplier to the end customer, never entering the
+  // business's own warehouse) as for a normal PO — silently overstating the
+  // business's own on-hand inventory by the received quantity forever, with
+  // nothing to net it back out. The business still owes the supplier
+  // (SupplierLedger/GL are unaffected), only the physical stock receipt
+  // must be skipped.
+  it('does not add stock to the business own inventory when receiving a drop-ship PO', async () => {
+    const db = makeDb()
+    db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(
+      makePO({ status: 'APPROVED', totalAmount: 1180, dropShipToCustomerId: 'cust-1', items: [{ id: 'poi-1', productId: 'prod-1', quantity: 10, unitCost: 100 }] })
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const { inventoryService } = await import('../inventory.service')
+    const { supplierLedgerService } = await import('../supplier-ledger.service')
+
+    const result = await purchaseOrderService.receivePO('po-1', 'user-1')
+
+    expect(result.success).toBe(true)
+    expect(inventoryService.addStockTx).not.toHaveBeenCalled()
+    // The business still genuinely owes the supplier — only the physical
+    // stock receipt is skipped, not the money side.
+    expect(supplierLedgerService.addEntry).toHaveBeenCalled()
+    expect(db.journalEntry.create).toHaveBeenCalledTimes(1)
+  })
+
   it('preserves the specific error code when a step inside the transaction throws', async () => {
     const db = makeDb()
     db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(

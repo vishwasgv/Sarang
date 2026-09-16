@@ -4,6 +4,7 @@ vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../auth.service', () => ({ getCurrentSession: vi.fn().mockReturnValue({ userId: 'user-1' }) }))
 vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn().mockResolvedValue(undefined) } }))
+vi.mock('../kit.service', () => ({ explodeKitComponentsTx: vi.fn() }))
 vi.mock('../customer-ledger.service', () => ({ customerLedgerService: { addEntry: vi.fn().mockResolvedValue(undefined) } }))
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
 vi.mock('../license.service', () => ({ getLicenseState: vi.fn() }))
@@ -14,6 +15,7 @@ import { isModuleEnabled } from '../industry-template.service'
 import { getLicenseState } from '../license.service'
 import { inventoryService } from '../inventory.service'
 import { customerLedgerService } from '../customer-ledger.service'
+import { explodeKitComponentsTx } from '../kit.service'
 
 const activeLicense = { status: 'ACTIVE' as const, tier: 'PAID' as const, region: 'IN' as const, daysSinceIssue: null, daysRemaining: null, machineMismatch: false }
 
@@ -255,6 +257,31 @@ describe('salesOrderService.createInvoiceFromSalesOrder', () => {
     const statusUpdateCall = vi.mocked(db.salesOrder.update).mock.calls.find((c: any) => c[0]?.data?.status)
     expect((statusUpdateCall![0] as any).data.status).toBe('PARTIALLY_INVOICED')
     expect(inventoryService.reduceStockTx).toHaveBeenCalledTimes(1)
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: this conversion
+  // path used to deduct stock straight off the kit's own productId (which
+  // has no real Inventory row — a kit is never stocked directly), either
+  // throwing "insufficient stock" (allow_negative_inventory off) or, worse,
+  // silently overstating real component stock forever (allow_negative_inventory
+  // on) while never actually decrementing the components that were sold.
+  it('explodes a kit line into per-component stock deductions instead of deducting the kit product itself', async () => {
+    const db = makeDb({
+      product: { findUnique: vi.fn().mockResolvedValue(makeProduct({ isKit: true })), findFirst: vi.fn().mockResolvedValue(null), create: vi.fn() }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(explodeKitComponentsTx).mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 20 },
+      { componentProductId: 'comp-2', quantity: 10 }
+    ])
+
+    const res = await salesOrderService.createInvoiceFromSalesOrder({ salesOrderId: 'so-1', lines: [{ salesOrderItemId: 'soi-1', quantity: 10 }] }, 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(explodeKitComponentsTx).toHaveBeenCalledWith(expect.anything(), 'prod-1', 10)
+    expect(inventoryService.reduceStockTx).toHaveBeenCalledTimes(2)
+    expect(inventoryService.reduceStockTx).toHaveBeenCalledWith(expect.anything(), 'comp-1', 20, expect.any(String), 'INVOICE', 'inv-1', 'user-1')
+    expect(inventoryService.reduceStockTx).toHaveBeenCalledWith(expect.anything(), 'comp-2', 10, expect.any(String), 'INVOICE', 'inv-1', 'user-1')
   })
 
   it('invoicing the full remaining quantity moves status to INVOICED', async () => {

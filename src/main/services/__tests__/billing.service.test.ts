@@ -777,6 +777,52 @@ describe('billingService.createInvoice — Phase 64 composite items/kits', () =>
     expect(res.success).toBe(false)
     expect((res as { error?: { code?: string } }).error?.code).toBe('KIT-001')
   })
+
+  // Real bug found+fixed in the zero-logical-errors audit: the kit-sale
+  // branch used to call reduceStockTx per component and nothing else —
+  // deductBatchStockFIFO/hasEnoughNonExpiredBatchStock (already wired into
+  // the standalone STANDARD-line branch) were never called for a kit's own
+  // components, silently leaving batch-level (pharmacy expiry) tracking
+  // permanently out of sync with real stock on every kit sale.
+  it('dispenses FIFO batch stock for each kit component on sale, mirroring the standalone-line branch', async () => {
+    const db = makeMockDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(makeKitProduct())
+    db.kitComponent = { findMany: vi.fn().mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 2 },
+      { componentProductId: 'comp-2', quantity: 1 }
+    ]) }
+    db.productBatch.findMany = vi.fn().mockResolvedValue([
+      { id: 'batch-1', quantityRemaining: 50, expiryDate: new Date(Date.now() + 86400000) }
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'kit-1', quantity: 3, unitPrice: 500, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(res.success).toBe(true)
+    // Called once per component (comp-1: 6 units, comp-2: 3 units) — same batch record returned for both lookups.
+    expect(db.productBatch.update).toHaveBeenCalledWith({ where: { id: 'batch-1' }, data: { quantityRemaining: { decrement: 6 } } })
+    expect(db.productBatch.update).toHaveBeenCalledWith({ where: { id: 'batch-1' }, data: { quantityRemaining: { decrement: 3 } } })
+  })
+
+  it('blocks a kit sale with BATCH-004 when a component only has expired batch stock', async () => {
+    const db = makeMockDb()
+    db.product.findUnique = vi.fn().mockResolvedValue(makeKitProduct())
+    db.productBatch.aggregate = vi.fn()
+      .mockResolvedValueOnce({ _sum: { quantityRemaining: 20 } }) // comp-1 total active batch stock exists...
+      .mockResolvedValueOnce({ _sum: { quantityRemaining: null } }) // ...but none of it is non-expired
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      items: [{ productId: 'kit-1', quantity: 3, unitPrice: 500, discountAmount: 0, taxRate: 0 }],
+    })
+
+    expect(res.success).toBe(false)
+    expect((res as { error?: { code?: string } }).error?.code).toBe('BATCH-004')
+  })
 })
 
 // Phase 58 §2 — Pharmacy Schedule H/H1 prescription capture. A prescription-
@@ -1483,11 +1529,15 @@ describe('billingService.cancelInvoice — inventory/location restoration', () =
       },
       inventory: { update: vi.fn().mockResolvedValue({}) },
       productVariant: { update: vi.fn().mockResolvedValue({}) },
-      productBatch: { findFirst: vi.fn().mockResolvedValue(null) },
+      productBatch: { findFirst: vi.fn().mockResolvedValue(null), update: vi.fn().mockResolvedValue({}) },
       productSerial: { findMany: vi.fn().mockResolvedValue([]) },
       customerLedger: { findMany: vi.fn().mockResolvedValue([]) },
       payment: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
       restaurantTable: { updateMany: vi.fn().mockResolvedValue({ count: 0 }) },
+      // Only populated by tests exercising a kit line — explodeKitComponentsTx
+      // (used both for the batch-restore branch and, indirectly, real usage)
+      // reads this via tx.kitComponent.findMany.
+      kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
     }
     db.$transaction = vi.fn((fn: (tx: unknown) => unknown) => fn(db))
     return db
@@ -1518,6 +1568,10 @@ describe('billingService.cancelInvoice — inventory/location restoration', () =
         { productId: 'comp-2', quantity: -3, locationId: null },
       ],
     })
+    db.kitComponent.findMany = vi.fn().mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 2 },
+      { componentProductId: 'comp-2', quantity: 1 }
+    ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await billingService.cancelInvoice({ invoiceId: 'inv-1', reason: 'Damaged hamper' })
@@ -1528,6 +1582,33 @@ describe('billingService.cancelInvoice — inventory/location restoration', () =
     expect(db.inventory.update).not.toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'kit-1' } }))
     expect(applyLocationDeltaTx).toHaveBeenCalledWith(db, 'comp-1', 6, undefined)
     expect(applyLocationDeltaTx).toHaveBeenCalledWith(db, 'comp-2', 3, undefined)
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: cancellation used
+  // to restore variant/batch tracking only for a real non-kit STANDARD line
+  // — a kit's components (which DID have deductBatchStockFIFO called against
+  // them at sale time, once the sale-side gap above was fixed) never had
+  // their batch stock restored on cancellation, permanently understating it.
+  it('restores batch stock for each kit component on cancellation, mirroring the sale-time deduction', async () => {
+    const db = makeCancelDb({
+      items: [{ id: 'item-1', productId: 'kit-1', quantity: 3, variantId: null, product: { productType: 'STANDARD', isKit: true } }],
+      saleMovements: [
+        { productId: 'comp-1', quantity: -6, locationId: null },
+        { productId: 'comp-2', quantity: -3, locationId: null },
+      ],
+    })
+    db.kitComponent.findMany = vi.fn().mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 2 },
+      { componentProductId: 'comp-2', quantity: 1 }
+    ])
+    db.productBatch.findFirst = vi.fn().mockResolvedValue({ id: 'batch-1' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.cancelInvoice({ invoiceId: 'inv-1', reason: 'Damaged hamper' })
+
+    expect(res.success).toBe(true)
+    expect(db.productBatch.update).toHaveBeenCalledWith({ where: { id: 'batch-1' }, data: { quantityRemaining: { increment: 6 } } })
+    expect(db.productBatch.update).toHaveBeenCalledWith({ where: { id: 'batch-1' }, data: { quantityRemaining: { increment: 3 } } })
   })
 
   it('restores per-variant stock only for a real non-kit line', async () => {

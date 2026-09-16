@@ -1,6 +1,7 @@
 import type { Prisma } from '@prisma/client'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { ServiceError } from '../errors/service-error'
 
 type Tx = Prisma.TransactionClient
 
@@ -73,35 +74,60 @@ export const landedCostService = {
   // retroactively rewritten, matching Phase 61's own established
   // convention for this table). A genuinely late-arriving freight invoice
   // is a real, disclosed scope cut here, not silently unhandled.
+  // Real race found in the zero-logical-errors audit: the status check used
+  // to read po.status outside any transaction, then create() afterward —
+  // unlike every other PO/Bill status gate in this codebase (receivePO,
+  // approvePO), which reads-checks-writes inside one transaction. A create()
+  // landing in the window between another session's receivePO() starting and
+  // committing could pass this "not yet RECEIVED" check but only actually
+  // write after receiving finished — receivePO only reads allocations once,
+  // inside its own transaction, so the allocation is silently orphaned:
+  // created successfully, but never folded into Inventory.averageCost/
+  // ProductCostHistory, with no error shown to the user who added it.
   async addAllocation(payload: { purchaseOrderId: string; costType: string; amount: number; allocationMethod?: 'BY_VALUE' | 'BY_QUANTITY' }, userId?: string) {
     const db = getPrisma()
     if (payload.amount <= 0) return { success: false, error: { code: 'LC-001', message: 'Amount must be greater than zero.' } }
-    const po = await db.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId }, select: { id: true, status: true } })
-    if (!po) return { success: false, error: { code: 'PO-001', message: 'Purchase order not found.' } }
-    if (po.status === 'RECEIVED' || po.status === 'PARTIAL_RECEIVED') {
-      return { success: false, error: { code: 'LC-002', message: 'Cannot add a landed cost once receiving has started on this Purchase Order.' } }
+    try {
+      const created = await db.$transaction(async (tx) => {
+        const po = await tx.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId }, select: { id: true, status: true } })
+        if (!po) throw new ServiceError('PO-001', 'Purchase order not found.')
+        if (po.status === 'RECEIVED' || po.status === 'PARTIAL_RECEIVED') {
+          throw new ServiceError('LC-002', 'Cannot add a landed cost once receiving has started on this Purchase Order.')
+        }
+        return tx.landedCostAllocation.create({
+          data: {
+            purchaseOrderId: payload.purchaseOrderId,
+            costType: payload.costType,
+            amount: payload.amount,
+            allocationMethod: payload.allocationMethod ?? 'BY_VALUE'
+          }
+        })
+      })
+      await logAction({ userId, action: 'LANDED_COST_ADDED', entityType: 'PurchaseOrder', entityId: payload.purchaseOrderId, newValue: created })
+      return { success: true, data: created }
+    } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
     }
-    const created = await db.landedCostAllocation.create({
-      data: {
-        purchaseOrderId: payload.purchaseOrderId,
-        costType: payload.costType,
-        amount: payload.amount,
-        allocationMethod: payload.allocationMethod ?? 'BY_VALUE'
-      }
-    })
-    await logAction({ userId, action: 'LANDED_COST_ADDED', entityType: 'PurchaseOrder', entityId: payload.purchaseOrderId, newValue: created })
-    return { success: true, data: created }
   },
 
   async removeAllocation(id: string, userId?: string) {
     const db = getPrisma()
-    const existing = await db.landedCostAllocation.findUnique({ where: { id }, include: { purchaseOrder: { select: { status: true } } } })
-    if (!existing) return { success: false, error: { code: 'LC-003', message: 'Landed cost allocation not found.' } }
-    if (existing.purchaseOrder && (existing.purchaseOrder.status === 'RECEIVED' || existing.purchaseOrder.status === 'PARTIAL_RECEIVED')) {
-      return { success: false, error: { code: 'LC-002', message: 'Cannot remove a landed cost once receiving has started on this Purchase Order.' } }
+    try {
+      const existing = await db.$transaction(async (tx) => {
+        const row = await tx.landedCostAllocation.findUnique({ where: { id }, include: { purchaseOrder: { select: { status: true } } } })
+        if (!row) throw new ServiceError('LC-003', 'Landed cost allocation not found.')
+        if (row.purchaseOrder && (row.purchaseOrder.status === 'RECEIVED' || row.purchaseOrder.status === 'PARTIAL_RECEIVED')) {
+          throw new ServiceError('LC-002', 'Cannot remove a landed cost once receiving has started on this Purchase Order.')
+        }
+        await tx.landedCostAllocation.delete({ where: { id } })
+        return row
+      })
+      await logAction({ userId, action: 'LANDED_COST_REMOVED', entityType: 'PurchaseOrder', entityId: existing.purchaseOrderId ?? existing.billId ?? '', oldValue: existing })
+      return { success: true }
+    } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
     }
-    await db.landedCostAllocation.delete({ where: { id } })
-    await logAction({ userId, action: 'LANDED_COST_REMOVED', entityType: 'PurchaseOrder', entityId: existing.purchaseOrderId ?? existing.billId ?? '', oldValue: existing })
-    return { success: true }
   }
 }

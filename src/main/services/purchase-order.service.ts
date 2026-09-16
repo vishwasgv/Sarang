@@ -496,24 +496,37 @@ export const purchaseOrderService = {
         // Update inventory for each PO item — average cost recalculated.
         // Phase 61 — a service line (productId null) has no stock to
         // receive, same reasoning as GRN's own receiving logic.
-        for (const item of productLines) {
-          const effectiveUnitCost = item.unitCost + (landedCostPerUnit.get(item.productId) ?? 0)
-          // Phase 64 — the ProductCostHistory row ("from where the goods are
-          // being bought, at what price," same raw material bill.service.ts's
-          // createBill writes for a billed product line) is now written by
-          // addStockTx itself via the costHistory param, the single place
-          // both it and Inventory.averageCost update together.
-          await inventoryService.addStockTx(
-            tx,
-            item.productId,
-            item.quantity,
-            effectiveUnitCost,
-            `Received from PO ${po.poNumber}`,
-            'PURCHASE_ORDER',
-            po.id,
-            userId,
-            { sourceType: 'PURCHASE_ORDER', sourceId: po.id }
-          )
+        //
+        // Real bug found in the zero-logical-errors audit: a drop-ship PO
+        // (dropShipToCustomerId set) was still running this exact same
+        // addStockTx loop, crediting the goods into the BUSINESS's own
+        // Inventory/LocationStock even though drop-ship goods by definition
+        // go straight from the supplier to the end customer and never sit in
+        // the business's own stock. Nothing ever nets this back out, so
+        // every drop-ship PO received silently overstated on-hand stock by
+        // that quantity forever. The business still owes the supplier
+        // (SupplierLedger/GL below are unaffected), only the physical stock
+        // receipt is skipped.
+        if (!po.dropShipToCustomerId) {
+          for (const item of productLines) {
+            const effectiveUnitCost = item.unitCost + (landedCostPerUnit.get(item.productId) ?? 0)
+            // Phase 64 — the ProductCostHistory row ("from where the goods are
+            // being bought, at what price," same raw material bill.service.ts's
+            // createBill writes for a billed product line) is now written by
+            // addStockTx itself via the costHistory param, the single place
+            // both it and Inventory.averageCost update together.
+            await inventoryService.addStockTx(
+              tx,
+              item.productId,
+              item.quantity,
+              effectiveUnitCost,
+              `Received from PO ${po.poNumber}`,
+              'PURCHASE_ORDER',
+              po.id,
+              userId,
+              { sourceType: 'PURCHASE_ORDER', sourceId: po.id }
+            )
+          }
         }
 
         // Add supplier ledger entry via supplier-ledger service — we owe

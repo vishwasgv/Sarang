@@ -4,6 +4,7 @@ import { inventoryService } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { isModuleEnabled } from './industry-template.service'
 import { generateInvoiceNumber, postInvoiceJournalEntry } from './billing.service'
+import { explodeKitComponentsTx } from './kit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
 import { logAction } from './audit.service'
@@ -280,14 +281,14 @@ export const salesOrderService = {
       // non-nullable.
       const resolvedLines2 = await Promise.all(resolvedLines.map(async ({ soItem, quantity }) => {
         if (soItem.productId) {
-          const p = await db.product.findUnique({ where: { id: soItem.productId }, select: { id: true, productName: true, sku: true, productType: true } })
-          return { soItem, quantity, resolvedProductId: soItem.productId, productName: p?.productName ?? 'Product', productSku: p?.sku ?? null, resolvedProductType: p?.productType ?? 'STANDARD' }
+          const p = await db.product.findUnique({ where: { id: soItem.productId }, select: { id: true, productName: true, sku: true, productType: true, isKit: true } })
+          return { soItem, quantity, resolvedProductId: soItem.productId, productName: p?.productName ?? 'Product', productSku: p?.sku ?? null, resolvedProductType: p?.productType ?? 'STANDARD', resolvedIsKit: p?.isKit ?? false }
         }
         let misc = await db.product.findFirst({ where: { productName: '__MISC_ITEM__' } })
         if (!misc) {
           misc = await db.product.create({ data: { productName: '__MISC_ITEM__', sellingPrice: 0, taxRate: 0, productType: 'SERVICE', unit: 'PCS', isActive: true } })
         }
-        return { soItem, quantity, resolvedProductId: misc.id, productName: soItem.serviceDescription ?? 'Service', productSku: null, resolvedProductType: misc.productType }
+        return { soItem, quantity, resolvedProductId: misc.id, productName: soItem.serviceDescription ?? 'Service', productSku: null, resolvedProductType: misc.productType, resolvedIsKit: false }
       }))
 
       const invoiceLineRows = resolvedLines2.map(row => {
@@ -357,7 +358,15 @@ export const salesOrderService = {
             }
           })
 
-          if (row.resolvedProductType === 'STANDARD') {
+          if (row.resolvedIsKit) {
+            const componentLines = await explodeKitComponentsTx(tx, row.resolvedProductId, row.quantity)
+            for (const comp of componentLines) {
+              await inventoryService.reduceStockTx(
+                tx, comp.componentProductId, comp.quantity,
+                `Invoice ${invoiceNumber} (from Sales Order ${so.soNumber}, component of kit "${row.productName}")`, 'INVOICE', inv.id, userId
+              )
+            }
+          } else if (row.resolvedProductType === 'STANDARD') {
             await inventoryService.reduceStockTx(
               tx, row.resolvedProductId, row.quantity,
               `Invoice ${invoiceNumber} (from Sales Order ${so.soNumber})`, 'INVOICE', inv.id, userId

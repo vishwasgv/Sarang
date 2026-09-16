@@ -5,11 +5,15 @@ vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefi
 vi.mock('../industry-template.service', () => ({ isModuleEnabled: vi.fn().mockResolvedValue(false) }))
 vi.mock('../license.service', () => ({ getLicenseState: vi.fn() }))
 vi.mock('../retainer.service', () => ({ createRetainer: vi.fn(), generateInvoiceForRetainer: vi.fn() }))
+vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn().mockResolvedValue(undefined) } }))
+vi.mock('../kit.service', () => ({ explodeKitComponentsTx: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { getLicenseState } from '../license.service'
 import { createRetainer, generateInvoiceForRetainer } from '../retainer.service'
 import { quotationService } from '../quotation.service'
+import { inventoryService } from '../inventory.service'
+import { explodeKitComponentsTx } from '../kit.service'
 
 const EXISTING_NUMBER = 'QT-00003'
 
@@ -200,6 +204,56 @@ describe('quotationService.convertToInvoice — float precision fix', () => {
     expect(invoiceCreateCall.data.totalAmount).toBe(itemCreateCall.data.lineTotal)
     expect(invoiceCreateCall.data.discountAmount).toBe(itemCreateCall.data.discountAmount)
     expect(invoiceCreateCall.data.taxAmount).toBe(itemCreateCall.data.taxAmount)
+  })
+})
+
+// Real bug found+fixed in the zero-logical-errors audit: convertToInvoice
+// used to deduct stock straight off the kit's own productId (which has no
+// real Inventory row of its own — a kit is never stocked directly) instead
+// of exploding it into its real components the way billing.service.ts's
+// createInvoice already does.
+describe('quotationService.convertToInvoice — kit line explosion', () => {
+  function makeConvertDb(quotation: Record<string, unknown>) {
+    const txClient: Record<string, any> = {
+      invoice: { create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ id: 'inv-1', ...data })) },
+      invoiceItem: { create: vi.fn().mockResolvedValue({}) },
+      quotation: { update: vi.fn().mockResolvedValue({}) },
+      setting: { findUnique: vi.fn().mockResolvedValue(null), create: vi.fn().mockResolvedValue({}) },
+      chartOfAccounts: { findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET', isActive: true }) },
+      journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }), findMany: vi.fn().mockResolvedValue([]) },
+    }
+    const db: Record<string, any> = {
+      quotation: { findUnique: vi.fn().mockResolvedValue(quotation) },
+      product: { findUnique: vi.fn().mockResolvedValue({ productType: 'STANDARD', isKit: true }) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(null) },
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(txClient))
+    return { db, txClient }
+  }
+
+  it('explodes a kit line into per-component stock deductions instead of deducting the kit product itself', async () => {
+    const quotation = {
+      id: 'qt-1', quotationNumber: 'QT-00001', customerId: null, invoice: null,
+      subtotal: 500, discountAmount: 0, taxAmount: 0, totalAmount: 500,
+      items: [{ id: 'qi-1', productId: 'kit-1', productName: 'Combo Kit', sku: null, quantity: 5, unitPrice: 100, discount: 0, taxRate: 0, lineTotal: 500 }]
+    }
+    const { db, txClient } = makeConvertDb(quotation)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getLicenseState).mockResolvedValue({
+      status: 'ACTIVE', tier: 'PAID', region: 'IN', daysSinceIssue: null, daysRemaining: null, machineMismatch: false
+    })
+    vi.mocked(explodeKitComponentsTx).mockResolvedValue([
+      { componentProductId: 'comp-1', quantity: 10 },
+      { componentProductId: 'comp-2', quantity: 5 }
+    ])
+
+    const res = await quotationService.convertToInvoice('qt-1', 'user-1')
+
+    expect(res.success).toBe(true)
+    expect(explodeKitComponentsTx).toHaveBeenCalledWith(txClient, 'kit-1', 5)
+    expect(inventoryService.reduceStockTx).toHaveBeenCalledTimes(2)
+    expect(inventoryService.reduceStockTx).toHaveBeenCalledWith(txClient, 'comp-1', 10, expect.any(String), 'INVOICE', 'inv-1', 'user-1')
+    expect(inventoryService.reduceStockTx).toHaveBeenCalledWith(txClient, 'comp-2', 5, expect.any(String), 'INVOICE', 'inv-1', 'user-1')
   })
 })
 

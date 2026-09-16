@@ -389,6 +389,17 @@ export const billingService = {
           if (!allowNegative && availableQty < requiredQty) {
             return { success: false, error: { code: 'KIT-006', message: `Insufficient stock for "${kc.componentProduct.productName}" (a component of "${product.productName}"). Available: ${availableQty}, required: ${requiredQty}.` } }
           }
+          // Same expired-batch guard RULE B011 applies to a standalone
+          // STANDARD line applies here — a kit-sale branch bypassing it would
+          // let a kit silently sell an already-expired-batch component
+          // (pharmacy-relevant) with no block/warning a standalone sale of
+          // the same product would get.
+          if (!allowExpiredBatchSale) {
+            const okExpiry = await hasEnoughNonExpiredBatchStock(db, kc.componentProductId, requiredQty)
+            if (!okExpiry) {
+              return { success: false, error: { code: 'BATCH-004', message: `"${kc.componentProduct.productName}" (a component of "${product.productName}") only has expired batch stock available to cover this quantity. Sale blocked to prevent selling expired stock — check Batch Tracking, or enable "Allow expired batch sale" in Settings if this override is intentional.` } }
+            }
+          }
         }
       }
 
@@ -779,6 +790,10 @@ export const billingService = {
                 `Invoice ${invoiceNumber} (component of kit "${item.productName}")`, 'INVOICE', inv.id, userId,
                 payload.locationId
               )
+              // Mirrors the non-kit branch's own FIFO batch dispense — no
+              // per-line selection needed (kit.service.ts's setComponents
+              // blocks variant/serial-tracked components, which DO need one).
+              await deductBatchStockFIFO(tx, comp.componentProductId, comp.quantity)
             }
             continue
           }
@@ -1164,6 +1179,14 @@ export const billingService = {
             // deduction done at sale time, so a cancelled invoice doesn't
             // leave batch stock permanently understated.
             await restoreBatchStockFIFO(tx, item.productId, item.quantity)
+          } else if (item.product.isKit) {
+            // Mirrors the sale-time deductBatchStockFIFO call added to the
+            // kit branch above — each component's batch stock was drawn
+            // down at sale time and must be restored the same way here.
+            const componentLines = await explodeKitComponentsTx(tx, item.productId, item.quantity)
+            for (const comp of componentLines) {
+              await restoreBatchStockFIFO(tx, comp.componentProductId, comp.quantity)
+            }
           }
         }
 

@@ -17,6 +17,8 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Widget', isActive: true, isKit: false, productType: 'STANDARD' }])
     },
     kitComponent: { findMany: vi.fn().mockResolvedValue([]) },
+    productVariant: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
+    productSerial: { count: vi.fn().mockResolvedValue(0), findMany: vi.fn().mockResolvedValue([]) },
     $transaction: vi.fn(async (cb: (tx: unknown) => unknown) => cb(tx)),
     __tx: tx,
     ...overrides
@@ -104,6 +106,40 @@ describe('kitService.setComponents', () => {
     const result = await kitService.setComponents({ kitProductId: 'kit-1', components: [{ componentProductId: 'p1', quantity: 1 }] })
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('KIT-007')
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: a KitComponent
+  // row is just productId+quantity — it has no way to carry a specific
+  // variantId/serialId, so billing.service.ts's kit-sale branch only ever
+  // reduces the component's aggregate Inventory.quantity and never touches
+  // ProductVariant.stockQty / ProductSerial.status. Selling a variant- or
+  // serial-tracked product through a kit would silently leave those
+  // trackers permanently wrong with no error surfaced anywhere.
+  it('rejects a variant-tracked component — a kit cannot select which variant to sell', async () => {
+    makeDb({
+      product: { findUnique: vi.fn().mockResolvedValue({ id: 'kit-1', isKit: false }), findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'T-Shirt', isActive: true, isKit: false, productType: 'STANDARD' }]) },
+      productVariant: { count: vi.fn().mockResolvedValue(2), findMany: vi.fn().mockResolvedValue([{ productId: 'p1' }]) }
+    })
+    const result = await kitService.setComponents({ kitProductId: 'kit-1', components: [{ componentProductId: 'p1', quantity: 1 }] })
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('KIT-008')
+  })
+
+  it('rejects a serial-tracked component — a kit cannot select which serial to sell', async () => {
+    makeDb({
+      product: { findUnique: vi.fn().mockResolvedValue({ id: 'kit-1', isKit: false }), findMany: vi.fn().mockResolvedValue([{ id: 'p1', productName: 'Phone', isActive: true, isKit: false, productType: 'STANDARD' }]) },
+      productSerial: { count: vi.fn().mockResolvedValue(1), findMany: vi.fn().mockResolvedValue([{ productId: 'p1' }]) }
+    })
+    const result = await kitService.setComponents({ kitProductId: 'kit-1', components: [{ componentProductId: 'p1', quantity: 1 }] })
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('KIT-008')
+  })
+
+  it('allows a batch-tracked component — batch dispensing is automatic and needs no per-line selection', async () => {
+    const db = makeDb()
+    const result = await kitService.setComponents({ kitProductId: 'kit-1', components: [{ componentProductId: 'p1', quantity: 1 }] })
+    expect(result.success).toBe(true)
+    expect(db.__tx.kitComponent.createMany).toHaveBeenCalled()
   })
 })
 

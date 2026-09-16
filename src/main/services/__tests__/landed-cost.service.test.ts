@@ -85,6 +85,9 @@ function makeServiceDb(overrides: Record<string, unknown> = {}) {
     },
     ...overrides
   } as Record<string, any>
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
   vi.mocked(getPrisma).mockReturnValue(db as never)
   return db
 }
@@ -126,6 +129,14 @@ describe('landedCostService.addAllocation', () => {
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('PO-001')
   })
+
+  it('reads the PO status inside the transaction so a concurrent receivePO cannot leave an orphaned allocation', async () => {
+    const db = makeServiceDb()
+    await landedCostService.addAllocation({ purchaseOrderId: 'po-1', costType: 'FREIGHT', amount: 500 })
+    const txOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
+    const findUniqueOrder = vi.mocked(db.purchaseOrder.findUnique).mock.invocationCallOrder[0]
+    expect(txOrder).toBeLessThan(findUniqueOrder)
+  })
 })
 
 describe('landedCostService.removeAllocation', () => {
@@ -151,5 +162,18 @@ describe('landedCostService.removeAllocation', () => {
     const result = await landedCostService.removeAllocation('lc-1')
     expect(result.success).toBe(false)
     expect((result as { error: { code: string } }).error.code).toBe('LC-002')
+  })
+
+  it('reads the allocation + PO status inside the transaction so a concurrent receivePO cannot race the delete', async () => {
+    const db = makeServiceDb({
+      landedCostAllocation: {
+        findUnique: vi.fn().mockResolvedValue({ id: 'lc-1', purchaseOrderId: 'po-1', billId: null, purchaseOrder: { status: 'APPROVED' } }),
+        delete: vi.fn().mockResolvedValue({})
+      }
+    })
+    await landedCostService.removeAllocation('lc-1')
+    const txOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
+    const findUniqueOrder = vi.mocked(db.landedCostAllocation.findUnique).mock.invocationCallOrder[0]
+    expect(txOrder).toBeLessThan(findUniqueOrder)
   })
 })
