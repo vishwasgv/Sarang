@@ -16,4 +16,10 @@ export function register(handle: HandleFn): void {
     const p = payload as { customerId: string }
     return creditInterestService.postInterestCharge(p.customerId, getCurrentSession()?.userId)
   })
+
+  handle('creditInterest:reverse', async (payload) => {
+    const deny = await requirePermission('creditInterest.post'); if (deny) return deny
+    const p = payload as { chargeId: string; reason: string }
+    return creditInterestService.reverseInterestCharge(p.chargeId, p.reason, getCurrentSession()?.userId)
+  })
 }

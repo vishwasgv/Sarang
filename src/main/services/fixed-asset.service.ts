@@ -4,6 +4,7 @@ import { logAction } from './audit.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService } from './journal-entry.service'
 import { roundCurrency } from './currency.service'
+import { ServiceError } from '../errors/service-error'
 import type { CreateFixedAssetPayload, RunDepreciationPayload, DisposeFixedAssetPayload } from '../validation/fixed-asset.validation'
 
 // Depreciation math, deliberately simplified (Section 4.1 item 12):
@@ -98,16 +99,29 @@ export const fixedAssetService = {
   async runDepreciation(payload: RunDepreciationPayload, userId?: string) {
     const db = getPrisma()
     try {
-      const asset = await db.fixedAsset.findUnique({ where: { id: payload.fixedAssetId } })
-      if (!asset) return { success: false, error: { code: 'FA-003', message: 'Fixed asset not found.' } }
-      if (asset.status === 'DISPOSED') return { success: false, error: { code: 'FA-004', message: 'Cannot depreciate a disposed asset.' } }
-
       const periodStart = parseLocalDateStart(payload.periodStart)
       const periodEnd = parseLocalDateStart(payload.periodEnd)
-      const amount = computePeriodDepreciation(asset, periodStart, periodEnd)
-      if (amount <= 0) return { success: false, error: { code: 'FA-005', message: 'No depreciable value remains for this asset and period.' } }
 
+      // Real bug found+fixed 2026-09-16: asset.accumulatedDepreciation used
+      // to be read OUTSIDE this transaction, then used both to compute this
+      // period's depreciable-remaining cap AND as the base for a plain
+      // (non-atomic) "+amount" overwrite on write. The @@unique constraint
+      // below correctly blocks re-running the SAME period twice, but two
+      // depreciation runs for DIFFERENT periods close together could each
+      // read the same stale accumulatedDepreciation — jointly depreciating
+      // past the true remaining/salvage floor, and whichever transaction
+      // commits last silently clobbers the other's contribution to the
+      // cached total. Re-reading fresh inside the transaction (same pattern
+      // as receivePO's own documented double-receive guard) plus an atomic
+      // {increment} on write closes both halves of this at once.
       const result = await db.$transaction(async (tx) => {
+        const asset = await tx.fixedAsset.findUnique({ where: { id: payload.fixedAssetId } })
+        if (!asset) throw new ServiceError('FA-003', 'Fixed asset not found.')
+        if (asset.status === 'DISPOSED') throw new ServiceError('FA-004', 'Cannot depreciate a disposed asset.')
+
+        const amount = computePeriodDepreciation(asset, periodStart, periodEnd)
+        if (amount <= 0) throw new ServiceError('FA-005', 'No depreciable value remains for this asset and period.')
+
         // The @@unique([fixedAssetId, periodEnd]) constraint is the real,
         // DB-level idempotent-rerun guard the spec asks for — a second run
         // for the same period fails atomically here, not silently double-posts.
@@ -130,14 +144,15 @@ export const fixedAssetService = {
         await tx.fixedAssetDepreciation.update({ where: { id: depRow.id }, data: { journalEntryId: je.id } })
         const updatedAsset = await tx.fixedAsset.update({
           where: { id: asset.id },
-          data: { accumulatedDepreciation: roundCurrency(asset.accumulatedDepreciation + amount) }
+          data: { accumulatedDepreciation: { increment: amount } }
         })
-        return { depreciation: { ...depRow, journalEntryId: je.id }, asset: updatedAsset }
+        return { depreciation: { ...depRow, journalEntryId: je.id }, asset: updatedAsset, amount }
       })
 
-      await logAction({ userId, action: 'FIXED_ASSET_DEPRECIATION_RUN', entityType: 'FixedAsset', entityId: asset.id, newValue: { amount, periodStart: payload.periodStart, periodEnd: payload.periodEnd } })
-      return { success: true, data: result }
+      await logAction({ userId, action: 'FIXED_ASSET_DEPRECIATION_RUN', entityType: 'FixedAsset', entityId: payload.fixedAssetId, newValue: { amount: result.amount, periodStart: payload.periodStart, periodEnd: payload.periodEnd } })
+      return { success: true, data: { depreciation: result.depreciation, asset: result.asset } }
     } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       // Prisma's own unique-constraint error for the (fixedAssetId, periodEnd)
       // pair — surfaced as a clear, expected message, not a raw DB error leak.
       if (err instanceof Error && err.message.includes('Unique constraint')) {

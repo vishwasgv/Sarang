@@ -159,3 +159,88 @@ describe('creditInterestService.postInterestCharge', () => {
     expect(db.journalEntry.create).not.toHaveBeenCalled()
   })
 })
+
+// Real bug found+fixed 2026-09-16: postInterestCharge had no matching
+// reversal path at all — every other charge type in this codebase has a
+// matching void/reverse function; this one didn't. A generic manual GL
+// reversal would have fixed the books but left CustomerLedger permanently
+// showing the customer owing interest the real books no longer reflect.
+describe('creditInterestService.reverseInterestCharge', () => {
+  function makeOriginalLedgerRow(overrides: Record<string, unknown> = {}) {
+    return { id: 'led-1', customerId: 'cust-1', referenceType: 'INTEREST_CHARGE', referenceId: 'charge-1', debitAmount: 500, creditAmount: 0, ...overrides }
+  }
+
+  function makeReversalDb(overrides: Record<string, unknown> = {}) {
+    return makeDb({
+      customerLedger: {
+        findFirst: vi.fn(async ({ where }: { where: { referenceType: string } }) => {
+          if (where.referenceType === 'INTEREST_REVERSAL') return null // not yet reversed, the common case
+          if (where.referenceType === 'INTEREST_CHARGE') return makeOriginalLedgerRow()
+          return null
+        })
+      },
+      journalEntry: {
+        create: vi.fn().mockResolvedValue({ id: 'je-2', entryNumber: 'JE-00002' }),
+        findMany: vi.fn().mockResolvedValue([]),
+        findFirst: vi.fn().mockResolvedValue({
+          id: 'je-1', entryNumber: 'JE-00001', sourceType: 'INTEREST_CHARGE', sourceId: 'charge-1', isReversed: false,
+          lines: [
+            { accountId: 'coa-ar', bankAccountId: null, costCentreId: null, debitAmount: 500, creditAmount: 0 },
+            { accountId: 'coa-interest', bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: 500 }
+          ]
+        }),
+        update: vi.fn().mockResolvedValue({})
+      },
+      ...overrides
+    })
+  }
+
+  it('credits back the CustomerLedger and reverses the linked JournalEntry', async () => {
+    const db = makeReversalDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditInterestService.reverseInterestCharge('charge-1', 'Entered in error')
+
+    expect(res.success).toBe(true)
+    expect(customerLedgerService.addEntry).toHaveBeenCalledWith(
+      expect.objectContaining({ referenceType: 'INTEREST_REVERSAL', referenceId: 'charge-1', debitAmount: 0, creditAmount: 500 }),
+      expect.anything()
+    )
+    // reverseEntryBySourceTx marks the ORIGINAL entry reversed and creates a new offsetting one.
+    expect(db.journalEntry.update).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'je-1' },
+      data: expect.objectContaining({ isReversed: true })
+    }))
+    expect(db.journalEntry.create).toHaveBeenCalledTimes(1)
+  })
+
+  it('refuses to reverse a charge that was already reversed', async () => {
+    const db = makeReversalDb({
+      customerLedger: {
+        findFirst: vi.fn(async ({ where }: { where: { referenceType: string } }) => {
+          if (where.referenceType === 'INTEREST_REVERSAL') return { id: 'led-2' } // already reversed
+          return makeOriginalLedgerRow()
+        })
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditInterestService.reverseInterestCharge('charge-1', 'Duplicate reversal attempt')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CI-004')
+    expect(customerLedgerService.addEntry).not.toHaveBeenCalled()
+  })
+
+  it('returns an error for a charge id that was never posted', async () => {
+    const db = makeReversalDb({
+      customerLedger: { findFirst: vi.fn().mockResolvedValue(null) }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditInterestService.reverseInterestCharge('ghost-charge', 'Entered in error')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CI-005')
+  })
+})

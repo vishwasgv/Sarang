@@ -343,6 +343,7 @@ describe('billService.createBill', () => {
 
     expect(res.success).toBe(true)
     expect(supplierLedgerService.addEntry).not.toHaveBeenCalled()
+    expect(db.journalEntry.create).not.toHaveBeenCalled() // GL posting skipped too — receivePO's own postPOJournalEntry already covered it
   })
 
   it('still debits the supplier ledger for a bill linked to a PO that has not been received yet (invoice arrived before the goods)', async () => {

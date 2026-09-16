@@ -31,12 +31,23 @@ const SYSTEM_ACCOUNTS: Array<{ accountCode: string; accountName: string; account
 ]
 
 export const chartOfAccountsService = {
+  // Real bug found+fixed 2026-09-16: count()+createMany() outside a
+  // transaction is a narrow first-run-only race — two concurrent calls on a
+  // genuinely brand-new install (chartOfAccounts table still empty) could
+  // both see count===0 and both attempt to seed, the second hitting a real
+  // unique-constraint error on accountCode. Low real-world odds (only
+  // possible before this table has ever been seeded at all) and a loud
+  // failure rather than silent corruption, but wrapping in a transaction
+  // with the count re-checked inside it closes it the same way every other
+  // read-then-write race in this codebase has been closed.
   async ensureSystemAccountsSeeded(): Promise<void> {
     const db = getPrisma()
-    const count = await db.chartOfAccounts.count()
-    if (count > 0) return
-    await db.chartOfAccounts.createMany({
-      data: SYSTEM_ACCOUNTS.map((a) => ({ ...a, isSystem: true }))
+    await db.$transaction(async (tx) => {
+      const count = await tx.chartOfAccounts.count()
+      if (count > 0) return
+      await tx.chartOfAccounts.createMany({
+        data: SYSTEM_ACCOUNTS.map((a) => ({ ...a, isSystem: true }))
+      })
     })
   },
 

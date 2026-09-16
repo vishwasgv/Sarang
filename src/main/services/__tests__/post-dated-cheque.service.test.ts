@@ -123,6 +123,24 @@ describe('postDatedChequeService.createPDC', () => {
 })
 
 describe('postDatedChequeService.updateStatus', () => {
+  // Real bug found+fixed 2026-09-16: the status read+check used to happen
+  // BEFORE $transaction, using a stale pre-transaction read for the actual
+  // write and GL posting — two near-simultaneous "Mark as Cleared" calls
+  // could both pass the outer check and both post the cash-movement
+  // JournalEntry for the same cheque. Same fix shape as receivePO's own
+  // documented double-receive guard: assert the read happens inside the
+  // transaction, not before it.
+  it('reads the cheque status inside the transaction so two concurrent clears cannot both pass (no double-clear)', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await postDatedChequeService.updateStatus({ id: 'pdc-1', status: 'CLEARED' })
+
+    const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
+    const findCallOrder = vi.mocked(db.postDatedCheque.findUnique).mock.invocationCallOrder[0]
+    expect(txCallOrder).toBeLessThan(findCallOrder)
+  })
+
   it('rejects updating an already-CLEARED cheque', async () => {
     const db = makeDb({ postDatedCheque: { findUnique: vi.fn().mockResolvedValue(makePdc({ status: 'CLEARED' })), update: vi.fn() } })
     vi.mocked(getPrisma).mockReturnValue(db as never)

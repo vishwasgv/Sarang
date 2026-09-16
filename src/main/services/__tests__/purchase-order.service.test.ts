@@ -73,6 +73,16 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     // in purchase-order.service.ts. null = no bill = normal case = zero
     // behavior change for every test that doesn't explicitly override it.
     bill: { findFirst: vi.fn().mockResolvedValue(null) },
+    // receivePO now also GL-posts (postPOJournalEntry) whenever it debits
+    // the supplier ledger — same convention bill.service.test.ts's own
+    // makeDb already established for createBill's identical GL posting.
+    chartOfAccounts: {
+      findUnique: vi.fn().mockResolvedValue({ id: 'coa-1', accountCode: '6000', accountName: 'Operating Expenses', accountType: 'EXPENSE', isActive: true })
+    },
+    journalEntry: {
+      create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }),
+      findMany: vi.fn().mockResolvedValue([])
+    },
     ...overrides
   } as Record<string, any>
   db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
@@ -400,6 +410,32 @@ describe('purchaseOrderService.receivePO', () => {
     expect(result.success).toBe(true)
     expect(inventoryService.addStockTx).toHaveBeenCalled() // stock still receives normally
     expect(supplierLedgerService.addEntry).not.toHaveBeenCalled()
+    expect(db.journalEntry.create).not.toHaveBeenCalled() // GL posting skipped too — the Bill's own GL entry already covers it
+  })
+
+  // Real bug found+fixed 2026-09-16: receivePO updated Inventory and the
+  // informal SupplierLedger correctly but never posted anything to the real
+  // double-entry books (JournalEntry) at all — Accounts Payable, the Trial
+  // Balance, and every year-end close silently understated real liabilities
+  // for any PO received without a separately-created Bill (the ONLY way to
+  // reach the GL before this fix, since the shipped UI has no Bill-to-PO
+  // link). Mirrors bill.service.ts's own postBillJournalEntry shape exactly.
+  it('posts a balanced GL entry (gross expense debit, AP credit) when receiving a PO with no linked Bill', async () => {
+    const db = makeDb()
+    db.purchaseOrder.findUnique = vi.fn().mockResolvedValue(
+      makePO({ status: 'APPROVED', totalAmount: 1180, items: [{ id: 'poi-1', productId: 'prod-1', quantity: 10, unitCost: 100 }] })
+    )
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await purchaseOrderService.receivePO('po-1', 'user-1')
+
+    expect(result.success).toBe(true)
+    expect(db.journalEntry.create).toHaveBeenCalledTimes(1)
+    const glLines = db.journalEntry.create.mock.calls[0][0].data.lines.create as Array<{ debitAmount: number; creditAmount: number }>
+    const totalDebit = glLines.reduce((s, l) => s + l.debitAmount, 0)
+    const totalCredit = glLines.reduce((s, l) => s + l.creditAmount, 0)
+    expect(totalDebit).toBe(1180)
+    expect(totalCredit).toBe(1180) // balanced — same money, posted to both sides
   })
 
   // Phase 64 — landed cost genuinely raises the received goods' cost basis,

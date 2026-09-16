@@ -22,6 +22,13 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     },
     ...overrides,
   }
+  // ensureSystemAccountsSeeded now runs its count()+createMany() inside a
+  // transaction (real bug found+fixed 2026-09-16: a narrow first-run-only
+  // double-seed race) — tx === db, same convention every other service's
+  // own test file already uses.
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
   return db
 }
 

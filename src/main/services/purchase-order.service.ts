@@ -10,6 +10,8 @@ import { assertNotLocked, assertNotLockedOrThrow } from './transaction-lock.serv
 import { approvalWorkflowService } from './approval-workflow.service'
 import { getProductCostsBatch } from './valuation.service'
 import { getLandedCostPerUnitForPO } from './landed-cost.service'
+import { chartOfAccountsService } from './chart-of-accounts.service'
+import { journalEntryService } from './journal-entry.service'
 import { ServiceError } from '../errors/service-error'
 import type { CreatePOPayload } from '../validation/purchase-order.validation'
 
@@ -49,6 +51,43 @@ async function generatePONumber(tx: TxClient): Promise<string> {
 function roundUpToCartonMultiple(quantity: number, sellByPack: boolean, unitsPerPack: number | null): number {
   if (!sellByPack || !unitsPerPack || unitsPerPack <= 0) return quantity
   return Math.ceil(quantity / unitsPerPack) * unitsPerPack
+}
+
+// Real bug found+fixed 2026-09-16: receivePO() updated Inventory and the
+// informal SupplierLedger correctly, but never posted anything to the real
+// double-entry books at all (JournalEntry/ChartOfAccounts) -- only
+// bill.service.ts's createBill() did. Since the shipped UI has no way to
+// link a Bill to a PO, any business using Purchase Orders -> Receive as its
+// real procurement flow (plausibly the primary one, not an edge case) had
+// Accounts Payable, the Trial Balance, and the P&L silently understate real
+// liabilities for every received-but-unbilled PO -- and since
+// year-end-close.service.ts computes closing balances purely from
+// JournalEntryLine, that same gap corrupted the opening balance carried
+// into every subsequent fiscal year. Mirrors bill.service.ts's own
+// postBillJournalEntry exactly (same accounts, same RCM branching, same
+// "gross expense debit / AP credit" shape) so a received PO and a billed
+// PO post identically to the books -- the only difference is which event
+// (receiving vs. billing) is the one that actually triggers it, decided by
+// the same existingBill-guard the caller already uses for SupplierLedger.
+async function postPOJournalEntry(tx: TxClient, po: { id: string; poNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean }): Promise<void> {
+  const grossExpense = roundCurrency(po.totalAmount + (po.isReverseCharge ? po.taxAmount : 0))
+  if (grossExpense <= 0) return
+  const [expenseAccount, apAccount] = await Promise.all([
+    chartOfAccountsService.getSystemAccountByCode('6000', tx),
+    chartOfAccountsService.getSystemAccountByCode('2000', tx)
+  ])
+  const lines = [{ accountId: expenseAccount.id, bankAccountId: null, costCentreId: null, debitAmount: grossExpense, creditAmount: 0 }]
+  if (po.isReverseCharge && po.taxAmount > 0) {
+    const taxPayableAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
+    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: po.totalAmount })
+    lines.push({ accountId: taxPayableAccount.id, bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: po.taxAmount })
+  } else {
+    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: po.totalAmount })
+  }
+  await journalEntryService.postSystemEntry(tx, {
+    sourceType: 'PURCHASE_ORDER', sourceId: po.id, narration: `PO ${po.poNumber} received`,
+    lines
+  })
 }
 
 export const purchaseOrderService = {
@@ -494,6 +533,10 @@ export const purchaseOrderService = {
             creditAmount: 0,
             remarks: `PO ${po.poNumber} received`
           }, tx)
+          // GL posting shares the exact same "only if no Bill already covers
+          // this PO" guard as the SupplierLedger debit above -- see
+          // postPOJournalEntry's own header comment for why this exists.
+          await postPOJournalEntry(tx, po)
         }
 
         // Mark PO as received

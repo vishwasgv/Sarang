@@ -230,22 +230,25 @@ export const billService = {
         }
 
         // We now owe the supplier this bill's total — a debit on the
-        // supplier ledger (matches the same direction PO receiving already
-        // uses: debitAmount = amount we owe). BUT if this bill is linked to
-        // a PO that has already been received, purchaseOrderService.receivePO
-        // already recorded that exact obligation as a debit at receiving
-        // time -- debiting again here would double-count real money owed to
-        // the supplier. Re-read the PO's status fresh inside this same
-        // transaction (not the pre-transaction read above, which could be
-        // stale if the PO was received concurrently) so this check can't
-        // race against a concurrent receivePO() call the same way the
-        // documented double-receive guard in receivePO() itself does.
-        let skipLedgerDebit = false
+        // supplier ledger AND a GL posting (matches the same direction PO
+        // receiving already uses: debitAmount = amount we owe). BUT if this
+        // bill is linked to a PO that has already been received,
+        // purchaseOrderService.receivePO already recorded that exact
+        // obligation, in BOTH places — a SupplierLedger debit AND its own
+        // mirrored GL entry (postPOJournalEntry) — at receiving time. Doing
+        // either again here would double-count real money owed to the
+        // supplier, once in the informal ledger and once in the real books.
+        // Re-read the PO's status fresh inside this same transaction (not
+        // the pre-transaction read above, which could be stale if the PO
+        // was received concurrently) so this check can't race against a
+        // concurrent receivePO() call the same way the documented
+        // double-receive guard in receivePO() itself does.
+        let skipFinancialPosting = false
         if (payload.purchaseOrderId) {
           const freshPo = await tx.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId }, select: { status: true } })
-          skipLedgerDebit = freshPo?.status === 'RECEIVED'
+          skipFinancialPosting = freshPo?.status === 'RECEIVED'
         }
-        if (!skipLedgerDebit) {
+        if (!skipFinancialPosting) {
           await supplierLedgerService.addEntry({
             supplierId: payload.supplierId,
             referenceType: 'BILL',
@@ -254,10 +257,9 @@ export const billService = {
             creditAmount: 0,
             remarks: `Bill ${created.billNumber}`
           }, tx)
+          // Phase 62 — GL auto-posting.
+          await postBillJournalEntry(tx, created)
         }
-
-        // Phase 62 — GL auto-posting.
-        await postBillJournalEntry(tx, created)
 
         return created
       })

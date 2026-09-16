@@ -121,6 +121,28 @@ describe('fixedAssetService.runDepreciation', () => {
     expect((res as { error: { code: string } }).error.code).toBe('FA-005')
   })
 
+  // Real bug found+fixed 2026-09-16: asset.accumulatedDepreciation used to
+  // be read OUTSIDE this transaction, then used both to cap this period's
+  // depreciable amount AND as the base for a plain "+amount" overwrite on
+  // write — two depreciation runs for DIFFERENT periods close together
+  // could each read the same stale total, jointly over-depreciating past
+  // the true remaining value, and whichever commits last would silently
+  // clobber the other's contribution to the cached total.
+  it('reads the asset fresh inside the transaction and writes accumulatedDepreciation via an atomic increment, not a stale-read overwrite', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await fixedAssetService.runDepreciation({ fixedAssetId: 'fa-1', periodStart: '2026-07-01', periodEnd: '2026-07-31' })
+
+    const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
+    const findCallOrder = vi.mocked(db.fixedAsset.findUnique).mock.invocationCallOrder[0]
+    expect(txCallOrder).toBeLessThan(findCallOrder)
+
+    const updateCall = db.fixedAsset.update.mock.calls[0][0]
+    expect(updateCall.data.accumulatedDepreciation).toEqual({ increment: expect.any(Number) })
+    expect(updateCall.data.accumulatedDepreciation.increment).toBeCloseTo(2000, 0)
+  })
+
   it('maps a real Prisma unique-constraint rerun to FA-006, not a raw DB error', async () => {
     const db = makeDb({
       fixedAssetDepreciation: {

@@ -11,6 +11,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Button } from '@shared/ui/atoms/Button'
+import { Modal } from '@shared/ui/molecules/Modal'
 import { api } from '@renderer/services/ipc-client'
 
 interface Customer {
@@ -21,7 +22,7 @@ interface Customer {
 }
 
 interface LedgerEntry {
-  id: string; createdAt: string; referenceType: string; remarks?: string | null
+  id: string; createdAt: string; referenceType: string; referenceId?: string | null; remarks?: string | null
   debitAmount: number; creditAmount: number; balance: number
 }
 
@@ -49,6 +50,9 @@ export function CustomerDetailScreen() {
   const [interest, setInterest] = useState<InterestPreview | null>(null)
   const [interestEnabled, setInterestEnabled] = useState(true)
   const [postingInterest, setPostingInterest] = useState(false)
+  const [reverseTarget, setReverseTarget] = useState<LedgerEntry | null>(null)
+  const [reverseReason, setReverseReason] = useState('')
+  const [reversing, setReversing] = useState(false)
 
   const canViewLedger = hasPermission('customers.viewLedger')
   const canViewInterest = hasPermission('creditInterest.view')
@@ -159,6 +163,32 @@ export function CustomerDetailScreen() {
       setPostingInterest(false)
     }
   }
+
+  async function handleReverseInterest() {
+    if (!reverseTarget?.referenceId || !reverseReason.trim()) return
+    setReversing(true)
+    try {
+      const res = await window.api.creditInterest.reverse({ chargeId: reverseTarget.referenceId, reason: reverseReason.trim() })
+      if (res.success) {
+        toastSuccess(t('customers.interestReversed'), '')
+        setReverseTarget(null)
+        setReverseReason('')
+        loadLedger()
+      } else {
+        toastError(t('common.error'), res.error?.message || t('customers.couldNotReverseInterest'))
+      }
+    } catch {
+      toastError(t('common.error'), t('customers.couldNotReverseInterest'))
+    } finally {
+      setReversing(false)
+    }
+  }
+
+  // A charge can only be reversed once — build the set of already-reversed
+  // referenceIds from what's already loaded so the button disappears for a
+  // charge that's already been undone, rather than letting a stale click
+  // hit the backend's own CI-004 guard as the only defense.
+  const reversedChargeIds = new Set(entries.filter((e) => e.referenceType === 'INTEREST_REVERSAL' && e.referenceId).map((e) => e.referenceId as string))
 
   if (loading) {
     return (
@@ -327,6 +357,7 @@ export function CustomerDetailScreen() {
                     <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.debit')}</th>
                     <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.credit')}</th>
                     <th className="px-5 py-3 text-end text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">{t('common.balance')}</th>
+                    {canPostInterest && <th className="px-5 py-3"></th>}
                   </tr>
                 </thead>
                 <tbody>
@@ -345,6 +376,18 @@ export function CustomerDetailScreen() {
                       <td className={`px-5 py-3 text-end font-semibold ${entry.balance > 0 ? 'text-danger' : entry.balance < 0 ? 'text-success' : 'text-slate-500 dark:text-slate-400'}`}>
                         {entry.balance.toFixed(2)}
                       </td>
+                      {canPostInterest && (
+                        <td className="px-5 py-3 text-end">
+                          {entry.referenceType === 'INTEREST_CHARGE' && entry.referenceId && !reversedChargeIds.has(entry.referenceId) && (
+                            <button
+                              onClick={() => setReverseTarget(entry)}
+                              className="text-xs font-medium text-danger hover:underline"
+                            >
+                              {t('customers.reverseInterestCharge')}
+                            </button>
+                          )}
+                        </td>
+                      )}
                     </tr>
                   ))}
                 </tbody>
@@ -393,6 +436,35 @@ export function CustomerDetailScreen() {
           <DocumentPanel entityType="CUSTOMER" entityId={customer.id} />
         </Card>
       )}
+
+      {/* Reverse Interest Charge dialog */}
+      <Modal
+        open={!!reverseTarget}
+        onClose={() => { setReverseTarget(null); setReverseReason('') }}
+        title={t('customers.reverseInterestChargeTitle')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => { setReverseTarget(null); setReverseReason('') }} disabled={reversing}>{t('bills.goBack')}</Button>
+            <Button size="sm" className="bg-danger hover:bg-danger/90 text-white border-danger" onClick={handleReverseInterest} loading={reversing} disabled={!reverseReason.trim()}>
+              {t('customers.reverseInterestCharge')}
+            </Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <p className="text-sm text-slate-600 dark:text-slate-300">{t('customers.reverseInterestChargeMsg')}</p>
+          <div>
+            <label className="block text-xs font-medium text-slate-600 dark:text-slate-300 mb-1">{t('customers.reversalReason')} *</label>
+            <input
+              value={reverseReason}
+              onChange={(e) => setReverseReason(e.target.value)}
+              className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand"
+              autoFocus
+            />
+          </div>
+        </div>
+      </Modal>
     </div>
   )
 }

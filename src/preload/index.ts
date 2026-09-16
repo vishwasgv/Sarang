@@ -258,7 +258,8 @@ const api: IpcChannels = {
   },
   creditInterest: {
     calculate: (p) => invoke('creditInterest:calculate', p),
-    post: (p) => invoke('creditInterest:post', p)
+    post: (p) => invoke('creditInterest:post', p),
+    reverse: (p) => invoke('creditInterest:reverse', p)
   },
   postDatedCheques: {
     create: (p) => invoke('postDatedCheques:create', p),

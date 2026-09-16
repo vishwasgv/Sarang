@@ -85,13 +85,23 @@ export const postDatedChequeService = {
   async updateStatus(payload: UpdatePDCStatusPayload, userId?: string) {
     const db = getPrisma()
     try {
-      const pdc = await db.postDatedCheque.findUnique({ where: { id: payload.id } })
-      if (!pdc) return { success: false, error: { code: 'PDC-001', message: 'Post-dated cheque not found.' } }
-      if (pdc.status === 'CLEARED' || pdc.status === 'CANCELLED') {
-        return { success: false, error: { code: 'PDC-002', message: `This cheque is already ${pdc.status.toLowerCase()} and cannot be changed further.` } }
-      }
-
+      // Real bug found+fixed 2026-09-16: the status read + check used to
+      // happen OUTSIDE this transaction, then the write (and the GL
+      // posting on CLEARED) happened inside using that stale read. Two
+      // near-simultaneous "Mark as Cleared" calls (a double-click, a slow
+      // UI, two sessions) could both pass the outer check before either had
+      // written, then both post the cash-movement JournalEntry for the same
+      // cheque — a real double-count. Same class of bug, same fix shape,
+      // as receivePO()'s own documented double-receive guard: read, check,
+      // and write the status all inside ONE transaction, so a concurrent
+      // second call sees the first one's already-committed status.
       const updated = await db.$transaction(async (tx) => {
+        const pdc = await tx.postDatedCheque.findUnique({ where: { id: payload.id } })
+        if (!pdc) throw new ServiceError('PDC-001', 'Post-dated cheque not found.')
+        if (pdc.status === 'CLEARED' || pdc.status === 'CANCELLED') {
+          throw new ServiceError('PDC-002', `This cheque is already ${pdc.status.toLowerCase()} and cannot be changed further.`)
+        }
+
         const result = await tx.postDatedCheque.update({
           where: { id: payload.id },
           data: { status: payload.status, remarks: payload.remarks ?? pdc.remarks }
@@ -115,12 +125,13 @@ export const postDatedChequeService = {
           })
         }
 
-        return result
+        return { result, oldStatus: pdc.status }
       })
 
-      await logAction({ userId, action: 'PDC_STATUS_UPDATED', entityType: 'PostDatedCheque', entityId: payload.id, oldValue: { status: pdc.status }, newValue: { status: payload.status } })
-      return { success: true, data: updated }
+      await logAction({ userId, action: 'PDC_STATUS_UPDATED', entityType: 'PostDatedCheque', entityId: payload.id, oldValue: { status: updated.oldStatus }, newValue: { status: payload.status } })
+      return { success: true, data: updated.result }
     } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to update cheque status.' } }
     }
   }

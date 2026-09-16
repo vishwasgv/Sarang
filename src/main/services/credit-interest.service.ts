@@ -1,10 +1,12 @@
+import { randomUUID } from 'crypto'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
-import { journalEntryService } from './journal-entry.service'
+import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { roundCurrency, sumCurrency } from './currency.service'
 import { startOfLocalDay } from '../utils/date.util'
+import { ServiceError } from '../errors/service-error'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -84,6 +86,16 @@ export const creditInterestService = {
       // Re-checked *inside* the transaction (not before it) so that when SQLite
       // serializes two concurrent transactions, the second one's check sees the
       // first one's already-committed row and aborts instead of double-charging.
+      // A unique per-charge id, generated up front so it can be used as
+      // BOTH the CustomerLedger entry's own referenceId AND the
+      // JournalEntry's sourceId — see reverseInterestCharge below for why:
+      // sourceId used to be the bare customerId, which every interest
+      // charge for that customer shares, so a generic reverseEntryBySourceTx
+      // lookup (findFirst by sourceType+sourceId) could never unambiguously
+      // target ONE specific charge once a customer had more than one
+      // posted over time. This makes every charge individually addressable.
+      const chargeId = randomUUID()
+
       let duplicate = false
       await db.$transaction(async (tx: TxClient) => {
         const alreadyPostedToday = await tx.customerLedger.findFirst({
@@ -95,6 +107,7 @@ export const creditInterestService = {
         await customerLedgerService.addEntry({
           customerId,
           referenceType: 'INTEREST_CHARGE',
+          referenceId: chargeId,
           debitAmount: totalInterest,
           creditAmount: 0,
           remarks: `Overdue interest on ${lines.length} invoice${lines.length === 1 ? '' : 's'}`
@@ -105,7 +118,7 @@ export const creditInterestService = {
           chartOfAccountsService.getSystemAccountByCode('4100', tx)
         ])
         await journalEntryService.postSystemEntry(tx, {
-          sourceType: 'INTEREST_CHARGE', sourceId: customerId, narration: `Overdue interest — ${customer.customerName}`,
+          sourceType: 'INTEREST_CHARGE', sourceId: chargeId, narration: `Overdue interest — ${customer.customerName}`,
           lines: [
             { accountId: arAccount.id, bankAccountId: null, debitAmount: totalInterest, creditAmount: 0 },
             { accountId: interestAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: totalInterest }
@@ -115,10 +128,63 @@ export const creditInterestService = {
 
       if (duplicate) return { success: false, error: { code: 'CI-003', message: 'Interest was already posted for this customer today.' } }
 
-      await logAction({ userId, action: 'CREDIT_INTEREST_CHARGED', entityType: 'Customer', entityId: customerId, newValue: { totalInterest, invoiceCount: lines.length } })
-      return { success: true, data: { totalInterest, invoiceCount: lines.length } }
+      await logAction({ userId, action: 'CREDIT_INTEREST_CHARGED', entityType: 'Customer', entityId: customerId, newValue: { totalInterest, invoiceCount: lines.length, chargeId } })
+      return { success: true, data: { totalInterest, invoiceCount: lines.length, chargeId } }
     } catch (err) {
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to post interest charge.' } }
+    }
+  },
+
+  // Real bug found+fixed 2026-09-16: postInterestCharge had no matching
+  // reversal path at all — every other charge type in this codebase (Bill,
+  // Payment, Credit/Debit Note, PO receipt) has a matching void/reverse
+  // function; this one didn't. A generic manual "Reverse Journal Entry"
+  // (if a user found it via the Journal Entries screen) would only fix the
+  // GL side — it never touches CustomerLedger, so the informal ledger
+  // would permanently show the customer owing interest the real books no
+  // longer reflect. chargeId is CustomerLedger.referenceId from the
+  // original postInterestCharge call (also the matching JournalEntry's
+  // sourceId) — see that function's own comment for why a bare customerId
+  // could never unambiguously identify ONE charge once more than one exists.
+  async reverseInterestCharge(chargeId: string, reason: string, userId?: string) {
+    const db = getPrisma()
+    try {
+      const alreadyReversed = await db.customerLedger.findFirst({
+        where: { referenceType: 'INTEREST_REVERSAL', referenceId: chargeId },
+        select: { id: true }
+      })
+      if (alreadyReversed) return { success: false, error: { code: 'CI-004', message: 'This interest charge has already been reversed.' } }
+
+      const original = await db.customerLedger.findFirst({ where: { referenceType: 'INTEREST_CHARGE', referenceId: chargeId } })
+      if (!original) return { success: false, error: { code: 'CI-005', message: 'Interest charge not found.' } }
+
+      await db.$transaction(async (tx: TxClient) => {
+        // Re-check inside the transaction — same double-post-guard shape as
+        // postInterestCharge's own, so two concurrent reversal clicks can't
+        // both pass the pre-transaction check and both post a credit-back.
+        const raceCheck = await tx.customerLedger.findFirst({
+          where: { referenceType: 'INTEREST_REVERSAL', referenceId: chargeId },
+          select: { id: true }
+        })
+        if (raceCheck) throw new ServiceError('CI-004', 'This interest charge has already been reversed.')
+
+        await customerLedgerService.addEntry({
+          customerId: original.customerId,
+          referenceType: 'INTEREST_REVERSAL',
+          referenceId: chargeId,
+          debitAmount: 0,
+          creditAmount: original.debitAmount,
+          remarks: `Reversal: ${reason}`
+        }, tx)
+
+        await reverseEntryBySourceTx(tx, 'INTEREST_CHARGE', chargeId, reason, userId)
+      })
+
+      await logAction({ userId, action: 'CREDIT_INTEREST_REVERSED', entityType: 'Customer', entityId: original.customerId, newValue: { chargeId, amount: original.debitAmount, reason } })
+      return { success: true, data: { chargeId, amount: original.debitAmount } }
+    } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to reverse interest charge.' } }
     }
   }
 }
