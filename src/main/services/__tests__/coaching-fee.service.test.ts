@@ -76,6 +76,9 @@ function makeMockDb(existingFee: ReturnType<typeof makeFeeRecord> | null = null)
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
   return db
 }
 
@@ -135,6 +138,43 @@ describe('coaching-fee.service — Decimal serialization', () => {
 
     const batch = (res as { data: Array<{ enrollment: { batch: Record<string, unknown> } }> }).data[0].enrollment.batch
     expect('feePerMonth' in batch).toBe(false)
+  })
+})
+
+// Real race found+fixed in the zero-logical-errors audit: updateFeeRecord
+// used to read `existing` once, derive amountReceived/status from it, then
+// write unconditionally with a plain update() — a lost-update race. Two
+// near-simultaneous calls recording payment against the same record (e.g.
+// front-desk and accounts both marking the same student's fee paid within
+// moments) each read the same stale snapshot, and whichever write commits
+// last silently discarded the other's real recorded payment.
+describe('coaching-fee.service — updateFeeRecord race fix', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('gates the write on the record still matching what was just read (optimistic concurrency)', async () => {
+    const db = makeMockDb(makeFeeRecord())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    db.coachingFeeRecord.findUnique = vi.fn().mockResolvedValue(makeFeeRecord())
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+
+    await updateFeeRecord({ id: 'fee-1', amountReceived: 3000, status: 'PAID' })
+
+    const updateManyCall = vi.mocked(db.coachingFeeRecord.updateMany).mock.calls[0][0] as { where: Record<string, unknown> }
+    expect(updateManyCall.where).toMatchObject({ id: 'fee-1', amountReceived: expect.anything(), status: 'PENDING' })
+  })
+
+  it('rejects with FEE-002 when a concurrent call already changed the record since it was read', async () => {
+    const db = makeMockDb(makeFeeRecord())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    db.coachingFeeRecord.findUnique = vi.fn().mockResolvedValue(makeFeeRecord())
+    // Simulates a concurrent call winning the race — this call's claim matches 0 rows.
+    db.coachingFeeRecord.updateMany = vi.fn().mockResolvedValue({ count: 0 })
+
+    const res = await updateFeeRecord({ id: 'fee-1', amountReceived: 3000, status: 'PAID' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('FEE-002')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
   })
 })
 

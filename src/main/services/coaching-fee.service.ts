@@ -130,43 +130,71 @@ export async function updateFeeRecord(payload: {
   notes?: string | null
 }) {
   const db = getPrisma()
-  const existing = await db.coachingFeeRecord.findUnique({ where: { id: payload.id } })
-  if (!existing) return { success: false, error: { code: 'FEE-001', message: 'Fee record not found.' } }
 
-  // Auto-derive status from amount if amountReceived is provided but status is not
-  let status = payload.status ?? existing.status
-  if (payload.amountReceived !== undefined && payload.status === undefined) {
-    const received = payload.amountReceived
-    const due = Number(existing.amountDue)
-    if (received <= 0) status = 'PENDING'
-    else if (received >= due) status = 'PAID'
-    else status = 'PARTIAL'
-  }
+  // Real race found in the zero-logical-errors audit: this used to read
+  // `existing` once, derive status/amountReceived from it, then write
+  // unconditionally with a plain (non-transactional) update() — a lost-
+  // update race, the "non-atomic read-compute-write" bug shape already
+  // fixed elsewhere this session. Two near-simultaneous calls recording
+  // payment against the same record (front-desk and accounts both mark the
+  // same student's fee paid within moments, or a double-click) each read
+  // the same stale amountReceived/status and whichever write commits last
+  // silently discards the other's real recorded payment, with no error —
+  // this shadow ledger has no append-only trail to recover it from. Fixed
+  // with a fresh in-tx read and an atomic conditional claim gated on the
+  // record still matching what was just read; a losing concurrent call now
+  // fails loudly (FEE-002) instead of silently overwriting.
+  const txResult = await db.$transaction(async (tx) => {
+    const existing = await tx.coachingFeeRecord.findUnique({ where: { id: payload.id } })
+    if (!existing) return { ok: false as const, code: 'FEE-001', message: 'Fee record not found.' }
 
-  const paidDate =
-    payload.paidDate !== undefined
-      ? payload.paidDate ? parseLocalDateStart(payload.paidDate) : null
-      : status === 'PAID' && existing.status !== 'PAID'
-      ? new Date()
-      : existing.paidDate
+    // Auto-derive status from amount if amountReceived is provided but status is not
+    let status = payload.status ?? existing.status
+    if (payload.amountReceived !== undefined && payload.status === undefined) {
+      const received = payload.amountReceived
+      const due = Number(existing.amountDue)
+      if (received <= 0) status = 'PENDING'
+      else if (received >= due) status = 'PAID'
+      else status = 'PARTIAL'
+    }
 
-  const record = await db.coachingFeeRecord.update({
-    where: { id: payload.id },
-    data: {
-      ...(payload.amountReceived !== undefined ? { amountReceived: payload.amountReceived } : {}),
-      status,
-      paidDate,
-      ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
-    },
-    include: {
-      enrollment: {
-        include: {
-          student: { select: { id: true, customerName: true } },
-          batch: { select: { id: true, batchName: true } },
+    const paidDate =
+      payload.paidDate !== undefined
+        ? payload.paidDate ? parseLocalDateStart(payload.paidDate) : null
+        : status === 'PAID' && existing.status !== 'PAID'
+        ? new Date()
+        : existing.paidDate
+
+    const claim = await tx.coachingFeeRecord.updateMany({
+      where: { id: payload.id, amountReceived: existing.amountReceived, status: existing.status },
+      data: {
+        ...(payload.amountReceived !== undefined ? { amountReceived: payload.amountReceived } : {}),
+        status,
+        paidDate,
+        ...(payload.notes !== undefined ? { notes: payload.notes } : {}),
+      },
+    })
+    if (claim.count === 0) {
+      return { ok: false as const, code: 'FEE-002', message: 'This fee record changed since it was loaded — reload and try again.' }
+    }
+
+    const record = await tx.coachingFeeRecord.findUnique({
+      where: { id: payload.id },
+      include: {
+        enrollment: {
+          include: {
+            student: { select: { id: true, customerName: true } },
+            batch: { select: { id: true, batchName: true } },
+          },
         },
       },
-    },
+    })
+    return { ok: true as const, record: record!, existing, status }
   })
+
+  if (!txResult.ok) return { success: false, error: { code: txResult.code, message: txResult.message } }
+  const { record, existing, status } = txResult
+
   const auditAction = status === 'PAID' ? 'PAID' : 'UPDATE'
   await db.auditLog.create({ data: { action: auditAction, entityType: 'CoachingFeeRecord', entityId: record.id } }).catch(() => {})
 

@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { ServiceError } from '../errors/service-error'
 
 // MembershipPlan.price is a Prisma Decimal — Electron's IPC (structured
 // clone) cannot serialize a Decimal instance and throws "An object could
@@ -248,25 +249,38 @@ function parseFreezeHistory(raw: string | null): FreezeEntry[] {
   }
 }
 
+// Real race found in the zero-logical-errors audit: freezeMembership/
+// resumeMembership used to read `existing` outside any transaction, then
+// write unconditionally after the status check — a plain read-then-write
+// race. Two concurrent freezes (or resumes) of the same membership could
+// each read the same stale freezeHistory JSON array and whichever write
+// commits last would silently discard the other's freeze/resume entry
+// (losing an audit-trail record and, for resume, corrupting the endDate
+// extension math). Both now read fresh INSIDE their own transaction — the
+// same fix pattern already applied to fixed-asset.service.ts's
+// runDepreciation and others this session.
 export async function freezeMembership(payload: { id: string; reason?: string }) {
   try {
     const db = getPrisma()
-    const existing = await db.membership.findUnique({ where: { id: payload.id } })
-    if (!existing) return { success: false, error: { code: 'M27-012', message: 'Membership not found.' } }
-    if (existing.status !== 'ACTIVE') {
-      return { success: false, error: { code: 'M27-013', message: `Only an active membership can be frozen (current status: ${existing.status}).` } }
-    }
+    const membership = await db.$transaction(async (tx) => {
+      const existing = await tx.membership.findUnique({ where: { id: payload.id } })
+      if (!existing) throw new ServiceError('M27-012', 'Membership not found.')
+      if (existing.status !== 'ACTIVE') {
+        throw new ServiceError('M27-013', `Only an active membership can be frozen (current status: ${existing.status}).`)
+      }
 
-    const history = parseFreezeHistory(existing.freezeHistory)
-    history.push({ frozenOn: new Date().toISOString(), resumedOn: null, reason: payload.reason ?? null })
+      const history = parseFreezeHistory(existing.freezeHistory)
+      history.push({ frozenOn: new Date().toISOString(), resumedOn: null, reason: payload.reason ?? null })
 
-    const membership = await db.membership.update({
-      where: { id: payload.id },
-      data: { status: 'FROZEN', freezeHistory: JSON.stringify(history) },
+      return tx.membership.update({
+        where: { id: payload.id },
+        data: { status: 'FROZEN', freezeHistory: JSON.stringify(history) },
+      })
     })
     await db.auditLog.create({ data: { action: 'FREEZE', entityType: 'Membership', entityId: membership.id } }).catch(() => {})
     return { success: true, data: membership }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'M27-014', message: err instanceof Error ? err.message : 'Could not freeze membership.' } }
   }
 }
@@ -274,39 +288,45 @@ export async function freezeMembership(payload: { id: string; reason?: string })
 export async function resumeMembership(payload: { id: string }) {
   try {
     const db = getPrisma()
-    const existing = await db.membership.findUnique({ where: { id: payload.id } })
-    if (!existing) return { success: false, error: { code: 'M27-012', message: 'Membership not found.' } }
-    if (existing.status !== 'FROZEN') {
-      return { success: false, error: { code: 'M27-015', message: `Only a frozen membership can be resumed (current status: ${existing.status}).` } }
-    }
+    const { membership, frozenDays } = await db.$transaction(async (tx) => {
+      const existing = await tx.membership.findUnique({ where: { id: payload.id } })
+      if (!existing) throw new ServiceError('M27-012', 'Membership not found.')
+      if (existing.status !== 'FROZEN') {
+        throw new ServiceError('M27-015', `Only a frozen membership can be resumed (current status: ${existing.status}).`)
+      }
 
-    const history = parseFreezeHistory(existing.freezeHistory)
-    const openEntry = [...history].reverse().find((h) => !h.resumedOn)
-    if (!openEntry) {
-      // Defensive: status says FROZEN but there's no open freeze entry to
-      // close (e.g. history was hand-edited). Resume without extending
-      // endDate rather than silently computing a bogus duration.
-      const membership = await db.membership.update({ where: { id: payload.id }, data: { status: 'ACTIVE' } })
-      return { success: true, data: membership }
-    }
+      const history = parseFreezeHistory(existing.freezeHistory)
+      const openEntry = [...history].reverse().find((h) => !h.resumedOn)
+      if (!openEntry) {
+        // Defensive: status says FROZEN but there's no open freeze entry to
+        // close (e.g. history was hand-edited). Resume without extending
+        // endDate rather than silently computing a bogus duration.
+        const resumed = await tx.membership.update({ where: { id: payload.id }, data: { status: 'ACTIVE' } })
+        return { membership: resumed, frozenDays: null as number | null }
+      }
 
-    const now = new Date()
-    const frozenDays = Math.max(0, Math.ceil((now.getTime() - new Date(openEntry.frozenOn).getTime()) / 86400000))
-    openEntry.resumedOn = now.toISOString()
+      const now = new Date()
+      const days = Math.max(0, Math.ceil((now.getTime() - new Date(openEntry.frozenOn).getTime()) / 86400000))
+      openEntry.resumedOn = now.toISOString()
 
-    const membership = await db.membership.update({
-      where: { id: payload.id },
-      data: {
-        status: 'ACTIVE',
-        freezeHistory: JSON.stringify(history),
-        endDate: new Date(existing.endDate.getTime() + frozenDays * 86400000),
-      },
+      const resumed = await tx.membership.update({
+        where: { id: payload.id },
+        data: {
+          status: 'ACTIVE',
+          freezeHistory: JSON.stringify(history),
+          endDate: new Date(existing.endDate.getTime() + days * 86400000),
+        },
+      })
+      return { membership: resumed, frozenDays: days }
     })
-    await db.auditLog.create({
-      data: { action: 'RESUME', entityType: 'Membership', entityId: membership.id, newValue: JSON.stringify({ frozenDays }) },
-    }).catch(() => {})
+    if (frozenDays !== null) {
+      await db.auditLog.create({
+        data: { action: 'RESUME', entityType: 'Membership', entityId: membership.id, newValue: JSON.stringify({ frozenDays }) },
+      }).catch(() => {})
+    }
     return { success: true, data: membership }
   } catch (err) {
+    if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
     return { success: false, error: { code: 'M27-016', message: err instanceof Error ? err.message : 'Could not resume membership.' } }
   }
 }

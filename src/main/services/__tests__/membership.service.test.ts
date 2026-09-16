@@ -256,7 +256,7 @@ describe('membership.service — generateMembershipInvoice', () => {
 // Phase 58 §2 — Gym/Studio: freezeMembership/resumeMembership real date math
 
 function makeFreezeMockDb(membership: Record<string, unknown> | null) {
-  return {
+  const db: Record<string, any> = {
     membership: {
       findUnique: vi.fn().mockResolvedValue(membership),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) =>
@@ -265,6 +265,13 @@ function makeFreezeMockDb(membership: Record<string, unknown> | null) {
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
   }
+  // Real race found+fixed in the zero-logical-errors audit: freeze/resume
+  // now read fresh INSIDE their own transaction (tx === db here, same
+  // convention as every other service's own test file).
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
+  return db
 }
 
 describe('membership.service — freezeMembership / resumeMembership', () => {
@@ -375,6 +382,33 @@ describe('membership.service — freezeMembership / resumeMembership', () => {
     const updateCall = db.membership.update.mock.calls[0][0]
     expect(updateCall.data.status).toBe('ACTIVE')
     expect(updateCall.data.endDate).toBeUndefined()
+  })
+
+  // Real race found+fixed in the zero-logical-errors audit: freeze/resume
+  // used to read `existing` outside any transaction then write
+  // unconditionally — two concurrent freezes (or resumes) of the same
+  // membership could each read the same stale freezeHistory and whichever
+  // write committed last silently discarded the other's entry.
+  it('freeze reads the membership fresh inside the transaction (no read-then-write race)', async () => {
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'ACTIVE', freezeHistory: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await freezeMembership({ id: 'mem-1' })
+
+    const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
+    const findCallOrder = vi.mocked(db.membership.findUnique).mock.invocationCallOrder[0]
+    expect(txCallOrder).toBeLessThan(findCallOrder)
+  })
+
+  it('resume reads the membership fresh inside the transaction (no read-then-write race)', async () => {
+    const db = makeFreezeMockDb({ id: 'mem-1', status: 'FROZEN', freezeHistory: null, endDate: new Date('2026-08-01') })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await resumeMembership({ id: 'mem-1' })
+
+    const txCallOrder = vi.mocked(db.$transaction).mock.invocationCallOrder[0]
+    const findCallOrder = vi.mocked(db.membership.findUnique).mock.invocationCallOrder[0]
+    expect(txCallOrder).toBeLessThan(findCallOrder)
   })
 })
 
