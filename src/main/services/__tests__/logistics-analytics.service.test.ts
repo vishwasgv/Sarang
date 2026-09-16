@@ -45,3 +45,38 @@ describe('getLogisticsAnalytics — avgDeliveryDays', () => {
     expect(data.shipments.avgDeliveryDays).toBe(0)
   })
 })
+
+// Real bug found+fixed in the zero-logical-errors audit: freight/GRN totals
+// used to accumulate via plain `array.reduce` on raw floats instead of this
+// codebase's own established Decimal-safe sumCurrency.
+describe('getLogisticsAnalytics — sumCurrency correctness', () => {
+  it('sums float-imprecise freight amounts to a clean value', async () => {
+    const db = makeDb([])
+    ;(db as any).freightLedger.findMany = vi.fn().mockResolvedValue([
+      { amount: 0.1, paidDate: new Date(), createdAt: new Date('2026-01-05') },
+      { amount: 0.2, paidDate: null, createdAt: new Date('2026-01-06') },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db)
+
+    const result = await getLogisticsAnalytics()
+
+    const data = (result as { data: { freight: { total: number; paid: number; pending: number } } }).data
+    expect(data.freight.total).toBe(0.3)
+    expect(data.freight.paid).toBe(0.1)
+    expect(data.freight.pending).toBe(0.2)
+  })
+
+  it('sums float-imprecise GRN values to a clean value', async () => {
+    const db = makeDb([])
+    ;(db as any).goodsReceiptNote.findMany = vi.fn().mockResolvedValue([
+      { totalValue: 0.1, status: 'POSTED' },
+      { totalValue: 0.2, status: 'POSTED' },
+    ])
+    vi.mocked(getPrisma).mockReturnValue(db)
+
+    const result = await getLogisticsAnalytics()
+
+    const data = (result as { data: { grns: { totalValue: number } } }).data
+    expect(data.grns.totalValue).toBe(0.3)
+  })
+})

@@ -4057,7 +4057,10 @@ async function generateJewelleryReport(params: { dateFrom: string; dateTo: strin
     },
     select: { jewelleryMakingCharge: true, quantity: true }
   })
-  const totalMakingChargeRevenue = jewelleryItems.reduce((s, i) => s + (i.jewelleryMakingCharge ?? 0) * i.quantity, 0)
+  // Real bug found+fixed in the zero-logical-errors audit: these money
+  // totals used to accumulate via plain `array.reduce` on raw floats
+  // instead of this codebase's own established Decimal-safe sumCurrency.
+  const totalMakingChargeRevenue = sumCurrency(jewelleryItems.map(i => (i.jewelleryMakingCharge ?? 0) * i.quantity))
 
   const exchanges = await db.metalExchange.findMany({
     where: { createdAt: { gte: from, lte: to } },
@@ -4069,10 +4072,10 @@ async function generateJewelleryReport(params: { dateFrom: string; dateTo: strin
     stockByMetal,
     summary: {
       totalStockValuationGrams: stockByMetal.reduce((s, g) => s + g.netWeightGrams, 0),
-      totalStockValuationAmount: stockByMetal.reduce((s, g) => s + g.valuationAmount, 0),
+      totalStockValuationAmount: sumCurrency(stockByMetal.map(g => g.valuationAmount)),
       totalMakingChargeRevenue,
       totalExchangeCount: exchanges.length,
-      totalExchangeValueGiven: exchanges.reduce((s, e) => s + e.valueGiven, 0),
+      totalExchangeValueGiven: sumCurrency(exchanges.map(e => e.valueGiven)),
       metalsWithNoRateSet: stockByMetal.filter(g => g.ratePerGram === null).map(g => `${g.metalType} ${g.purity}`),
     }
   }
@@ -7949,11 +7952,15 @@ async function generateRentalRevenueReport(params: { dateFrom: string; dateTo: s
     include: { product: { select: { productName: true, rentalTrackingType: true } }, booking: { select: { startDateTime: true, endDateTime: true } } },
   })
 
-  const byProduct = new Map<string, { bookingCount: number; totalRevenue: number; unitCount: number | null; rentedDaysInRange: number }>()
+  // Real bug found+fixed in the zero-logical-errors audit: totalRevenue
+  // used to accumulate via plain `+=` on raw floats instead of this
+  // codebase's own established Decimal-safe sumCurrency — collect each
+  // product's raw line totals and sum them via sumCurrency once below.
+  const byProduct = new Map<string, { bookingCount: number; lineTotals: number[]; unitCount: number | null; rentedDaysInRange: number }>()
   for (const item of items) {
-    const existing = byProduct.get(item.product.productName) ?? { bookingCount: 0, totalRevenue: 0, unitCount: item.product.rentalTrackingType === 'UNIT' ? 0 : null, rentedDaysInRange: 0 }
+    const existing = byProduct.get(item.product.productName) ?? { bookingCount: 0, lineTotals: [], unitCount: item.product.rentalTrackingType === 'UNIT' ? 0 : null, rentedDaysInRange: 0 }
     existing.bookingCount += 1
-    existing.totalRevenue += item.lineTotal
+    existing.lineTotals.push(item.lineTotal)
     // Overlap-days between this specific booking's actual span and the
     // report's requested date range — not the whole booking length, and not
     // just "1 day per booking" (a booking spanning the full range shouldn't
@@ -7974,7 +7981,7 @@ async function generateRentalRevenueReport(params: { dateFrom: string; dateTo: s
   }
 
   const rows: RentalRevenueRow[] = Array.from(byProduct.entries()).map(([productName, v]) => ({
-    productName, bookingCount: v.bookingCount, totalRevenue: v.totalRevenue,
+    productName, bookingCount: v.bookingCount, totalRevenue: sumCurrency(v.lineTotals),
     unitCount: v.unitCount,
     // days actually rented within the range / (unit count x days in range)
     utilizationPercent: v.unitCount && v.unitCount > 0 ? Math.min(100, (v.rentedDaysInRange / (v.unitCount * rangeDays)) * 100) : null,
@@ -7982,7 +7989,7 @@ async function generateRentalRevenueReport(params: { dateFrom: string; dateTo: s
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, rows,
-    summary: { totalRevenue: rows.reduce((s, r) => s + r.totalRevenue, 0), totalBookings: items.length },
+    summary: { totalRevenue: sumCurrency(rows.map(r => r.totalRevenue)), totalBookings: items.length },
   }
 }
 

@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { sumCurrency } from './currency.service'
 
 export async function getLogisticsAnalytics(payload?: { fromDate?: string; toDate?: string }) {
   try {
@@ -30,14 +31,17 @@ export async function getLogisticsAnalytics(payload?: { fromDate?: string; toDat
         }, 0) / measurable.length
       : 0
 
-    const freightTotal = freight.reduce((s, f) => s + f.amount, 0)
-    const freightPaid = freight.filter(f => f.paidDate !== null).reduce((s, f) => s + f.amount, 0)
-    const freightPending = freightTotal - freightPaid
+    // Real bug found+fixed in the zero-logical-errors audit: these totals
+    // used to accumulate via plain `array.reduce` on raw floats instead of
+    // this codebase's own established Decimal-safe sumCurrency.
+    const freightTotal = sumCurrency(freight.map(f => f.amount))
+    const freightPaid = sumCurrency(freight.filter(f => f.paidDate !== null).map(f => f.amount))
+    const freightPending = sumCurrency(freight.filter(f => f.paidDate === null).map(f => f.amount))
 
     const vehicleByStatus: Record<string, number> = {}
     for (const v of vehicles) vehicleByStatus[v.status] = (vehicleByStatus[v.status] ?? 0) + 1
 
-    const grnTotal = grns.reduce((s, g) => s + g.totalValue, 0)
+    const grnTotal = sumCurrency(grns.map(g => g.totalValue))
     const grnPosted = grns.filter(g => g.status === 'POSTED').length
 
     // Monthly trend — base the 6-month window on `to` instead of always using now
@@ -62,9 +66,9 @@ export async function getLogisticsAnalytics(payload?: { fromDate?: string; toDat
       const mEnd = new Date(trendEnd.getFullYear(), trendEnd.getMonth() - i + 1, 0, 23, 59, 59, 999)
       const mLabel = mStart.toLocaleDateString('en-IN', { month: 'short', year: 'numeric' })
       const mCount = trendShipments.filter(s => s.createdAt >= mStart && s.createdAt <= mEnd).length
-      const mFreight = trendFreight
+      const mFreight = sumCurrency(trendFreight
         .filter(f => f.createdAt >= mStart && f.createdAt <= mEnd)
-        .reduce((s, f) => s + f.amount, 0)
+        .map(f => f.amount))
       monthlyShipments.push({ month: mLabel, count: mCount, freight: mFreight })
     }
 

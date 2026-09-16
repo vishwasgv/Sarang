@@ -4119,6 +4119,27 @@ describe('reportService.generateJewelleryReport', () => {
     expect(result.summary.totalExchangeCount).toBe(2)
     expect(result.summary.totalExchangeValueGiven).toBe(2220)
   })
+
+  // Real bug found+fixed in the zero-logical-errors audit: these money
+  // totals used to accumulate via plain `array.reduce` on raw floats
+  // instead of this codebase's own established Decimal-safe sumCurrency.
+  it('sums float-imprecise making-charge revenue and exchange values to a clean value', async () => {
+    const db = makeDb({
+      product: { findMany: vi.fn().mockResolvedValue([]) },
+      metalRate: { findMany: vi.fn().mockResolvedValue([]) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([
+        { jewelleryMakingCharge: 0.1, quantity: 1 },
+        { jewelleryMakingCharge: 0.2, quantity: 1 },
+      ]) },
+      metalExchange: { findMany: vi.fn().mockResolvedValue([{ valueGiven: 0.1 }, { valueGiven: 0.2 }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateJewelleryReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.summary.totalMakingChargeRevenue).toBe(0.3)
+    expect(result.summary.totalExchangeValueGiven).toBe(0.3)
+  })
 })
 
 // Phase 67 §9.1 — Jewellery item 2: Making-Charge vs. Metal-Value Margin, per sale.
@@ -5729,6 +5750,27 @@ describe('reportService.generateRentalRevenueReport', () => {
     expect(result.rows[0].totalRevenue).toBe(3500)
     expect(result.summary.totalRevenue).toBe(3500)
     expect(result.summary.totalBookings).toBe(2)
+  })
+
+  // Real bug found+fixed in the zero-logical-errors audit: totalRevenue
+  // used to accumulate via plain `+=`/`reduce` on raw floats instead of
+  // this codebase's own established Decimal-safe sumCurrency.
+  it('sums float-imprecise line totals per product and overall to a clean value', async () => {
+    const db = {
+      rentalBookingItem: {
+        findMany: vi.fn().mockResolvedValue([
+          { lineTotal: 0.1, product: { productName: 'Party Tent', rentalTrackingType: 'BULK' }, booking: { startDateTime: new Date('2026-07-05T00:00:00Z'), endDateTime: new Date('2026-07-08T00:00:00Z') } },
+          { lineTotal: 0.2, product: { productName: 'Party Tent', rentalTrackingType: 'BULK' }, booking: { startDateTime: new Date('2026-07-10T00:00:00Z'), endDateTime: new Date('2026-07-12T00:00:00Z') } },
+        ]),
+      },
+      product: { findMany: vi.fn().mockResolvedValue([]) },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateRentalRevenueReport({ dateFrom: '2026-07-01', dateTo: '2026-07-31' })
+
+    expect(result.rows[0].totalRevenue).toBe(0.3)
+    expect(result.summary.totalRevenue).toBe(0.3)
   })
 
   it('computes utilizationPercent from real day-overlap with the requested range, not a naive booking-count ratio', async () => {
