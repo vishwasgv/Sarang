@@ -231,4 +231,29 @@ describe('journalEntryService.reverseJournalEntry', () => {
 
     expect(vi.mocked(logAction)).toHaveBeenCalledWith(expect.objectContaining({ action: 'JOURNAL_ENTRY_REVERSED', tx: db }))
   })
+
+  // Real race found+fixed in the zero-logical-errors audit: the pre-
+  // transaction `original` read was only ever used as a display/existence
+  // check — two concurrent reverseJournalEntry calls for the same entry
+  // could both pass the JE-004 guard before either write committed, both
+  // running reverseEntryTx and double-posting the reversal into the GL.
+  it('re-reads the entry fresh inside the transaction and blocks a raced double-reversal', async () => {
+    const db = makeDb()
+    // Pre-transaction read sees "not yet reversed" — but by the time the
+    // transaction opens, a concurrent call already reversed it.
+    let callCount = 0
+    db.journalEntry.findUnique = vi.fn().mockImplementation(() => {
+      callCount++
+      return Promise.resolve(makeEntry({ isReversed: callCount > 1 }))
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await journalEntryService.reverseJournalEntry('je-1', 'Mistake')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('JE-004')
+    expect(db.journalEntry.update).not.toHaveBeenCalled()
+    // Proves the in-tx read actually happened (not just the pre-tx one).
+    expect(db.journalEntry.findUnique).toHaveBeenCalledTimes(2)
+  })
 })

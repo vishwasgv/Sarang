@@ -182,7 +182,20 @@ export const journalEntryService = {
       const lockError = await assertNotLocked(original.entryDate)
       if (lockError) return lockError
 
-      const reversal = await db.$transaction((tx) => reverseEntryTx(tx, original, reason, userId))
+      // Real race found in the zero-logical-errors audit: `original` above is
+      // a pre-transaction read used only as a display/existence check — two
+      // concurrent reverseJournalEntry calls for the same entry (double-click,
+      // two staff members) could both pass the JE-004 guard before either
+      // write committed, both running reverseEntryTx and double-posting the
+      // reversal into the GL. Re-read fresh inside the transaction and
+      // re-check isReversed there, mirroring reverseEntryBySourceTx's own
+      // in-tx-fresh-read pattern (which is already safe for every other caller).
+      const reversal = await db.$transaction(async (tx) => {
+        const fresh = await tx.journalEntry.findUnique({ where: { id }, include: { lines: true } })
+        if (!fresh) throw new ServiceError('JE-003', 'Journal entry not found.')
+        if (fresh.isReversed) throw new ServiceError('JE-004', 'This journal entry has already been reversed.')
+        return reverseEntryTx(tx, fresh, reason, userId)
+      })
       return { success: true, data: reversal }
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }

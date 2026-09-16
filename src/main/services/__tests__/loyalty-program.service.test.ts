@@ -21,12 +21,23 @@ function makeCard(overrides: Record<string, unknown> = {}) {
 function makeDb(overrides: Record<string, unknown> = {}) {
   const db = {
     loyaltyProgram: { findFirst: vi.fn().mockResolvedValue(makeProgram()), create: vi.fn().mockResolvedValue(makeProgram()), update: vi.fn().mockResolvedValue(makeProgram()) },
-    loyaltyCard: { findUnique: vi.fn().mockResolvedValue(makeCard()), findMany: vi.fn().mockResolvedValue([makeCard()]), upsert: vi.fn().mockResolvedValue(makeCard()), update: vi.fn().mockResolvedValue(makeCard()) },
+    loyaltyCard: {
+      findUnique: vi.fn().mockResolvedValue(makeCard()), findMany: vi.fn().mockResolvedValue([makeCard()]),
+      upsert: vi.fn().mockResolvedValue(makeCard()), update: vi.fn().mockResolvedValue(makeCard()),
+      // Atomic conditional claim used by redeemReward's race fix — defaults
+      // to "won the claim" (count: 1); a raced-out redemption test overrides
+      // this to 0.
+      updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+    },
     loyaltyPunchEvent: { create: vi.fn().mockResolvedValue({}) },
     loyaltyRedemption: { create: vi.fn().mockResolvedValue({}), count: vi.fn().mockResolvedValue(0) },
-    $transaction: vi.fn((ops: unknown) => Promise.all(ops as Promise<unknown>[])),
     ...overrides
   } as Record<string, any>
+  // redeemReward now uses callback-form $transaction (atomic conditional
+  // claim, needs to branch on a count) instead of the old array form.
+  db.$transaction = vi.fn((arg: unknown) =>
+    Array.isArray(arg) ? Promise.all(arg) : (arg as (tx: unknown) => unknown)(db)
+  )
   return db
 }
 
@@ -123,17 +134,49 @@ describe('loyaltyProgramService.redeemReward', () => {
   })
 
   it('subtracts exactly punchesRequired rather than resetting to 0, preserving surplus punches', async () => {
-    const db = makeDb({ loyaltyCard: { findUnique: vi.fn().mockResolvedValue(makeCard({ currentPunches: 7 })), update: vi.fn().mockResolvedValue({}) } })
+    const db = makeDb({
+      loyaltyCard: {
+        findUnique: vi.fn().mockResolvedValue(makeCard({ currentPunches: 7 })),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
+      }
+    })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    await loyaltyProgramService.redeemReward('cust-1')
+    const res = await loyaltyProgramService.redeemReward('cust-1')
 
-    expect(db.loyaltyCard.update).toHaveBeenCalledWith(expect.objectContaining({
-      where: { id: 'card-1' }, data: expect.objectContaining({ currentPunches: { decrement: 5 }, totalRewardsRedeemed: { increment: 1 } })
+    expect(res.success).toBe(true)
+    expect(db.loyaltyCard.updateMany).toHaveBeenCalledWith(expect.objectContaining({
+      where: { id: 'card-1', currentPunches: { gte: 5 } },
+      data: expect.objectContaining({ currentPunches: { decrement: 5 }, totalRewardsRedeemed: { increment: 1 } })
     }))
     expect(db.loyaltyRedemption.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ loyaltyCardId: 'card-1', punchesUsed: 5, rewardDescription: 'Free coffee' })
     }))
+  })
+
+  // Real race found+fixed in the zero-logical-errors audit: the eligibility
+  // gate was only checked against a stale pre-transaction read. Two
+  // concurrent redemptions for a customer sitting at exactly
+  // punchesRequired (double-click, two staff terminals) both used to pass
+  // the guard and both execute, giving away two rewards for one customer's
+  // punches. The atomic conditional claim (updateMany gated on
+  // currentPunches >= punchesRequired) means only one concurrent call can
+  // win; the loser must see LTY-003, not silently succeed.
+  it('rejects a raced double-redemption when the atomic claim loses (currentPunches already spent by a concurrent call)', async () => {
+    const db = makeDb({
+      loyaltyCard: {
+        findUnique: vi.fn().mockResolvedValue(makeCard({ currentPunches: 5 })),
+        // A concurrent redemption already claimed this card's punches.
+        updateMany: vi.fn().mockResolvedValue({ count: 0 })
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await loyaltyProgramService.redeemReward('cust-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('LTY-003')
+    expect(db.loyaltyRedemption.create).not.toHaveBeenCalled()
   })
 })
 

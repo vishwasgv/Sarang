@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { ServiceError } from '../errors/service-error'
 import type { UpsertLoyaltyProgramPayload } from '../validation/loyalty-program.validation'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -73,27 +74,41 @@ export const loyaltyProgramService = {
         return { success: false, error: { code: 'LTY-003', message: `This customer has ${card?.currentPunches ?? 0} of ${program.punchesRequired} punches needed.` } }
       }
 
-      const [, updatedCard] = await db.$transaction([
-        db.loyaltyRedemption.create({
+      // Real race found in the zero-logical-errors audit: the eligibility
+      // gate above was only checked against this stale pre-transaction read
+      // — the array-form $transaction below couldn't branch on a fresh
+      // re-check, so two concurrent redemptions for a customer sitting at
+      // exactly punchesRequired (double-click, two staff terminals) both
+      // passed the guard and both executed, giving away two rewards for one
+      // customer's punches and driving currentPunches negative. Switched to
+      // a callback-form transaction with an atomic conditional claim —
+      // exactly one concurrent call can win.
+      const updatedCard = await db.$transaction(async (tx) => {
+        const claim = await tx.loyaltyCard.updateMany({
+          where: { id: card.id, currentPunches: { gte: program.punchesRequired } },
+          // Subtract exactly what was required rather than resetting to 0 — a
+          // customer with surplus punches beyond the threshold keeps them
+          // toward their next reward instead of losing them.
+          data: { currentPunches: { decrement: program.punchesRequired }, totalRewardsRedeemed: { increment: 1 } }
+        })
+        if (claim.count === 0) {
+          throw new ServiceError('LTY-003', `This customer has ${card.currentPunches} of ${program.punchesRequired} punches needed.`)
+        }
+        await tx.loyaltyRedemption.create({
           data: {
             loyaltyCardId: card.id,
             punchesUsed: program.punchesRequired,
             rewardDescription: program.rewardDescription,
             redeemedById: userId ?? null
           }
-        }),
-        // Subtract exactly what was required rather than resetting to 0 — a
-        // customer with surplus punches beyond the threshold keeps them
-        // toward their next reward instead of losing them.
-        db.loyaltyCard.update({
-          where: { id: card.id },
-          data: { currentPunches: { decrement: program.punchesRequired }, totalRewardsRedeemed: { increment: 1 } }
         })
-      ])
+        return tx.loyaltyCard.findUnique({ where: { id: card.id } })
+      })
 
       await logAction({ userId, action: 'LOYALTY_REWARD_REDEEMED', entityType: 'LoyaltyCard', entityId: card.id, newValue: { rewardDescription: program.rewardDescription, punchesUsed: program.punchesRequired } })
       return { success: true, data: updatedCard }
     } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to redeem reward.' } }
     }
   },
