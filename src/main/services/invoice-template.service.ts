@@ -1,7 +1,28 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { printService } from './print.service'
 import type { InvoiceTemplateConfig } from './print.service'
 import type { CreateInvoiceTemplatePayload, UpdateInvoiceTemplatePayload } from '../validation/invoice-template.validation'
+
+// A self-contained sample invoice for previewTemplate() below — used only
+// when the business has no real invoice yet to preview against (a brand
+// new install should still be able to see what a template looks like
+// before its first sale, not just after).
+const SAMPLE_INVOICE = {
+  invoiceNumber: 'INV-SAMPLE-0001',
+  invoiceDate: new Date(),
+  status: 'ACTIVE',
+  invoiceType: 'SALE',
+  customer: { customerName: 'Sample Customer', phone: '+91 98765 43210', customerCode: 'CUST-0001' },
+  items: [
+    { productName: 'Sample Product A', product: { unit: 'PCS' }, quantity: 2, unitPrice: 500, discountAmount: 0, taxRate: 18, taxAmount: 180, lineTotal: 1180, hsnCode: '1234' },
+    { productName: 'Sample Product B', product: { unit: 'PCS' }, quantity: 1, unitPrice: 300, discountAmount: 30, taxRate: 18, taxAmount: 48.6, lineTotal: 318.6, hsnCode: '5678' }
+  ],
+  subtotal: 1300, discountAmount: 30, taxAmount: 228.6, roundingAmount: 0.4, totalAmount: 1499,
+  paidAmount: 0, balanceAmount: 1499, paymentStatus: 'UNPAID',
+  notes: null, gstType: 'CGST_SGST', foreignCurrencyCode: null, foreignExchangeRate: null, foreignTotalAmount: null,
+  dueDate: null, buyerState: null, deliveryAddress: null
+}
 
 // The phase's own named "wow factor" item. 4 seeded starter configs — a
 // handful of accent-color/footer/density combinations, not separate code
@@ -24,6 +45,7 @@ const STARTER_TEMPLATES: Array<{ name: string; config: InvoiceTemplateConfig }> 
       accentColor: '#059669', density: 'comfortable',
       footerText: 'Thank you for your business! — GST Invoice, computer-generated.',
       showAmountInWords: true, showBankDetails: true, showSignatureBlock: true,
+      termsAndConditions: 'Goods once sold will not be taken back or exchanged. Subject to local jurisdiction only. E&OE.',
     },
   },
 ]
@@ -144,6 +166,35 @@ export const invoiceTemplateService = {
       return JSON.parse(template.configJson)
     } catch {
       return null
+    }
+  },
+
+  // Renders a NOT-yet-saved config (straight from the editor form) against
+  // real data — the business's own most recent invoice if one exists,
+  // otherwise SAMPLE_INVOICE — so a template's actual appearance is visible
+  // before committing to it. Fixes the exact complaint that shipped with
+  // Phase 63: 4 unlabeled options with no way to tell what any of them
+  // actually produce.
+  async previewTemplate(config: InvoiceTemplateConfig, paperType: 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM'): Promise<{ success: true; data: string } | { success: false; error: { code: string; message: string } }> {
+    try {
+      const db = getPrisma()
+      const [realInvoice, profile] = await Promise.all([
+        db.invoice.findFirst({
+          orderBy: { createdAt: 'desc' },
+          include: {
+            customer: { select: { customerName: true, phone: true, customerCode: true } },
+            items: { include: { product: { select: { unit: true } } } }
+          }
+        }),
+        db.businessProfile.findFirst()
+      ])
+      const invoiceData = realInvoice ?? SAMPLE_INVOICE
+      const html = paperType === 'A4'
+        ? await printService.generateInvoiceHtml(invoiceData as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1], config)
+        : await printService.generateReceiptHtml(invoiceData as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperType === 'THERMAL_58MM' ? '58mm' : '80mm', config)
+      return { success: true, data: html }
+    } catch (err) {
+      return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to render preview.' } }
     }
   }
 }

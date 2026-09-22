@@ -1,9 +1,10 @@
-import React, { useEffect, useState } from 'react'
+import React, { useEffect, useMemo, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { Plus, Edit2, Archive, Check, X, FolderOpen } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
+import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -14,7 +15,69 @@ interface Category {
   id: string
   name: string
   description?: string | null
+  parentCategoryId?: string | null
   _count?: { products: number }
+}
+
+interface CategoryRow extends Category {
+  depth: number
+}
+
+// Flattens the parent/child tree (ProductCategory.parentCategoryId — always
+// supported by the schema/service layer, just never surfaced in this UI
+// before 2026-09-22) into a depth-first, indentable list. Orphaned rows
+// (parent got archived/deleted without cascading) fall back to depth 0
+// instead of vanishing.
+function buildCategoryTree(categories: Category[]): CategoryRow[] {
+  const byParent = new Map<string, Category[]>()
+  for (const cat of categories) {
+    const key = cat.parentCategoryId ?? ''
+    if (!byParent.has(key)) byParent.set(key, [])
+    byParent.get(key)!.push(cat)
+  }
+  const ids = new Set(categories.map(c => c.id))
+  const rows: CategoryRow[] = []
+  const visited = new Set<string>()
+  function walk(parentKey: string, depth: number) {
+    const children = (byParent.get(parentKey) ?? []).slice().sort((a, b) => a.name.localeCompare(b.name))
+    for (const cat of children) {
+      if (visited.has(cat.id)) continue // defensive: a cycle should never exist, but never infinite-loop if one does
+      visited.add(cat.id)
+      rows.push({ ...cat, depth })
+      walk(cat.id, depth + 1)
+    }
+  }
+  walk('', 0)
+  // Any category whose parentCategoryId points at a now-missing category —
+  // still show it, just at depth 0, instead of silently dropping it.
+  for (const cat of categories) {
+    if (!visited.has(cat.id) && (!cat.parentCategoryId || !ids.has(cat.parentCategoryId))) {
+      visited.add(cat.id)
+      rows.push({ ...cat, depth: 0 })
+    }
+  }
+  return rows
+}
+
+// Every id that is cat itself or one of its descendants — never a valid
+// parent choice for cat (would create a cycle the backend doesn't guard
+// against beyond the direct self-parent case).
+function descendantIds(categories: Category[], catId: string): Set<string> {
+  const byParent = new Map<string, string[]>()
+  for (const cat of categories) {
+    const key = cat.parentCategoryId ?? ''
+    if (!byParent.has(key)) byParent.set(key, [])
+    byParent.get(key)!.push(cat.id)
+  }
+  const result = new Set<string>([catId])
+  const stack = [catId]
+  while (stack.length) {
+    const id = stack.pop()!
+    for (const childId of byParent.get(id) ?? []) {
+      if (!result.has(childId)) { result.add(childId); stack.push(childId) }
+    }
+  }
+  return result
 }
 
 interface CategoryManageModalProps {
@@ -30,11 +93,13 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
   const [loading, setLoading] = useState(true)
   const [addName, setAddName] = useState('')
   const [addDesc, setAddDesc] = useState('')
+  const [addParentId, setAddParentId] = useState('')
   const [adding, setAdding] = useState(false)
   const [showAddForm, setShowAddForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
   const [editName, setEditName] = useState('')
   const [editDesc, setEditDesc] = useState('')
+  const [editParentId, setEditParentId] = useState('')
   const [saving, setSaving] = useState(false)
   const [archiveTarget, setArchiveTarget] = useState<Category | null>(null)
   const [archiving, setArchiving] = useState(false)
@@ -42,6 +107,8 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
   const canCreate = hasPermission('products.create')
   const canUpdate = hasPermission('products.update')
   const canArchive = hasPermission('products.archive')
+
+  const rows = useMemo(() => buildCategoryTree(categories), [categories])
 
   async function loadCategories() {
     setLoading(true)
@@ -64,11 +131,12 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     if (!addName.trim()) return
     setAdding(true)
     try {
-      const res = await window.api.categories.create({ name: addName.trim(), description: addDesc.trim() || undefined })
+      const res = await window.api.categories.create({ name: addName.trim(), description: addDesc.trim() || undefined, parentCategoryId: addParentId || undefined })
       if (res.success) {
         toastSuccess(t('products.categoryAddedTitle'), t('products.categoryCreatedMessage', { name: addName.trim() }))
         setAddName('')
         setAddDesc('')
+        setAddParentId('')
         setShowAddForm(false)
         loadCategories()
       } else {
@@ -85,19 +153,21 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
     setEditId(cat.id)
     setEditName(cat.name)
     setEditDesc(cat.description ?? '')
+    setEditParentId(cat.parentCategoryId ?? '')
   }
 
   function cancelEdit() {
     setEditId(null)
     setEditName('')
     setEditDesc('')
+    setEditParentId('')
   }
 
   async function handleSaveEdit(cat: Category) {
     if (!editName.trim()) return
     setSaving(true)
     try {
-      const res = await window.api.categories.update({ id: cat.id, name: editName.trim(), description: editDesc.trim() || undefined })
+      const res = await window.api.categories.update({ id: cat.id, name: editName.trim(), description: editDesc.trim() || undefined, parentCategoryId: editParentId || null })
       if (res.success) {
         toastSuccess(t('products.categoryUpdatedTitle'), t('products.categorySavedMessage', { name: editName.trim() }))
         cancelEdit()
@@ -166,14 +236,25 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
                 value={addDesc}
                 onChange={(e) => setAddDesc(e.target.value)}
               />
+              <Select
+                aria-label={t('products.parentCategoryLabel')}
+                value={addParentId}
+                onChange={(e) => setAddParentId(e.target.value)}
+                className="h-9 text-sm"
+              >
+                <option value="">{t('products.noParentOption')}</option>
+                {rows.map(r => <option key={r.id} value={r.id}>{'— '.repeat(r.depth)}{r.name}</option>)}
+              </Select>
               <div className="flex gap-2">
                 <Button size="sm" onClick={handleAdd} loading={adding} disabled={!addName.trim()}>{t('common.add')}</Button>
-                <Button variant="secondary" size="sm" onClick={() => { setShowAddForm(false); setAddName(''); setAddDesc('') }}>{t('common.cancel')}</Button>
+                <Button variant="secondary" size="sm" onClick={() => { setShowAddForm(false); setAddName(''); setAddDesc(''); setAddParentId('') }}>{t('common.cancel')}</Button>
               </div>
             </div>
           )}
 
-          {/* Category list */}
+          {/* Category list — depth-first, indented so parent/child relationships
+              (e.g. Clothing & Apparel > Sarees, Kurta, Shirts...) are visible
+              at a glance instead of appearing as one flat list. */}
           {loading ? (
             Array.from({ length: 3 }).map((_, i) => (
               <div key={i} className="h-12 bg-slate-100 dark:bg-slate-800 rounded-lg animate-pulse" />
@@ -184,24 +265,37 @@ export function CategoryManageModal({ open, onClose }: CategoryManageModalProps)
               <p className="text-sm text-slate-400">{t('products.noCategoriesYet')}</p>
             </div>
           ) : (
-            categories.map((cat) => (
-              <Card key={cat.id} padding="sm" hoverable className="flex items-center gap-3">
+            rows.map((cat) => (
+              <Card key={cat.id} padding="sm" hoverable className="flex items-center gap-3" style={{ marginInlineStart: cat.depth * 20 }}>
                 {editId === cat.id ? (
-                  <div className="flex-1 flex items-center gap-2">
-                    <input
-                      value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
-                      autoFocus
-                      className="flex-1 h-8 px-2 text-sm rounded border border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand"
-                      onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(cat); if (e.key === 'Escape') cancelEdit() }}
-                    />
-                    <button onClick={() => handleSaveEdit(cat)} disabled={saving || !editName.trim()}
-                      className="p-1.5 rounded text-success hover:bg-success/10 disabled:opacity-40 transition-colors" title={t('common.save')}>
-                      <Check size={14} />
-                    </button>
-                    <button onClick={cancelEdit} className="p-1.5 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('common.cancel')}>
-                      <X size={14} />
-                    </button>
+                  <div className="flex-1 flex flex-col gap-2">
+                    <div className="flex items-center gap-2">
+                      <input
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        autoFocus
+                        className="flex-1 h-8 px-2 text-sm rounded border border-brand/50 focus:outline-none focus:ring-2 focus:ring-brand"
+                        onKeyDown={(e) => { if (e.key === 'Enter') handleSaveEdit(cat); if (e.key === 'Escape') cancelEdit() }}
+                      />
+                      <button onClick={() => handleSaveEdit(cat)} disabled={saving || !editName.trim()}
+                        className="p-1.5 rounded text-success hover:bg-success/10 disabled:opacity-40 transition-colors" title={t('common.save')}>
+                        <Check size={14} />
+                      </button>
+                      <button onClick={cancelEdit} className="p-1.5 rounded text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors" title={t('common.cancel')}>
+                        <X size={14} />
+                      </button>
+                    </div>
+                    <select
+                      aria-label={t('products.parentCategoryLabel')}
+                      value={editParentId}
+                      onChange={(e) => setEditParentId(e.target.value)}
+                      className="h-8 px-2 text-sm rounded border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                    >
+                      <option value="">{t('products.noParentOption')}</option>
+                      {rows.filter(r => !descendantIds(categories, cat.id).has(r.id)).map(r => (
+                        <option key={r.id} value={r.id}>{'— '.repeat(r.depth)}{r.name}</option>
+                      ))}
+                    </select>
                   </div>
                 ) : (
                   <>

@@ -24,6 +24,27 @@ import { getChapterTitle, getChapterContentWithFallback } from '@modules/manual/
 // business-data-only refusal this whole feature exists to avoid — just for
 // a different trigger phrase than the one already fixed.
 const NAV_INTENT_PATTERN = /\bhow (do|can|to|would|does)\b|\bwhere (is|can|do|to)\b|\bcan i\b|\bis there (a |any )?way to\b|\b(what'?s|what is) the (way|best way) to\b|\bany way to\b/i
+// REAL BUG found+fixed 2026-09-22, from live usage: the founder himself typed
+// bare feature names ("kot", "waiters view") with no surrounding sentence at
+// all — a completely normal, terse way to ask "where is/what is this
+// feature" — and NAV_INTENT_PATTERN above only recognizes a full
+// interrogative sentence shape, so these never even got a chance at a Manual
+// lookup. They fell straight through to the slow AI data pipeline instead
+// (isDeterministicallyOutOfScope doesn't catch them either — they're not
+// advice-seeking), which has zero knowledge of the app's UI, and burned a
+// genuine 90-144 SECONDS of local-model inference before refusing with the
+// same misleading "I can only answer questions about your business data"
+// message this whole file exists to avoid.
+//
+// Deliberately a small, hand-picked list of unambiguous, pure-UI/feature
+// nouns — never words a genuine business-data question would use (unlike
+// "settings" or "inventory", which are both manual-chapter topics AND
+// plausible data-query subjects) — so this can safely OR into the gate
+// without ever stealing a real data question's shot at the fast-path/model
+// pipeline. Covers exactly the LAN-server features (Doctor Pad, Owner View,
+// Field Orders, Token Queue, Kitchen Display, QR ordering) plus the two
+// terms actually seen missing this session.
+const FEATURE_NAME_PATTERN = /\bkot\b|\bwaiters?('?s)? view\b|\bdoctor'?s? pad\b|\bowner('?s)? view\b|\btoken queue\b|\bqr (order|ordering|menu)\b|\bfield orders?\b|\bkitchen display\b|\bkitchen order ticket\b/i
 const STOPWORDS = new Set(['how', 'do', 'i', 'can', 'to', 'the', 'a', 'an', 'is', 'are', 'where', 'find', 'my', 'me', 'in', 'on', 'for', 'of', 'what', 'does', 'you', 'and'])
 
 function tokenize(s: string): string[] {
@@ -47,11 +68,22 @@ export type ManualMatchResult =
   // pipeline as a genuine business-data question, unchanged.
   | { kind: 'none' }
 
-export function findManualMatch(question: string, locale: string): ManualMatchResult {
-  if (!NAV_INTENT_PATTERN.test(question)) return { kind: 'none' }
+export interface ScoredManualChapter { slug: string; title: string; score: number; confident: boolean }
+
+// 2026-09-22 — extracted from findManualMatch below so CommandPalette.tsx's
+// own Manual search (Ctrl+K) can reuse the exact same body-aware matching
+// instead of its previous, much weaker `title.includes(query)` filter. REAL
+// BUG found live: that title-only filter meant a huge fraction of the
+// Manual was effectively unsearchable — anything covered mid-chapter but not
+// literally present in the chapter's own title (e.g. "kot", "eraser",
+// "waiter view") returned zero Command Palette results, even though this
+// exact term-frequency scorer (already proven for the AI chat's navigation
+// matching) finds it instantly. One scoring implementation, two callers —
+// avoids the two ever silently drifting apart on what counts as a match.
+export function scoreManualChapters(question: string, locale: string): ScoredManualChapter[] {
   const qWords = new Set(tokenize(question))
-  if (qWords.size === 0) return { kind: 'none' }
-  const scored: Array<{ slug: string; title: string; score: number; confident: boolean }> = []
+  if (qWords.size === 0) return []
+  const scored: ScoredManualChapter[] = []
   for (const chapter of MANUAL_CHAPTERS) {
     const title = getChapterTitle(locale, chapter.slug, chapter.title)
     const titleWords = tokenize(title)
@@ -80,8 +112,14 @@ export function findManualMatch(question: string, locale: string): ManualMatchRe
     const score = occurrenceScore + (titleHit ? 20 : 0)
     scored.push({ slug: chapter.slug, title, score, confident: matchedDistinct.length >= 2 || strongMatch })
   }
-  if (scored.length === 0) return { kind: 'none' }
   scored.sort((a, b) => b.score - a.score)
+  return scored
+}
+
+export function findManualMatch(question: string, locale: string): ManualMatchResult {
+  if (!NAV_INTENT_PATTERN.test(question) && !FEATURE_NAME_PATTERN.test(question)) return { kind: 'none' }
+  const scored = scoreManualChapters(question, locale)
+  if (scored.length === 0) return { kind: 'none' }
   const best = scored[0]
   if (best.confident) return { kind: 'confident', chapter: { slug: best.slug, title: best.title } }
   return { kind: 'weak', candidates: scored.slice(0, 3).map(({ slug, title }) => ({ slug, title })) }

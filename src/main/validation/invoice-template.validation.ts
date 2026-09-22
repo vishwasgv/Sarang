@@ -7,6 +7,14 @@ const InvoiceTemplateConfigSchema = z.object({
   showAmountInWords: z.boolean().optional(),
   showBankDetails: z.boolean().optional(),
   showSignatureBlock: z.boolean().optional(),
+  showUpiQr: z.boolean().optional(),
+  termsAndConditions: z.string().max(1000).optional(),
+  showLogo: z.boolean().optional(),
+})
+
+export const PreviewInvoiceTemplateSchema = z.object({
+  config: InvoiceTemplateConfigSchema,
+  paperType: z.enum(['A4', 'THERMAL_80MM', 'THERMAL_58MM']),
 })
 
 export const CreateInvoiceTemplateSchema = z.object({

@@ -13,7 +13,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
 
-interface Category { id: string; name: string }
+interface Category { id: string; name: string; parentCategoryId?: string | null }
 interface Inventory { quantity: number; reorderLevel: number; reorderQuantity: number }
 interface Product {
   id: string
@@ -303,6 +303,7 @@ export function ProductsScreen() {
         onSaved={loadData}
         product={editProduct}
         categories={categories}
+        onCategoryCreated={(cat) => setCategories(prev => [...prev, cat].sort((a, b) => a.name.localeCompare(b.name)))}
       />
 
       <ConfirmDialog

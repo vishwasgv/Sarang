@@ -128,6 +128,12 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'plumbing.fittingCrossSellMisses', patterns: [/(fitting|part)s?.*(missed|forgot|cross.?sell)/i, /cross.?sell.*(fitting|part)/i] },
   { template: 'plumbing.materialSalesMix', patterns: [/material.*(mix|sales)/i, /(pvc|cpvc|copper).*sales/i] },
   { template: 'grocery.mrpViolations', patterns: [/\bmrp\b/i, /above mrp/i, /over mrp/i] },
+  // Checked BEFORE sales.totalThisMonth below — same "narrower pattern must
+  // win" reasoning as every other ordering comment in this array. Real gap
+  // found live 2026-09-22 (see sales.totalLastMonth's own comment): this had
+  // zero fast-path coverage before, so it always paid the full slow-model
+  // cost and was still frequently misrouted to totalThisMonth once there.
+  { template: 'sales.totalLastMonth', patterns: [/\blast month'?s?\s+sales?\b/i, /(sold|sell|sale).*last month/i] },
   { template: 'sales.totalThisMonth', patterns: [/\bthis month'?s?\s+sales?\b/i, /(sold|sell|sale).*this month/i] },
   { template: 'sales.averageInvoiceValue', patterns: [/average\s+(invoice|order|sale|bill)/i] },
   { template: 'inventory.lowStock', patterns: [/low\s+(on\s+)?stock/i, /running\s+(low|out)/i, /what'?s\s+low/i] },
@@ -390,8 +396,22 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   // before this fix — the worst failure mode, since the question was
   // genuinely answerable and the assistant said it couldn't help at all.
   { template: 'finance.biggestExpenseCategory', patterns: [/biggest expense category/i] },
-  { template: 'documents.invoiceByNumber', patterns: [/(look\s*up|find|show me)\s+invoice\b/i] },
-  { template: 'documents.purchaseOrderByNumber', patterns: [/(look\s*up|find|show me)\s+purchase\s+order\b/i] },
+  // 2026-09-22 — real gap found live: "fetch details of INV-2026-000007" (no
+  // "look up/find/show me" + "invoice" combo, just the number itself) fell
+  // through this narrow verb-phrase pattern, then the 1.5B model also failed
+  // to classify it among 110+ template names, and the question was refused
+  // outright even though a customer typing a specific invoice/PO number at
+  // all is an almost unambiguous signal of what they want — regardless of
+  // which verb they wrapped it in ("fetch", "pull up", "what's the status
+  // of", "give me", ...). invoice_prefix is a configurable Setting
+  // (billing.service.ts's generateInvoiceNumber), so this can't hardcode
+  // "INV" — instead it matches the one thing that's actually fixed: the
+  // {prefix}-{year}-{6-digit sequence} SHAPE. PO numbers use a fixed "PO"
+  // prefix with no year (sequence.service.ts's generateSequenceNumber via
+  // purchase-order.service.ts), so that one can safely match the literal
+  // prefix.
+  { template: 'documents.invoiceByNumber', patterns: [/(look\s*up|find|show me)\s+invoice\b/i, /\b[A-Za-z]{2,8}-\d{4}-\d{4,8}\b/] },
+  { template: 'documents.purchaseOrderByNumber', patterns: [/(look\s*up|find|show me)\s+purchase\s+order\b/i, /\bPO-\d{3,8}\b/i] },
   { template: 'customers.byNameOrPhone', patterns: [/(look\s*up|find)\s+customer\b/i] },
   { template: 'suppliers.byName', patterns: [/(look\s*up|find)\s+supplier\b/i] },
   { template: 'sales.cancelledInvoices', patterns: [/cancelled invoices?/i] },
@@ -503,7 +523,24 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'grocery.looseVsPackagedMix', patterns: [/loose.*(vs\.?|versus).*packaged/i, /loose.*packaged/i] },
   { template: 'bakery.preOrderProductionSheet', patterns: [/production sheet/i, /pre.?order.*production/i] },
   { template: 'toursTravels.commissionByAgent', patterns: [/commission.*agent/i, /agent.*commission/i] },
-  { template: 'toursTravels.vehicleServiceDue', patterns: [/vehicle.*(service due|due for service)/i, /fleet.*(service|km)/i] }
+  { template: 'toursTravels.vehicleServiceDue', patterns: [/vehicle.*(service due|due for service)/i, /fleet.*(service|km)/i] },
+  // 2026-09-22 — real gap found live: "how many cold coffe do i have??" had
+  // zero fast-path coverage before this (inventory.productByNameOrSku had
+  // NONE at all) and always paid the full slow-model cost, which then
+  // misrouted it entirely. Placed last, after every more specific
+  // "how much/many ... in/at ..." pattern above (bank balance, stock at a
+  // named location, statutory liability, etc.) so those keep winning first
+  // — this is deliberately the generic catch-all for "how many/much <item>
+  // do I have" once nothing more specific already claimed it.
+  //
+  // REAL BUG found+fixed in this same pass, caught by its own test suite:
+  // the first version of this pattern had no exclusion at all, so "How many
+  // customers do I have?" (customers.totalCount — a real, pre-existing,
+  // already-tested template with no fast-path of its own) also matched this
+  // and got hijacked into an inventory lookup for a product literally named
+  // "customers". The negative lookahead excludes every other entity this
+  // app already has its own dedicated "how many X" count template for.
+  { template: 'inventory.productByNameOrSku', patterns: [/\bhow (?:many|much)\s+(?!customers?\b|suppliers?\b|vendors?\b|employees?\b|staff\b|products?\b|invoices?\b|orders?\b|users?\b|quotations?\b|bills?\b).+?\s+(?:do i have|i have|is left|are left|in stock|remaining|do we have|we have)\b/i] }
 ]
 
 function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
@@ -606,6 +643,27 @@ function extractSearchTerm(question: string): string | null {
   if (codeMatches) {
     const longest = codeMatches.filter((t) => t.length >= 3).sort((a, b) => b.length - a.length)[0]
     if (longest) return longest
+  }
+
+  // REAL BUG found+fixed 2026-09-22, from live usage: "how many cold coffe
+  // do i have??" had NO extractable search term at all before this — the
+  // product name is lowercase and multi-word, so it matched neither the
+  // code-like regex above nor the Title-Case-run fallback below, leaving
+  // params.searchTerm undefined. inventory.productByNameOrSku's own isEmpty
+  // guard then fired immediately, and the model — asked to classify with no
+  // template able to actually answer — misrouted the question entirely
+  // (observed live: to inventory.topRevenueProducts, a completely different
+  // template) after a 75-second wait. A stock/quantity question has a
+  // distinctive, common shape ("how many/much X do I have/in stock/left/
+  // remaining") — pull the product name out of THAT shape specifically,
+  // same "narrow, deterministic, only for a proven real phrasing" scoping
+  // every other pattern in this file already follows, rather than loosening
+  // the general-purpose extractor above in a way that could start grabbing
+  // the wrong words out of unrelated questions.
+  const stockPhraseMatch = question.match(/\bhow (?:many|much)\s+(.+?)\s+(?:do i have|i have|is left|are left|left|in stock|remaining|do we have|we have)\b/i)
+  if (stockPhraseMatch) {
+    const phrase = stockPhraseMatch[1].trim().replace(/[?.,!]/g, '')
+    if (phrase.length >= 2) return phrase
   }
 
   const words = question.trim().split(/\s+/)
@@ -750,6 +808,29 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
         headline: `This week's sales: ${formatAmountForSpeech(kpis.weekSales, sym)}`,
         details: [`${kpis.weekTrend >= 0 ? 'up' : 'down'} ${Math.abs(kpis.weekTrend).toFixed(1)}% compared to last week`],
         isEmpty: kpis.weekSales === 0
+      }
+    }
+  },
+  // 2026-09-22 — real gap found live: "what are my last month sales" had no
+  // matching template at all (only totalToday/totalThisWeek/totalThisMonth
+  // existed), so the model had nothing correct to route to and always
+  // misclassified it — observed live routing to totalThisMonth itself,
+  // silently answering with the wrong period's figure after a 92-second
+  // wait. Unlike totalThisMonth (which reads the Dashboard's own KPI cache,
+  // hardcoded to the current calendar month), this uses generateSalesReport
+  // with an explicit prior-month date range — the same reusable, arbitrary-
+  // range report function averageInvoiceValue below already uses.
+  'sales.totalLastMonth': {
+    category: 'sales',
+    async execute(_params, sym) {
+      const now = new Date()
+      const lastMonthStart = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+      const lastMonthEnd = new Date(now.getFullYear(), now.getMonth(), 0) // day 0 of this month = last day of the prior month
+      const report = await reportService.generateSalesReport({ dateFrom: toLocalISODate(lastMonthStart), dateTo: toLocalISODate(lastMonthEnd) })
+      return {
+        headline: `Last month's sales: ${formatAmountForSpeech(report.summary.totalRevenue, sym)}`,
+        details: [`across ${report.summary.totalInvoices} invoice${report.summary.totalInvoices === 1 ? '' : 's'}`],
+        isEmpty: report.summary.totalInvoices === 0
       }
     }
   },

@@ -7,6 +7,7 @@ import { ToastContainer } from '@shared/ui/feedback/Toast'
 import { CommandPalette } from '@shared/ui/CommandPalette'
 import { TourOverlay } from '@shared/ui/organisms/TourOverlay'
 import { TutorialBanner } from '@shared/ui/organisms/TutorialBanner'
+import { UpdatePermissionPrompt } from '@shared/ui/organisms/UpdatePermissionPrompt'
 import { api } from '@renderer/services/ipc-client'
 import { useStartTour } from '@shared/tour/useStartTour'
 
@@ -103,6 +104,7 @@ export function AppLayout() {
         <ToastContainer />
         <CommandPalette open={cmdOpen} onClose={() => setCmdOpen(false)} />
         <TourOverlay />
+        <UpdatePermissionPrompt />
       </div>
     </div>
   )

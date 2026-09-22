@@ -70,6 +70,12 @@ function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: u
     location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-default', isDefault: true }) },
     locationStock: { upsert: vi.fn() },
     productBatch: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
+    // markSerialAvailableTx (serial.service.ts) — 2026-09-22 real bug fix:
+    // a returned serial-tracked item (Electronics/Furniture) now gets its
+    // ProductSerial row restored to AVAILABLE the same way cancelInvoice()
+    // already does. Empty by default — every test below sells a plain,
+    // non-serialized product, so this is a no-op unless a test opts in.
+    productSerial: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
     // restoreVariantStockTx (variant.service.ts) takes `tx` directly rather
     // than calling getPrisma() itself, so it runs for real against this same
     // mock db via db.$transaction below — no separate module mock needed.
@@ -438,6 +444,51 @@ describe('returns.service.createReturn', () => {
         where: { productId: 'comp-2' }, update: { quantity: { increment: 2 } },
       }))
       expect(db.inventory.upsert).not.toHaveBeenCalledWith(expect.objectContaining({ where: { productId: 'kit-1' } }))
+    })
+  })
+
+  // Real bug found+fixed 2026-09-22: a returned serial-tracked item
+  // (Electronics IMEI, Furniture serial number) had its aggregate
+  // Inventory.quantity restored like any other product, but the specific
+  // ProductSerial row stayed permanently 'SOLD' forever — cancelInvoice()
+  // already restores sold serials to AVAILABLE, this separate returns flow
+  // never did.
+  describe('serial-tracked returns (real bug fix)', () => {
+    it('restores the specific sold ProductSerial back to AVAILABLE when a serial-tracked device is returned', async () => {
+      const db = makeMockDb({
+        original: makeOriginalInvoice({
+          items: [{
+            id: 'item-phone', productId: 'prod-phone', quantity: 1, unitPrice: 20000,
+            discountAmount: 0, taxRate: 18,
+            product: { id: 'prod-phone', productName: 'Smartphone X', productType: 'STANDARD' }
+          }]
+        })
+      })
+      db.productSerial.findMany = vi.fn().mockResolvedValue([
+        { id: 'serial-1', productId: 'prod-phone', invoiceId: ORIGINAL_INVOICE_ID, status: 'SOLD' }
+      ])
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-phone', quantity: 1 }], 'Defective unit')
+
+      expect(res.success).toBe(true)
+      expect(db.productSerial.findMany).toHaveBeenCalledWith(expect.objectContaining({
+        where: { invoiceId: ORIGINAL_INVOICE_ID, productId: 'prod-phone', status: 'SOLD' }
+      }))
+      expect(db.productSerial.update).toHaveBeenCalledWith({
+        where: { id: 'serial-1' },
+        data: { status: 'AVAILABLE', invoiceId: null, soldDate: null }
+      })
+    })
+
+    it('is a no-op for a plain, non-serialized product (no ProductSerial rows exist for it)', async () => {
+      const db = makeMockDb()
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+
+      const res = await createReturn(ORIGINAL_INVOICE_ID, [{ productId: 'prod-1', quantity: 2 }], 'Wrong item')
+
+      expect(res.success).toBe(true)
+      expect(db.productSerial.update).not.toHaveBeenCalled()
     })
   })
 })

@@ -138,7 +138,7 @@ const schema = z.object({
 
 type FormValues = z.infer<typeof schema>
 
-interface Category { id: string; name: string }
+interface Category { id: string; name: string; parentCategoryId?: string | null }
 interface Product {
   id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; mrp?: number | null; taxRate: number; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
@@ -232,7 +232,17 @@ interface ProductFormModalProps {
   onSaved: () => void
   product?: Product | null
   categories: Category[]
+  // 2026-09-22 — lets a new category be created without leaving this form
+  // (previously the only way to add one was the separate "Category" button
+  // on ProductsScreen, forcing a close-this-form / add-category / reopen
+  // round trip every time a product's category didn't exist yet).
+  onCategoryCreated?: (category: Category) => void
 }
+
+// A dedicated sentinel value for the "+ Create new category…" row at the
+// bottom of the category <select> — never a real category id (cuid()s never
+// contain this literal), so it can't collide with one.
+const CREATE_NEW_CATEGORY_VALUE = '__create_new_category__'
 
 // SQFT/SQM added for the Hardware/Glass/Plywood template's area-pricing
 // feature (spec §9.4 "Custom measurement units") — without a proper area
@@ -240,7 +250,7 @@ interface ProductFormModalProps {
 // every invoice even though it's priced by L×W area.
 const UNITS = ['PCS', 'KG', 'G', 'L', 'ML', 'M', 'CM', 'SQFT', 'SQM', 'BOX', 'DOZEN', 'PACKET', 'PAIR', 'SET', 'BOTTLE', 'BAG', 'ROLL', 'HOUR', 'SERVICE']
 
-export function ProductFormModal({ open, onClose, onSaved, product, categories }: ProductFormModalProps) {
+export function ProductFormModal({ open, onClose, onSaved, product, categories, onCategoryCreated }: ProductFormModalProps) {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
@@ -286,6 +296,11 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   // Phase 69 — Electrical wow feature: Job Kit Builder suggestion.
   const [suggestingKit, setSuggestingKit] = useState(false)
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
+  // Inline "+ Create new category" quick-add — see CREATE_NEW_CATEGORY_VALUE.
+  const [quickAddCategoryOpen, setQuickAddCategoryOpen] = useState(false)
+  const [quickAddCategoryName, setQuickAddCategoryName] = useState('')
+  const [quickAddCategoryParentId, setQuickAddCategoryParentId] = useState('')
+  const [quickAddCategorySaving, setQuickAddCategorySaving] = useState(false)
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
@@ -504,6 +519,37 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
     }
   }
 
+  function handleCategorySelectChange(value: string) {
+    if (value === CREATE_NEW_CATEGORY_VALUE) {
+      setQuickAddCategoryName('')
+      setQuickAddCategoryParentId('')
+      setQuickAddCategoryOpen(true)
+      return
+    }
+    setValue('categoryId', value)
+  }
+
+  async function handleQuickAddCategory() {
+    if (!quickAddCategoryName.trim()) return
+    setQuickAddCategorySaving(true)
+    try {
+      const res = await window.api.categories.create({ name: quickAddCategoryName.trim(), parentCategoryId: quickAddCategoryParentId || undefined })
+      if (res.success && res.data) {
+        const created = res.data as Category
+        toastSuccess(t('products.categoryAddedTitle'), t('products.categoryCreatedMessage', { name: created.name }))
+        onCategoryCreated?.(created)
+        setValue('categoryId', created.id)
+        setQuickAddCategoryOpen(false)
+      } else {
+        toastError(t('common.error'), t('products.addCategoryFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('products.addCategoryFailed'))
+    } finally {
+      setQuickAddCategorySaving(false)
+    }
+  }
+
   async function pickImage() {
     setImagePickerLoading(true)
     try {
@@ -552,6 +598,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
   }
 
   return (
+    <>
     <Modal
       open={open}
       onClose={onClose}
@@ -573,10 +620,13 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
             <Input label={t('products.form.productNameRequired')} placeholder={t('products.form.productNamePlaceholder')} {...register('productName')} error={errors.productName?.message} />
           </div>
           <div>
-            <Select label={t('products.category')} {...register('categoryId')}>
-              <option value="">{t('products.form.noCategoryOption')}</option>
-              {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-            </Select>
+            <Controller name="categoryId" control={control} render={({ field }) => (
+              <Select label={t('products.category')} value={field.value ?? ''} onChange={(e) => handleCategorySelectChange(e.target.value)}>
+                <option value="">{t('products.form.noCategoryOption')}</option>
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                <option value={CREATE_NEW_CATEGORY_VALUE}>{t('products.form.createNewCategoryOption')}</option>
+              </Select>
+            )} />
           </div>
           <div>
             <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('products.form.typeRequired')}</label>
@@ -1009,5 +1059,39 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories }
         <CustomFieldsEditor entityType="PRODUCT" values={customFieldValues} onChange={setCustomFieldValues} />
       </form>
     </Modal>
+
+    {quickAddCategoryOpen && (
+      <Modal
+        open={quickAddCategoryOpen}
+        onClose={() => setQuickAddCategoryOpen(false)}
+        title={t('products.newCategory')}
+        size="sm"
+        footer={
+          <>
+            <Button variant="secondary" size="sm" onClick={() => setQuickAddCategoryOpen(false)}>{t('common.cancel')}</Button>
+            <Button size="sm" onClick={handleQuickAddCategory} loading={quickAddCategorySaving} disabled={!quickAddCategoryName.trim()}>{t('common.add')}</Button>
+          </>
+        }
+      >
+        <div className="space-y-3">
+          <Input
+            label={t('products.categoryNamePlaceholder')}
+            value={quickAddCategoryName}
+            onChange={(e) => setQuickAddCategoryName(e.target.value)}
+            autoFocus
+            onKeyDown={(e) => { if (e.key === 'Enter') handleQuickAddCategory() }}
+          />
+          <Select
+            label={t('products.parentCategoryLabel')}
+            value={quickAddCategoryParentId}
+            onChange={(e) => setQuickAddCategoryParentId(e.target.value)}
+          >
+            <option value="">{t('products.noParentOption')}</option>
+            {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+          </Select>
+        </div>
+      </Modal>
+    )}
+    </>
   )
 }

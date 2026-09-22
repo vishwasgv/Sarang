@@ -207,7 +207,8 @@ const api: IpcChannels = {
     create: (p) => invoke('invoiceTemplates:create', p),
     update: (p) => invoke('invoiceTemplates:update', p),
     delete: (id) => invoke('invoiceTemplates:delete', id),
-    setBusinessDefault: (p) => invoke('invoiceTemplates:setBusinessDefault', p)
+    setBusinessDefault: (p) => invoke('invoiceTemplates:setBusinessDefault', p),
+    preview: (p) => invoke('invoiceTemplates:preview', p)
   },
   approvalWorkflows: {
     list: (documentType) => invoke('approvalWorkflows:list', documentType),
@@ -575,6 +576,10 @@ const api: IpcChannels = {
     setAutoUpdateCheckEnabled: (p) => invoke('app:setAutoUpdateCheckEnabled', p),
     getUpdateReadyVersion: () => invoke('app:getUpdateReadyVersion'),
     restartAndInstallUpdate: () => invoke('app:restartAndInstallUpdate'),
+    checkForUpdatesNow: () => invoke('app:checkForUpdatesNow'),
+    getPendingUpdateVersion: () => invoke('app:getPendingUpdateVersion'),
+    approveUpdateDownload: () => invoke('app:approveUpdateDownload'),
+    dismissPendingUpdate: () => invoke('app:dismissPendingUpdate'),
     acknowledgeDisclaimer: () => invoke('app:acknowledgeDisclaimer'),
     isDisclaimerAccepted: () => invoke('app:isDisclaimerAccepted'),
     isBackupPromptDismissed: () => invoke('app:isBackupPromptDismissed'),

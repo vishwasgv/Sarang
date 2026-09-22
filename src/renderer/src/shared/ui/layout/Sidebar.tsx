@@ -114,7 +114,20 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Service Catalog', path: '/service-catalog', icon: Layers, permissionKey: 'settings.view', requiredModule: 'service_catalog' },
   { label: 'Normal Ranges', path: '/normal-ranges', icon: Activity, permissionKey: 'clinicalNotes.view', requiredModule: 'token_queue' },
   { label: 'Provider Schedule', path: '/provider-schedule', icon: Calendar, permissionKey: 'settings.view', requiredModule: 'provider_schedule' },
-  { label: 'WhatsApp Reminders', path: '/service-notifications', icon: Bell, permissionKey: 'billing.view', requiredModule: 'notification_queue' },
+  // 2026-09-22 — REAL BUG found+fixed: this was gated on requiredModule:
+  // 'notification_queue', a flag only the appointment-based service
+  // verticals (SERVICE/CONSULTANT/clinics/etc.) enable by default. But
+  // payment-overdue.service.ts's scanPaymentOverdueNotifications() queues
+  // WhatsApp reminders into this exact same table for EVERY business type
+  // with any overdue invoice — RETAIL, DISTRIBUTOR, GROCERY, PHARMACY,
+  // CLOTHING, all of them — and hotel.service.ts/car-job-card.service.ts/
+  // logistics-notification.service.ts feed non-service verticals into it
+  // too (e.g. HOTEL_LODGE, which doesn't enable notification_queue at all).
+  // The route itself (router.tsx) was never module-gated in the first
+  // place — only this sidebar entry was, making every one of those
+  // reminders invisible/unreachable outside the handful of verticals that
+  // happen to enable that one module. Ungated to match the route.
+  { label: 'WhatsApp Reminders', path: '/service-notifications', icon: Bell, permissionKey: 'billing.view' },
   // Phase 23 — Veterinary
   { label: 'Patients', path: '/vet/pets', icon: PawPrint, permissionKey: 'billing.view', requiredModule: 'vet_patients' },
   // Phase 67 §9.1 item 18.3 — clinic-maintained breed health-alert reference list.

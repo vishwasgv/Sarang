@@ -124,6 +124,25 @@ const config: Configuration = {
       from: 'resources/token-queue',
       to: 'token-queue'
     },
+    // Doctor Pad (2026-09-15) — clinic tablet writing pad, another sibling
+    // of qr-menu above, served by doctor-pad-server.ts. REAL BUG found+fixed
+    // 2026-09-22: this entry was never added when the feature was built, so
+    // every installer since v1.3.0 shipped without resources/doctor-pad —
+    // the server ran (module-enabled) but getCapturePageHtml() always found
+    // no file and 404'd "Not found" for every scan, in production only
+    // (dev reads straight from the source resources/ tree so this was
+    // invisible to any dev-mode or live-verification check).
+    {
+      from: 'resources/doctor-pad',
+      to: 'doctor-pad'
+    },
+    // Owner View (2026-09-16, Phase 72) — same sibling pattern, served by
+    // owner-view-server.ts. Same missing-entry bug as Doctor Pad above, same
+    // fix, found+fixed together.
+    {
+      from: 'resources/owner-view',
+      to: 'owner-view'
+    },
     // Noto Sans fonts for Indian scripts are bundled via Vite (@fontsource packages)
     // and land in the ASAR under out/renderer/assets/ — no extraResources needed
     // Phase 57 — AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct,

@@ -1,7 +1,7 @@
 import { invoiceTemplateService } from '../../services/invoice-template.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { CreateInvoiceTemplateSchema, UpdateInvoiceTemplateSchema, SetDefaultTemplateSchema } from '../../validation/invoice-template.validation'
+import { CreateInvoiceTemplateSchema, UpdateInvoiceTemplateSchema, SetDefaultTemplateSchema, PreviewInvoiceTemplateSchema } from '../../validation/invoice-template.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -43,5 +43,14 @@ export function register(handle: HandleFn): void {
     const parsed = SetDefaultTemplateSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return invoiceTemplateService.setBusinessDefaultTemplate(parsed.data.id, getCurrentSession()?.userId)
+  })
+
+  // view-only, not manage — lets anyone who can see the template list also
+  // see what each one looks like before an editor with manage rights picks it.
+  handle('invoiceTemplates:preview', async (payload) => {
+    const deny = await requirePermission('invoiceTemplates.view'); if (deny) return deny
+    const parsed = PreviewInvoiceTemplateSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return invoiceTemplateService.previewTemplate(parsed.data.config, parsed.data.paperType)
   })
 }

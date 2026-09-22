@@ -38,6 +38,19 @@ export interface InvoiceTemplateConfig {
   showAmountInWords?: boolean
   showBankDetails?: boolean
   showSignatureBlock?: boolean
+  // 2026-09-22 — closes two real gaps: (1) the UPI "Scan to Pay" QR had no
+  // per-template on/off switch at all, only the blanket canShowUpiQr()
+  // business-level gate; (2) generateReceiptHtml (thermal) took no
+  // templateConfig whatsoever before this — every 80mm/58mm receipt was
+  // fully hardcoded regardless of which template a business had selected.
+  // Undefined means "on" (preserves every existing invoice's current look).
+  showUpiQr?: boolean
+  // A4 only — a receipt has no room for a free-text clause block, and no
+  // real POS receipt convention includes one.
+  termsAndConditions?: string
+  // Lets a plain/minimal template suppress the logo even when one is
+  // configured — undefined means "on" (preserves current behaviour).
+  showLogo?: boolean
 }
 
 interface BusinessProfile {
@@ -357,7 +370,7 @@ export const printService = {
     const docLabel = isReturn ? 'Return' : (isBillOfSupply ? 'Bill of Supply' : 'Invoice')
 
     let qrHtml = ''
-    if (canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
+    if (templateConfig?.showUpiQr !== false && canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
       try {
         const qr = await generateUpiQr(profile!.upiId!, bizName, invoice.balanceAmount, `Invoice ${invoice.invoiceNumber}`)
         qrHtml = `<div class="qr-section"><p class="qr-label">Scan to Pay (UPI)</p><img src="${qr}" width="200" height="200" alt="UPI QR"/><p class="qr-note">SARANG records payments only. Scan using BHIM, GPay, PhonePe or any UPI app.</p></div>`
@@ -422,6 +435,11 @@ export const printService = {
       ? `<div class="signature-block"><p>For ${bizName}</p><div class="signature-line"></div><p class="signature-caption">Authorized Signature</p></div>`
       : ''
 
+    const termsHtml = templateConfig?.termsAndConditions?.trim()
+      ? `<div class="notes-box" style="white-space:pre-line"><span class="section-title">Terms &amp; Conditions</span><br>${escHtml(templateConfig.termsAndConditions.trim())}</div>`
+      : ''
+    const showLogo = templateConfig?.showLogo !== false
+
     return `<!DOCTYPE html>
 <html lang="en">
 <head>
@@ -480,7 +498,7 @@ export const printService = {
   ${isReturn ? '<div class="return-banner">⤺ RETURN / REFUND — this document reduces a prior sale, it is not a new purchase</div>' : ''}
   <div class="header">
     <div>
-      ${profile?.logoPath ? `<img src="${logoToFileUrl(profile.logoPath)}" alt="Logo" style="max-height:60px;max-width:140px;object-fit:contain;display:block;margin-bottom:8px;" />` : ''}
+      ${showLogo && profile?.logoPath ? `<img src="${logoToFileUrl(profile.logoPath)}" alt="Logo" style="max-height:60px;max-width:140px;object-fit:contain;display:block;margin-bottom:8px;" />` : ''}
       <div class="biz-name">${bizName}</div>
       <div class="biz-meta">
         ${[profile?.address, profile?.city, profile?.state].filter(Boolean).map(escHtml).join(', ') || ''}
@@ -556,6 +574,8 @@ export const printService = {
   ${qrHtml}
 
   ${(bankDetailsHtml || signatureHtml) ? `<div class="bottom-row">${bankDetailsHtml || '<div></div>'}${signatureHtml}</div>` : ''}
+
+  ${termsHtml}
 
   <div class="footer">
     <p>${footerLine}</p>
@@ -691,7 +711,7 @@ export const printService = {
   },
 
   // 80mm thermal receipt (standard POS printer)
-  async generateReceiptHtml(invoice: Invoice, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
+  async generateReceiptHtml(invoice: Invoice, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm', templateConfig?: InvoiceTemplateConfig | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
     // Locale-aware formatting settings, fetched once per document and
@@ -709,7 +729,7 @@ export const printService = {
     const headerFontSize = paperWidth === '58mm' ? '12px' : '14px'
 
     let qrHtml = ''
-    if (canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
+    if (templateConfig?.showUpiQr !== false && canShowUpiQr(profile) && invoice.balanceAmount > 0.01) {
       try {
         // Sized to comfortably fill most of the printable width (56mm/72mm
         // body) with margin to spare, while staying reliably scannable —
@@ -786,7 +806,7 @@ export const printService = {
   </table>
   <div class="divider"></div>
   ${qrHtml}
-  <div class="center" style="font-size:8px;margin-top:8px">Thank you for your business!</div>
+  <div class="center" style="font-size:8px;margin-top:8px">${escHtml(templateConfig?.footerText || 'Thank you for your business!')}</div>
   <div class="center" style="font-size:7px;margin-top:4px;color:#666;font-style:italic">Computer-generated document. Verify totals before legal use.</div>
   <div class="center" style="font-size:8px;margin-top:4px;color:#666">${await aszurexFooterHtml(8)}</div>
 </body>

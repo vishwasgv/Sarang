@@ -100,6 +100,42 @@ describe('findManualMatch', () => {
     expect(result.kind).not.toBe('none')
   })
 
+  // REAL BUG found+fixed 2026-09-22, from live usage: the founder typed bare
+  // feature names ("kot", "waiters view") with no sentence structure at all
+  // — NAV_INTENT_PATTERN never matched, so these fell straight through to
+  // the slow AI data pipeline and burned 90-144 real seconds before a
+  // misleading business-data-only refusal. See FEATURE_NAME_PATTERN's own
+  // comment in manual-match.util.ts.
+  it("recognizes a bare 'kot' as feature-shaped and points at the Restaurant chapter (at least weakly)", () => {
+    const result = findManualMatch('kot', 'en')
+    expect(result.kind).not.toBe('none')
+    if (result.kind === 'confident') {
+      expect(result.chapter.slug).toBe('business/restaurant')
+    } else if (result.kind === 'weak') {
+      expect(result.candidates.some((c) => c.slug === 'business/restaurant')).toBe(true)
+    }
+  })
+
+  it("recognizes 'waiters view' as feature-shaped and points at the Restaurant chapter (at least weakly — 'view' alone is too generic a word, shared with Owner View/Dashboard/etc., to always win outright)", () => {
+    const result = findManualMatch('waiters view', 'en')
+    expect(result.kind).not.toBe('none')
+    if (result.kind === 'confident') {
+      expect(result.chapter.slug).toBe('business/restaurant')
+    } else if (result.kind === 'weak') {
+      expect(result.candidates.some((c) => c.slug === 'business/restaurant')).toBe(true)
+    }
+  })
+
+  it("recognizes 'owner view' as feature-shaped even with no question phrasing", () => {
+    const result = findManualMatch('owner view', 'en')
+    expect(result.kind).not.toBe('none')
+  })
+
+  it("still returns 'none' for a genuine business-data question containing no feature name and no nav phrasing", () => {
+    const result = findManualMatch('todays sales', 'en')
+    expect(result.kind).toBe('none')
+  })
+
   it('falls back to English content when the requested locale has no translation for a real chapter', () => {
     // 'xx' is not a real locale — getChapterContentWithFallback falls back
     // to English, so this should behave identically to the English case.

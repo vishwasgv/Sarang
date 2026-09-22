@@ -23,6 +23,7 @@ import { isModuleEnabled } from './services/industry-template.service'
 import { recordUsageTick, flushUsageQueue } from './services/usage-metrics.service'
 import { shutdownAi, warmUpAiProvider } from './services/ai-query.service'
 import { resolveTutorialBoot, getTutorialDbPath, seedTutorialDemoData, deleteTutorialArtifacts } from './services/tutorial.service'
+import { checkForUpdatesIfDue } from './services/update-check.service'
 import { isSetupComplete, completeSetup } from './services/setup.service'
 import { login } from './services/auth.service'
 import { isAllowedExternalUrl } from './utils/external-link.util'
@@ -200,6 +201,17 @@ function createWindow(): void {
   mainWindow.once('ready-to-show', () => {
     closeSplash()
     mainWindow?.show()
+    // 2026-09-22 — real gap found live: pressing Ctrl+K (the Command
+    // Palette shortcut) within the first couple of seconds after the app
+    // finishes showing didn't open it — reproduced via a real Playwright-
+    // driven Electron instance (not just a report), and confirmed it self-
+    // resolves after a few seconds with no other change. show() transitions
+    // focus away from the just-closed splash window, and on Windows that
+    // handoff doesn't always also grant the new window OS-level keyboard
+    // focus immediately — an explicit focus() call is the standard fix for
+    // exactly this class of "new window doesn't have input focus yet"
+    // Electron gotcha, and costs nothing when focus was already correct.
+    mainWindow?.focus()
     if (isDev) mainWindow?.webContents.openDevTools({ mode: 'detach' })
   })
 
@@ -411,6 +423,15 @@ app.whenReady().then(async () => {
   // sibling LAN server here — a user who enabled Owner View then restarted
   // Sarang would find it silently not running until they re-toggled it.
   ensureOwnerViewServerState().catch(e => logger.error('[OwnerViewServer] Startup check failed:', e))
+
+  // 2026-09-22 — founder ask: check for updates as soon as the app has
+  // internet, not only when the dashboard happens to be viewed. This is a
+  // second trigger for the exact same throttled/toggle-respecting function
+  // analytics.service.ts's dashboard-alerts path already calls — never a
+  // duplicate network hit, checkForUpdatesIfDue() itself no-ops unless the
+  // ~20h throttle has actually elapsed. Fire-and-forget: must never block
+  // window creation or fail visibly if offline.
+  checkForUpdatesIfDue().catch(() => {})
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()

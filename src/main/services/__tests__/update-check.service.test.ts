@@ -27,6 +27,10 @@ function makeDb() {
       upsert: vi.fn(({ where, update }: { where: { settingKey: string }; update: { settingValue: string } }) => {
         store.set(where.settingKey, update.settingValue)
         return Promise.resolve({})
+      }),
+      deleteMany: vi.fn(({ where }: { where: { settingKey: string } }) => {
+        store.delete(where.settingKey)
+        return Promise.resolve({ count: 1 })
       })
     }
   }
@@ -107,16 +111,62 @@ describe('checkForUpdatesIfDue', () => {
     vi.unstubAllGlobals()
   })
 
-  it('triggers a background electron-updater download only when a real update exists AND the license is eligible', async () => {
+  it('records the update as PENDING (never auto-downloads) when a real update exists AND the license is eligible — 2026-09-22 founder ask: ask permission first, like an Android security-patch prompt', async () => {
+    const { getLicenseState } = await import('../license.service')
+    ;(getLicenseState as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 'PAID', status: 'ACTIVE' })
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ tag_name: 'v1.2.0' }) })
+    vi.stubGlobal('fetch', fetchSpy)
+    const { checkForUpdatesIfDue, getPendingUpdateVersion } = await importFresh()
+
+    await checkForUpdatesIfDue()
+    await vi.waitFor(async () => expect(await getPendingUpdateVersion()).toBe('1.2.0'))
+    expect(mockAutoUpdater.downloadUpdate).not.toHaveBeenCalled()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('approveUpdateDownload actually starts the electron-updater download and clears the pending flag', async () => {
     const { getLicenseState } = await import('../license.service')
     ;(getLicenseState as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 'PAID', status: 'ACTIVE' })
     mockAutoUpdater.checkForUpdates.mockResolvedValue({ updateInfo: { version: '1.2.0' } })
     const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ tag_name: 'v1.2.0' }) })
     vi.stubGlobal('fetch', fetchSpy)
-    const { checkForUpdatesIfDue } = await importFresh()
+    const { checkForUpdatesIfDue, getPendingUpdateVersion, approveUpdateDownload } = await importFresh()
 
     await checkForUpdatesIfDue()
-    await vi.waitFor(() => expect(mockAutoUpdater.downloadUpdate).toHaveBeenCalled())
+    await vi.waitFor(async () => expect(await getPendingUpdateVersion()).toBe('1.2.0'))
+
+    await approveUpdateDownload()
+    expect(mockAutoUpdater.downloadUpdate).toHaveBeenCalled()
+    expect(await getPendingUpdateVersion()).toBeNull()
+
+    vi.unstubAllGlobals()
+  })
+
+  it('dismissPendingUpdate remembers that exact version so it is never re-prompted, but a newer release still prompts', async () => {
+    const { getLicenseState } = await import('../license.service')
+    ;(getLicenseState as unknown as ReturnType<typeof vi.fn>).mockResolvedValue({ tier: 'PAID', status: 'ACTIVE' })
+    const fetchSpy = vi.fn().mockResolvedValue({ ok: true, json: () => Promise.resolve({ tag_name: 'v1.2.0' }) })
+    vi.stubGlobal('fetch', fetchSpy)
+    const { checkForUpdatesIfDue, getPendingUpdateVersion, dismissPendingUpdate } = await importFresh()
+
+    await checkForUpdatesIfDue()
+    await vi.waitFor(async () => expect(await getPendingUpdateVersion()).toBe('1.2.0'))
+    await dismissPendingUpdate()
+    expect(await getPendingUpdateVersion()).toBeNull()
+
+    // Re-checking (throttle bypassed by clearing the last-run marker) for the
+    // SAME version must not re-prompt.
+    db.__store.delete('auto_update_check_last_run_at')
+    await checkForUpdatesIfDue()
+    await new Promise((r) => setTimeout(r, 10))
+    expect(await getPendingUpdateVersion()).toBeNull()
+
+    // A genuinely newer version must still prompt.
+    fetchSpy.mockResolvedValue({ ok: true, json: () => Promise.resolve({ tag_name: 'v1.3.0' }) })
+    db.__store.delete('auto_update_check_last_run_at')
+    await checkForUpdatesIfDue()
+    await vi.waitFor(async () => expect(await getPendingUpdateVersion()).toBe('1.3.0'))
 
     vi.unstubAllGlobals()
   })
@@ -129,7 +179,7 @@ describe('checkForUpdatesIfDue', () => {
     const { checkForUpdatesIfDue } = await importFresh()
 
     await checkForUpdatesIfDue()
-    await new Promise((r) => setTimeout(r, 0)) // flush the fire-and-forget downloadUpdateIfEligible() microtask
+    await new Promise((r) => setTimeout(r, 0)) // flush the fire-and-forget recordPendingUpdateIfEligible() microtask
     expect(mockAutoUpdater.checkForUpdates).not.toHaveBeenCalled()
     expect(mockAutoUpdater.downloadUpdate).not.toHaveBeenCalled()
 

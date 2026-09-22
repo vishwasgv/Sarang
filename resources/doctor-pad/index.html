@@ -25,6 +25,18 @@
      applied only while writing — the queue/landing views stay comfortably
      narrow, which suits a simple list/form better than stretching it out. */
   main.pad-wide { max-width: 900px; }
+  /* 2026-09-22 — "covers whole of any tab size" ask: the 900px cap above
+     still left a large landscape tablet (easily 1200-2000px CSS width)
+     with unused space on both sides, and the canvas's own fixed 4:3
+     aspect-ratio (below) never used the tablet's actual height either. In
+     canvas-mode the whole page becomes a fixed-height flex column so the
+     canvas itself is the one element that actually stretches to fill
+     whatever's left after the compact toolbar rows — genuinely the full
+     available writing surface on any tablet, portrait or landscape. */
+  body.canvas-mode { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
+  body.canvas-mode header { flex: 0 0 auto; }
+  body.canvas-mode main.pad-wide { max-width: calc(100vw - 20px); width: 100%; margin: 0 auto; padding: 8px 10px; display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+  body.canvas-mode .brand-footer { display: none; }
   .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
   .hint { color: #64748B; font-size: 14px; line-height: 1.6; text-align: center; margin: 0 0 16px; }
   .divider { display: flex; align-items: center; gap: 10px; color: #94A3B8; font-size: 12px; margin: 18px 0; }
@@ -56,15 +68,38 @@
   .queue-item .time { color: #00AEEF; font-weight: 700; font-size: 14px; white-space: nowrap; margin-left: 10px; }
   .empty-state { text-align: center; color: #94A3B8; padding: 40px 16px; font-size: 14px; }
 
-  .canvas-toolbar { display: flex; gap: 10px; margin-bottom: 12px; }
+  .canvas-toolbar { display: flex; gap: 8px; margin-top: 10px; flex: 0 0 auto; flex-wrap: wrap; }
   .canvas-toolbar button {
-    flex: 1; padding: 12px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px;
+    flex: 1; min-width: 64px; padding: 11px 6px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px;
   }
-  .canvas-toolbar button.active { border-color: #00AEEF; color: #00AEEF; }
-  #drawCanvas { width: 100%; aspect-ratio: 4/3; background: #fff; border-radius: 12px; border: 1.5px solid #E2E8F0; touch-action: none; display: block; }
-  .patient-banner { background: #EFF8FF; border-radius: 10px; padding: 10px 14px; font-size: 13px; color: #0369A1; margin-bottom: 12px; text-align: center; }
-  .pen-hint { color: #94A3B8; font-size: 12px; text-align: center; margin: 0 0 10px; }
-  .page-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 10px; }
+  .canvas-toolbar button.active { border-color: #00AEEF; color: #00AEEF; background: #EFF8FF; }
+  /* 2026-09-22 — tool/size rows, same visual language as .canvas-toolbar
+     (existing Clear/Add Page/Back row) but their own class so icon glyphs
+     can sit above the label without stretching the existing row's height. */
+  .tool-row, .size-row { display: flex; gap: 6px; flex: 0 0 auto; }
+  .tool-row button, .size-row button {
+    flex: 1; padding: 9px 4px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff;
+    font-weight: 700; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #475569;
+  }
+  .tool-row button svg, .size-row .dot { pointer-events: none; }
+  .tool-row button.active, .size-row button.active { border-color: #00AEEF; color: #00AEEF; background: #EFF8FF; }
+  .size-row { margin-top: 6px; }
+  .size-row .dot { border-radius: 50%; background: currentColor; }
+  .color-row { display: flex; gap: 8px; margin-top: 6px; flex: 0 0 auto; align-items: center; justify-content: center; }
+  .color-row button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #E2E8F0; padding: 0; }
+  .color-row button.active { border-color: #0F172A; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #00AEEF; }
+  #drawCanvas {
+    width: 100%; aspect-ratio: 4/3; background: #fff; border-radius: 12px; border: 1.5px solid #E2E8F0;
+    touch-action: none; display: block;
+  }
+  /* Full-size writing surface (see body.canvas-mode above) — the
+     aspect-ratio box above is only the fallback for the rare case JS never
+     runs; resizeCanvas() below always sizes the real canvas to its flex
+     container's actual pixel box instead. */
+  body.canvas-mode #drawCanvas { aspect-ratio: unset; flex: 1 1 auto; min-height: 0; }
+  .patient-banner { background: #EFF8FF; border-radius: 10px; padding: 8px 14px; font-size: 13px; color: #0369A1; margin-bottom: 8px; text-align: center; flex: 0 0 auto; }
+  .pen-hint { color: #94A3B8; font-size: 11px; text-align: center; margin: 0 0 6px; flex: 0 0 auto; }
+  .page-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; flex: 0 0 auto; }
   .page-bar button { padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px; }
   .page-bar button:disabled { opacity: 0.35; }
   .page-bar .page-label { font-size: 13px; font-weight: 700; color: #0F172A; min-width: 64px; text-align: center; }
@@ -147,6 +182,7 @@
 
   function renderLanding() {
     document.querySelector('main').classList.remove('pad-wide')
+    document.body.classList.remove('canvas-mode')
     document.getElementById('header-sub').textContent = 'Connect this tablet'
     root.innerHTML =
       '<div class="card">' +
@@ -183,6 +219,7 @@
 
   function renderQueue(providerId, providerName) {
     document.querySelector('main').classList.remove('pad-wide')
+    document.body.classList.remove('canvas-mode')
     document.getElementById('header-sub').textContent = providerName || ''
     root.innerHTML = '<p class="hint">Loading today\'s patients…</p>'
 
@@ -220,21 +257,69 @@
 
   var MAX_PAGES = 3
 
+  // 2026-09-22 — full redesign of the writing surface per the founder's own
+  // words: "covers whole of any tab size", "has an eraser, can draw
+  // different shapes, can use different font brush/pencil size". Tool
+  // state (pen/eraser/line/rect/circle), stroke width, and colour are all
+  // new; the page-flip/save/back mechanics below are unchanged from before.
+  var TOOLS = [
+    { id: 'pen', label: 'Pen' }, { id: 'eraser', label: 'Eraser' },
+    { id: 'line', label: 'Line' }, { id: 'rect', label: 'Rect' }, { id: 'circle', label: 'Circle' }
+  ]
+  var SIZES = [
+    { id: 'fine', label: 'Fine', width: 1.5, dot: 6 },
+    { id: 'medium', label: 'Medium', width: 3, dot: 10 },
+    { id: 'bold', label: 'Bold', width: 5.5, dot: 14 }
+  ]
+  var COLORS = [
+    { id: 'black', hex: '#0F172A' }, { id: 'blue', hex: '#1D4ED8' }, { id: 'red', hex: '#DC2626' }
+  ]
+  // A true eraser (destination-out compositing) rather than a same-colour
+  // "paint over in white" stroke — the canvas is always opaque white so the
+  // visual result is identical either way, but destination-out also
+  // correctly erases through an OVERLAPPING earlier stroke of a different
+  // colour, which a white-stroke approach would leave a faint edge around.
+  var ERASER_WIDTH_MULTIPLIER = 3.2
+
   function renderCanvas(appointmentId, patientName) {
     document.querySelector('main').classList.add('pad-wide')
+    document.body.classList.add('canvas-mode')
     document.getElementById('header-sub').textContent = 'Writing note'
     // One entry per page: null while blank, a PNG data URL once that page has been drawn on and left.
     var pages = [null]
     var currentPage = 0
+    var currentTool = 'pen'
+    var currentSizeIdx = 1 // Medium
+    var currentColorIdx = 0 // Black
+
+    function toolButtonsHtml() {
+      return TOOLS.map(function (t) {
+        return '<button data-tool="' + t.id + '" class="' + (t.id === currentTool ? 'active' : '') + '">' + escapeHtml(t.label) + '</button>'
+      }).join('')
+    }
+    function sizeButtonsHtml() {
+      return SIZES.map(function (s, i) {
+        return '<button data-size="' + i + '" class="' + (i === currentSizeIdx ? 'active' : '') + '">' +
+          '<span class="dot" style="width:' + s.dot + 'px;height:' + s.dot + 'px"></span>' + escapeHtml(s.label) + '</button>'
+      }).join('')
+    }
+    function colorButtonsHtml() {
+      return COLORS.map(function (c, i) {
+        return '<button data-color="' + i + '" class="' + (i === currentColorIdx ? 'active' : '') + '" style="background:' + c.hex + '" title="' + escapeHtml(c.id) + '"></button>'
+      }).join('')
+    }
 
     root.innerHTML =
       '<div class="patient-banner">' + escapeHtml(patientName || 'Patient') + '</div>' +
-      '<p class="pen-hint">Works best on a tablet with a stylus/pen — drawing with a finger is clumsy. Long prescriptions can use up to ' + MAX_PAGES + ' pages.</p>' +
+      '<p class="pen-hint">Works best on a tablet with a stylus/pen. Long prescriptions can use up to ' + MAX_PAGES + ' pages.</p>' +
       '<div class="page-bar">' +
       '<button id="prev-page-btn">&larr;</button>' +
       '<span class="page-label" id="page-label">Page 1 of 1</span>' +
       '<button id="next-page-btn">&rarr;</button>' +
       '</div>' +
+      '<div class="tool-row" id="tool-row">' + toolButtonsHtml() + '</div>' +
+      '<div class="size-row" id="size-row">' + sizeButtonsHtml() + '</div>' +
+      '<div class="color-row" id="color-row">' + colorButtonsHtml() + '</div>' +
       '<canvas id="drawCanvas"></canvas>' +
       '<div class="canvas-toolbar">' +
       '<button id="clear-btn">Clear Page</button>' +
@@ -252,6 +337,46 @@
     var prevBtn = document.getElementById('prev-page-btn')
     var nextBtn = document.getElementById('next-page-btn')
     var addPageBtn = document.getElementById('add-page-btn')
+    var toolRow = document.getElementById('tool-row')
+    var sizeRow = document.getElementById('size-row')
+    var colorRow = document.getElementById('color-row')
+    // Pixel snapshot taken the instant a shape drag starts (line/rect/
+    // circle) — each pointermove restores it, then redraws the shape from
+    // the drag's start point to the current point, so the live preview
+    // never leaves a trail of every intermediate frame behind it. null for
+    // the freehand pen/eraser tools, which never need it.
+    var shapeSnapshot = null
+    var shapeStart = null
+
+    function applyStrokeStyle() {
+      ctx.lineWidth = SIZES[currentSizeIdx].width
+      ctx.lineCap = 'round'
+      ctx.lineJoin = 'round'
+      ctx.strokeStyle = COLORS[currentColorIdx].hex
+      ctx.globalCompositeOperation = currentTool === 'eraser' ? 'destination-out' : 'source-over'
+    }
+
+    toolRow.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('button') : null
+      if (!btn || !btn.dataset.tool) return
+      currentTool = btn.dataset.tool
+      var all = toolRow.querySelectorAll('button')
+      for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn)
+    })
+    sizeRow.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('button') : null
+      if (!btn || btn.dataset.size === undefined) return
+      currentSizeIdx = parseInt(btn.dataset.size, 10)
+      var all = sizeRow.querySelectorAll('button')
+      for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn)
+    })
+    colorRow.addEventListener('click', function (e) {
+      var btn = e.target.closest ? e.target.closest('button') : null
+      if (!btn || btn.dataset.color === undefined) return
+      currentColorIdx = parseInt(btn.dataset.color, 10)
+      var all = colorRow.querySelectorAll('button')
+      for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn)
+    })
 
     function updatePageBar() {
       pageLabel.textContent = 'Page ' + (currentPage + 1) + ' of ' + pages.length
@@ -267,17 +392,39 @@
       pages[currentPage] = hasDrawnCurrentPage ? canvas.toDataURL('image/png') : null
     }
 
+    // REAL BUG found+fixed 2026-09-22 (caught live, not by static review):
+    // applyStrokeStyle() sets ctx.globalCompositeOperation to
+    // 'destination-out' whenever the Eraser tool is active — a persistent
+    // `ctx` setting that, left as-is, also applies to the NEXT
+    // ctx.drawImage() call restoring a saved page/resize snapshot below.
+    // destination-out draws nothing new onto an already-cleared (fully
+    // transparent) canvas, so every page switch or window resize made
+    // immediately after using the eraser silently restored a BLANK page —
+    // every stroke on it was still safely in the saved PNG, just never
+    // repainted back onto the visible canvas. Reproduced live: draw with
+    // pen/shapes, switch to Eraser and erase part of it, add a page, come
+    // back — the whole page came back empty. Restoring a snapshot must
+    // always use plain source-over regardless of which tool was last
+    // selected; applyStrokeStyle() afterward puts the composite mode back
+    // for whatever tool is actually still selected, for the next real
+    // stroke the user draws.
+    function restoreSnapshotImage(dataUrl, rect) {
+      var img = new Image()
+      img.onload = function () {
+        ctx.globalCompositeOperation = 'source-over'
+        ctx.drawImage(img, 0, 0, rect.width, rect.height)
+        applyStrokeStyle()
+      }
+      img.src = dataUrl
+    }
+
     function loadPage(index) {
       currentPage = index
       var rect = canvas.getBoundingClientRect()
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       var stored = pages[index]
       hasDrawnCurrentPage = !!stored
-      if (stored) {
-        var img = new Image()
-        img.onload = function () { ctx.drawImage(img, 0, 0, rect.width, rect.height) }
-        img.src = stored
-      }
+      if (stored) restoreSnapshotImage(stored, rect)
       updatePageBar()
     }
 
@@ -288,17 +435,18 @@
       canvas.width = rect.width * scale
       canvas.height = rect.height * scale
       ctx.scale(scale, scale)
-      ctx.lineWidth = 2.5
-      ctx.lineCap = 'round'
-      ctx.strokeStyle = '#0F172A'
-      if (prevImage) {
-        var img = new Image()
-        img.onload = function () { ctx.drawImage(img, 0, 0, rect.width, rect.height) }
-        img.src = prevImage
-      }
+      applyStrokeStyle()
+      if (prevImage) restoreSnapshotImage(prevImage, rect)
     }
     resizeCanvas()
-    window.addEventListener('resize', resizeCanvas)
+    // Debounced — an on-screen keyboard opening/closing or an orientation
+    // change fires several rapid resize events; re-snapshotting the canvas
+    // on every single one is wasted work and (rarely) can race with itself.
+    var resizeTimer = null
+    window.addEventListener('resize', function () {
+      clearTimeout(resizeTimer)
+      resizeTimer = setTimeout(resizeCanvas, 150)
+    })
     updatePageBar()
 
     function pos(e) {
@@ -306,9 +454,59 @@
       var t = e.touches ? e.touches[0] : e
       return { x: t.clientX - rect.left, y: t.clientY - rect.top }
     }
-    function start(e) { drawing = true; hasDrawnCurrentPage = true; var p = pos(e); ctx.beginPath(); ctx.moveTo(p.x, p.y); e.preventDefault() }
-    function move(e) { if (!drawing) return; var p = pos(e); ctx.lineTo(p.x, p.y); ctx.stroke(); e.preventDefault() }
-    function end() { drawing = false }
+    var isShapeTool = function (tool) { return tool === 'line' || tool === 'rect' || tool === 'circle' }
+
+    function drawShapePreview(from, to) {
+      ctx.putImageData(shapeSnapshot, 0, 0)
+      applyStrokeStyle()
+      ctx.beginPath()
+      if (currentTool === 'line') {
+        ctx.moveTo(from.x, from.y)
+        ctx.lineTo(to.x, to.y)
+      } else if (currentTool === 'rect') {
+        ctx.rect(Math.min(from.x, to.x), Math.min(from.y, to.y), Math.abs(to.x - from.x), Math.abs(to.y - from.y))
+      } else if (currentTool === 'circle') {
+        var cx = (from.x + to.x) / 2, cy = (from.y + to.y) / 2
+        var rx = Math.abs(to.x - from.x) / 2, ry = Math.abs(to.y - from.y) / 2
+        ctx.ellipse(cx, cy, Math.max(rx, 0.01), Math.max(ry, 0.01), 0, 0, Math.PI * 2)
+      }
+      ctx.stroke()
+    }
+
+    function start(e) {
+      drawing = true
+      hasDrawnCurrentPage = true
+      applyStrokeStyle()
+      var p = pos(e)
+      if (isShapeTool(currentTool)) {
+        // Whole-canvas pixel snapshot, not the CSS-size rect — must match
+        // canvas.width/height (the devicePixelRatio-scaled backing store)
+        // or putImageData in drawShapePreview would silently only restore
+        // a corner of the real drawing surface.
+        shapeSnapshot = ctx.getImageData(0, 0, canvas.width, canvas.height)
+        shapeStart = p
+      } else {
+        ctx.beginPath()
+        ctx.moveTo(p.x, p.y)
+      }
+      e.preventDefault()
+    }
+    function move(e) {
+      if (!drawing) return
+      var p = pos(e)
+      if (isShapeTool(currentTool)) {
+        drawShapePreview(shapeStart, p)
+      } else {
+        ctx.lineTo(p.x, p.y)
+        ctx.stroke()
+      }
+      e.preventDefault()
+    }
+    function end() {
+      drawing = false
+      shapeSnapshot = null
+      shapeStart = null
+    }
 
     canvas.addEventListener('mousedown', start)
     canvas.addEventListener('mousemove', move)

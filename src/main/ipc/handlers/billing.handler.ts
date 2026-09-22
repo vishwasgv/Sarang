@@ -136,9 +136,9 @@ export function register(handle: HandleFn): void {
     const isReceipt = printType === 'THERMAL_80MM' || printType === 'THERMAL_58MM'
     const paperWidth = printType === 'THERMAL_58MM' ? '58mm' : '80mm'
     const invoiceForTemplate = invoiceRes.data as { invoiceTemplateId?: string | null }
-    const templateConfig = isReceipt ? null : await invoiceTemplateService.resolveTemplateConfig(invoiceForTemplate.invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
+    const templateConfig = await invoiceTemplateService.resolveTemplateConfig(invoiceForTemplate.invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
     const html = isReceipt
-      ? await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth)
+      ? await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth, templateConfig)
       : await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1], templateConfig)
     const tmpPath = join(app.getPath('temp'), `sarang_inv_${Date.now()}.html`)
     await writeFile(tmpPath, html, 'utf-8')
@@ -168,7 +168,9 @@ export function register(handle: HandleFn): void {
     ])
     const printType = (printTypeSetting?.settingValue ?? 'THERMAL_80MM') as 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM'
     const paperWidth = overridePaperWidth ?? (printType === 'THERMAL_58MM' ? '58mm' : '80mm')
-    const html = await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth)
+    const invoiceForTemplate = invoiceRes.data as { invoiceTemplateId?: string | null }
+    const templateConfig = await invoiceTemplateService.resolveTemplateConfig(invoiceForTemplate.invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
+    const html = await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth, templateConfig)
     const tmpPath = join(app.getPath('temp'), `sarang_rcpt_${Date.now()}.html`)
     await writeFile(tmpPath, html, 'utf-8')
     return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {

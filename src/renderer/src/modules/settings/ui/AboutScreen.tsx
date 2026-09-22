@@ -226,8 +226,17 @@ export function AboutScreen() {
           >
             <ExternalLink size={13} /> Visit Aszurex Website
           </a>
+          {/* REAL BUG found+fixed 2026-09-22: missing target="_blank" meant this
+              click triggered main/index.ts's will-navigate same-window guard
+              instead of setWindowOpenHandler — the guard has no mailto:
+              exception (only the window-open path's isAllowedExternalUrl()
+              does), so every click was silently swallowed with no visible
+              error. The Visit Aszurex Website link right above never hit this
+              because it already had target="_blank". */}
           <a
             href="mailto:support@aszurex.com"
+            target="_blank"
+            rel="noopener noreferrer"
             className="flex items-center gap-2 text-sm text-slate-600 dark:text-slate-300 hover:text-brand hover:underline"
           >
             <ExternalLink size={13} /> Contact Aszurex Support

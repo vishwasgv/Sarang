@@ -1814,6 +1814,26 @@ describe('askQuestion — Phase 62 Banking/Ledger AI intents', () => {
     expect(res.data?.answer).toContain('197.26')
   })
 
+  it('2026-09-22 — answers "fetch details of INV-2026-000007" via the fast-path even with no "look up/find/show me invoice" verb phrase, matching on the invoice-number SHAPE alone', async () => {
+    const db = makeMockDb()
+    db.$transaction = vi.fn((arg: unknown) => (Array.isArray(arg) ? Promise.all(arg) : arg))
+    db.invoice = {
+      findMany: vi.fn().mockResolvedValue([
+        { invoiceNumber: 'INV-2026-000007', totalAmount: 306, status: 'ACTIVE', invoiceDate: new Date('2026-09-17'), customer: null }
+      ]),
+      count: vi.fn().mockResolvedValue(1)
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('fetch details of INV-2026-000007')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('documents.invoiceByNumber')
+    expect(res.data?.answer).toContain('INV-2026-000007')
+    expect(res.data?.answer).toContain('306')
+  })
+
   it('answers "what is my fixed asset depreciation this year" via the fast-path, using the real read-only Prisma connection', async () => {
     vi.mocked(getReadOnlyPrisma).mockResolvedValue({
       fixedAssetDepreciation: {
@@ -2142,5 +2162,73 @@ describe('askQuestion — Phase 65 Cost Centres, Budgets & Payroll Compliance AI
     expect(res.success).toBe(true)
     expect(res.data?.template).toBe('payroll.statutoryLiabilityThisMonth')
     expect(res.data?.answer).toContain('₹2,400.00')
+  })
+})
+
+// 2026-09-22 — real gaps found in the founder's own live aiQueryLog: "what
+// are my last month sales" had no matching template at all (always
+// misrouted, once to totalThisMonth itself, silently answering the wrong
+// period), and "how many cold coffe do i have??" had zero fast-path
+// coverage AND no extractable search term (lowercase multi-word product
+// name matched neither the code-like nor Title-Case extractor), so it
+// burned 75s on the model and still landed on a completely unrelated
+// template (inventory.topRevenueProducts).
+describe('askQuestion — 2026-09-22 real usage-log gaps', () => {
+  it('answers "what are my last month sales" via the fast-path, using an explicit prior-calendar-month date range (not the Dashboard\'s this-month KPI cache)', async () => {
+    vi.mocked(reportService.generateSalesReport).mockResolvedValue({
+      summary: { totalRevenue: 45000, totalInvoices: 12 }
+    } as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('what are my last month sales')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('sales.totalLastMonth')
+    expect(res.data?.answer).toContain('₹45,000.00')
+    const call = vi.mocked(reportService.generateSalesReport).mock.calls[0][0] as { dateFrom: string; dateTo: string }
+    const now = new Date()
+    const expectedFrom = new Date(now.getFullYear(), now.getMonth() - 1, 1)
+    const expectedTo = new Date(now.getFullYear(), now.getMonth(), 0)
+    expect(call.dateFrom).toBe(toISO(expectedFrom))
+    expect(call.dateTo).toBe(toISO(expectedTo))
+  })
+
+  it('answers "how many cold coffe do i have??" via the fast-path, extracting the lowercase multi-word product name and finding real stock data', async () => {
+    const db = makeMockDb()
+    db.inventory = {
+      findMany: vi.fn().mockResolvedValue([
+        { quantity: 14, averageCost: 45, product: { productName: 'Cold Coffee', sku: 'CC-01', unit: 'PCS' } }
+      ])
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    setAIProvider(new FakeAIProvider())
+
+    const res = await askQuestion('how many cold coffe do i have??')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('inventory.productByNameOrSku')
+    expect(res.data?.answer).toContain('Cold Coffee')
+    expect(res.data?.answer).toContain('14')
+  })
+
+  // REAL BUG found+fixed in this same pass, caught by the pre-existing
+  // "wires the Tier 1 customers.totalCount template" test above: the new
+  // catch-all "how many X do I have" pattern originally had no exclusion,
+  // so this generic entity-count question was hijacked into an inventory
+  // lookup for a product literally named "customers" instead of reaching
+  // customers.totalCount. Locking this in as its own explicit regression
+  // test, not just relying on the older test incidentally catching it again.
+  it('does NOT let the new "how many <item> do I have" inventory fast-path hijack "How many customers do I have?" away from customers.totalCount', async () => {
+    vi.mocked(listCustomers).mockResolvedValue({ success: true, data: { customers: [], total: 42 } } as never)
+    const fake = new FakeAIProvider({
+      'How many customers do I have?': { template: 'customers.totalCount', category: 'customers', params: {} }
+    })
+    setAIProvider(fake)
+
+    const res = await askQuestion('How many customers do I have?')
+
+    expect(res.success).toBe(true)
+    expect(res.data?.template).toBe('customers.totalCount')
+    expect(res.data?.answer).toContain('42 customers')
   })
 })

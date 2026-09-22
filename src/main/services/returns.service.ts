@@ -8,6 +8,7 @@ import { customerLedgerService } from './customer-ledger.service'
 import { roundCurrency, sumCurrency } from './currency.service'
 import { applyLocationDeltaTx } from './inventory.service'
 import { explodeKitComponentsTx } from './kit.service'
+import { markSerialAvailableTx } from './serial.service'
 
 export interface ReturnItem {
   productId: string
@@ -252,6 +253,26 @@ export async function createReturn(
           // batch-level ledger (used for expiry tracking/alerts) stayed
           // permanently understated. No-op if the product has no batches.
           await restoreBatchStockFIFO(tx, ri.productId, ri.quantity)
+          // REAL BUG found+fixed 2026-09-22: a serial-tracked item
+          // (Electronics IMEI, Furniture serial number) returned through
+          // this flow had its aggregate Inventory.quantity restored above
+          // like any other product, but the specific ProductSerial record
+          // stayed permanently 'SOLD' — cancelInvoice() already restores
+          // every sold serial back to AVAILABLE (see its own
+          // markSerialAvailableTx call), but this separate returns flow
+          // never did the equivalent, so a returned device could never be
+          // re-sold or found again through serial/IMEI search. Serials link
+          // to the invoice, not InvoiceItem (see billing.service.ts's own
+          // comment on soldSerials) — capped to ri.quantity, not every sold
+          // serial for this invoice, since a return can be partial while
+          // cancelInvoice reverses the whole sale at once.
+          const returnedSerials = await tx.productSerial.findMany({
+            where: { invoiceId: original.id, productId: ri.productId, status: 'SOLD' },
+            take: ri.quantity
+          })
+          for (const serial of returnedSerials) {
+            await markSerialAvailableTx(tx, serial.id)
+          }
         } else if (orig.product.isKit) {
           // REAL BUG found+fixed 2026-09-15: a kit's own Inventory.quantity
           // is never decremented at sale (createInvoice explodes it into

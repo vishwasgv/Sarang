@@ -2850,15 +2850,18 @@ function BusinessFeaturesSection() {
 // defaults OFF for every business type (see TEMPLATE_DEFAULTS in
 // industry-template.service.ts) — this section is how an owner opts in; nothing
 // here changes anyone's workflow until they turn it on themselves.
+interface InvoiceTemplateConfigShape {
+  accentColor?: string; footerText?: string; density?: 'comfortable' | 'compact'
+  showAmountInWords?: boolean; showBankDetails?: boolean; showSignatureBlock?: boolean
+  showUpiQr?: boolean; termsAndConditions?: string; showLogo?: boolean
+}
+
 interface InvoiceTemplateRow {
   id: string
   name: string
   isSystem: boolean
   isDefault: boolean
-  config: {
-    accentColor?: string; footerText?: string; density?: 'comfortable' | 'compact'
-    showAmountInWords?: boolean; showBankDetails?: boolean; showSignatureBlock?: boolean
-  }
+  config: InvoiceTemplateConfigShape
 }
 
 // Phase 63 — the phase's own named "wow factor" item. A thin visual layer
@@ -2886,6 +2889,20 @@ function InvoiceTemplatesSection() {
   const [formShowAmountInWords, setFormShowAmountInWords] = useState(false)
   const [formShowBankDetails, setFormShowBankDetails] = useState(false)
   const [formShowSignatureBlock, setFormShowSignatureBlock] = useState(false)
+  // 2026-09-22 — closes "I can't tell what a template looks like" and "no
+  // UPI QR on/off toggle" complaints: showUpiQr/showLogo default true (a
+  // template that has never set them keeps printing exactly as before),
+  // termsAndConditions is new/optional. previewHtml/previewPaperType/
+  // previewLoading drive a shared live-preview modal used both from a
+  // saved template's card and from inside this create/edit form itself
+  // (so unsaved changes can be checked before Save).
+  const [formShowUpiQr, setFormShowUpiQr] = useState(true)
+  const [formShowLogo, setFormShowLogo] = useState(true)
+  const [formTermsAndConditions, setFormTermsAndConditions] = useState('')
+  const [previewHtml, setPreviewHtml] = useState<string | null>(null)
+  const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewPaperType, setPreviewPaperType] = useState<'A4' | 'THERMAL_80MM' | 'THERMAL_58MM'>('A4')
+  const [previewConfig, setPreviewConfig] = useState<InvoiceTemplateConfigShape | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -2915,6 +2932,9 @@ function InvoiceTemplatesSection() {
     setFormShowAmountInWords(false)
     setFormShowBankDetails(false)
     setFormShowSignatureBlock(false)
+    setFormShowUpiQr(true)
+    setFormShowLogo(true)
+    setFormTermsAndConditions('')
     setShowForm(true)
   }
 
@@ -2927,17 +2947,46 @@ function InvoiceTemplatesSection() {
     setFormShowAmountInWords(tpl.config.showAmountInWords ?? false)
     setFormShowBankDetails(tpl.config.showBankDetails ?? false)
     setFormShowSignatureBlock(tpl.config.showSignatureBlock ?? false)
+    setFormShowUpiQr(tpl.config.showUpiQr ?? true)
+    setFormShowLogo(tpl.config.showLogo ?? true)
+    setFormTermsAndConditions(tpl.config.termsAndConditions ?? '')
     setShowForm(true)
+  }
+
+  function currentFormConfig(): InvoiceTemplateConfigShape {
+    return {
+      accentColor: formAccentColor, footerText: formFooterText || undefined, density: formDensity,
+      showAmountInWords: formShowAmountInWords, showBankDetails: formShowBankDetails, showSignatureBlock: formShowSignatureBlock,
+      showUpiQr: formShowUpiQr, showLogo: formShowLogo, termsAndConditions: formTermsAndConditions || undefined
+    }
+  }
+
+  async function openPreview(config: InvoiceTemplateConfigShape, paperType: 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM' = 'A4') {
+    setPreviewConfig(config)
+    setPreviewPaperType(paperType)
+    setPreviewHtml('')
+    setPreviewLoading(true)
+    try {
+      const res = await window.api.invoiceTemplates.preview({ config, paperType })
+      if (res.success) setPreviewHtml(res.data as string)
+      else toastError(t('common.error'), t('settings.invoiceTemplates.previewFailed'))
+    } catch {
+      toastError(t('common.error'), t('settings.invoiceTemplates.previewFailed'))
+    } finally {
+      setPreviewLoading(false)
+    }
+  }
+
+  function switchPreviewPaperType(paperType: 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM') {
+    if (!previewConfig) return
+    openPreview(previewConfig, paperType)
   }
 
   async function handleSave() {
     if (!formName.trim()) { toastError(t('settings.invoiceTemplates.nameRequiredTitle'), t('settings.invoiceTemplates.nameRequiredMessage')); return }
     setSaving(true)
     try {
-      const config = {
-        accentColor: formAccentColor, footerText: formFooterText || undefined, density: formDensity,
-        showAmountInWords: formShowAmountInWords, showBankDetails: formShowBankDetails, showSignatureBlock: formShowSignatureBlock
-      }
+      const config = currentFormConfig()
       const res = editTarget
         ? await window.api.invoiceTemplates.update({ id: editTarget.id, name: formName.trim(), config })
         : await window.api.invoiceTemplates.create({ name: formName.trim(), config })
@@ -3016,22 +3065,23 @@ function InvoiceTemplatesSection() {
                   {isBusinessDefault && <Badge variant="brand" size="sm"><Star size={11} className="me-1 inline" />Default</Badge>}
                 </div>
                 {tpl.config.footerText && <p className="text-xs text-slate-400 italic line-clamp-2">"{tpl.config.footerText}"</p>}
-                {canManage && (
-                  <div className="flex items-center gap-3 pt-1">
-                    {!isBusinessDefault && (
-                      <button onClick={() => handleSetDefault(tpl)} disabled={settingDefaultId === tpl.id}
-                        className="text-xs font-semibold text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
-                        Set as Default
-                      </button>
-                    )}
-                    {!tpl.isSystem && (
-                      <>
-                        <button onClick={() => openEdit(tpl)} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">Edit</button>
-                        <button onClick={() => setDeleteTarget(tpl)} className="text-xs font-semibold text-danger hover:text-danger/80 transition-colors">Delete</button>
-                      </>
-                    )}
-                  </div>
-                )}
+                <div className="flex items-center gap-3 pt-1 flex-wrap">
+                  <button onClick={() => openPreview(tpl.config, 'A4')} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">
+                    {t('settings.invoiceTemplates.preview')}
+                  </button>
+                  {canManage && !isBusinessDefault && (
+                    <button onClick={() => handleSetDefault(tpl)} disabled={settingDefaultId === tpl.id}
+                      className="text-xs font-semibold text-brand hover:text-brand/80 transition-colors disabled:opacity-50">
+                      Set as Default
+                    </button>
+                  )}
+                  {canManage && !tpl.isSystem && (
+                    <>
+                      <button onClick={() => openEdit(tpl)} className="text-xs font-semibold text-slate-500 dark:text-slate-400 hover:text-brand transition-colors">Edit</button>
+                      <button onClick={() => setDeleteTarget(tpl)} className="text-xs font-semibold text-danger hover:text-danger/80 transition-colors">Delete</button>
+                    </>
+                  )}
+                </div>
               </Card>
             )
           })}
@@ -3083,14 +3133,62 @@ function InvoiceTemplatesSection() {
                   <input type="checkbox" checked={formShowSignatureBlock} onChange={e => setFormShowSignatureBlock(e.target.checked)} className="rounded border-gray-300" />
                   Authorized Signature Block
                 </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={formShowLogo} onChange={e => setFormShowLogo(e.target.checked)} className="rounded border-gray-300" />
+                  {t('settings.invoiceTemplates.showLogo')}
+                </label>
+                <label className="flex items-center gap-2 text-sm text-gray-700 dark:text-slate-200 cursor-pointer">
+                  <input type="checkbox" checked={formShowUpiQr} onChange={e => setFormShowUpiQr(e.target.checked)} className="rounded border-gray-300" />
+                  {t('settings.invoiceTemplates.showUpiQr')}
+                </label>
+              </div>
+              <div>
+                <label className="block text-sm font-medium text-gray-700 mb-1 dark:text-slate-300">{t('settings.invoiceTemplates.termsAndConditions')}</label>
+                <textarea value={formTermsAndConditions} onChange={e => setFormTermsAndConditions(e.target.value)} rows={3}
+                  placeholder={t('settings.invoiceTemplates.termsPlaceholder')}
+                  className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 resize-none dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100" />
               </div>
             </div>
-            <div className="flex justify-end gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700">
-              <button onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
-              <button onClick={handleSave} disabled={saving || !formName.trim()}
-                className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
-                {saving ? 'Saving...' : editTarget ? 'Update Template' : 'Create Template'}
+            <div className="flex justify-between items-center gap-3 px-6 py-4 border-t border-gray-200 dark:border-slate-700">
+              <button onClick={() => openPreview(currentFormConfig(), 'A4')} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">
+                {t('settings.invoiceTemplates.preview')}
               </button>
+              <div className="flex gap-3">
+                <button onClick={() => setShowForm(false)} className="px-4 py-2 border border-gray-300 rounded-lg text-sm text-gray-700 hover:bg-gray-50 dark:border-slate-600 dark:text-slate-300 dark:hover:bg-slate-800">Cancel</button>
+                <button onClick={handleSave} disabled={saving || !formName.trim()}
+                  className="px-4 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-50">
+                  {saving ? 'Saving...' : editTarget ? 'Update Template' : 'Create Template'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Live preview — real invoice data (or a sample invoice if none exist
+          yet) rendered through the exact same print.service.ts code path a
+          real print/PDF export uses, so what's shown here is never a lie. */}
+      {previewHtml !== null && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
+          <div className="bg-white dark:bg-slate-900 border dark:border-slate-700 rounded-2xl shadow-xl w-full max-w-2xl max-h-[90vh] flex flex-col">
+            <div className="flex items-center justify-between px-5 py-4 border-b border-slate-100 dark:border-slate-700">
+              <h2 className="text-base font-bold text-dark dark:text-slate-100">{t('settings.invoiceTemplates.preview')}</h2>
+              <button onClick={() => setPreviewHtml(null)} className="text-slate-400 hover:text-danger transition-colors"><X className="w-5 h-5" /></button>
+            </div>
+            <div className="flex items-center gap-2 px-5 pt-3">
+              {(['A4', 'THERMAL_80MM', 'THERMAL_58MM'] as const).map(pt => (
+                <button key={pt} onClick={() => switchPreviewPaperType(pt)}
+                  className={cn('px-3 py-1.5 rounded-lg text-xs font-medium transition-colors', previewPaperType === pt ? 'bg-brand text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 hover:bg-slate-200 dark:hover:bg-slate-700')}>
+                  {pt === 'A4' ? t('settings.invoiceTemplates.paperA4') : pt === 'THERMAL_80MM' ? t('settings.invoiceTemplates.paperThermal80') : t('settings.invoiceTemplates.paperThermal58')}
+                </button>
+              ))}
+            </div>
+            <div className="flex-1 overflow-hidden bg-slate-100 dark:bg-slate-950 p-3">
+              {previewLoading ? (
+                <div className="w-full h-full flex items-center justify-center text-sm text-slate-400">{t('common.loading')}</div>
+              ) : (
+                <iframe title="Invoice template preview" srcDoc={previewHtml} className="w-full h-full bg-white rounded-lg border border-slate-200" style={{ minHeight: '60vh' }} />
+              )}
             </div>
           </div>
         </div>

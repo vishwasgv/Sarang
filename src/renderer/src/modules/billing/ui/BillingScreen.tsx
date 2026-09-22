@@ -107,7 +107,18 @@ const PAYMENT_METHODS = [
 type PaymentMethod = typeof PAYMENT_METHODS[number]['value']
 
 // 2026-09-04 — order-channel tagging for a table-less restaurant sale.
+// 2026-09-22 — real gap found: a counter-service restaurant that doesn't use
+// the Tables feature at all (no table numbers, customer eats on the
+// premises regardless) had no way to say so here — every table-less sale
+// silently defaulted to TAKEAWAY in the channel-mix report
+// (report.service.ts's channelMixReport: `inv.orderChannel ?? 'TAKEAWAY'`),
+// which is simply wrong data for that business. Sending 'DINE_IN' explicitly
+// here needs no backend change at all — billing.service.ts's createInvoice
+// already passes through payload.orderChannel unchanged whenever no table is
+// selected, and the report already resolves a non-null orderChannel exactly
+// as given.
 const ORDER_CHANNELS = [
+  { value: 'DINE_IN', label: 'Dine-in' },
   { value: 'TAKEAWAY', label: 'Takeaway' },
   { value: 'ZOMATO', label: 'Zomato' },
   { value: 'SWIGGY', label: 'Swiggy' },
@@ -244,6 +255,17 @@ export function BillingScreen() {
   const [exchangeSearch, setExchangeSearch] = useState('')
   const [exchangeResults, setExchangeResults] = useState<Array<{ id: string; exchangeNumber: string; valueGiven: number; customerName: string | null; customer?: { customerName: string } | null }>>([])
   const [paymentMethod, setPaymentMethod] = useState<PaymentMethod>('CASH')
+  // 2026-09-22 — on-screen UPI QR at the counter: previously the "Scan to
+  // Pay" QR only ever appeared on the PRINTED invoice, after the sale was
+  // already recorded — too late for a customer to actually pay by scanning
+  // it. Showing it here, while UPI is selected and before Confirm Sale is
+  // pressed, lets the cashier turn the screen around and have the customer
+  // scan for the exact cart total. Silently absent (no error state) when
+  // the endpoint returns null — no UPI ID configured, or business isn't in
+  // India — same "null is not an error" contract FeesScreen.tsx already
+  // relies on for this same endpoint.
+  const [upiQrDataUrl, setUpiQrDataUrl] = useState<string | null>(null)
+  const [upiQrLoading, setUpiQrLoading] = useState(false)
   // Pre-release audit fix (2026-09) — only rendered when the business has
   // more than one active Location; a single-location business (the vast
   // majority) never sees this and locationId stays undefined, preserving
@@ -260,9 +282,12 @@ export function BillingScreen() {
   const locationIdRef = useRef('')
   useEffect(() => { locationIdRef.current = locationId }, [locationId])
   // 2026-09-04 — order-channel tagging for a table-less restaurant sale.
-  // Only meaningful/sent when !tableId — a dine-in sale is DINE_IN by
-  // construction (tableId already implies it), never a picker choice.
-  const [orderChannel, setOrderChannel] = useState<'TAKEAWAY' | 'ZOMATO' | 'SWIGGY' | 'OTHER'>('TAKEAWAY')
+  // Only meaningful/sent when !tableId. A sale made THROUGH the Tables
+  // feature is DINE_IN by construction (tableId already implies it, never a
+  // picker choice) — but 2026-09-22: a counter-service restaurant that
+  // doesn't use Tables at all needed an explicit DINE_IN choice here too,
+  // see ORDER_CHANNELS's own comment.
+  const [orderChannel, setOrderChannel] = useState<'DINE_IN' | 'TAKEAWAY' | 'ZOMATO' | 'SWIGGY' | 'OTHER'>('TAKEAWAY')
   const [referenceNumber, setReferenceNumber] = useState('')
   const [notes, setNotes] = useState('')
   // Phase 61 — lives on Invoice directly, independent of the opt-in
@@ -378,6 +403,25 @@ export function BillingScreen() {
   // what actually gets charged.
   const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0) + (selectedTradeIn?.tradeInValue ?? 0)
   const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount), [cart, effectiveGlobalDiscount])
+
+  // Debounced — cart edits (quantity +/-) fire in quick succession while
+  // UPI stays selected; without this every keystroke-equivalent click would
+  // trigger its own QR-generation round trip.
+  useEffect(() => {
+    if (paymentMethod !== 'UPI' || totals.totalAmount <= 0.01) { setUpiQrDataUrl(null); return }
+    setUpiQrLoading(true)
+    const timer = setTimeout(async () => {
+      try {
+        const res = await window.api.app.generateUpiPaymentQr({ amount: totals.totalAmount, note: `Sale${customer ? ' - ' + customer.customerName : ''}` })
+        setUpiQrDataUrl(res.success && res.data ? res.data.qrDataUrl : null)
+      } catch {
+        setUpiQrDataUrl(null)
+      } finally {
+        setUpiQrLoading(false)
+      }
+    }, 300)
+    return () => clearTimeout(timer)
+  }, [paymentMethod, totals.totalAmount, customer])
 
   // Phase 63 — re-evaluate scheme suggestions whenever the cart's real
   // (non-FOC) product/quantity mix changes. Keyed on a flattened signature
@@ -2015,7 +2059,7 @@ export function BillingScreen() {
           {!tableId && kotEnabled && (
             <div>
               <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('billing.orderChannel')}</p>
-              <div className="grid grid-cols-4 gap-1.5">
+              <div className="grid grid-cols-5 gap-1.5">
                 {ORDER_CHANNELS.map(c => (
                   <button key={c.value} onClick={() => setOrderChannel(c.value)}
                     className={cn('h-9 rounded-lg text-xs font-semibold border transition-colors', orderChannel === c.value ? 'bg-brand text-white border-brand' : 'bg-white text-slate-600 border-slate-200 hover:border-brand hover:text-brand')}>
@@ -2043,6 +2087,24 @@ export function BillingScreen() {
                   className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
                 />
               )}
+            </div>
+          )}
+
+          {/* On-screen "Scan to Pay" QR — the exact cart total, shown before
+              Confirm Sale so the cashier can turn the screen around and let
+              the customer actually pay by scanning it (previously the QR
+              only ever appeared on the printed invoice, after the sale was
+              already recorded). Absent entirely when no UPI ID is
+              configured, matching generateUpiPaymentQr's own contract. */}
+          {paymentMethod === 'UPI' && (upiQrLoading || upiQrDataUrl) && (
+            <div className="flex flex-col items-center gap-2 p-4 rounded-xl border border-slate-200 bg-white">
+              {upiQrLoading ? (
+                <div className="w-40 h-40 rounded-lg bg-slate-100 animate-pulse" />
+              ) : (
+                <img src={upiQrDataUrl ?? undefined} alt={t('billing.upiScanToPay')} className="w-40 h-40" />
+              )}
+              <p className="text-xs font-semibold text-slate-600">{t('billing.upiScanToPay')}</p>
+              <p className="text-sm font-bold text-dark">{formatCurrency(totals.totalAmount)}</p>
             </div>
           )}
 

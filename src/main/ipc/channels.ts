@@ -283,6 +283,7 @@ export interface IpcChannels {
     update: (payload: unknown) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
     setBusinessDefault: (payload: { id: string | null }) => Promise<ApiResponse>
+    preview: (payload: { config: unknown; paperType: 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM' }) => Promise<ApiResponse>
   }
   approvalWorkflows: {
     list: (documentType?: string) => Promise<ApiResponse>
@@ -738,6 +739,10 @@ export interface IpcChannels {
     setAutoUpdateCheckEnabled: (payload: { enabled: boolean }) => Promise<ApiResponse>
     getUpdateReadyVersion: () => Promise<ApiResponse<string | null>>
     restartAndInstallUpdate: () => Promise<ApiResponse>
+    checkForUpdatesNow: () => Promise<ApiResponse>
+    getPendingUpdateVersion: () => Promise<ApiResponse<string | null>>
+    approveUpdateDownload: () => Promise<ApiResponse>
+    dismissPendingUpdate: () => Promise<ApiResponse>
     acknowledgeDisclaimer: () => Promise<ApiResponse>
     isDisclaimerAccepted: () => Promise<ApiResponse<boolean>>
     isBackupPromptDismissed: () => Promise<ApiResponse<boolean>>

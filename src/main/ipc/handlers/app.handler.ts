@@ -6,7 +6,7 @@ import { logger } from '../../utils/logger'
 import { requireSession } from '../permission-guard'
 import { logoToBase64DataUri, generateUpiQr, canShowUpiQr } from '../../services/print.service'
 import { OpenFileDialogSchema, GenerateUpiPaymentQrSchema } from '../../validation/app.validation'
-import { fetchLatestReleaseInfo, isAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, getUpdateReadyVersion, restartAndInstallUpdate } from '../../services/update-check.service'
+import { fetchLatestReleaseInfo, isAutoUpdateCheckEnabled, setAutoUpdateCheckEnabled, getUpdateReadyVersion, restartAndInstallUpdate, checkForUpdatesIfDue, getPendingUpdateVersion, approveUpdateDownload, dismissPendingUpdate } from '../../services/update-check.service'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -167,6 +167,46 @@ export function register(handle: HandleFn): void {
     } catch (err) {
       logger.error('[App] restartAndInstallUpdate error:', err)
       return { success: false, error: { code: 'SYS-001', message: 'Could not restart to install the update. Please try again.' } }
+    }
+  })
+
+  // 2026-09-22 — permission-gated update flow. See update-check.service.ts's
+  // own header comments on each of these four for the full design.
+  handle('app:checkForUpdatesNow', async () => {
+    // Fired by the renderer the moment it detects it's back online — the
+    // callee itself is fully throttled/toggle-respecting, so this is always
+    // safe to call, never spams GitHub even on a flaky connection that fires
+    // the browser 'online' event repeatedly.
+    void checkForUpdatesIfDue().catch(() => {})
+    return { success: true }
+  })
+
+  handle('app:getPendingUpdateVersion', async () => {
+    try {
+      return { success: true, data: await getPendingUpdateVersion() }
+    } catch (err) {
+      logger.error('[App] getPendingUpdateVersion error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+    }
+  })
+
+  handle('app:approveUpdateDownload', async () => {
+    try {
+      await approveUpdateDownload()
+      return { success: true }
+    } catch (err) {
+      logger.error('[App] approveUpdateDownload error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Could not download the update. Please try again later.' } }
+    }
+  })
+
+  handle('app:dismissPendingUpdate', async () => {
+    try {
+      await dismissPendingUpdate()
+      return { success: true }
+    } catch (err) {
+      logger.error('[App] dismissPendingUpdate error:', err)
+      return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
     }
   })
 

@@ -330,6 +330,7 @@
   },
   "billing": {
     "title": "Facturation",
+    "upiScanToPay": "Scanner pour Payer (UPI)",
     "sellingLocation": "Lieu de Vente",
     "newInvoice": "Nouvelle facture",
     "invoiceList": "Factures",
@@ -677,6 +678,8 @@
     "productsCount": "{{count}} produits",
     "archiveCategoryTitle": "Archiver la Catégorie",
     "archiveCategoryMessage": "Archiver « {{name}} » ? Les produits de cette catégorie deviendront non catégorisés.",
+    "parentCategoryLabel": "Catégorie parente",
+    "noParentOption": "Aucune catégorie parente (niveau supérieur)",
     "printLabels": {
       "title": "Imprimer les Étiquettes",
       "subtitle": "Imprimez des étiquettes code-barres + prix pour vos produits — sur une imprimante d'étiquettes thermique ou une imprimante A4/lettre classique.",
@@ -813,6 +816,7 @@
       "productNameRequired": "Nom du Produit *",
       "productNamePlaceholder": "ex. Poudre de Masala Chai",
       "noCategoryOption": "Aucune Catégorie",
+      "createNewCategoryOption": "+ Créer une nouvelle catégorie…",
       "typeRequired": "Type *",
       "skuPlaceholder": "ex. MCP-001",
       "barcodePlaceholder": "Scanner ou saisir",
@@ -4586,7 +4590,16 @@
       "deletedTitle": "Modèle Supprimé",
       "deleteFailed": "Impossible de supprimer le modèle.",
       "deleteConfirmTitle": "Supprimer le Modèle",
-      "deleteConfirmMessage": "Supprimer « {{name}} » ? Les factures déjà imprimées avec celui-ci ne sont pas affectées."
+      "deleteConfirmMessage": "Supprimer « {{name}} » ? Les factures déjà imprimées avec celui-ci ne sont pas affectées.",
+      "preview": "Aperçu",
+      "previewFailed": "Impossible d'afficher l'aperçu.",
+      "showLogo": "Afficher le Logo de l'Entreprise",
+      "showUpiQr": "Afficher le QR Code UPI « Scanner pour Payer »",
+      "termsAndConditions": "Conditions Générales (facultatif, A4 uniquement)",
+      "termsPlaceholder": "ex. Les articles vendus ne sont pas repris.",
+      "paperA4": "A4",
+      "paperThermal80": "Thermique 80mm",
+      "paperThermal58": "Thermique 58mm"
     },
     "barcode": {
       "featureTurnedOff": "Fonctionnalité désactivée. Vos codes-barres existants et vos produits vendus en vrac ne sont pas affectés.",
@@ -4625,7 +4638,14 @@
     "legalDisclaimerTitle": "Mentions Légales",
     "loadPathsFailed": "Impossible de charger les chemins de stockage.",
     "savePreferenceFailed": "Impossible d’enregistrer votre préférence. Veuillez réessayer.",
-    "restartFailed": "Impossible de redémarrer pour installer la mise à jour. Veuillez réessayer."
+    "restartFailed": "Impossible de redémarrer pour installer la mise à jour. Veuillez réessayer.",
+    "updateAvailableTitle": "Mise à jour disponible",
+    "updateReadyTitle": "Mise à jour prête à installer",
+    "updateVersionLabel": "Version {{version}} — seuls les fichiers modifiés sont téléchargés, pas l'application entière.",
+    "downloadAndInstall": "Télécharger",
+    "notNow": "Pas maintenant",
+    "downloading": "Téléchargement de la mise à jour…",
+    "restartAndInstall": "Redémarrer et Installer"
   },
   "license": {
     "title": "Licence",
@@ -5951,7 +5971,7 @@
     "docTypePurchaseOrder": "Bon de Commande"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite est un outil organisationnel gratuit pour les petites entreprises. Ce n'est pas un système de dossiers médicaux, un outil de conseil juridique ou un produit financier agréé. Il inclut des fonctionnalités de comptabilité et de TPS/TVA, mais ne remplace pas un comptable ou un conseiller fiscal agréé. Toutes les informations sont les données propres de l'utilisateur, stockées localement sur son appareil. Aszurex n'offre aucune garantie quant à l'exactitude, l'exhaustivité ou l'adéquation de ce logiciel à des fins réglementées. Les utilisateurs sont seuls responsables du respect des lois et réglementations professionnelles applicables.",
+    "legalNotice": "Sarang Business OS Lite est un outil organisationnel pour les petites entreprises. Ce n'est pas un système de dossiers médicaux, un outil de conseil juridique ou un produit financier agréé. Il inclut des fonctionnalités de comptabilité et de TPS/TVA, mais ne remplace pas un comptable ou un conseiller fiscal agréé. Toutes les informations sont les données propres de l'utilisateur, stockées localement sur son appareil. Aszurex n'offre aucune garantie quant à l'exactitude, l'exhaustivité ou l'adéquation de ce logiciel à des fins réglementées. Les utilisateurs sont seuls responsables du respect des lois et réglementations professionnelles applicables.",
     "acceptFailed": "Impossible d’enregistrer votre accord. Veuillez réessayer."
   },
   "compliance": {

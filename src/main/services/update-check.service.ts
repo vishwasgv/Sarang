@@ -27,6 +27,14 @@ import { logger } from '../utils/logger'
 // for this feature. Ineligible installs keep today's exact prior behavior
 // unchanged: manual "Check for Updates" button, manual full-installer link.
 const AUTO_UPDATE_READY_VERSION_KEY = 'auto_update_ready_version'
+// 2026-09-22 — founder ask: don't silently download in the background at
+// all any more, even for an eligible install; ask permission first (like
+// an Android security-patch prompt), download only once the user says yes.
+// PENDING = detected + eligible, not yet approved for download.
+// DISMISSED = the user said "not now" for that exact version — never
+// re-prompt for the SAME version again (a newer release still prompts).
+const PENDING_UPDATE_VERSION_KEY = 'pending_update_version'
+const DISMISSED_UPDATE_VERSION_KEY = 'dismissed_update_version'
 
 export async function isEligibleForAutoUpdate(): Promise<boolean> {
   const state = await getLicenseState()
@@ -73,22 +81,66 @@ export async function restartAndInstallUpdate(): Promise<void> {
 }
 
 /**
- * Eligibility-gated differential download, called from the same once-per-day
- * cadence as checkForUpdatesIfDue() below. Never throws, never surfaces an
- * error to the user — a failed background download attempt should be
- * invisible, not alarming (matches this file's pre-existing offline-silent
- * convention).
+ * Records that an eligible update is available and awaiting the user's
+ * explicit go-ahead — never downloads anything itself. Called from the same
+ * check cadence checkForUpdatesIfDue() already ran on. Never throws.
  */
-async function downloadUpdateIfEligible(): Promise<void> {
+async function recordPendingUpdateIfEligible(latestVersion: string): Promise<void> {
   try {
     if (!(await isEligibleForAutoUpdate())) return
+    const db = getPrisma()
+    const [dismissed, ready] = await Promise.all([
+      db.setting.findUnique({ where: { settingKey: DISMISSED_UPDATE_VERSION_KEY } }),
+      getUpdateReadyVersion()
+    ])
+    if (dismissed?.settingValue === latestVersion) return // user already said "not now" for this exact version
+    if (ready === latestVersion) return // already downloaded, just waiting for a restart
+    await db.setting.upsert({
+      where: { settingKey: PENDING_UPDATE_VERSION_KEY },
+      update: { settingValue: latestVersion },
+      create: { settingKey: PENDING_UPDATE_VERSION_KEY, settingValue: latestVersion, settingType: 'STRING' }
+    })
+  } catch (err) {
+    logger.warn('[AutoUpdate] failed to record pending update (non-fatal):', err)
+  }
+}
+
+/** The version awaiting the user's download permission, if any — null once approved, dismissed, or already fully downloaded. */
+export async function getPendingUpdateVersion(): Promise<string | null> {
+  try {
+    const db = getPrisma()
+    const row = await db.setting.findUnique({ where: { settingKey: PENDING_UPDATE_VERSION_KEY } })
+    if (!row?.settingValue || row.settingValue === app.getVersion()) return null
+    return row.settingValue
+  } catch {
+    return null
+  }
+}
+
+/** User said yes — actually starts the differential download. Clears the pending flag either way so the prompt never gets stuck showing. */
+export async function approveUpdateDownload(): Promise<void> {
+  const db = getPrisma()
+  try {
     configureAutoUpdaterOnce()
     const checkResult = await autoUpdater.checkForUpdates()
-    if (!checkResult) return
-    await autoUpdater.downloadUpdate()
-  } catch (err) {
-    logger.warn('[AutoUpdate] eligible download attempt failed (non-fatal):', err)
+    if (checkResult) await autoUpdater.downloadUpdate()
+  } finally {
+    await db.setting.deleteMany({ where: { settingKey: PENDING_UPDATE_VERSION_KEY } }).catch(() => {})
   }
+}
+
+/** User said "not now" — remembers this exact version so it won't nag again until a newer one ships. */
+export async function dismissPendingUpdate(): Promise<void> {
+  const db = getPrisma()
+  const pending = await getPendingUpdateVersion()
+  if (pending) {
+    await db.setting.upsert({
+      where: { settingKey: DISMISSED_UPDATE_VERSION_KEY },
+      update: { settingValue: pending },
+      create: { settingKey: DISMISSED_UPDATE_VERSION_KEY, settingValue: pending, settingType: 'STRING' }
+    })
+  }
+  await db.setting.deleteMany({ where: { settingKey: PENDING_UPDATE_VERSION_KEY } }).catch(() => {})
 }
 
 const RELEASES_URL = 'https://api.github.com/repos/vishwasgv/Sarang/releases/latest'
@@ -161,8 +213,10 @@ export async function checkForUpdatesIfDue(): Promise<UpdateCheckResult | null> 
     if (result.hasUpdate) {
       // Fire-and-forget, same convention as license.service.ts's own
       // background pings — never awaited, never allowed to slow down or fail
-      // the dashboard-alert path this function feeds.
-      void downloadUpdateIfEligible()
+      // the dashboard-alert path this function feeds. Only RECORDS the
+      // update as pending — never downloads without the user's explicit
+      // go-ahead, see recordPendingUpdateIfEligible()'s own header comment.
+      void recordPendingUpdateIfEligible(result.latestVersion)
     }
     return result.hasUpdate ? result : null
   } catch {

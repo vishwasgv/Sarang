@@ -330,6 +330,7 @@
   },
   "billing": {
     "title": "Billing",
+    "upiScanToPay": "Scan to Pay (UPI)",
     "sellingLocation": "Selling Location",
     "bargainedPriceToggleHint": "Toggle {{currSym}} / % / Bargained (Final) Price",
     "bargainedPriceInputHint": "Type the final agreed price for this line — the discount is calculated for you.",
@@ -679,6 +680,8 @@
     "productsCount": "{{count}} products",
     "archiveCategoryTitle": "Archive Category",
     "archiveCategoryMessage": "Archive \"{{name}}\"? Products in this category will be uncategorized.",
+    "parentCategoryLabel": "Parent category",
+    "noParentOption": "No parent (top-level)",
     "printLabels": {
       "title": "Print Labels",
       "subtitle": "Print barcode + price labels for your products — on a thermal label printer or a regular A4/letter printer.",
@@ -815,6 +818,7 @@
       "productNameRequired": "Product Name *",
       "productNamePlaceholder": "e.g. Masala Chai Powder",
       "noCategoryOption": "No Category",
+      "createNewCategoryOption": "+ Create new category…",
       "typeRequired": "Type *",
       "skuPlaceholder": "e.g. MCP-001",
       "barcodePlaceholder": "Scan or enter",
@@ -5161,7 +5165,16 @@
       "deletedTitle": "Template Deleted",
       "deleteFailed": "Could not delete template.",
       "deleteConfirmTitle": "Delete Template",
-      "deleteConfirmMessage": "Delete \"{{name}}\"? Invoices already printed with it are unaffected."
+      "deleteConfirmMessage": "Delete \"{{name}}\"? Invoices already printed with it are unaffected.",
+      "preview": "Preview",
+      "previewFailed": "Could not render preview.",
+      "showLogo": "Show Business Logo",
+      "showUpiQr": "Show UPI \"Scan to Pay\" QR Code",
+      "termsAndConditions": "Terms & Conditions (optional, A4 only)",
+      "termsPlaceholder": "e.g. Goods once sold will not be taken back.",
+      "paperA4": "A4",
+      "paperThermal80": "Thermal 80mm",
+      "paperThermal58": "Thermal 58mm"
     },
     "barcode": {
       "featureTurnedOff": "Feature turned off. Your existing barcodes and loose-billed products are unaffected.",
@@ -5210,7 +5223,14 @@
     "legalDisclaimerTitle": "Legal Disclaimer",
     "loadPathsFailed": "Could not load storage paths.",
     "savePreferenceFailed": "Could not save your preference. Please try again.",
-    "restartFailed": "Could not restart to install the update. Please try again."
+    "restartFailed": "Could not restart to install the update. Please try again.",
+    "updateAvailableTitle": "Update available",
+    "updateReadyTitle": "Update ready to install",
+    "updateVersionLabel": "Version {{version}} — only the changed files are downloaded, not the whole app.",
+    "downloadAndInstall": "Download",
+    "notNow": "Not now",
+    "downloading": "Downloading update…",
+    "restartAndInstall": "Restart & Install"
   },
   "license": {
     "title": "License",
@@ -6536,7 +6556,7 @@
     "docTypePurchaseOrder": "Purchase Order"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite is a free organisational tool for small businesses. It is not a medical record system, legal advice tool, or licensed financial product. It includes accounting and GST features, but is not a substitute for a licensed accountant or tax advisor. All information is the user's own data stored locally on their device. Aszurex provides no warranties for the accuracy, completeness, or fitness of this software for any regulated purpose. Users are solely responsible for compliance with applicable laws and professional regulations.",
+    "legalNotice": "Sarang Business OS Lite is an organisational tool for small businesses. It is not a medical record system, legal advice tool, or licensed financial product. It includes accounting and GST features, but is not a substitute for a licensed accountant or tax advisor. All information is the user's own data stored locally on their device. Aszurex provides no warranties for the accuracy, completeness, or fitness of this software for any regulated purpose. Users are solely responsible for compliance with applicable laws and professional regulations.",
     "acceptFailed": "Could not record your acknowledgment. Please try again."
   },
   "compliance": {

@@ -330,6 +330,7 @@
   },
   "billing": {
     "title": "Faturamento",
+    "upiScanToPay": "Escanear para Pagar (UPI)",
     "sellingLocation": "Local de Venda",
     "newInvoice": "Nova Nota",
     "invoiceList": "Notas",
@@ -677,6 +678,8 @@
     "productsCount": "{{count}} produtos",
     "archiveCategoryTitle": "Arquivar Categoria",
     "archiveCategoryMessage": "Arquivar \"{{name}}\"? Os produtos desta categoria ficarão sem categoria.",
+    "parentCategoryLabel": "Categoria principal",
+    "noParentOption": "Sem categoria principal (nível superior)",
     "printLabels": {
       "title": "Imprimir Etiquetas",
       "subtitle": "Imprima etiquetas de código de barras e preço para seus produtos — em uma impressora térmica de etiquetas ou em uma impressora comum A4/carta.",
@@ -813,6 +816,7 @@
       "productNameRequired": "Nome do Produto *",
       "productNamePlaceholder": "ex.: Chá Masala em Pó",
       "noCategoryOption": "Sem Categoria",
+      "createNewCategoryOption": "+ Criar nova categoria…",
       "typeRequired": "Tipo *",
       "skuPlaceholder": "ex.: MCP-001",
       "barcodePlaceholder": "Escaneie ou digite",
@@ -4586,7 +4590,16 @@
       "deletedTitle": "Modelo Excluído",
       "deleteFailed": "Não foi possível excluir o modelo.",
       "deleteConfirmTitle": "Excluir Modelo",
-      "deleteConfirmMessage": "Excluir \"{{name}}\"? As notas já impressas com ele não serão afetadas."
+      "deleteConfirmMessage": "Excluir \"{{name}}\"? As notas já impressas com ele não serão afetadas.",
+      "preview": "Pré-visualização",
+      "previewFailed": "Não foi possível exibir a pré-visualização.",
+      "showLogo": "Mostrar Logo do Negócio",
+      "showUpiQr": "Mostrar Código QR UPI \"Escanear para Pagar\"",
+      "termsAndConditions": "Termos e Condições (opcional, somente A4)",
+      "termsPlaceholder": "ex. Mercadorias vendidas não serão devolvidas.",
+      "paperA4": "A4",
+      "paperThermal80": "Térmica 80mm",
+      "paperThermal58": "Térmica 58mm"
     },
     "barcode": {
       "featureTurnedOff": "Recurso desativado. Seus códigos de barras e produtos vendidos avulsos existentes não são afetados.",
@@ -4625,7 +4638,14 @@
     "legalDisclaimerTitle": "Aviso Legal",
     "loadPathsFailed": "Não foi possível carregar os caminhos de armazenamento.",
     "savePreferenceFailed": "Não foi possível salvar sua preferência. Por favor, tente novamente.",
-    "restartFailed": "Não foi possível reiniciar para instalar a atualização. Tente novamente."
+    "restartFailed": "Não foi possível reiniciar para instalar a atualização. Tente novamente.",
+    "updateAvailableTitle": "Atualização disponível",
+    "updateReadyTitle": "Atualização pronta para instalar",
+    "updateVersionLabel": "Versão {{version}} — apenas os arquivos alterados são baixados, não o aplicativo inteiro.",
+    "downloadAndInstall": "Baixar",
+    "notNow": "Agora não",
+    "downloading": "Baixando atualização…",
+    "restartAndInstall": "Reiniciar e Instalar"
   },
   "license": {
     "title": "Licença",
@@ -5951,7 +5971,7 @@
     "docTypePurchaseOrder": "Pedido de Compra"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite é uma ferramenta organizacional gratuita para pequenas empresas. Não é um sistema de registros médicos, ferramenta de aconselhamento jurídico ou produto financeiro licenciado. Inclui recursos de contabilidade e GST, mas não substitui um contador ou consultor fiscal licenciado. Todas as informações são dados próprios do usuário, armazenados localmente em seu dispositivo. A Aszurex não oferece garantias quanto à precisão, integridade ou adequação deste software para qualquer finalidade regulamentada. Os usuários são os únicos responsáveis pelo cumprimento das leis e regulamentações profissionais aplicáveis.",
+    "legalNotice": "Sarang Business OS Lite é uma ferramenta organizacional para pequenas empresas. Não é um sistema de registros médicos, ferramenta de aconselhamento jurídico ou produto financeiro licenciado. Inclui recursos de contabilidade e GST, mas não substitui um contador ou consultor fiscal licenciado. Todas as informações são dados próprios do usuário, armazenados localmente em seu dispositivo. A Aszurex não oferece garantias quanto à precisão, integridade ou adequação deste software para qualquer finalidade regulamentada. Os usuários são os únicos responsáveis pelo cumprimento das leis e regulamentações profissionais aplicáveis.",
     "acceptFailed": "Não foi possível registrar sua aceitação. Por favor, tente novamente."
   },
   "compliance": {

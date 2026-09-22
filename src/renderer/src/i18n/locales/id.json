@@ -330,6 +330,7 @@
   },
   "billing": {
     "title": "Penagihan",
+    "upiScanToPay": "Pindai untuk Bayar (UPI)",
     "sellingLocation": "Lokasi Penjualan",
     "newInvoice": "Faktur Baru",
     "invoiceList": "Faktur",
@@ -677,6 +678,8 @@
     "productsCount": "{{count}} produk",
     "archiveCategoryTitle": "Arsipkan Kategori",
     "archiveCategoryMessage": "Arsipkan \"{{name}}\"? Produk dalam kategori ini akan menjadi tidak berkategori.",
+    "parentCategoryLabel": "Kategori induk",
+    "noParentOption": "Tanpa kategori induk (tingkat atas)",
     "printLabels": {
       "title": "Cetak Label",
       "subtitle": "Cetak label barcode + harga untuk produk Anda — pada printer label termal atau printer A4/letter biasa.",
@@ -813,6 +816,7 @@
       "productNameRequired": "Nama Produk *",
       "productNamePlaceholder": "mis. Bubuk Masala Chai",
       "noCategoryOption": "Tanpa Kategori",
+      "createNewCategoryOption": "+ Buat kategori baru…",
       "typeRequired": "Tipe *",
       "skuPlaceholder": "mis. MCP-001",
       "barcodePlaceholder": "Pindai atau masukkan",
@@ -4586,7 +4590,16 @@
       "deletedTitle": "Template Dihapus",
       "deleteFailed": "Tidak dapat menghapus template.",
       "deleteConfirmTitle": "Hapus Template",
-      "deleteConfirmMessage": "Hapus \"{{name}}\"? Faktur yang sudah dicetak dengan template ini tidak terpengaruh."
+      "deleteConfirmMessage": "Hapus \"{{name}}\"? Faktur yang sudah dicetak dengan template ini tidak terpengaruh.",
+      "preview": "Pratinjau",
+      "previewFailed": "Tidak dapat menampilkan pratinjau.",
+      "showLogo": "Tampilkan Logo Bisnis",
+      "showUpiQr": "Tampilkan Kode QR UPI \"Pindai untuk Bayar\"",
+      "termsAndConditions": "Syarat & Ketentuan (opsional, hanya A4)",
+      "termsPlaceholder": "mis. Barang yang sudah dibeli tidak dapat dikembalikan.",
+      "paperA4": "A4",
+      "paperThermal80": "Termal 80mm",
+      "paperThermal58": "Termal 58mm"
     },
     "barcode": {
       "featureTurnedOff": "Fitur dinonaktifkan. Barcode dan produk curah Anda yang ada tidak terpengaruh.",
@@ -4625,7 +4638,14 @@
     "legalDisclaimerTitle": "Sangkalan Hukum",
     "loadPathsFailed": "Tidak dapat memuat jalur penyimpanan.",
     "savePreferenceFailed": "Tidak dapat menyimpan preferensi Anda. Silakan coba lagi.",
-    "restartFailed": "Tidak dapat memulai ulang untuk memasang pembaruan. Silakan coba lagi."
+    "restartFailed": "Tidak dapat memulai ulang untuk memasang pembaruan. Silakan coba lagi.",
+    "updateAvailableTitle": "Pembaruan tersedia",
+    "updateReadyTitle": "Pembaruan siap dipasang",
+    "updateVersionLabel": "Versi {{version}} — hanya file yang berubah yang diunduh, bukan seluruh aplikasi.",
+    "downloadAndInstall": "Unduh",
+    "notNow": "Nanti saja",
+    "downloading": "Mengunduh pembaruan…",
+    "restartAndInstall": "Mulai Ulang & Pasang"
   },
   "license": {
     "title": "Lisensi",
@@ -5951,7 +5971,7 @@
     "docTypePurchaseOrder": "Pesanan Pembelian"
   },
   "disclaimer": {
-    "legalNotice": "Sarang Business OS Lite adalah alat organisasi gratis untuk usaha kecil. Ini bukan sistem rekam medis, alat konsultasi hukum, atau produk keuangan berlisensi. Aplikasi ini mencakup fitur akuntansi dan GST, tetapi bukan pengganti akuntan atau konsultan pajak berlisensi. Semua informasi adalah data pengguna sendiri yang disimpan secara lokal di perangkat mereka. Aszurex tidak memberikan jaminan atas keakuratan, kelengkapan, atau kesesuaian perangkat lunak ini untuk tujuan apa pun yang diatur. Pengguna sepenuhnya bertanggung jawab atas kepatuhan terhadap hukum dan peraturan profesional yang berlaku.",
+    "legalNotice": "Sarang Business OS Lite adalah alat organisasi untuk usaha kecil. Ini bukan sistem rekam medis, alat konsultasi hukum, atau produk keuangan berlisensi. Aplikasi ini mencakup fitur akuntansi dan GST, tetapi bukan pengganti akuntan atau konsultan pajak berlisensi. Semua informasi adalah data pengguna sendiri yang disimpan secara lokal di perangkat mereka. Aszurex tidak memberikan jaminan atas keakuratan, kelengkapan, atau kesesuaian perangkat lunak ini untuk tujuan apa pun yang diatur. Pengguna sepenuhnya bertanggung jawab atas kepatuhan terhadap hukum dan peraturan profesional yang berlaku.",
     "acceptFailed": "Tidak dapat mencatat persetujuan Anda. Silakan coba lagi."
   },
   "compliance": {

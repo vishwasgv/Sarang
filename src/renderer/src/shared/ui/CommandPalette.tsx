@@ -6,8 +6,7 @@ import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
-import { MANUAL_CHAPTERS } from '@modules/manual/manifest'
-import { getChapterTitle } from '@modules/manual/content-loader'
+import { scoreManualChapters } from '@modules/ai/manual-match.util'
 
 interface SearchProduct { id: string; productName: string; sku?: string | null; sellingPrice: number }
 interface SearchCustomer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
@@ -90,16 +89,23 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   // the same untrimmed-length threshold as the remote search below (`q.length < 2`) so a
   // whitespace-padded short query doesn't suppress Manual results while other categories
   // still search — only the match itself is done against the trimmed, lowercased query.
+  //
+  // REAL BUG found+fixed 2026-09-22: this used to filter chapter TITLES only
+  // (`title.toLowerCase().includes(query)`) — a huge fraction of the Manual
+  // was effectively unsearchable here, since most real topics (e.g. "kot",
+  // "eraser", "waiter view") are covered mid-chapter, not literally present
+  // in the chapter's own title. Now reuses the exact same body-aware
+  // term-frequency scorer the AI chat's navigation matching already relies
+  // on (manual-match.util.ts) — any positive score qualifies here (this is
+  // an explicit, deliberate search action, not the AI chat's more cautious
+  // confidence-gated interception of an ambiguous free-text question).
   const manualMatches = query.length >= 2
-    ? MANUAL_CHAPTERS
-        .map(c => ({ chapter: c, title: getChapterTitle(locale, c.slug, c.title) }))
-        .filter(({ title }) => title.toLowerCase().includes(query.trim().toLowerCase()))
-        .slice(0, 5)
+    ? scoreManualChapters(query.trim(), locale).slice(0, 5)
     : []
 
   const flatItems: ResultItem[] = [
-    ...manualMatches.map(({ chapter, title }) => ({
-      id: chapter.slug, label: title, sub: 'Manual',
+    ...manualMatches.map((chapter) => ({
+      id: chapter.slug, label: chapter.title, sub: 'Manual',
       path: `/manual/${chapter.slug}`, category: 'Manual',
       icon: <HelpCircle size={14} className="text-brand" />
     })),

@@ -75,6 +75,10 @@ function makeMockDb(opts: { variants?: Record<string, Record<string, unknown>>; 
     location: { findFirst: vi.fn().mockResolvedValue({ id: 'loc-default', isDefault: true }) },
     locationStock: { upsert: vi.fn() },
     productBatch: { findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
+    // markSerialAvailableTx, called via the real createReturn — 2026-09-22
+    // real bug fix, see returns.service.ts's own comment. Empty by default;
+    // no exchange test here surrenders a serial-tracked item.
+    productSerial: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn() },
     productVariant: {
       findUnique: vi.fn(async ({ where }: { where: { id: string } }) => variants[where.id] ?? null),
       update: vi.fn(),
