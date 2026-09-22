@@ -6,6 +6,7 @@ import { roundCurrency } from './currency.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 // 2026-09 §12 — Tours & Travels vertical: the core booking record. Two
 // flows off one `bookingType` discriminator (CHARTER|SEAT), mirroring
@@ -124,7 +125,7 @@ async function scheduleDepartureReminder(bookingId: string): Promise<void> {
     if (reminderDate <= new Date()) return
 
     const dateStr = booking.tripStartDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    const body = `Dear ${booking.customer.customerName}, this is a reminder that your trip (${booking.bookingNumber}) departs tomorrow, ${dateStr}. Safe travels! Powered by Sarang | www.aszurex.com`
+    const body = await renderMessageTemplate('TRIP_DEPARTURE_REMINDER', { customerName: booking.customer.customerName, bookingNumber: booking.bookingNumber, date: dateStr })
     const link = await buildReminderWhatsAppLink(booking.customer.phone, body)
     await db.notificationQueue.create({
       data: {

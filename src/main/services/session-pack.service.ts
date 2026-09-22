@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
@@ -341,14 +342,14 @@ async function scheduleSessionPackExpiryReminders(packId: string, customerId: st
     sevenBefore.setDate(sevenBefore.getDate() - 7)
 
     if (thirtyBefore > now) {
-      const body30 = `Hi ${name}, your session pack "${packName}" expires on ${dateStr}. Book sessions before it expires. Powered by Sarang | www.aszurex.com`
+      const body30 = await renderMessageTemplate('SESSION_PACK_EXPIRY_30D', { customerName: name, packName, date: dateStr })
       const link30 = phone ? await buildReminderWhatsAppLink(phone, body30) : null
       await db.notificationQueue.create({
         data: { customerId, customerName: name, customerPhone: phone, notificationType: 'SESSION_PACK_EXPIRY_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyBefore },
       })
     }
     if (sevenBefore > now) {
-      const body7 = `Hi ${name}, your session pack "${packName}" expires in 7 days (${dateStr}). Use your remaining sessions soon! Powered by Sarang | www.aszurex.com`
+      const body7 = await renderMessageTemplate('SESSION_PACK_EXPIRY_7D', { customerName: name, packName, date: dateStr })
       const link7 = phone ? await buildReminderWhatsAppLink(phone, body7) : null
       await db.notificationQueue.create({
         data: { customerId, customerName: name, customerPhone: phone, notificationType: 'SESSION_PACK_EXPIRY_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenBefore },

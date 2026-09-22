@@ -235,14 +235,20 @@ async function run() {
     })
 
     // ── Settings + Setup screens usable, no stale pricing ───────────────────
+    // REAL bug found+fixed in this test itself (2026-09-22): pricing text
+    // never lived on #/license (that route shows activation status once a
+    // license is active, not a pricing table) — it's on the About screen
+    // and the Setup Wizard's license step. Checking #/license was asserting
+    // against the wrong screen the whole time; the app's actual pricing
+    // display was never broken.
     await r.step('settings-no-stale-pricing', async () => {
-      await h.gotoHash(page, '#/license')
+      await h.gotoHash(page, '#/about')
       await page.waitForTimeout(600)
       const bodyText = await page.locator('body').innerText().catch(() => '')
       const hasCurrentPrice = /6,999|6\.999|6 999|149/.test(bodyText)
       const hasStalePrice = /₹\s?4,?999(?!\/)|₹\s?2,?999|\$99\/year|\$49\/year/.test(bodyText)
-      r.log('license-shows-current-pricing', hasCurrentPrice, bodyText.slice(0, 200))
-      r.log('license-no-stale-pricing', !hasStalePrice)
+      r.log('about-shows-current-pricing', hasCurrentPrice, bodyText.slice(0, 200))
+      r.log('about-no-stale-pricing', !hasStalePrice)
     })
 
     // ── Dashboard tiles render ───────────────────────────────────────────────

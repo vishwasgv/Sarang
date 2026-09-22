@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Search } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
@@ -11,6 +11,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { cn } from '@shared/utils/cn'
 import { SupplierFormModal } from './SupplierFormModal'
+import { ProductAutocomplete, type ProductOption } from '@shared/ui/organisms/ProductAutocomplete'
 
 // A line is either a real product (productId) or a free-text service
 // (serviceDescription) — mirrors PurchaseOrderFormModal's own item shape,
@@ -41,7 +42,6 @@ const schema = z.object({
 type FormValues = z.infer<typeof schema>
 
 interface Supplier { id: string; supplierName: string; supplierCode: string }
-interface Product { id: string; productName: string; sku?: string | null; unit: string; productType: string; costPrice: number }
 interface ExpenseCategory { id: string; categoryName: string }
 interface CostCentre { id: string; name: string }
 
@@ -52,74 +52,10 @@ interface BillFormModalProps {
   defaultSupplierId?: string
 }
 
-// Same searchable-dropdown pattern as PurchaseOrderFormModal's ProductPicker.
-function ProductPicker({ products, value, onChange, error }: {
-  products: Product[]
-  value: string
-  onChange: (productId: string) => void
-  error?: string
-}) {
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p =>
-        p.productName.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku ?? '').toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder="Search product…"
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">No products match.</p>
-          ) : (
-            results.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => { onChange(p.id); setQuery(''); setOpen(false) }}
-                className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}
-              >
-                <p className="text-dark dark:text-slate-100">{p.productName}</p>
-                {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-      {error && <p className="text-xs text-danger mt-0.5">{error}</p>}
-    </div>
-  )
-}
-
 export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: BillFormModalProps) {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [costCentres, setCostCentres] = useState<CostCentre[]>([])
   const [loadingData, setLoadingData] = useState(true)
@@ -166,16 +102,11 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
     async function loadOptions() {
       setLoadingData(true)
       try {
-        const [, pRes, cRes, ccRes] = await Promise.all([
+        const [, cRes, ccRes] = await Promise.all([
           loadSuppliers(),
-          window.api.products.list({ isActive: true, limit: 500 }),
           window.api.expenses.listCategories(),
           window.api.costCentres.list()
         ])
-        if (pRes.success) {
-          const d = pRes.data as { products: Product[] }
-          setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
-        }
         if (cRes.success) setCategories((cRes.data as ExpenseCategory[]) ?? [])
         if (ccRes.success) setCostCentres((ccRes.data as CostCentre[]) ?? [])
       } catch {
@@ -194,11 +125,10 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
     if (newSupplier) setValue('supplierId', newSupplier.id)
   }
 
-  function handleProductChange(index: number, productId: string, onChange: (v: string) => void) {
+  function handleProductChange(index: number, product: ProductOption, onChange: (v: string) => void) {
     const previousProductId = watchedItems[index]?.productId
-    onChange(productId)
-    const product = products.find(p => p.id === productId)
-    if (product && productId !== previousProductId) {
+    onChange(product.id)
+    if (product.id !== previousProductId) {
       setValue(`items.${index}.unitCost`, product.costPrice ?? 0)
     }
   }
@@ -342,10 +272,10 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
                             control={control}
                             name={`items.${index}.productId`}
                             render={({ field: f }) => (
-                              <ProductPicker
-                                products={products}
+                              <ProductAutocomplete
                                 value={f.value ?? ''}
-                                onChange={(productId) => handleProductChange(index, productId, f.onChange)}
+                                onChange={(p) => handleProductChange(index, p, f.onChange)}
+                                onlyProductType="STANDARD"
                               />
                             )}
                           />

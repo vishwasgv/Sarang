@@ -1147,6 +1147,13 @@ const api: IpcChannels = {
     generateWhatsAppLink: (p: unknown) => invoke('notificationQueue:generateWhatsAppLink', p),
     createReminder: (p: unknown) => invoke('notificationQueue:createReminder', p),
   },
+  messageTemplates: {
+    list: () => invoke('messageTemplates:list'),
+    update: (p: unknown) => invoke('messageTemplates:update', p),
+    reset: (p: unknown) => invoke('messageTemplates:reset', p),
+    preview: (p: unknown) => invoke('messageTemplates:preview', p),
+    buildSendLink: (p: unknown) => invoke('messageTemplates:buildSendLink', p),
+  },
   // Phase 24 — Medical (GP + Specialist)
   visitNotes: {
     list: (p?: unknown) => invoke('visitNotes:list', p),

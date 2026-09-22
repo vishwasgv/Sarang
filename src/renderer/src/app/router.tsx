@@ -104,6 +104,7 @@ import { NormalRangesScreen } from '@modules/service-business/ui/NormalRangesScr
 import { BreedHealthAlertsScreen } from '@modules/service-business/ui/BreedHealthAlertsScreen'
 import { ProviderScheduleScreen } from '@modules/service-business/ui/ProviderScheduleScreen'
 import { NotificationQueueScreen } from '@modules/service-business/ui/NotificationQueueScreen'
+import { MessageTemplatesScreen } from '@modules/settings/ui/MessageTemplatesScreen'
 // Phase 23 — Veterinary
 import { PetListScreen } from '@modules/service-business/ui/PetListScreen'
 import { PetProfileScreen } from '@modules/service-business/ui/PetProfileScreen'
@@ -402,6 +403,7 @@ export function AppRouter() {
         <Route path="/vet/breed-alerts" element={<ProtectedRoute permission="clinicalNotes.view"><BreedHealthAlertsScreen /></ProtectedRoute>} />
         <Route path="/provider-schedule" element={<ProtectedRoute permission="settings.view"><ProviderScheduleScreen /></ProtectedRoute>} />
         <Route path="/service-notifications" element={<ProtectedRoute permission="billing.view"><NotificationQueueScreen /></ProtectedRoute>} />
+        <Route path="/message-templates" element={<ProtectedRoute permission="messageTemplates.view"><MessageTemplatesScreen /></ProtectedRoute>} />
         {/* Phase 23 — Veterinary */}
         <Route path="/vet/pets" element={<ProtectedRoute permission="billing.view"><PetListScreen /></ProtectedRoute>} />
         <Route path="/vet/pets/:id" element={<ProtectedRoute permission="billing.view"><PetProfileScreen /></ProtectedRoute>} />

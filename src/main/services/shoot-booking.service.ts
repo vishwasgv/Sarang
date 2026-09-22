@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 // ShootBooking.estimatedDurationHours is a Prisma Decimal field —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -170,7 +171,7 @@ async function scheduleShootReminder(bookingId: string): Promise<void> {
 
   const dateStr = booking.shootDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
   const timeStr = booking.shootTime ? ` at ${booking.shootTime}` : ''
-  const body = `Dear ${booking.client.customerName}, this is a reminder for your ${booking.shootType.toLowerCase()} shoot tomorrow, ${dateStr}${timeStr} at ${booking.shootLocation}. Powered by Sarang | www.aszurex.com`
+  const body = await renderMessageTemplate('SHOOT_DATE_REMINDER', { customerName: booking.client.customerName, shootType: booking.shootType.toLowerCase(), date: dateStr, time: timeStr, location: booking.shootLocation })
   const link = await buildReminderWhatsAppLink(booking.client.phone, body)
   await db.notificationQueue.create({
     data: {

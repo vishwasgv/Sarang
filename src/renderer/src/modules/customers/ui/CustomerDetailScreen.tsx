@@ -1,7 +1,7 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown, Percent } from 'lucide-react'
+import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown, Percent, MessageCircle } from 'lucide-react'
 import { useAuthStore } from '@app/store/auth.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -12,6 +12,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Button } from '@shared/ui/atoms/Button'
 import { Modal } from '@shared/ui/molecules/Modal'
+import { SendTemplateMessageModal } from '@shared/ui/organisms/SendTemplateMessageModal'
 import { api } from '@renderer/services/ipc-client'
 
 interface Customer {
@@ -37,8 +38,10 @@ export function CustomerDetailScreen() {
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
   const { hasPermission } = useAuthStore()
+  const canSendTemplateMessage = hasPermission('messageTemplates.view')
   const { isModuleEnabled } = useIndustryStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
+  const [sendMessageOpen, setSendMessageOpen] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [creditRisk, setCreditRisk] = useState<CreditRisk | null>(null)
   const [entries, setEntries] = useState<LedgerEntry[]>([])
@@ -231,10 +234,24 @@ export function CustomerDetailScreen() {
             <p className="text-sm text-slate-400">{customer.customerCode}</p>
           </div>
         </div>
-        {!customer.isActive && (
-          <Badge variant="neutral" size="sm" className="ms-auto">{t('customers.archived')}</Badge>
-        )}
+        <div className="ms-auto flex items-center gap-2">
+          {canSendTemplateMessage && customer.phone && (
+            <Button size="sm" variant="outline" onClick={() => setSendMessageOpen(true)}>
+              <MessageCircle size={14} className="me-1" /> {t('customers.sendWhatsAppMessage')}
+            </Button>
+          )}
+          {!customer.isActive && <Badge variant="neutral" size="sm">{t('customers.archived')}</Badge>}
+        </div>
       </div>
+
+      {sendMessageOpen && (
+        <SendTemplateMessageModal
+          customerId={customer.id}
+          customerName={customer.customerName}
+          customerPhone={customer.phone ?? null}
+          onClose={() => setSendMessageOpen(false)}
+        />
+      )}
 
       {/* Info cards */}
       <div className="grid grid-cols-2 gap-4">

@@ -3,6 +3,7 @@ import { billingService } from './billing.service'
 import { logAction } from './audit.service'
 import { sumCurrency } from './currency.service'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -468,7 +469,7 @@ async function notifyReportReady(orderId: string): Promise<void> {
   const order = await db.labTestOrder.findUnique({ where: { id: orderId }, include: { customer: { select: { id: true, phone: true } } } })
   if (!order?.customer?.phone) return
 
-  const body = `Dear ${order.patientName}, your lab report for order ${order.orderNumber} is ready. Please visit or contact us to collect it. Powered by Sarang | www.aszurex.com`
+  const body = await renderMessageTemplate('LAB_REPORT_READY', { patientName: order.patientName, orderNumber: order.orderNumber })
   const link = await buildReminderWhatsAppLink(order.customer.phone, body)
   await db.notificationQueue.create({
     data: {

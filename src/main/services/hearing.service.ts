@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink as buildWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 export async function listHearings(filters?: {
@@ -242,13 +243,10 @@ async function rescheduleHearingReminder(caseId: string, oldHearingDate: Date, n
 async function scheduleHearingReminder(caseId: string, hearingDate: Date) {
   try {
     const db = getPrisma()
-    const [legalCase, profile] = await Promise.all([
-      db.legalCase.findUnique({
-        where: { id: caseId },
-        include: { client: { select: { id: true, customerName: true, phone: true } } },
-      }),
-      db.businessProfile.findFirst({ select: { businessName: true } }),
-    ])
+    const legalCase = await db.legalCase.findUnique({
+      where: { id: caseId },
+      include: { client: { select: { id: true, customerName: true, phone: true } } },
+    })
     if (!legalCase) return
 
     const twoDaysBefore = new Date(hearingDate)
@@ -258,10 +256,9 @@ async function scheduleHearingReminder(caseId: string, hearingDate: Date) {
     const now = new Date()
     if (twoDaysBefore <= now) return
 
-    const firmName = profile?.businessName ?? 'Your Advocate'
     const dateStr = hearingDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const phone = legalCase.client.phone ?? ''
-    const body2d = `Dear ${legalCase.client.customerName}, your case ${legalCase.caseNumber} (${legalCase.caseTitle}) has a hearing on ${dateStr} at ${legalCase.courtName}. Please be present. – ${firmName} | Powered by Sarang | www.aszurex.com`
+    const body2d = await renderMessageTemplate('HEARING_DUE_2D', { customerName: legalCase.client.customerName, caseNumber: legalCase.caseNumber, caseTitle: legalCase.caseTitle, date: dateStr, courtName: legalCase.courtName })
     const link2d = phone ? await buildWhatsAppLink(phone, body2d) : null
     await db.notificationQueue.create({
       data: {
@@ -275,7 +272,7 @@ async function scheduleHearingReminder(caseId: string, hearingDate: Date) {
       },
     })
     if (sevenDaysBefore > now) {
-      const body7d = `Dear ${legalCase.client.customerName}, your case ${legalCase.caseNumber} (${legalCase.caseTitle}) has an upcoming hearing on ${dateStr} at ${legalCase.courtName}. – ${firmName} | Powered by Sarang | www.aszurex.com`
+      const body7d = await renderMessageTemplate('HEARING_DUE_7D', { customerName: legalCase.client.customerName, caseNumber: legalCase.caseNumber, caseTitle: legalCase.caseTitle, date: dateStr, courtName: legalCase.courtName })
       const link7d = phone ? await buildWhatsAppLink(phone, body7d) : null
       await db.notificationQueue.create({
         data: {

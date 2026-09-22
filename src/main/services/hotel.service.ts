@@ -6,6 +6,7 @@ import { roundCurrency } from './currency.service'
 import { parseLocalDateStart, parseLocalDateEnd, toLocalISODate } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 type PrismaTx = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 
@@ -565,7 +566,7 @@ async function scheduleCheckoutReminder(bookingId: string): Promise<void> {
     if (reminderDate <= new Date()) return
 
     const dateStr = booking.checkOutDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    const body = `Dear ${booking.guestName}, this is a reminder that your check-out for booking ${booking.bookingNumber} is tomorrow, ${dateStr}. We hope you're enjoying your stay! Powered by Sarang | www.aszurex.com`
+    const body = await renderMessageTemplate('HOTEL_CHECKOUT_REMINDER', { guestName: booking.guestName, bookingNumber: booking.bookingNumber, date: dateStr })
     const link = await buildReminderWhatsAppLink(booking.guestPhone, body)
     await db.notificationQueue.create({
       data: {

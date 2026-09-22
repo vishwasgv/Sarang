@@ -1,9 +1,9 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { ImagePlus, X, Barcode as BarcodeIcon, Search, Plus, Wand2 } from 'lucide-react'
+import { ImagePlus, X, Barcode as BarcodeIcon, Plus, Wand2 } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
@@ -11,6 +11,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
+import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
 
 const schema = z.object({
   productName: z.string().min(1, 'Product name is required').max(200),
@@ -163,69 +164,6 @@ interface Product {
 
 const RATE_BASIS_OPTIONS = ['HOUR', 'DAY', 'WEEK', 'MONTH', 'YEAR'] as const
 
-// Phase 64 — composite items/kits. A lightweight search-dropdown picker,
-// mirroring PriceListsScreen.tsx's own TierProductPicker pattern (same
-// per-file-local convention this codebase already uses rather than a
-// shared component) — a plain <select> would be unusable against a
-// catalog of hundreds of products.
-interface PickableProduct { id: string; productName: string; sku?: string | null }
-function KitComponentProductPicker({ products, value, onChange }: {
-  products: PickableProduct[]
-  value: string
-  onChange: (productId: string) => void
-}) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p =>
-        p.productName.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku ?? '').toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder={t('products.form.searchProductPlaceholder')}
-          className="w-full h-9 ps-6 pe-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
-          {results.length === 0 && <div className="px-3 py-2 text-xs text-slate-400">{t('products.form.noProductsFound')}</div>}
-          {results.map(p => (
-            <button
-              type="button"
-              key={p.id}
-              onClick={() => { onChange(p.id); setOpen(false) }}
-              className="w-full text-start px-3 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-            >
-              {p.productName}{p.sku ? <span className="text-slate-400 text-xs"> ({p.sku})</span> : null}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 interface ProductFormModalProps {
   open: boolean
   onClose: () => void
@@ -291,7 +229,6 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
   // (same reasoning rentalRates above already established).
   const [kitEnabled, setKitEnabled] = useState(false)
   const [kitRows, setKitRows] = useState<{ componentProductId: string; quantity: number }[]>([])
-  const [kitCandidates, setKitCandidates] = useState<PickableProduct[]>([])
   const [savingKit, setSavingKit] = useState(false)
   // Phase 69 — Electrical wow feature: Job Kit Builder suggestion.
   const [suggestingKit, setSuggestingKit] = useState(false)
@@ -325,18 +262,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
   useEffect(() => {
     if (open && isEdit && product) {
       setKitEnabled(product.isKit ?? false)
-      Promise.all([
-        window.api.products.list({ isActive: true, limit: 1000 }),
-        window.api.products.getKitComponents(product.id)
-      ]).then(([productsRes, componentsRes]) => {
-        if (productsRes.success && productsRes.data) {
-          const all = (productsRes.data as { products: Array<PickableProduct & { id: string; isKit?: boolean; productType?: string }> }).products ?? []
-          // A SERVICE product has no Inventory row to deduct from — real gap
-          // found via live UI testing, now also enforced server-side in
-          // kit.service.ts's own setComponents (KIT-007). Filtered here too
-          // so the picker never even offers an invalid choice.
-          setKitCandidates(all.filter(p => p.id !== product.id && !p.isKit && p.productType === 'STANDARD'))
-        }
+      window.api.products.getKitComponents(product.id).then((componentsRes) => {
         if (componentsRes.success && componentsRes.data) {
           const rows = componentsRes.data as Array<{ componentProductId: string; quantity: number }>
           setKitRows(rows.map(r => ({ componentProductId: r.componentProductId, quantity: r.quantity })))
@@ -345,7 +271,6 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
     } else {
       setKitEnabled(false)
       setKitRows([])
-      setKitCandidates([])
     }
   }, [open, isEdit, product])
 
@@ -838,10 +763,22 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
                 {kitRows.map((row, i) => (
                   <div key={i} className="flex items-center gap-2">
                     <div className="flex-1">
-                      <KitComponentProductPicker
-                        products={kitCandidates}
+                      {/* A SERVICE product has no Inventory row to deduct from, and a
+                          kit can't contain another kit one level deep — both are
+                          enforced server-side in kit.service.ts's setComponents
+                          (KIT-007) regardless of what this picker offers.
+                          onlyProductType narrows out SERVICE items here too;
+                          excludeIds keeps the kit itself out of its own component
+                          list. A kit-of-a-kit is the one case this picker no
+                          longer pre-filters (searches the real catalog, not a
+                          locally-loaded "already known non-kit" array) — it now
+                          surfaces as a clear save-time error instead. */}
+                      <ProductAutocomplete
                         value={row.componentProductId}
-                        onChange={(id) => updateKitRow(i, { componentProductId: id })}
+                        onChange={(p) => updateKitRow(i, { componentProductId: p.id })}
+                        onlyProductType="STANDARD"
+                        excludeIds={product ? [product.id] : undefined}
+                        placeholder={t('products.form.searchProductPlaceholder')}
                       />
                     </div>
                     <input

@@ -26,7 +26,7 @@ function validateId(id: unknown, label = 'ID'): { success: false; error: { code:
 export function register(handle: HandleFn): void {
   handle('products:list', async (payload) => {
     const deny = await requirePermission('products.view'); if (deny) return deny
-    const f = (payload ?? {}) as { page?: number; limit?: number; categoryId?: string; isActive?: boolean }
+    const f = (payload ?? {}) as { page?: number; limit?: number; categoryId?: string; isActive?: boolean; search?: string }
     return productService.listProducts(f)
   })
 

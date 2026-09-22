@@ -3,6 +3,7 @@ import { billingService } from './billing.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { formatAmount } from './print.service'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 // RetainerAgreement.monthlyAmount/hoursPerMonth are Prisma Decimal fields —
 // Electron's IPC (structured clone) cannot serialize a Decimal instance and
@@ -53,7 +54,7 @@ async function scheduleRetainerReminder(retainerId: string, clientName: string, 
       const profile = await db.businessProfile.findFirst({ select: { currencySymbol: true } })
       const formattedAmount = await formatAmount(Number(monthlyAmount), profile?.currencySymbol ?? '₹')
       const nextBillingStr = nextBilling.toLocaleDateString(undefined, { day: 'numeric', month: 'long' })
-      const body = `Retainer invoice for ${clientName} (${title}) [${retainerId}] of ${formattedAmount}/month is due in 3 days (${nextBillingStr}). Please generate the invoice. Powered by Sarang | www.aszurex.com`
+      const body = (await renderMessageTemplate('RETAINER_INVOICE_DUE_3D', { clientName, title, amount: formattedAmount, nextBillingDate: nextBillingStr })) + ` [${retainerId}]`
       await db.notificationQueue.create({
         data: { customerId: null, customerName: clientName, customerPhone: null, notificationType: 'RETAINER_INVOICE_DUE_3D', templateBody: body, whatsappLink: null, scheduledFor: reminderDate, status: 'PENDING' },
       })
@@ -105,14 +106,14 @@ async function scheduleRetainerLapseReminder(retainerId: string, endDate: Date) 
     const phone = retainer.client.phone ?? ''
 
     if (thirtyDaysBefore > now) {
-      const body30 = `Dear ${retainer.client.customerName}, your retainer "${retainer.title}" is due for renewal on ${dateStr}. Please let us know if you'd like to continue. Powered by Sarang | www.aszurex.com`
+      const body30 = await renderMessageTemplate('RETAINER_LAPSE_30D', { customerName: retainer.client.customerName, title: retainer.title, date: dateStr })
       const link30 = phone ? await buildReminderWhatsAppLink(phone, body30) : null
       await db.notificationQueue.create({
         data: { customerId: retainer.client.id, customerName: retainer.client.customerName, customerPhone: phone, notificationType: 'RETAINER_LAPSE_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore, status: 'PENDING' },
       })
     }
     if (sevenDaysBefore > now) {
-      const body7 = `Dear ${retainer.client.customerName}, your retainer "${retainer.title}" ends on ${dateStr} — only a few days away. Please confirm renewal. Powered by Sarang | www.aszurex.com`
+      const body7 = await renderMessageTemplate('RETAINER_LAPSE_7D', { customerName: retainer.client.customerName, title: retainer.title, date: dateStr })
       const link7 = phone ? await buildReminderWhatsAppLink(phone, body7) : null
       await db.notificationQueue.create({
         data: { customerId: retainer.client.id, customerName: retainer.client.customerName, customerPhone: phone, notificationType: 'RETAINER_LAPSE_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore, status: 'PENDING' },

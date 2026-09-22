@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { MapPin, Plus, RefreshCw, ArrowLeftRight, Search } from 'lucide-react'
+import { MapPin, Plus, RefreshCw, ArrowLeftRight } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -8,9 +8,9 @@ import { Modal } from '@shared/ui/molecules/Modal'
 import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
+import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
 
 interface Location { id: string; name: string; address: string | null; isDefault: boolean; isActive: boolean }
-interface PickableProduct { id: string; productName: string; sku?: string | null }
 
 // Phase 64 — multi-location stock. A single-location install (the
 // overwhelming majority) sees one row here, no transfer UI friction beyond
@@ -174,82 +174,15 @@ function LocationFormModal({ location, onClose, onSaved }: { location?: Location
   )
 }
 
-// Phase 64 — same lightweight search-dropdown pattern this codebase already
-// uses locally per-screen (e.g. PriceListsScreen's TierProductPicker,
-// ProductFormModal's KitComponentProductPicker) rather than a shared component.
-function TransferProductPicker({ products, value, onChange }: {
-  products: PickableProduct[]
-  value: string
-  onChange: (productId: string) => void
-}) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p =>
-        p.productName.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku ?? '').toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder={t('locations.searchProduct')}
-          className="w-full h-9 ps-6 pe-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute z-10 mt-1 w-full max-h-52 overflow-y-auto rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-900 shadow-lg">
-          {results.length === 0 && <div className="px-3 py-2 text-xs text-slate-400">{t('locations.noProductsFound')}</div>}
-          {results.map(p => (
-            <button
-              type="button"
-              key={p.id}
-              onClick={() => { onChange(p.id); setOpen(false) }}
-              className="w-full text-start px-3 py-1.5 text-sm hover:bg-slate-50 dark:hover:bg-slate-800 text-slate-700 dark:text-slate-200"
-            >
-              {p.productName}{p.sku ? <span className="text-slate-400 text-xs"> ({p.sku})</span> : null}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 function TransferStockModal({ locations, onClose, onSaved }: { locations: Location[]; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
-  const [products, setProducts] = useState<PickableProduct[]>([])
   const [productId, setProductId] = useState('')
   const [fromLocationId, setFromLocationId] = useState('')
   const [toLocationId, setToLocationId] = useState('')
   const [quantity, setQuantity] = useState(1)
   const [reason, setReason] = useState('')
   const [saving, setSaving] = useState(false)
-
-  useEffect(() => {
-    window.api.products.list({ isActive: true, limit: 1000 }).then((res) => {
-      if (res.success && res.data) setProducts(((res.data as { products: PickableProduct[] }).products ?? []))
-    }).catch(() => {})
-  }, [])
 
   async function handleTransfer() {
     if (!productId) { toastError(t('common.error'), t('locations.selectProduct')); return }
@@ -284,7 +217,7 @@ function TransferStockModal({ locations, onClose, onSaved }: { locations: Locati
       <div className="space-y-4">
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('locations.product')} *</label>
-          <TransferProductPicker products={products} value={productId} onChange={setProductId} />
+          <ProductAutocomplete value={productId} onChange={(p) => setProductId(p.id)} placeholder={t('locations.searchProduct')} />
         </div>
         <div className="grid grid-cols-2 gap-4">
           <div>

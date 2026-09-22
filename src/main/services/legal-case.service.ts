@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { serializeTimeEntry } from './time-entry.service'
 import { buildReminderWhatsAppLink as buildWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // LegalCase.feeAgreed/feeCollected are Prisma Decimal fields — Electron's
@@ -307,13 +308,10 @@ async function cancelLimitationReminder(caseId: string, oldLimitationDate: Date)
 async function scheduleLimitationReminder(caseId: string, limitationDate: Date) {
   try {
     const db = getPrisma()
-    const [legalCase, profile] = await Promise.all([
-      db.legalCase.findUnique({
-        where: { id: caseId },
-        include: { client: { select: { id: true, customerName: true, phone: true } } },
-      }),
-      db.businessProfile.findFirst({ select: { businessName: true } }),
-    ])
+    const legalCase = await db.legalCase.findUnique({
+      where: { id: caseId },
+      include: { client: { select: { id: true, customerName: true, phone: true } } },
+    })
     if (!legalCase) return
 
     const thirtyDaysBefore = new Date(limitationDate)
@@ -323,12 +321,11 @@ async function scheduleLimitationReminder(caseId: string, limitationDate: Date) 
     const now = new Date()
     if (thirtyDaysBefore <= now && sevenDaysBefore <= now) return
 
-    const firmName = profile?.businessName ?? 'Your Advocate'
     const dateStr = limitationDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const phone = legalCase.client.phone ?? ''
 
     if (thirtyDaysBefore > now) {
-      const body30 = `Dear ${legalCase.client.customerName}, an important deadline for case ${legalCase.caseNumber} (${legalCase.caseTitle}) falls on ${dateStr}. Please ensure all instructions/documents reach us in time. – ${firmName} | Powered by Sarang | www.aszurex.com`
+      const body30 = await renderMessageTemplate('LIMITATION_DUE_30D', { customerName: legalCase.client.customerName, caseNumber: legalCase.caseNumber, caseTitle: legalCase.caseTitle, date: dateStr })
       const link30 = phone ? await buildWhatsAppLink(phone, body30) : null
       await db.notificationQueue.create({
         data: {
@@ -343,7 +340,7 @@ async function scheduleLimitationReminder(caseId: string, limitationDate: Date) 
       })
     }
     if (sevenDaysBefore > now) {
-      const body7 = `Dear ${legalCase.client.customerName}, URGENT: the deadline for case ${legalCase.caseNumber} (${legalCase.caseTitle}) is ${dateStr} — only a few days away. – ${firmName} | Powered by Sarang | www.aszurex.com`
+      const body7 = await renderMessageTemplate('LIMITATION_DUE_7D', { customerName: legalCase.client.customerName, caseNumber: legalCase.caseNumber, caseTitle: legalCase.caseTitle, date: dateStr })
       const link7 = phone ? await buildWhatsAppLink(phone, body7) : null
       await db.notificationQueue.create({
         data: {

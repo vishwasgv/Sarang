@@ -1,5 +1,5 @@
-import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { PlusCircle, RefreshCw, Trash2, Edit2, Printer, Receipt, Plus, Search } from 'lucide-react'
+import React, { useEffect, useState, useCallback } from 'react'
+import { PlusCircle, RefreshCw, Trash2, Edit2, Printer, Receipt, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
@@ -12,6 +12,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
 import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
+import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
 
 interface DebitNote {
   id: string; debitNoteNumber: string; reason: string; amount: number; notes?: string | null
@@ -21,7 +22,6 @@ interface DebitNote {
 
 interface Supplier { id: string; supplierName: string }
 interface PurchaseOrder { id: string; poNumber: string }
-interface Product { id: string; productName: string; sku?: string | null; costPrice: number; productType: string }
 interface ExpenseCategory { id: string; categoryName: string }
 interface DebitNoteLineItem {
   lineType: 'PRODUCT' | 'SERVICE'
@@ -40,54 +40,6 @@ function lineItemTotal(item: DebitNoteLineItem): number {
   return base + base * ((Number(item.taxRate) || 0) / 100)
 }
 
-function ProductPicker({ products, value, onChange }: { products: Product[]; value: string; onChange: (productId: string) => void }) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p => p.productName.toLowerCase().includes(query.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(query.toLowerCase())).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">{t('common.noResults')}</p>
-          ) : (
-            results.map(p => (
-              <button key={p.id} type="button" onClick={() => { onChange(p.id); setQuery(''); setOpen(false) }}
-                className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}>
-                <p className="text-dark dark:text-slate-100">{p.productName}</p>
-                {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 export function DebitNotesScreen() {
   const { t } = useTranslation()
@@ -103,7 +55,6 @@ export function DebitNotesScreen() {
   const [printingId, setPrintingId] = useState<string | null>(null)
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [purchaseOrders, setPurchaseOrders] = useState<PurchaseOrder[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
 
   const [form, setForm] = useState({ supplierId: '', purchaseOrderId: '', reason: '', amount: '', notes: '' })
@@ -152,9 +103,6 @@ export function DebitNotesScreen() {
       setPurchaseOrders(linked && !fetched.some((p) => p.id === linked.id) ? [...fetched, linked] : fetched)
     }).catch(() => toastError(t('debitNotes.failed')))
     if (!editTarget) {
-      window.api.products.list({ isActive: true, limit: 500 }).then(r => {
-        if (r.success) setProducts(((r.data as { products: Product[] }).products ?? []).filter(p => p.productType === 'STANDARD'))
-      }).catch(() => {})
       window.api.expenses.listCategories().then(r => {
         if (r.success) setCategories((r.data as ExpenseCategory[]) ?? [])
       }).catch(() => {})
@@ -392,9 +340,8 @@ export function DebitNotesScreen() {
                       </div>
                       <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 items-start">
                         {item.lineType === 'PRODUCT' ? (
-                          <ProductPicker products={products} value={item.productId} onChange={(productId) => {
-                            const product = products.find(p => p.id === productId)
-                            updateLineItem(index, { productId, unitPrice: product?.costPrice ?? item.unitPrice })
+                          <ProductAutocomplete value={item.productId} onlyProductType="STANDARD" onChange={(p) => {
+                            updateLineItem(index, { productId: p.id, unitPrice: p.costPrice ?? item.unitPrice })
                           }} />
                         ) : (
                           <div className="space-y-1">

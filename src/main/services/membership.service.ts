@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
@@ -190,8 +191,8 @@ async function scheduleExpiryNotifications(
     const expDateStr = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
 
     const customerPhone = phone ?? ''
-    const body30 = `Dear ${customerName}, your gym membership expires on ${expDateStr}. Renew now to keep enjoying your classes! Powered by Sarang | www.aszurex.com`
-    const body7 = `Dear ${customerName}, your gym membership expires in 7 days (${expDateStr}). Renew today to avoid a break! Powered by Sarang | www.aszurex.com`
+    const body30 = await renderMessageTemplate('MEMBERSHIP_EXPIRY_30D', { customerName, expiryDate: expDateStr })
+    const body7 = await renderMessageTemplate('MEMBERSHIP_EXPIRY_7D', { customerName, expiryDate: expDateStr })
     const now = new Date()
 
     if (thirtyDaysBefore > now) {

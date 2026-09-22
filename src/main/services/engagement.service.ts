@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 
 // Engagement.feeAmount is a Prisma Decimal field — Electron's IPC (structured
@@ -67,14 +68,14 @@ async function scheduleEngagementRenewalReminder(engagementId: string, endDate: 
     const phone = engagement.client.phone ?? ''
 
     if (thirtyDaysBefore > now) {
-      const body30 = `Dear ${engagement.client.customerName}, your engagement "${engagement.title}" is due for renewal on ${dateStr}. Please let us know if you'd like to continue. Powered by Sarang | www.aszurex.com`
+      const body30 = await renderMessageTemplate('ENGAGEMENT_RENEWAL_30D', { customerName: engagement.client.customerName, title: engagement.title, date: dateStr })
       const link30 = phone ? await buildReminderWhatsAppLink(phone, body30) : null
       await db.notificationQueue.create({
         data: { customerId: engagement.client.id, customerName: engagement.client.customerName, customerPhone: phone, notificationType: 'ENGAGEMENT_RENEWAL_30D', templateBody: body30, whatsappLink: link30, scheduledFor: thirtyDaysBefore },
       })
     }
     if (sevenDaysBefore > now) {
-      const body7 = `Dear ${engagement.client.customerName}, your engagement "${engagement.title}" ends on ${dateStr} — only a few days away. Please confirm renewal. Powered by Sarang | www.aszurex.com`
+      const body7 = await renderMessageTemplate('ENGAGEMENT_RENEWAL_7D', { customerName: engagement.client.customerName, title: engagement.title, date: dateStr })
       const link7 = phone ? await buildReminderWhatsAppLink(phone, body7) : null
       await db.notificationQueue.create({
         data: { customerId: engagement.client.id, customerName: engagement.client.customerName, customerPhone: phone, notificationType: 'ENGAGEMENT_RENEWAL_7D', templateBody: body7, whatsappLink: link7, scheduledFor: sevenDaysBefore },

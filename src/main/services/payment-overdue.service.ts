@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { formatAmount } from './print.service'
 
 export async function scanPaymentOverdueNotifications(): Promise<void> {
@@ -42,7 +43,8 @@ export async function scanPaymentOverdueNotifications(): Promise<void> {
       const phone = inv.customer?.phone ?? null
       const dueDateStr = inv.dueDate.toLocaleDateString(undefined, { day: 'numeric', month: 'long', year: 'numeric' })
       const formattedBalance = await formatAmount(inv.balanceAmount, currencySymbol)
-      const body = `Dear ${customerName}, invoice #${inv.invoiceNumber} [${idAnchor}] of ${formattedBalance} was due on ${dueDateStr} and is now overdue by ${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}. Please clear at your earliest convenience. Powered by Sarang | www.aszurex.com`
+      const daysOverdueStr = `${daysOverdue} day${daysOverdue !== 1 ? 's' : ''}`
+      const body = (await renderMessageTemplate('PAYMENT_OVERDUE', { customerName, invoiceNumber: inv.invoiceNumber, amount: formattedBalance, dueDate: dueDateStr, daysOverdue: daysOverdueStr })) + ` [${idAnchor}]`
       const whatsappLink = phone ? await buildReminderWhatsAppLink(phone, body) : null
 
       await db.notificationQueue.create({

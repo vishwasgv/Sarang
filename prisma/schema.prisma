@@ -3828,6 +3828,21 @@ model CancellationPolicy {
   updatedAt            DateTime @updatedAt
 }
 
+// Owner-editable WhatsApp message templates. Sparse by design: a row here is
+// an OVERRIDE of one notificationType/share-message's built-in default text
+// (see message-template.service.ts's DEFAULT_MESSAGE_TEMPLATES) — no row
+// means "still using the shipped default," so an app update that improves a
+// default's wording reaches every business that never customized it, while
+// anyone who did edit their own copy keeps it untouched. "Reset to default"
+// is just deleting the row.
+model MessageTemplate {
+  id          String   @id @default(cuid())
+  templateKey String   @unique
+  body        String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+}
+
 model NotificationQueue {
   id               String    @id @default(cuid())
   appointmentId    String?

@@ -77,6 +77,7 @@ import { register as registerAppointments } from './handlers/appointment.handler
 import { register as registerServiceCatalog } from './handlers/service-catalog.handler'
 import { register as registerProviderSchedule } from './handlers/provider-schedule.handler'
 import { register as registerNotificationQueue } from './handlers/notification-queue.handler'
+import { register as registerMessageTemplates } from './handlers/message-template.handler'
 // Phase 23 — Veterinary
 import { register as registerPets } from './handlers/pet.handler'
 import { register as registerVaccinations } from './handlers/vaccination.handler'
@@ -285,6 +286,7 @@ export function registerAllIpcHandlers(): void {
   registerServiceCatalog(h)
   registerProviderSchedule(h)
   registerNotificationQueue(h)
+  registerMessageTemplates(h)
   // Phase 23 — Veterinary
   registerPets(h)
   registerVaccinations(h)

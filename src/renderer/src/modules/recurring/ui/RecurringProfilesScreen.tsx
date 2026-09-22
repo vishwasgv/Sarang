@@ -1,7 +1,7 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { useTranslation } from 'react-i18next'
-import { Repeat, RefreshCw, Plus, Search, Trash2 } from 'lucide-react'
+import { Repeat, RefreshCw, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
@@ -15,6 +15,7 @@ import { cn } from '@shared/utils/cn'
 import { toLocalISODate } from '@shared/utils/locale.util'
 import { CustomerFormModal } from '@modules/customers/ui/CustomerFormModal'
 import { SupplierFormModal } from '@modules/suppliers/ui/SupplierFormModal'
+import { ProductAutocomplete, type ProductOption } from '@shared/ui/organisms/ProductAutocomplete'
 
 interface RecurringProfile {
   id: string
@@ -31,7 +32,6 @@ interface RecurringProfile {
 
 interface Customer { id: string; customerName: string; customerCode: string }
 interface Supplier { id: string; supplierName: string; supplierCode: string }
-interface Product { id: string; productName: string; sku?: string | null; unit: string; productType: string; sellingPrice: number; costPrice: number }
 interface ExpenseCategory { id: string; categoryName: string }
 
 const DOC_TYPES = ['INVOICE', 'BILL', 'EXPENSE'] as const
@@ -253,54 +253,6 @@ function EditScheduleModal({ profile, onClose, onSaved }: { profile: RecurringPr
   )
 }
 
-function ProductPicker({ products, value, onChange }: { products: Product[]; value: string; onChange: (id: string) => void }) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p => p.productName.toLowerCase().includes(query.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(query.toLowerCase())).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">{t('common.noResults')}</p>
-          ) : (
-            results.map(p => (
-              <button key={p.id} type="button" onClick={() => { onChange(p.id); setQuery(''); setOpen(false) }}
-                className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}>
-                <p className="text-dark dark:text-slate-100">{p.productName}</p>
-                {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 interface FormValues {
   documentType: typeof DOC_TYPES[number]
@@ -327,7 +279,6 @@ export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () =>
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [customerFormOpen, setCustomerFormOpen] = useState(false)
@@ -361,11 +312,7 @@ export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () =>
       setLoadingData(true)
       try {
         await Promise.all([loadCustomers(), loadSuppliers()])
-        const [pRes, cRes] = await Promise.all([
-          window.api.products.list({ isActive: true, limit: 500 }),
-          window.api.expenses.listCategories()
-        ])
-        if (pRes.success) setProducts(((pRes.data as { products: Product[] }).products ?? []).filter(p => p.productType === 'STANDARD'))
+        const cRes = await window.api.expenses.listCategories()
         if (cRes.success) setCategories((cRes.data as ExpenseCategory[]) ?? [])
       } catch {
         toastError(t('common.error'), t('recurringProfiles.couldNotLoadFormData'))
@@ -377,12 +324,9 @@ export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () =>
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
-  function handleProductChange(index: number, productId: string, onChange: (v: string) => void) {
-    onChange(productId)
-    const product = products.find(p => p.id === productId)
-    if (product) {
-      setValue(`items.${index}.price`, documentType === 'INVOICE' ? (product.sellingPrice ?? 0) : (product.costPrice ?? 0))
-    }
+  function handleProductChange(index: number, product: ProductOption, onChange: (v: string) => void) {
+    onChange(product.id)
+    setValue(`items.${index}.price`, documentType === 'INVOICE' ? (product.sellingPrice ?? 0) : (product.costPrice ?? 0))
   }
 
   async function onSubmit(values: FormValues) {
@@ -528,7 +472,7 @@ export function RecurringProfileFormModal({ onClose, onSaved }: { onClose: () =>
                         <div>
                           {lineType === 'PRODUCT' ? (
                             <Controller control={control} name={`items.${index}.productId`}
-                              render={({ field: f }) => <ProductPicker products={products} value={f.value ?? ''} onChange={(id) => handleProductChange(index, id, f.onChange)} />} />
+                              render={({ field: f }) => <ProductAutocomplete value={f.value ?? ''} onChange={(p) => handleProductChange(index, p, f.onChange)} onlyProductType="STANDARD" />} />
                           ) : (
                             <div className="space-y-1">
                               <input placeholder={t('bills.serviceDescription')} {...register(`items.${index}.serviceDescription`)}

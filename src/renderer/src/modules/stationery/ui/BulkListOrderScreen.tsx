@@ -1,18 +1,16 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { PackagePlus, Plus, RefreshCw, Trash2, Search, Receipt, CheckCircle2, BellRing } from 'lucide-react'
+import { PackagePlus, Plus, RefreshCw, Trash2, Receipt, CheckCircle2, BellRing } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
+import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
-import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
-
-interface Product { id: string; productName: string; sku?: string | null; sellingPrice: number }
 
 interface ReorderReminderRow {
   customerId: string | null; institutionName: string
@@ -42,53 +40,6 @@ interface BulkListOrder {
   items: BulkListOrderItem[]
 }
 
-function ProductPicker({ products, value, onChange }: { products: Product[]; value: string; onChange: (id: string, price: number) => void }) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p => p.productName.toLowerCase().includes(query.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(query.toLowerCase())).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? selected.productName : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder={t('stationery.bulkListOrder.searchProductPlaceholder')}
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">{t('stationery.bulkListOrder.noProductsMatch')}</p>
-          ) : results.map(p => (
-            <button key={p.id} type="button" onClick={() => { onChange(p.id, p.sellingPrice); setQuery(''); setOpen(false) }}
-              className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}>
-              {p.productName}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
-
 export function BulkListOrderScreen(): React.JSX.Element {
   const { t } = useTranslation()
   const hasPermission = useAuthStore((s) => s.hasPermission)
@@ -96,7 +47,6 @@ export function BulkListOrderScreen(): React.JSX.Element {
   const canManage = hasPermission('bulkListOrder.manage')
 
   const [orders, setOrders] = useState<BulkListOrder[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [customer, setCustomer] = useState<CustomerLite | null>(null)
@@ -118,14 +68,12 @@ export function BulkListOrderScreen(): React.JSX.Element {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [oRes, pRes, rRes] = await Promise.all([
+      const [oRes, rRes] = await Promise.all([
         window.api.bulkListOrder.list(),
-        window.api.products.list({ isActive: true, limit: 500 }),
         window.api.bulkListOrder.reorderReminders(),
       ])
       if (oRes.success) setOrders((oRes.data as BulkListOrder[]) ?? [])
       else toastError(t('common.error'), t('stationery.bulkListOrder.couldNotLoad'))
-      if (pRes.success) setProducts((pRes.data as { products?: Product[] })?.products ?? [])
       if (rRes.success) setReminders((rRes.data as ReorderReminderRow[]) ?? [])
     } catch {
       toastError(t('common.error'), t('stationery.bulkListOrder.couldNotLoad'))
@@ -334,7 +282,7 @@ export function BulkListOrderScreen(): React.JSX.Element {
                           <span className="ms-2 text-xs text-success flex items-center gap-1 inline-flex"><CheckCircle2 size={12} /> {item.product?.productName} @ {formatCurrency(item.unitPrice ?? 0)}</span>
                         ) : o.status === 'DRAFT' && canManage ? (
                           <div className="mt-1 grid grid-cols-4 gap-2 items-end">
-                            <div className="col-span-2"><ProductPicker products={products} value={matchDraft[item.id]?.productId ?? ''} onChange={(id, price) => setMatchDraft(prev => ({ ...prev, [item.id]: { productId: id, unitPrice: String(price) } }))} /></div>
+                            <div className="col-span-2"><ProductAutocomplete value={matchDraft[item.id]?.productId ?? ''} onChange={(p) => setMatchDraft(prev => ({ ...prev, [item.id]: { productId: p.id, unitPrice: String(p.sellingPrice ?? 0) } }))} placeholder={t('stationery.bulkListOrder.searchProductPlaceholder')} /></div>
                             <Input placeholder={t('common.price')} type="number" min="0" step="0.01" value={matchDraft[item.id]?.unitPrice ?? ''} onChange={(e) => setMatchDraft(prev => ({ ...prev, [item.id]: { productId: prev[item.id]?.productId ?? '', unitPrice: e.target.value } }))} />
                             <Button size="sm" variant="secondary" onClick={() => void handleMatch(item.id)} disabled={!matchDraft[item.id]?.productId || matchingId === item.id}>{matchingId === item.id ? t('stationery.bulkListOrder.matching') : t('stationery.bulkListOrder.match')}</Button>
                           </div>

@@ -29,16 +29,33 @@ function jewelleryFieldsFor(payload: { metalType?: string | null; purity?: strin
   }
 }
 
-export async function listProducts(filters?: { categoryId?: string; isActive?: boolean; page?: number; limit?: number }): Promise<ApiResponse> {
+export async function listProducts(filters?: { categoryId?: string; isActive?: boolean; page?: number; limit?: number; search?: string }): Promise<ApiResponse> {
   try {
     const db = getPrisma()
     const page = filters?.page ?? 1
     const limit = filters?.limit ?? 50
     const skip = (page - 1) * limit
 
+    // REAL BUG found+fixed 2026-09-22 (stress test, 1500-product catalog):
+    // every caller of this function previously fetched one capped batch
+    // (limit 500-1000) and filtered it client-side as the owner typed — a
+    // product past that cap was invisible to search no matter what was
+    // typed, not just slow to find. `search` runs the match server-side
+    // against the full table instead, so pagination and matching are no
+    // longer coupled to the same one-shot fetch. Matches productName, sku,
+    // or barcode — the three fields an owner would actually type to find
+    // something at a real till.
+    const searchTerm = filters?.search?.trim()
     const where = {
       ...(filters?.categoryId ? { categoryId: filters.categoryId } : {}),
-      isActive: filters?.isActive !== undefined ? filters.isActive : true
+      isActive: filters?.isActive !== undefined ? filters.isActive : true,
+      ...(searchTerm ? {
+        OR: [
+          { productName: { contains: searchTerm } },
+          { sku: { contains: searchTerm } },
+          { barcode: { contains: searchTerm } },
+        ],
+      } : {}),
     }
 
     const [products, total] = await Promise.all([

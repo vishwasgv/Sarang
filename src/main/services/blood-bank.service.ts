@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { logAction } from './audit.service'
 import { roundCurrency } from './currency.service'
 import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
@@ -301,8 +302,8 @@ export async function sendDonorRecall(donorId: string) {
     const donor = await db.donor.findUnique({ where: { id: donorId } })
     if (!donor) return { success: false, error: { code: 'BB-004', message: 'Donor not found.' } }
     if (!donor.phone) return { success: false, error: { code: 'BB-008', message: 'This donor has no phone number on file.' } }
-    const message = `Dear ${donor.fullName}, you are now eligible to donate blood again — your last donation has recovered. Please consider donating soon to help save lives. Thank you! Powered by Sarang | www.aszurex.com`
-    const res = await generateWhatsAppLink({ phone: donor.phone, message, notificationType: 'CUSTOM', customerId: donor.id, customerName: donor.fullName })
+    const message = await renderMessageTemplate('BLOOD_DONOR_ELIGIBLE', { donorName: donor.fullName })
+    const res = await generateWhatsAppLink({ phone: donor.phone, message, notificationType: 'BLOOD_DONOR_ELIGIBLE', customerId: donor.id, customerName: donor.fullName })
     return res
   } catch (err) {
     return { success: false, error: { code: 'BB-009', message: err instanceof Error ? err.message : 'Could not send recall reminder.' } }

@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 // Real bug found (Group E service-family audit, 2026-09-04): learnerLicenseDate/
 // permanentLicenseDate are pure calendar-date fields, but were returned as raw
@@ -211,7 +212,7 @@ export async function scheduleTestReminder(testId: string, daysBefore = 1) {
 
     const testDateStr = test.testDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const testLabel = test.testType === 'LL_TEST' ? 'Learner\'s License test' : 'Driving License test'
-    const message = `Dear ${test.learner.customerName}, your ${testLabel} is scheduled at ${test.testCenter} on ${testDateStr}. All the best! Powered by Sarang | www.aszurex.com`
+    const message = await renderMessageTemplate('DRIVING_TEST_REMINDER', { customerName: test.learner.customerName, testLabel, testCenter: test.testCenter, testDate: testDateStr })
     const link = await buildReminderWhatsAppLink(test.learner.phone, message)
 
     const notification = await db.notificationQueue.create({

@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { Bell, MessageCircle, CheckCircle2, XCircle, RefreshCw, ExternalLink } from 'lucide-react'
+import { useTranslation } from 'react-i18next'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { Card } from '@shared/ui/molecules/Card'
@@ -20,11 +21,16 @@ interface NotificationItem {
   createdAt: string
 }
 
-const STATUS_LABEL: Record<NotificationItem['status'], string> = {
-  PENDING:   'Pending',
-  SENT:      'Sent',
-  DISMISSED: 'Dismissed',
-  FAILED:    'Failed',
+// REAL BUG found+fixed 2026-09-22: this whole screen (including these two
+// lookup maps) had zero i18n wiring — every string was a hardcoded English
+// literal, unlike every other screen in this app. Both maps now hold i18n
+// KEYS (resolved via t() inside the component) rather than literal English
+// text.
+const STATUS_LABEL_KEYS: Record<NotificationItem['status'], string> = {
+  PENDING:   'whatsappReminders.statusPending',
+  SENT:      'whatsappReminders.statusSent',
+  DISMISSED: 'whatsappReminders.statusDismissed',
+  FAILED:    'whatsappReminders.statusFailed',
 }
 
 const STATUS_VARIANT: Record<NotificationItem['status'], 'warning' | 'success' | 'neutral' | 'danger'> = {
@@ -34,46 +40,59 @@ const STATUS_VARIANT: Record<NotificationItem['status'], 'warning' | 'success' |
   FAILED:    'danger',
 }
 
-const TYPE_LABELS: Record<string, string> = {
-  APPOINTMENT_REMINDER:      'Appointment Reminder',
-  APPOINTMENT_REMINDER_24H:  'Appointment Reminder (24h)',
-  APPOINTMENT_REMINDER_2H:   'Appointment Reminder (2h)',
-  APPOINTMENT_CONFIRM:       'Booking Confirmation',
-  APPOINTMENT_CANCEL:        'Cancellation Notice',
-  VACCINE_DUE_7D:            'Vaccine Due (7 Days)',
-  VACCINE_DUE_30D:           'Vaccine Due (30 Days)',
-  VACCINE_OVERDUE:           'Vaccination Overdue',
-  HEARING_DUE_2D:            'Hearing Due (2 Days)',
-  HEARING_DUE_7D:            'Hearing Due (7 Days)',
-  RECALL_DUE_7D:             'Dental Recall (7 Days)',
-  RECALL_DUE_30D:            'Dental Recall (30 Days)',
-  SESSION_PACK_EXPIRY_7D:    'Session Pack Expiry (7 Days)',
-  SESSION_PACK_EXPIRY_30D:   'Session Pack Expiry (30 Days)',
-  MEMBERSHIP_EXPIRY_7D:      'Membership Expiry (7 Days)',
-  MEMBERSHIP_EXPIRY_30D:     'Membership Expiry (30 Days)',
-  COMPLIANCE_DUE_30D:        'Compliance Due (30 Days)',
-  COMPLIANCE_DUE_15D:        'Compliance Due (15 Days)',
-  COMPLIANCE_DUE_7D:         'Compliance Due (7 Days)',
-  COMPLIANCE_DUE_1D:         'Compliance Due (1 Day)',
-  COMPLIANCE_OVERDUE:        'Compliance Overdue',
-  PAYMENT_OVERDUE_7D:        'Payment Overdue (7 Days)',
-  PAYMENT_OVERDUE_14D:       'Payment Overdue (14 Days)',
-  PAYMENT_OVERDUE_30D:       'Payment Overdue (30 Days)',
-  RETAINER_INVOICE_DUE_3D:   'Retainer Invoice Due (3 Days)',
-  CONTRACT_RENEWAL_30D:      'Contract Renewal Due (30 Days)',
-  CONTRACT_RENEWAL_7D:       'Contract Renewal Due (7 Days)',
-  HOTEL_CHECKOUT_REMINDER:   'Check-Out Reminder',
-  LAB_REPORT_READY:          'Lab Report Ready',
-  TRIP_DEPARTURE_REMINDER:   'Trip Departure Reminder',
-  SHOOT_DATE_REMINDER:      'Shoot Date Reminder',
-  EVENT_DATE_REMINDER:      'Event Date Reminder',
-  SHIPMENT_DISPATCHED:       'Shipment Dispatched',
-  SHIPMENT_DELAYED:          'Shipment Delayed',
-  GRN_POSTED:                'GRN Posted',
-  CUSTOM:                    'Custom Message',
+const TYPE_LABEL_KEYS: Record<string, string> = {
+  APPOINTMENT_REMINDER:      'whatsappReminders.type.appointmentReminder',
+  APPOINTMENT_REMINDER_24H:  'whatsappReminders.type.appointmentReminder24h',
+  APPOINTMENT_REMINDER_2H:   'whatsappReminders.type.appointmentReminder2h',
+  APPOINTMENT_CONFIRM:       'whatsappReminders.type.appointmentConfirm',
+  APPOINTMENT_CANCEL:        'whatsappReminders.type.appointmentCancel',
+  VACCINE_DUE_7D:            'whatsappReminders.type.vaccineDue7d',
+  VACCINE_DUE_30D:           'whatsappReminders.type.vaccineDue30d',
+  VACCINE_OVERDUE:           'whatsappReminders.type.vaccineOverdue',
+  HEARING_DUE_2D:            'whatsappReminders.type.hearingDue2d',
+  HEARING_DUE_7D:            'whatsappReminders.type.hearingDue7d',
+  RECALL_DUE_7D:             'whatsappReminders.type.recallDue7d',
+  RECALL_DUE_30D:            'whatsappReminders.type.recallDue30d',
+  SESSION_PACK_EXPIRY_7D:    'whatsappReminders.type.sessionPackExpiry7d',
+  SESSION_PACK_EXPIRY_30D:   'whatsappReminders.type.sessionPackExpiry30d',
+  MEMBERSHIP_EXPIRY_7D:      'whatsappReminders.type.membershipExpiry7d',
+  MEMBERSHIP_EXPIRY_30D:     'whatsappReminders.type.membershipExpiry30d',
+  COMPLIANCE_DUE_30D:        'whatsappReminders.type.complianceDue30d',
+  COMPLIANCE_DUE_15D:        'whatsappReminders.type.complianceDue15d',
+  COMPLIANCE_DUE_7D:         'whatsappReminders.type.complianceDue7d',
+  COMPLIANCE_DUE_1D:         'whatsappReminders.type.complianceDue1d',
+  COMPLIANCE_OVERDUE:        'whatsappReminders.type.complianceOverdue',
+  PAYMENT_OVERDUE_7D:        'whatsappReminders.type.paymentOverdue7d',
+  PAYMENT_OVERDUE_14D:       'whatsappReminders.type.paymentOverdue14d',
+  PAYMENT_OVERDUE_30D:       'whatsappReminders.type.paymentOverdue30d',
+  CONTRACT_RENEWAL_30D:      'whatsappReminders.type.contractRenewal30d',
+  CONTRACT_RENEWAL_7D:       'whatsappReminders.type.contractRenewal7d',
+  HOTEL_CHECKOUT_REMINDER:   'whatsappReminders.type.hotelCheckoutReminder',
+  LAB_REPORT_READY:          'whatsappReminders.type.labReportReady',
+  TRIP_DEPARTURE_REMINDER:   'whatsappReminders.type.tripDepartureReminder',
+  SHOOT_DATE_REMINDER:       'whatsappReminders.type.shootDateReminder',
+  EVENT_DATE_REMINDER:       'whatsappReminders.type.eventDateReminder',
+  SHIPMENT_DISPATCHED:       'whatsappReminders.type.shipmentDispatched',
+  SHIPMENT_DELAYED:          'whatsappReminders.type.shipmentDelayed',
+  GRN_POSTED:                'whatsappReminders.type.grnPosted',
+  CAR_SERVICE_DUE_REMINDER:  'whatsappReminders.type.carServiceDueReminder',
+  ENGAGEMENT_RENEWAL_30D:    'whatsappReminders.type.engagementRenewal30d',
+  ENGAGEMENT_RENEWAL_7D:     'whatsappReminders.type.engagementRenewal7d',
+  DRIVING_TEST_REMINDER:     'whatsappReminders.type.drivingTestReminder',
+  LIMITATION_DUE_30D:        'whatsappReminders.type.limitationDue30d',
+  LIMITATION_DUE_7D:         'whatsappReminders.type.limitationDue7d',
+  PROPERTY_SITE_VISIT_REMINDER: 'whatsappReminders.type.propertySiteVisitReminder',
+  RENTAL_RETURN_DUE:         'whatsappReminders.type.rentalReturnDue',
+  RETAINER_INVOICE_DUE_3D:   'whatsappReminders.type.retainerInvoiceDue3d',
+  RETAINER_LAPSE_30D:        'whatsappReminders.type.retainerLapse30d',
+  RETAINER_LAPSE_7D:         'whatsappReminders.type.retainerLapse7d',
+  EQUIPMENT_SERVICE_DUE_REMINDER: 'whatsappReminders.type.equipmentServiceDueReminder',
+  BLOOD_DONOR_ELIGIBLE:      'whatsappReminders.type.bloodDonorEligible',
+  CUSTOM:                    'whatsappReminders.type.custom',
 }
 
 export function NotificationQueueScreen() {
+  const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [items, setItems] = useState<NotificationItem[]>([])
   const [loading, setLoading] = useState(false)
@@ -88,14 +107,14 @@ export function NotificationQueueScreen() {
         api.notificationQueue.getUnsentCount(),
       ])
       if (listRes.success && listRes.data) setItems(listRes.data as NotificationItem[])
-      else toastError('Error', listRes.error?.message ?? 'Could not load notifications.')
+      else toastError(t('common.error'), listRes.error?.message ?? t('whatsappReminders.loadFailed'))
       if (countRes.success) setUnsentCount(countRes.data as number)
     } catch {
-      toastError('Error', 'Could not load notifications.')
+      toastError(t('common.error'), t('whatsappReminders.loadFailed'))
     } finally {
       setLoading(false)
     }
-  }, [filter, toastError])
+  }, [filter, toastError, t])
 
   useEffect(() => { load() }, [load])
 
@@ -103,9 +122,9 @@ export function NotificationQueueScreen() {
     try {
       const res = await api.notificationQueue.markSent({ id })
       if (res.success) await load()
-      else toastError('Error', res.error?.message ?? 'Could not mark notification as sent.')
+      else toastError(t('common.error'), res.error?.message ?? t('whatsappReminders.markSentFailed'))
     } catch {
-      toastError('Error', 'Could not mark notification as sent.')
+      toastError(t('common.error'), t('whatsappReminders.markSentFailed'))
     }
   }
 
@@ -113,9 +132,9 @@ export function NotificationQueueScreen() {
     try {
       const res = await api.notificationQueue.dismiss({ id })
       if (res.success) await load()
-      else toastError('Error', res.error?.message ?? 'Could not dismiss notification.')
+      else toastError(t('common.error'), res.error?.message ?? t('whatsappReminders.dismissFailed'))
     } catch {
-      toastError('Error', 'Could not dismiss notification.')
+      toastError(t('common.error'), t('whatsappReminders.dismissFailed'))
     }
   }
 
@@ -132,9 +151,9 @@ export function NotificationQueueScreen() {
             <Bell size={18} className="text-white" />
           </div>
           <div>
-            <h1 className="text-base font-semibold text-dark dark:text-slate-100">WhatsApp Reminders</h1>
+            <h1 className="text-base font-semibold text-dark dark:text-slate-100">{t('whatsappReminders.title')}</h1>
             <p className="text-xs text-slate-500 dark:text-slate-400">
-              {unsentCount > 0 ? `${unsentCount} pending reminder${unsentCount !== 1 ? 's' : ''} to send` : 'All caught up!'}
+              {unsentCount > 0 ? t('whatsappReminders.pendingCount', { count: unsentCount }) : t('whatsappReminders.allCaughtUp')}
             </p>
           </div>
         </div>
@@ -146,19 +165,19 @@ export function NotificationQueueScreen() {
       {/* Info banner */}
       <div className="px-6 py-3 bg-brand/5 border-b border-brand/20 shrink-0">
         <p className="text-xs text-brand">
-          <strong>How this works:</strong> Click the WhatsApp button to open a pre-filled message for the client. After sending, click "Mark Sent" to track it. No automatic messages are sent — you are always in control.
+          <strong>{t('whatsappReminders.howThisWorksLabel')}</strong> {t('whatsappReminders.howThisWorksBody')}
         </p>
       </div>
 
       {/* Filters */}
       <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900 flex items-center gap-2 shrink-0">
-        {['PENDING', 'SENT', 'ALL'].map((f) => (
+        {(['PENDING', 'SENT', 'ALL'] as const).map((f) => (
           <button
             key={f}
             onClick={() => setFilter(f)}
             className={cn('px-3 py-1 text-xs font-medium rounded-full border transition-colors', filter === f ? 'border-brand text-brand bg-brand/5' : 'border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-slate-300')}
           >
-            {f === 'ALL' ? 'All' : f.charAt(0) + f.slice(1).toLowerCase()}
+            {f === 'ALL' ? t('whatsappReminders.filterAll') : f === 'PENDING' ? t(STATUS_LABEL_KEYS.PENDING) : t(STATUS_LABEL_KEYS.SENT)}
           </button>
         ))}
       </div>
@@ -172,8 +191,8 @@ export function NotificationQueueScreen() {
         ) : items.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-16 text-center">
             <Bell size={32} className="text-slate-300 mb-3" />
-            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">No notifications</p>
-            <p className="text-xs text-slate-400 mt-1">Reminders are created when you book appointments.</p>
+            <p className="text-sm font-medium text-slate-600 dark:text-slate-300">{t('whatsappReminders.noNotifications')}</p>
+            <p className="text-xs text-slate-400 mt-1">{t('whatsappReminders.noNotificationsHint')}</p>
           </div>
         ) : (
           <div className="space-y-2">
@@ -184,17 +203,17 @@ export function NotificationQueueScreen() {
                   <div className="flex items-start justify-between gap-3">
                     <div className="flex-1 min-w-0">
                       <div className="flex items-center gap-2 flex-wrap mb-1">
-                        <span className="text-xs font-semibold text-dark dark:text-slate-100">{item.customerName ?? 'Unknown Client'}</span>
+                        <span className="text-xs font-semibold text-dark dark:text-slate-100">{item.customerName ?? t('whatsappReminders.unknownClient')}</span>
                         {item.customerPhone && <span className="text-xs text-slate-500 dark:text-slate-400">{item.customerPhone}</span>}
-                        <span className="text-xs text-slate-400">{TYPE_LABELS[item.notificationType] ?? item.notificationType}</span>
-                        <Badge variant={STATUS_VARIANT[item.status] ?? 'neutral'} size="sm">{STATUS_LABEL[item.status] ?? item.status}</Badge>
+                        <span className="text-xs text-slate-400">{TYPE_LABEL_KEYS[item.notificationType] ? t(TYPE_LABEL_KEYS[item.notificationType]) : item.notificationType}</span>
+                        <Badge variant={STATUS_VARIANT[item.status] ?? 'neutral'} size="sm">{STATUS_LABEL_KEYS[item.status] ? t(STATUS_LABEL_KEYS[item.status]) : item.status}</Badge>
                       </div>
                       <p className="text-xs text-slate-600 dark:text-slate-300 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-100 dark:border-slate-800 leading-relaxed">
                         {item.templateBody}
                       </p>
                       {item.scheduledFor && (
                         <p className="text-xs text-slate-400 mt-1">
-                          Scheduled: {new Date(item.scheduledFor).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' })}
+                          {t('whatsappReminders.scheduledLabel', { datetime: new Date(item.scheduledFor).toLocaleString('en-IN', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' }) })}
                         </p>
                       )}
                     </div>
@@ -204,14 +223,14 @@ export function NotificationQueueScreen() {
                           onClick={() => openWhatsApp(item.whatsappLink!)}
                           className="flex items-center gap-1.5 px-3 py-1.5 bg-[#25D366] text-white text-xs font-medium rounded-lg hover:bg-[#1ebe57] transition-colors"
                         >
-                          <MessageCircle size={13} /> Send on WhatsApp
+                          <MessageCircle size={13} /> {t('whatsappReminders.sendOnWhatsApp')}
                         </button>
                       )}
                       {item.whatsappLink && item.status !== 'PENDING' && (
                         <button
                           onClick={() => openWhatsApp(item.whatsappLink!)}
                           className="p-1.5 text-slate-400 hover:text-brand rounded-lg hover:bg-brand/5 transition-colors"
-                          title="Open WhatsApp"
+                          title={t('whatsappReminders.openWhatsAppTitle')}
                         >
                           <ExternalLink size={14} />
                         </button>
@@ -221,14 +240,14 @@ export function NotificationQueueScreen() {
                           <button
                             onClick={() => handleMarkSent(item.id)}
                             className="p-1.5 text-slate-400 hover:text-success rounded-lg hover:bg-success/5 transition-colors"
-                            title="Mark as sent"
+                            title={t('whatsappReminders.markSentTitle')}
                           >
                             <CheckCircle2 size={14} />
                           </button>
                           <button
                             onClick={() => handleDismiss(item.id)}
                             className="p-1.5 text-slate-400 hover:text-danger rounded-lg hover:bg-danger/5 transition-colors"
-                            title="Dismiss"
+                            title={t('whatsappReminders.dismissTitle')}
                           >
                             <XCircle size={14} />
                           </button>

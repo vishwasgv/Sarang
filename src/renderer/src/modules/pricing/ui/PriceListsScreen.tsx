@@ -1,6 +1,6 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Tag, RefreshCw, Plus, Search, Trash2 } from 'lucide-react'
+import { Tag, RefreshCw, Plus, Trash2 } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
@@ -9,7 +9,7 @@ import { Modal } from '@shared/ui/molecules/Modal'
 import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
-import { cn } from '@shared/utils/cn'
+import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
 
 interface PriceList {
   id: string
@@ -27,8 +27,6 @@ interface PriceListItem {
   unitPrice: number
   product?: { id: string; productName: string; sku?: string | null }
 }
-
-interface Product { id: string; productName: string; sku?: string | null; unit: string }
 
 const APPLIES_TO_VALUES = ['CUSTOMER', 'SUPPLIER'] as const
 
@@ -247,70 +245,10 @@ function EditPriceListModal({ priceList, onClose, onSaved }: { priceList: PriceL
   )
 }
 
-function TierProductPicker({ products, value, onChange }: {
-  products: Product[]
-  value: string
-  onChange: (productId: string) => void
-}) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p =>
-        p.productName.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku ?? '').toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">{t('common.noResults')}</p>
-          ) : (
-            results.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => { onChange(p.id); setQuery(''); setOpen(false) }}
-                className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}
-              >
-                <p className="text-dark dark:text-slate-100">{p.productName}</p>
-                {p.sku && <p className="text-xs text-slate-400">SKU: {p.sku}</p>}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-    </div>
-  )
-}
 
 function ManageTiersModal({ priceList, onClose, onSaved }: { priceList: PriceList; onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
-  const [products, setProducts] = useState<Product[]>([])
   const [rows, setRows] = useState<PriceListItem[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -319,17 +257,10 @@ function ManageTiersModal({ priceList, onClose, onSaved }: { priceList: PriceLis
     async function loadData() {
       setLoadingData(true)
       try {
-        const [detailRes, productsRes] = await Promise.all([
-          window.api.priceLists.get(priceList.id),
-          window.api.products.list({ isActive: true, limit: 500 })
-        ])
+        const detailRes = await window.api.priceLists.get(priceList.id)
         if (detailRes.success) {
           const d = detailRes.data as { items: PriceListItem[] }
           setRows((d.items ?? []).map(i => ({ productId: i.productId, minQuantity: i.minQuantity, unitPrice: i.unitPrice, product: i.product })))
-        }
-        if (productsRes.success) {
-          const d = productsRes.data as { products: Product[] }
-          setProducts(d.products ?? [])
         }
       } catch {
         toastError(t('common.error'), t('priceLists.couldNotLoad'))
@@ -398,7 +329,7 @@ function ManageTiersModal({ priceList, onClose, onSaved }: { priceList: PriceLis
             )}
             {rows.map((row, index) => (
               <div key={index} className="grid grid-cols-[2fr_1fr_1fr_auto] gap-2 items-center bg-slate-50 dark:bg-slate-800 rounded-lg p-2">
-                <TierProductPicker products={products} value={row.productId} onChange={(productId) => updateRow(index, { productId })} />
+                <ProductAutocomplete value={row.productId} onChange={(p) => updateRow(index, { productId: p.id })} />
                 <input type="number" min="1" step="1" value={row.minQuantity}
                   onChange={e => updateRow(index, { minQuantity: Number(e.target.value) || 1 })}
                   placeholder={t('priceLists.minQuantity')}

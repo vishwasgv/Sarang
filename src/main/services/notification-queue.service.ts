@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { renderMessageTemplate } from './message-template.service'
 
 // ISO country name / code → ITU dial code (no +)
 const DIAL_CODES: Record<string, string> = {
@@ -179,7 +180,7 @@ export async function createAppointmentReminder(appointmentId: string) {
 
     const name = appt.customerName ?? appt.customer?.customerName ?? 'Valued Client'
     const dateStr = appt.scheduledDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
-    const message = `Dear ${name}, this is a reminder for your appointment on ${dateStr} at ${appt.scheduledTime} for ${appt.serviceTitle}. Please arrive on time. Thank you! Powered by Sarang | www.aszurex.com`
+    const message = await renderMessageTemplate('APPOINTMENT_REMINDER_24H', { name, date: dateStr, time: appt.scheduledTime, serviceTitle: appt.serviceTitle })
 
     const link = await buildReminderWhatsAppLink(phone, message)
 
@@ -204,7 +205,7 @@ export async function createAppointmentReminder(appointmentId: string) {
     }
 
     if (schedule2h > now) {
-      const message2h = `Dear ${name}, your appointment is TODAY at ${appt.scheduledTime} for ${appt.serviceTitle}. See you soon! Powered by Sarang | www.aszurex.com`
+      const message2h = await renderMessageTemplate('APPOINTMENT_REMINDER_2H', { name, time: appt.scheduledTime, serviceTitle: appt.serviceTitle })
       const link2h = await buildReminderWhatsAppLink(phone, message2h)
       await db.notificationQueue.create({
         data: {

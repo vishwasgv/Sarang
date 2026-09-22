@@ -226,6 +226,10 @@ const PERMISSIONS = [
   // pricing/catalog management permissions.
   { permissionKey: 'invoiceTemplates.view', permissionName: 'View Invoice Templates' },
   { permissionKey: 'invoiceTemplates.manage', permissionName: 'Manage Invoice Templates' },
+  // 2026-09-22 — owner-editable WhatsApp message templates, same
+  // branding/settings-level Manager trust tier as Invoice Templates above.
+  { permissionKey: 'messageTemplates.view', permissionName: 'View Message Templates' },
+  { permissionKey: 'messageTemplates.manage', permissionName: 'Manage Message Templates' },
   // Phase 63 — multi-level approval workflows. Configuring a workflow (who
   // approves what, at what threshold) is Admin-only, same tier as the
   // Transaction Lock date — a structural policy decision, not granted to
@@ -642,6 +646,7 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'customDocuments.view', 'customDocuments.manage',
     'documents.view', 'documents.manage',
     'invoiceTemplates.view', 'invoiceTemplates.manage',
+    'messageTemplates.view', 'messageTemplates.manage',
     // approvalWorkflows.manage (configuring workflows) stays Admin-only —
     // not granted here, see the permission definitions' own comment above.
     'approvalWorkflows.view', 'approvalWorkflows.act',

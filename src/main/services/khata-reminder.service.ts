@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 // 2026-09 §12 — Grocery/Kirana item 3: Khata (credit) auto-reminder. Reuses
 // the exact buildWhatsAppLink primitive already proven by
@@ -91,7 +92,7 @@ async function buildKhataReminderLink(customerId: string): Promise<{ success: bo
     if (outstanding <= 0.01) return { success: false, error: { code: 'KHATA-003', message: 'This customer has no outstanding balance.' } }
 
     const sym = profile?.currencySymbol ?? '₹'
-    const message = `Dear ${customer.customerName}, a gentle reminder that your outstanding khata balance is ${sym}${outstanding.toFixed(2)}. Please settle at your convenience. Thank you!`
+    const message = await renderMessageTemplate('KHATA_BALANCE_REMINDER', { customerName: customer.customerName, outstandingAmount: `${sym}${outstanding.toFixed(2)}` })
     const link = await buildReminderWhatsAppLink(customer.phone, message)
     await db.customer.update({ where: { id: customerId }, data: { lastKhataReminderSentAt: new Date() } })
     return { success: true, data: link }

@@ -1,19 +1,17 @@
-import React, { useState, useEffect, useCallback, useRef } from 'react'
+import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Armchair, Plus, RefreshCw, Trash2, Search, Receipt, TrendingUp } from 'lucide-react'
+import { Armchair, Plus, RefreshCw, Trash2, Receipt, TrendingUp } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { CustomerPicker, type CustomerLite } from '@shared/ui/molecules/CustomerPicker'
+import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
-import { cn } from '@shared/utils/cn'
 import { formatCurrency } from '@shared/utils/currency.util'
-
-interface Product { id: string; productName: string; sku?: string | null; sellingPrice: number }
 
 interface CashFlowForecastMonthRow { month: string; bookingCount: number; expectedBalanceDue: number }
 
@@ -55,52 +53,6 @@ interface ItemDraft {
   customFinish: string
 }
 
-function ProductPicker({ products, value, onChange }: { products: Product[]; value: string; onChange: (id: string, name: string, price: number) => void }) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p => p.productName.toLowerCase().includes(query.toLowerCase()) || (p.sku ?? '').toLowerCase().includes(query.toLowerCase())).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? selected.productName : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder={t('furniture.booking.searchProductPlaceholder')}
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">{t('furniture.booking.noProductsMatch')}</p>
-          ) : results.map(p => (
-            <button key={p.id} type="button" onClick={() => { onChange(p.id, p.productName, p.sellingPrice); setQuery(''); setOpen(false) }}
-              className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}>
-              {p.productName}
-            </button>
-          ))}
-        </div>
-      )}
-    </div>
-  )
-}
 
 const EMPTY_DRAFT: ItemDraft = { productId: '', productName: '', quantity: '1', unitPrice: '', customFabric: '', customColor: '', customDimensions: '', customFinish: '' }
 
@@ -113,7 +65,6 @@ export function FurnitureBookingScreen(): React.JSX.Element {
   const canManage = hasPermission('furnitureBooking.manage')
 
   const [bookings, setBookings] = useState<FurnitureBooking[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [customer, setCustomer] = useState<CustomerLite | null>(null)
@@ -134,14 +85,12 @@ export function FurnitureBookingScreen(): React.JSX.Element {
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [bRes, pRes, fRes] = await Promise.all([
+      const [bRes, fRes] = await Promise.all([
         window.api.furnitureBooking.list(),
-        window.api.products.list({ isActive: true, limit: 500 }),
         window.api.furnitureBooking.cashFlowForecast(),
       ])
       if (bRes.success) setBookings((bRes.data as FurnitureBooking[]) ?? [])
       else toastError(t('furniture.booking.errorTitle'), bRes.error?.message ?? t('furniture.booking.couldNotLoadBookings'))
-      if (pRes.success) setProducts((pRes.data as { products?: Product[] })?.products ?? [])
       if (fRes.success) {
         const d = fRes.data as { rows: CashFlowForecastMonthRow[]; summary: { totalExpectedBalanceDue: number } }
         setForecast(d.rows ?? [])
@@ -274,7 +223,7 @@ export function FurnitureBookingScreen(): React.JSX.Element {
           <div className="border border-slate-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
             <p className="text-xs font-semibold text-slate-500">{t('furniture.booking.itemsLabel')}</p>
             <div className="grid grid-cols-6 gap-2 items-end">
-              <div className="col-span-2"><ProductPicker products={products} value={draft.productId} onChange={(id, name, price) => setDraft(d => ({ ...d, productId: id, productName: name, unitPrice: String(price) }))} /></div>
+              <div className="col-span-2"><ProductAutocomplete value={draft.productId} placeholder={t('furniture.booking.searchProductPlaceholder')} onChange={(p) => setDraft(d => ({ ...d, productId: p.id, productName: p.productName, unitPrice: String(p.sellingPrice ?? 0) }))} /></div>
               <Input label={t('furniture.booking.qtyLabel')} type="number" min="1" step="1" value={draft.quantity} onChange={(e) => setDraft(d => ({ ...d, quantity: e.target.value }))} />
               <Input label={t('furniture.booking.priceLabel')} type="number" min="0" step="0.01" value={draft.unitPrice} onChange={(e) => setDraft(d => ({ ...d, unitPrice: e.target.value }))} />
               <Input label={t('furniture.booking.fabricColorLabel')} placeholder={t('furniture.booking.customFabricPlaceholder')} value={draft.customFabric} onChange={(e) => setDraft(d => ({ ...d, customFabric: e.target.value }))} />

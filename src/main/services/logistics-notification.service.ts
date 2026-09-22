@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 export async function scheduleShipmentDispatchNotification(
   shipmentId: string,
@@ -22,7 +23,7 @@ export async function scheduleShipmentDispatchNotification(
       ? expectedDelivery.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
       : 'TBD'
     const trackPart = trackingNumber ? ` (Tracking: ${trackingNumber})` : ''
-    const body = `Dear ${customerName}, your shipment ${shipmentNumber} [${anchor}] has been dispatched${trackPart}. Expected delivery: ${dateStr}. Powered by Sarang | www.aszurex.com`
+    const body = (await renderMessageTemplate('SHIPMENT_DISPATCHED', { customerName, shipmentNumber, trackPart, date: dateStr })) + ` [${anchor}]`
     const whatsappLink = customerPhone ? await buildReminderWhatsAppLink(customerPhone, body) : null
 
     await db.notificationQueue.create({
@@ -56,7 +57,7 @@ export async function scheduleShipmentDelayedNotification(
     if (existing) return
 
     const dateStr = expectedDelivery.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    const body = `Dear ${customerName}, we apologise for the delay on shipment ${shipmentNumber} [${anchor}]. Expected delivery was ${dateStr}. Our team is working to deliver your order at the earliest. Powered by Sarang | www.aszurex.com`
+    const body = (await renderMessageTemplate('SHIPMENT_DELAYED', { customerName, shipmentNumber, date: dateStr })) + ` [${anchor}]`
 
     let customerPhone: string | null = null
     if (customerId) {
@@ -93,7 +94,7 @@ export async function scheduleGRNPostedNotification(
     })
     if (existing) return
 
-    const body = `GRN ${grnNumber} [${anchor}] has been posted successfully. Goods received from ${supplierName} have been updated in inventory.`
+    const body = (await renderMessageTemplate('GRN_POSTED', { grnNumber, supplierName })) + ` [${anchor}]`
 
     await db.notificationQueue.create({
       data: {

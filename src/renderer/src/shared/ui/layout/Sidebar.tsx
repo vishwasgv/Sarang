@@ -18,6 +18,7 @@ import {
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat, Tent,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
   BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank, Cake, Bus,
+  MessageSquareText,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -128,6 +129,9 @@ export const NAV_ITEMS: NavItem[] = [
   // reminders invisible/unreachable outside the handful of verticals that
   // happen to enable that one module. Ungated to match the route.
   { label: 'WhatsApp Reminders', path: '/service-notifications', icon: Bell, permissionKey: 'billing.view' },
+  // Sibling to WhatsApp Reminders above — controls WHAT those reminders say
+  // rather than sending them. Same ungated-across-every-vertical reasoning.
+  { label: 'Message Templates', path: '/message-templates', icon: MessageSquareText, permissionKey: 'messageTemplates.view' },
   // Phase 23 — Veterinary
   { label: 'Patients', path: '/vet/pets', icon: PawPrint, permissionKey: 'billing.view', requiredModule: 'vet_patients' },
   // Phase 67 §9.1 item 18.3 — clinic-maintained breed health-alert reference list.

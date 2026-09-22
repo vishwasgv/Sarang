@@ -18,17 +18,35 @@ interface DataTableProps<T> {
   loading?: boolean
   toolbar?: React.ReactNode
   virtualize?: boolean
+  /**
+   * Controlled search — when provided (with `onSearchChange`), the table
+   * stops filtering `data` itself (it renders exactly what it's handed,
+   * trusting the caller already searched server-side) and the search input
+   * becomes a plain controlled input instead of driving react-table's own
+   * client-side globalFilter. For a dataset the caller only ever loads a
+   * capped batch of (e.g. a product catalog that can exceed that cap),
+   * client-side filtering can only ever search what's already loaded —
+   * this lets the caller run the real search against the full table
+   * instead. Omit both props to keep the original self-contained
+   * client-side-search behavior unchanged.
+   */
+  searchValue?: string
+  onSearchChange?: (value: string) => void
 }
 
 export function DataTable<T>({
   data, columns, searchPlaceholder = 'Search…',
   pageSize = 20, onRowClick, emptyMessage = 'No records found.', loading, toolbar,
-  virtualize = false
+  virtualize = false, searchValue, onSearchChange
 }: DataTableProps<T>) {
   const [sorting, setSorting] = useState<SortingState>([])
   const [columnFilters, setColumnFilters] = useState<ColumnFiltersState>([])
-  const [globalFilter, setGlobalFilter] = useState('')
+  const [internalGlobalFilter, setInternalGlobalFilter] = useState('')
   const scrollContainerRef = useRef<HTMLDivElement>(null)
+
+  const controlled = searchValue !== undefined && onSearchChange !== undefined
+  const globalFilter = controlled ? '' : internalGlobalFilter
+  const setGlobalFilter = controlled ? undefined : setInternalGlobalFilter
 
   const table = useReactTable({
     data,
@@ -36,15 +54,15 @@ export function DataTable<T>({
     state: { sorting, columnFilters, globalFilter },
     onSortingChange: setSorting,
     onColumnFiltersChange: setColumnFilters,
-    onGlobalFilterChange: setGlobalFilter,
+    ...(setGlobalFilter ? { onGlobalFilterChange: setGlobalFilter } : {}),
     getCoreRowModel: getCoreRowModel(),
     getSortedRowModel: getSortedRowModel(),
-    getFilteredRowModel: getFilteredRowModel(),
+    ...(controlled ? {} : { getFilteredRowModel: getFilteredRowModel() }),
     ...(virtualize ? {} : { getPaginationRowModel: getPaginationRowModel() }),
     initialState: { pagination: { pageSize } }
   })
 
-  const filteredRows = virtualize ? table.getFilteredRowModel().rows : table.getRowModel().rows
+  const filteredRows = virtualize && !controlled ? table.getFilteredRowModel().rows : table.getRowModel().rows
 
   const rowVirtualizer = useVirtualizer({
     count: virtualize ? filteredRows.length : 0,
@@ -63,8 +81,8 @@ export function DataTable<T>({
           <input
             type="text"
             placeholder={searchPlaceholder}
-            value={globalFilter}
-            onChange={(e) => setGlobalFilter(e.target.value)}
+            value={controlled ? searchValue : internalGlobalFilter}
+            onChange={(e) => controlled ? onSearchChange!(e.target.value) : setInternalGlobalFilter(e.target.value)}
             className="w-full h-11 ps-10 pe-3 text-base rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 focus:outline-none focus:ring-2 focus:ring-brand focus:border-transparent transition-colors placeholder:text-slate-400"
           />
         </div>
@@ -161,7 +179,7 @@ export function DataTable<T>({
       {/* Pagination — only shown when not virtualizing */}
       {!virtualize && table.getPageCount() > 1 && (
         <div className="flex items-center justify-between text-base text-slate-500 dark:text-slate-400">
-          <span>{table.getFilteredRowModel().rows.length} records</span>
+          <span>{(controlled ? table.getRowModel().rows : table.getFilteredRowModel().rows).length} records</span>
           <div className="flex items-center gap-2">
             <button onClick={() => table.previousPage()} disabled={!table.getCanPreviousPage()} className="p-2 rounded-lg border border-slate-200 dark:border-slate-700 hover:bg-slate-50 dark:hover:bg-slate-800 disabled:opacity-40 disabled:cursor-not-allowed transition-colors">
               <ChevronLeft size={16} />

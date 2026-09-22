@@ -23,6 +23,13 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   // base chapter it extends.
   { slug: 'inventory-valuation-locations', group: 'universal', title: 'Inventory Valuation & Multi-Location Stock' },
   { slug: 'customers-suppliers', group: 'universal', title: 'Customers & Suppliers' },
+  // 2026-09-22 — WhatsApp Reminders queue, Message Templates editor, and the
+  // ad-hoc "Send WhatsApp Message" button on a customer's own page were each
+  // shipping with no central chapter (only scattered mentions inside 24
+  // vertical chapters telling users to "go check WhatsApp Reminders", never
+  // explaining how it actually works). Placed right after Customers &
+  // Suppliers since the ad-hoc send flow lives on that screen.
+  { slug: 'whatsapp-messaging', group: 'universal', title: 'WhatsApp Messaging & Reminders' },
   { slug: 'bills-purchases', group: 'universal', title: 'Bills & Payments Made' },
   // Phase 63 — Sales-Side Completion & Pricing Infrastructure. Placed right
   // after bills-purchases, mirroring that chapter's own position relative

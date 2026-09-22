@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { serializePestJobSheet } from './pest-job-sheet.service'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
@@ -29,8 +30,8 @@ async function scheduleContractRenewalNotifications(
 
     const expDateStr = endDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
     const customerPhone = phone ?? ''
-    const body30 = `Dear ${customerName}, your pest control contract (${contractNumber}) expires on ${expDateStr}. Renew now to stay protected! Powered by Sarang | www.aszurex.com`
-    const body7 = `Dear ${customerName}, your pest control contract (${contractNumber}) expires in 7 days (${expDateStr}). Renew today to avoid a gap in coverage! Powered by Sarang | www.aszurex.com`
+    const body30 = await renderMessageTemplate('CONTRACT_RENEWAL_30D', { customerName, contractNumber, expiryDate: expDateStr })
+    const body7 = await renderMessageTemplate('CONTRACT_RENEWAL_7D', { customerName, contractNumber, expiryDate: expDateStr })
     const now = new Date()
 
     if (thirtyDaysBefore > now) {

@@ -7,6 +7,7 @@ import { parseLocalDateStart } from '../utils/date.util'
 // every reminder — a real gap this file (like ~15 other reminder services)
 // had before this pass.
 import { buildReminderWhatsAppLink as buildWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 export async function listVaccinationRecords(petId: string) {
   try {
@@ -207,15 +208,15 @@ export async function generateVaccineReminder(vaccinationRecordId: string) {
     const thirtyDaysBefore = new Date(record.nextDueDate.getTime() - 30 * 24 * 60 * 60 * 1000)
     const now = new Date()
 
-    const message7 = `Dear ${ownerName}, ${petName}'s ${record.vaccineName} vaccination is due on ${dateStr}. Please book an appointment soon. Powered by Sarang | www.aszurex.com`
-    const message30 = `Dear ${ownerName}, ${petName}'s ${record.vaccineName} vaccination is due in 30 days (${dateStr}). Book an appointment to stay on schedule. Powered by Sarang | www.aszurex.com`
+    const message7 = await renderMessageTemplate('VACCINE_DUE_7D', { ownerName, petName, vaccineName: record.vaccineName, date: dateStr })
+    const message30 = await renderMessageTemplate('VACCINE_DUE_30D', { ownerName, petName, vaccineName: record.vaccineName, date: dateStr })
 
     if (record.nextDueDate < now) {
       const existingOverdue = await db.notificationQueue.findFirst({
         where: { notificationType: 'VACCINE_OVERDUE', templateBody: { contains: record.id.slice(-6) }, status: 'PENDING' },
       })
       if (!existingOverdue) {
-        const overdueMsg = `Dear ${ownerName}, ${petName}'s ${record.vaccineName} vaccination was due on ${dateStr} and is now overdue [${record.id.slice(-6)}]. Please book an appointment urgently. Powered by Sarang | www.aszurex.com`
+        const overdueMsg = (await renderMessageTemplate('VACCINE_OVERDUE', { ownerName, petName, vaccineName: record.vaccineName, date: dateStr })) + ` [${record.id.slice(-6)}]`
         const overdueLink = await buildWhatsAppLink(phone, overdueMsg)
         await db.notificationQueue.create({
           data: { appointmentId: null, customerId, customerName: ownerName, customerPhone: phone, notificationType: 'VACCINE_OVERDUE', templateBody: overdueMsg, whatsappLink: overdueLink, scheduledFor: now, status: 'PENDING' },

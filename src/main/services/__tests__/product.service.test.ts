@@ -421,6 +421,47 @@ describe('productService.listProducts', () => {
     const findManyCall = vi.mocked(db.product.findMany).mock.calls[0][0] as { where: Record<string, unknown> }
     expect(findManyCall.where).toEqual(expect.objectContaining({ categoryId: 'cat-1' }))
   })
+
+  // REAL BUG found+fixed 2026-09-22 (1500-product stress test): every caller
+  // of listProducts() fetched one capped batch and filtered it client-side
+  // as the owner typed — a product past that cap was invisible to search no
+  // matter what was typed. `search` runs the match server-side against the
+  // full table instead, matching productName, sku, or barcode.
+  it('matches productName/sku/barcode server-side when search is provided', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
+
+    await productService.listProducts({ search: 'widget' })
+
+    const db = vi.mocked(getPrisma)()
+    const findManyCall = vi.mocked(db.product.findMany).mock.calls[0][0] as { where: Record<string, unknown> }
+    expect(findManyCall.where).toEqual(expect.objectContaining({
+      OR: [
+        { productName: { contains: 'widget' } },
+        { sku: { contains: 'widget' } },
+        { barcode: { contains: 'widget' } },
+      ],
+    }))
+  })
+
+  it('trims the search term and omits the OR clause entirely for a blank/whitespace-only search', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
+
+    await productService.listProducts({ search: '   ' })
+
+    const db = vi.mocked(getPrisma)()
+    const findManyCall = vi.mocked(db.product.findMany).mock.calls[0][0] as { where: Record<string, unknown> }
+    expect(findManyCall.where.OR).toBeUndefined()
+  })
+
+  it('combines search with categoryId when both are provided', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeDb() as never)
+
+    await productService.listProducts({ search: 'widget', categoryId: 'cat-1' })
+
+    const db = vi.mocked(getPrisma)()
+    const findManyCall = vi.mocked(db.product.findMany).mock.calls[0][0] as { where: Record<string, unknown> }
+    expect(findManyCall.where).toEqual(expect.objectContaining({ categoryId: 'cat-1', OR: expect.any(Array) }))
+  })
 })
 
 describe('productService.searchProducts', () => {

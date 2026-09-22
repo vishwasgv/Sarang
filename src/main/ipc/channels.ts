@@ -100,7 +100,7 @@ export interface IpcChannels {
     getAll: () => Promise<ApiResponse>
   }
   products: {
-    list: (payload?: { page?: number; limit?: number; categoryId?: string; isActive?: boolean }) => Promise<ApiResponse>
+    list: (payload?: { page?: number; limit?: number; categoryId?: string; isActive?: boolean; search?: string }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
     create: (payload: unknown) => Promise<ApiResponse>
     update: (payload: unknown) => Promise<ApiResponse>
@@ -1412,6 +1412,15 @@ export interface IpcChannels {
     dismiss: (payload: { id: string }) => Promise<ApiResponse>
     generateWhatsAppLink: (payload: { phone: string; message: string; notificationType: string; appointmentId?: string; customerId?: string; customerName?: string }) => Promise<ApiResponse>
     createReminder: (payload: { appointmentId: string }) => Promise<ApiResponse>
+  }
+  // 2026-09-22 — owner-editable WhatsApp message templates (one entry per
+  // reminder/share message across every business vertical).
+  messageTemplates: {
+    list: () => Promise<ApiResponse>
+    update: (payload: { key: string; body: string }) => Promise<ApiResponse>
+    reset: (payload: { key: string }) => Promise<ApiResponse>
+    preview: (payload: { body: string }) => Promise<ApiResponse>
+    buildSendLink: (payload: { key: string; phone?: string | null; params: Record<string, string> }) => Promise<ApiResponse>
   }
   // Phase 24 — Medical (GP + Specialist)
   visitNotes: {

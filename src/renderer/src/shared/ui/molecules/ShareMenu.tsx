@@ -70,7 +70,12 @@ export function ShareMenu({
         toastError(t('common.error'), t('share.exportFailed'))
         return
       }
-      if (exportRes.cancelled) return // silent abort — the owner backed out of the save dialog
+      // REAL BUG found+fixed 2026-09-22: a cancelled save dialog produced
+      // zero feedback at all — indistinguishable from the button doing
+      // nothing/being broken. This isn't the false "Sent!" toast the
+      // component deliberately avoids (see the doc above) — it's a neutral
+      // acknowledgement that the cancel itself was registered.
+      if (exportRes.cancelled) { toastInfo(t('share.saveCancelled')); return }
 
       if (exportRes.filePath) {
         const revealRes = await window.api.share.showItemInFolder({ filePath: exportRes.filePath })

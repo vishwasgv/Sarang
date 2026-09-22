@@ -3,6 +3,7 @@ import { serializeVendorBooking, recomputePerHeadVendorBookings } from './event-
 import { billingService } from './billing.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 
 // EventBooking.clientBudget/finalAmount are Prisma Decimal fields — Electron's
 // IPC (structured clone) cannot serialize a Decimal instance and throws "An
@@ -93,7 +94,7 @@ async function scheduleEventReminder(eventId: string): Promise<void> {
   if (reminderDate <= new Date()) return
 
   const dateStr = event.eventDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-  const body = `Dear ${event.client.customerName}, this is a reminder that "${event.eventName}" is tomorrow, ${dateStr} at ${event.venueName}. Powered by Sarang | www.aszurex.com`
+  const body = await renderMessageTemplate('EVENT_DATE_REMINDER', { customerName: event.client.customerName, eventName: event.eventName, date: dateStr, venueName: event.venueName })
   const link = await buildReminderWhatsAppLink(event.client.phone, body)
   await db.notificationQueue.create({
     data: {

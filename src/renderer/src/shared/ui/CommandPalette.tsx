@@ -25,6 +25,7 @@ interface ResultItem {
   label: string
   sub?: string
   path: string
+  state?: Record<string, unknown>
   category: string
   icon: React.ReactNode
 }
@@ -56,6 +57,21 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       setTimeout(() => inputRef.current?.focus(), 50)
     }
   }, [open])
+
+  // REAL BUG found+fixed 2026-09-22: Escape was only handled by the search
+  // input's own onKeyDown, so it silently did nothing whenever the input
+  // didn't actually have focus when Escape was pressed (the input-focus
+  // race is the same class as the post-splash Ctrl+K focus race fixed in
+  // main/index.ts). A window-level listener closes the palette on Escape
+  // regardless of what currently has focus, matching the backdrop click.
+  useEffect(() => {
+    if (!open) return
+    function onKey(e: KeyboardEvent) {
+      if (e.key === 'Escape') onClose()
+    }
+    window.addEventListener('keydown', onKey)
+    return () => window.removeEventListener('keydown', onKey)
+  }, [open, onClose])
 
   const search = useCallback(async (q: string) => {
     if (q.length < 2) { setResults(null); setLoading(false); return }
@@ -112,7 +128,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     ...(results ? [
     ...results.products.map(p => ({
       id: p.id, label: p.productName, sub: `${sym}${p.sellingPrice.toFixed(2)}${p.sku ? ` · ${p.sku}` : ''}`,
-      path: '/products', category: 'Products',
+      path: '/products', state: { openProductId: p.id }, category: 'Products',
       icon: <Package size={14} className="text-brand" />
     })),
     ...results.customers.map(c => ({
@@ -136,17 +152,17 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
   const totalItems = flatItems.length
 
   function handleKeyDown(e: React.KeyboardEvent) {
-    if (e.key === 'Escape') { onClose(); return }
     if (e.key === 'ArrowDown') { e.preventDefault(); setSelectedIdx(i => Math.min(i + 1, totalItems - 1)) }
     if (e.key === 'ArrowUp') { e.preventDefault(); setSelectedIdx(i => Math.max(i - 1, 0)) }
     if (e.key === 'Enter' && flatItems[selectedIdx]) {
-      navigate(flatItems[selectedIdx].path)
+      const item = flatItems[selectedIdx]
+      navigate(item.path, item.state ? { state: item.state } : undefined)
       onClose()
     }
   }
 
   function handleSelect(item: ResultItem) {
-    navigate(item.path)
+    navigate(item.path, item.state ? { state: item.state } : undefined)
     onClose()
   }
 

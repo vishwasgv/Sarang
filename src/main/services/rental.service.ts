@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
 import { billingService } from './billing.service'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { roundCurrency } from './currency.service'
 import { ServiceError } from '../errors/service-error'
 import { parseLocalDateStart } from '../utils/date.util'
@@ -995,7 +996,7 @@ async function scheduleReturnReminder(bookingId: string): Promise<void> {
     if (reminderDate <= new Date()) return
 
     const dateStr = booking.endDateTime.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    const body = `Dear ${booking.customer.customerName}, your rental booking (${booking.bookingNumber}) is due for return on ${dateStr}. Powered by Sarang | www.aszurex.com`
+    const body = await renderMessageTemplate('RENTAL_RETURN_DUE', { customerName: booking.customer.customerName, bookingNumber: booking.bookingNumber, date: dateStr })
     const phone = booking.customer.phone ?? ''
     const link = phone ? await buildReminderWhatsAppLink(phone, body) : null
     await db.notificationQueue.create({

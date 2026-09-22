@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useLocation, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
 import { type ColumnDef } from '@tanstack/react-table'
 import { Plus, Edit, Archive, Package, FolderOpen, Layers, UtensilsCrossed } from 'lucide-react'
@@ -35,6 +36,8 @@ interface Product {
 
 export function ProductsScreen() {
   const { t } = useTranslation()
+  const location = useLocation()
+  const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
   const { isModuleEnabled } = useIndustryStore()
@@ -45,6 +48,8 @@ export function ProductsScreen() {
   const [categories, setCategories] = useState<Category[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedCategory, setSelectedCategory] = useState('')
+  const [searchQuery, setSearchQuery] = useState('')
+  const [debouncedSearch, setDebouncedSearch] = useState('')
   const [formOpen, setFormOpen] = useState(false)
   const [editProduct, setEditProduct] = useState<Product | null>(null)
   const [archiveTarget, setArchiveTarget] = useState<Product | null>(null)
@@ -61,16 +66,18 @@ export function ProductsScreen() {
     try {
       // REAL BUG found+fixed (pre-launch audit): this call passed no `limit`,
       // silently defaulting to listProducts()'s own limit:50 — the DataTable
-      // below does client-side-only search/pagination over whatever array it's
+      // below did client-side-only search/pagination over whatever array it's
       // handed, so any product ranked 51st+ alphabetically was UNSEARCHABLE
-      // and unreachable from this screen (the "record count"/page controls
-      // only ever reflected that same capped 50, never the true total). Every
-      // OTHER caller of products.list() across the app (BillingScreen,
-      // SalesOrderFormModal, PurchaseOrderFormModal, LocationsScreen, etc.)
-      // already passes limit:500/1000 — this was the one screen actually
-      // dedicated to managing the catalog that had been missed.
+      // and unreachable from this screen. Bumped to limit:1000 back then —
+      // REAL BUG found+fixed 2026-09-22 (1500-product stress test): 1000 is
+      // still a cap, not "unlimited" — a catalog past it hit the exact same
+      // failure mode, just at a higher threshold. `search` (added to
+      // listProducts specifically for this) now runs server-side against
+      // the FULL table whenever there's a query, so a search result is never
+      // limited by what this screen happened to have already loaded for
+      // plain browsing. See DataTable.tsx's new controlled-search mode.
       const [pRes, cRes] = await Promise.all([
-        window.api.products.list({ categoryId: selectedCategory || undefined, limit: 1000 }),
+        window.api.products.list({ categoryId: selectedCategory || undefined, search: debouncedSearch || undefined, limit: 1000 }),
         window.api.categories.list()
       ])
       if (pRes.success) {
@@ -87,9 +94,33 @@ export function ProductsScreen() {
     } finally {
       setLoading(false)
     }
-  }, [selectedCategory, toastError, t])
+  }, [selectedCategory, debouncedSearch, toastError, t])
 
   useEffect(() => { loadData() }, [loadData])
+
+  // Debounce the search box so we're not hitting the server on every keystroke.
+  useEffect(() => {
+    const timer = setTimeout(() => setDebouncedSearch(searchQuery.trim()), 300)
+    return () => clearTimeout(timer)
+  }, [searchQuery])
+
+  // REAL BUG found+fixed 2026-09-22: unlike Customers/Suppliers/Invoices
+  // (which deep-link to a detail route), the Command Palette's product
+  // results navigated here with no way to reach the specific product —
+  // there's no /products/:id route at all, editing only happens through
+  // this screen's own modal. Auto-open that modal for the product the user
+  // actually searched for, then clear the nav state so it doesn't reopen
+  // on a later revisit to this same screen (e.g. via the sidebar).
+  useEffect(() => {
+    const openProductId = (location.state as { openProductId?: string } | null)?.openProductId
+    if (!openProductId || products.length === 0) return
+    const match = products.find((p) => p.id === openProductId)
+    if (match) {
+      setEditProduct(match)
+      setFormOpen(true)
+    }
+    navigate(location.pathname, { replace: true, state: null })
+  }, [location.state, location.pathname, products, navigate])
 
   async function handleArchive() {
     if (!archiveTarget) return
@@ -295,6 +326,8 @@ export function ProductsScreen() {
         searchPlaceholder={t('products.searchProducts')}
         loading={loading}
         emptyMessage={t('products.noProducts')}
+        searchValue={searchQuery}
+        onSearchChange={setSearchQuery}
       />
 
       <ProductFormModal

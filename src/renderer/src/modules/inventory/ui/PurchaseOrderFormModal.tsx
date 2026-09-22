@@ -1,16 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { useTranslation } from 'react-i18next'
-import { Plus, Trash2, Search } from 'lucide-react'
+import { Plus, Trash2 } from 'lucide-react'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
-import { cn } from '@shared/utils/cn'
 import { SupplierFormModal } from '@modules/suppliers/ui/SupplierFormModal'
+import { ProductAutocomplete, type ProductOption } from '@shared/ui/organisms/ProductAutocomplete'
 
 const itemSchema = z.object({
   productId: z.string().min(1, 'Select a product'),
@@ -31,7 +31,6 @@ type FormValues = z.infer<typeof schema>
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; priceListId?: string | null }
 interface Customer { id: string; customerName: string; customerCode: string }
-interface Product { id: string; productName: string; sku?: string | null; unit: string; productType: string; costPrice: number }
 
 interface PurchaseOrderFormModalProps {
   open: boolean
@@ -39,78 +38,11 @@ interface PurchaseOrderFormModalProps {
   onSaved: (poId: string) => void
 }
 
-// Plain <select> with 500 options has no type-to-filter — this gives the same
-// product list a searchable dropdown instead, filtering client-side over the
-// already-loaded products (no extra IPC round trip).
-function ProductPicker({ products, value, onChange, error }: {
-  products: Product[]
-  value: string
-  onChange: (productId: string) => void
-  error?: string
-}) {
-  const { t } = useTranslation()
-  const [query, setQuery] = useState('')
-  const [open, setOpen] = useState(false)
-  const wrapRef = useRef<HTMLDivElement>(null)
-  const selected = products.find(p => p.id === value)
-
-  useEffect(() => {
-    function onClickOutside(e: MouseEvent) {
-      if (wrapRef.current && !wrapRef.current.contains(e.target as Node)) setOpen(false)
-    }
-    document.addEventListener('mousedown', onClickOutside)
-    return () => document.removeEventListener('mousedown', onClickOutside)
-  }, [])
-
-  const results = query.trim()
-    ? products.filter(p =>
-        p.productName.toLowerCase().includes(query.toLowerCase()) ||
-        (p.sku ?? '').toLowerCase().includes(query.toLowerCase())
-      ).slice(0, 50)
-    : products.slice(0, 50)
-
-  return (
-    <div className="relative" ref={wrapRef}>
-      <div className="relative">
-        <Search size={12} className="absolute start-2 top-1/2 -translate-y-1/2 text-slate-400 pointer-events-none" />
-        <input
-          value={open ? query : (selected ? `${selected.productName}${selected.sku ? ` (${selected.sku})` : ''}` : '')}
-          onChange={e => { setQuery(e.target.value); if (!open) setOpen(true) }}
-          onFocus={() => { setQuery(''); setOpen(true) }}
-          placeholder={t('purchaseOrders.searchProductPlaceholder')}
-          className="w-full h-8 ps-6 pe-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 dark:text-slate-300"
-        />
-      </div>
-      {open && (
-        <div className="absolute start-0 end-0 top-full mt-1 bg-white dark:bg-slate-900 border border-slate-200 dark:border-slate-700 rounded-lg shadow-lg z-30 max-h-48 overflow-y-auto">
-          {results.length === 0 ? (
-            <p className="px-3 py-2 text-xs text-slate-400">{t('purchaseOrders.noProductsMatch')}</p>
-          ) : (
-            results.map(p => (
-              <button
-                key={p.id}
-                type="button"
-                onClick={() => { onChange(p.id); setQuery(''); setOpen(false) }}
-                className={cn('w-full text-start px-3 py-2 text-sm hover:bg-brand/5 transition-colors', p.id === value && 'bg-brand/5')}
-              >
-                <p className="text-dark dark:text-slate-100">{p.productName}</p>
-                {p.sku && <p className="text-xs text-slate-400">{t('purchaseOrders.skuPrefix', { sku: p.sku })}</p>}
-              </button>
-            ))
-          )}
-        </div>
-      )}
-      {error && <p className="text-xs text-danger mt-0.5">{error}</p>}
-    </div>
-  )
-}
-
 export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrderFormModalProps) {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [customers, setCustomers] = useState<Customer[]>([])
-  const [products, setProducts] = useState<Product[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [supplierFormOpen, setSupplierFormOpen] = useState(false)
 
@@ -145,17 +77,10 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
     async function loadOptions() {
       setLoadingData(true)
       try {
-        const [, pRes, cRes] = await Promise.all([
+        const [, cRes] = await Promise.all([
           loadSuppliers(),
-          window.api.products.list({ isActive: true, limit: 500 }),
           window.api.customers.list({ limit: 200 })
         ])
-        if (pRes.success) {
-          const d = pRes.data as { products: Product[] }
-          setProducts((d.products ?? []).filter(p => p.productType === 'STANDARD'))
-        } else {
-          toastError(t('common.error'), t('purchaseOrders.loadProductsFailed'))
-        }
         if (cRes.success) setCustomers((cRes.data as { customers: Customer[] }).customers ?? [])
       } catch {
         toastError(t('common.error'), t('purchaseOrders.loadDataFailed'))
@@ -173,14 +98,14 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
     if (newSupplier) setValue('supplierId', newSupplier.id)
   }
 
-  function handleProductChange(index: number, productId: string, onChange: (v: string) => void) {
+  function handleProductChange(index: number, product: ProductOption, onChange: (v: string) => void) {
     const previousProductId = watchedItems[index]?.productId
+    const productId = product.id
     onChange(productId)
-    const product = products.find(p => p.id === productId)
     // Always re-fill on an actual product change — leaving a previously
     // auto-filled (or stale) cost in place when the product changes would
     // silently price the new line item at the old product's cost.
-    if (product && productId !== previousProductId) {
+    if (productId !== previousProductId) {
       setValue(`items.${index}.unitCost`, product.costPrice ?? 0)
       // Phase 63 gap found+fixed during live audit (2026-08-12): this form
       // never called priceLists.resolve at all, so a supplier with an
@@ -307,10 +232,11 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
                       control={control}
                       name={`items.${index}.productId`}
                       render={({ field: f }) => (
-                        <ProductPicker
-                          products={products}
+                        <ProductAutocomplete
                           value={f.value}
-                          onChange={(productId) => handleProductChange(index, productId, f.onChange)}
+                          onChange={(p) => handleProductChange(index, p, f.onChange)}
+                          onlyProductType="STANDARD"
+                          placeholder={t('purchaseOrders.searchProductPlaceholder')}
                         />
                       )}
                     />

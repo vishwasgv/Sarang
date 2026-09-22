@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { parseLocalDateStart, parseLocalDateEnd, toLocalDateOnlyIso } from '../utils/date.util'
 
 // Real bug found (Group E service-family audit, 2026-09-04): lastVisitDate/
@@ -108,7 +109,7 @@ export async function upsertRecall(payload: {
     const reminder30 = new Date(nextRecall)
     reminder30.setDate(reminder30.getDate() - 30)
     if (reminder30 > now) {
-      const body30 = `Hi ${patientName}, your dental recall is due on ${recallDateStr}. Please book your appointment soon. Powered by Sarang | www.aszurex.com`
+      const body30 = await renderMessageTemplate('RECALL_DUE_30D', { patientName, recallDate: recallDateStr })
       const link30 = patientPhone ? await buildReminderWhatsAppLink(patientPhone, body30) : null
       await db.notificationQueue.create({
         data: {
@@ -126,7 +127,7 @@ export async function upsertRecall(payload: {
     const reminder7 = new Date(nextRecall)
     reminder7.setDate(reminder7.getDate() - 7)
     if (reminder7 > now) {
-      const body7 = `Hi ${patientName}, your dental recall appointment is due in 7 days on ${recallDateStr}. Please call us to schedule. Powered by Sarang | www.aszurex.com`
+      const body7 = await renderMessageTemplate('RECALL_DUE_7D', { patientName, recallDate: recallDateStr })
       const link7 = patientPhone ? await buildReminderWhatsAppLink(patientPhone, body7) : null
       await db.notificationQueue.create({
         data: {

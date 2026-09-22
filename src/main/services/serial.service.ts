@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
+import { renderMessageTemplate } from './message-template.service'
 import { parseLocalDateStart } from '../utils/date.util'
 
 export type SerialStatus = 'AVAILABLE' | 'SOLD' | 'RETURNED' | 'DEFECTIVE'
@@ -443,7 +444,7 @@ export async function scheduleEquipmentServiceReminder(
     if (scheduledFor <= new Date()) return { success: false, error: { code: 'SER-015', message: 'The reminder date has already passed — the due date is too close (or in the past) to schedule ahead.' } }
 
     const dueDateStr = serial.nextServiceDueDate.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' })
-    const message = `Dear ${invoice.customer.customerName}, your ${serial.product.productName} (${serial.serialNumber}) is due for its next service around ${dueDateStr}. Please book a service visit. Thank you! Powered by Sarang | www.aszurex.com`
+    const message = await renderMessageTemplate('EQUIPMENT_SERVICE_DUE_REMINDER', { customerName: invoice.customer.customerName, productName: serial.product.productName, serialNumber: serial.serialNumber, dueDate: dueDateStr })
     const link = await buildReminderWhatsAppLink(invoice.customer.phone, message)
 
     const row = await db.notificationQueue.create({
