@@ -256,11 +256,11 @@ describe('doctor-pad.service — saveHandDrawnNote', () => {
     expect(attachDocument).not.toHaveBeenCalled()
   })
 
-  it('rejects more than 3 pages', async () => {
+  it('rejects more than 5 pages', async () => {
     const db = makeMockDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
-    const res = await saveHandDrawnNote('appt-1', [validImage, validImage, validImage, validImage])
+    const res = await saveHandDrawnNote('appt-1', [validImage, validImage, validImage, validImage, validImage, validImage])
 
     expect(res.success).toBe(false)
     expect(res.error?.code).toBe('DP-001')
@@ -301,7 +301,7 @@ describe('doctor-pad.service — saveHandDrawnNote', () => {
     expect(attachDocument).not.toHaveBeenCalled()
   })
 
-  it('a single page attaches a PNG to the APPOINTMENT entity, not VISIT_NOTE', async () => {
+  it('a single page still attaches a real A4 PDF to the APPOINTMENT entity, not VISIT_NOTE', async () => {
     const db = makeMockDb({ appointment: { findUnique: vi.fn().mockResolvedValue({ id: 'appt-1' }) } })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(attachDocument).mockResolvedValue({ success: true } as never)
@@ -309,14 +309,17 @@ describe('doctor-pad.service — saveHandDrawnNote', () => {
     const res = await saveHandDrawnNote('appt-1', [validImage])
 
     expect(res.success).toBe(true)
+    expect(printToPDF).toHaveBeenCalledWith(expect.objectContaining({ pageSize: 'A4' }))
     expect(attachDocument).toHaveBeenCalledWith(
-      expect.objectContaining({ entityType: 'APPOINTMENT', entityId: 'appt-1', fileName: expect.stringMatching(/\.png$/) })
+      expect.objectContaining({ entityType: 'APPOINTMENT', entityId: 'appt-1', fileName: expect.stringMatching(/\.pdf$/) })
     )
+    // A single page's filename shouldn't carry a "(1 pages)" suffix — that's
+    // only added once there's more than one page to count.
+    expect(vi.mocked(attachDocument).mock.calls[0][0].fileName).not.toMatch(/pages\)/)
     // No logged-in user on this LAN write — userId must be omitted (undefined),
     // never a fake placeholder string, since Document.uploadedById/AuditLog.userId
     // are real FKs to User.id.
     expect(vi.mocked(attachDocument).mock.calls[0][1]).toBeUndefined()
-    expect(printToPDF).not.toHaveBeenCalled()
   })
 
   it('multiple pages are combined into a single multi-page PDF attachment', async () => {

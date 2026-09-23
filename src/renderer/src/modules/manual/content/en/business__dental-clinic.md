@@ -42,9 +42,9 @@ Open **Reports → Treatment Acceptance Rate** to see how many of the treatment 
 
 Open **Reports → Recall Compliance** to see, of the recall periods closed in a date range, what percentage of patients actually came back on or before their due date — a single gauge for the overall percentage, plus a breakdown by Recall Type (6-Month Hygiene, 12-Month Hygiene, Crown Review, Custom). Only recall periods that were genuinely closed out (a patient with an existing recall getting a new one set) count toward this — a patient's very first recall has no prior due date to have been on time or late against, so it isn't counted either way.
 
-## Doctor Pad — handwritten notes on a tablet
+## Doctor Pad — a full clinical tablet, not just a notepad
 
-Many dentists would rather write a quick note by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+Many dentists would rather write a quick note by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a writing pad, patient-record lookup, and read-only billing view — no extra hardware to buy, and nothing leaves your clinic's own network.
 
 **Connect a tablet, once.** Open **Provider Schedule**, pick the dentist, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
 
@@ -54,6 +54,17 @@ Many dentists would rather write a quick note by hand than type it. **Doctor Pad
 
 Whichever way you connect, the tablet remembers the dentist from then on, so this is normally a one-time setup per tablet.
 
-**Using it during a visit.** The tablet shows today's appointments for that dentist. Tap a patient, write the note by hand, and tap **Save** — the drawing attaches instantly to that appointment. Since Dental Clinic uses the Tooth Chart and Treatment Plans instead of a Consultation Note, view a saved drawing from the **Appointments** screen: click the pen icon (**Doctor's Pad Notes**) next to that visit.
+**Writing a note.** The tablet shows today's appointments for that dentist. Tap a patient to open a full-screen writing surface — pen, eraser, line/rectangle/circle, three stroke sizes, Undo/Redo, three preset colours plus a custom colour picker, up to 5 pages, all icon-only tools so the canvas gets nearly the whole screen. Tap **Save** and the note attaches instantly as a genuine A4 PDF. Since Dental Clinic uses the Tooth Chart and Treatment Plans instead of a Consultation Note, view a saved drawing from the **Appointments** screen on the desktop: click the pen icon (**Doctor's Pad Notes**) next to that visit — or from the tablet's own **Patients** tab below.
+
+**Printing and sharing a note.** Open any attachment and use **Print** to print it directly, or the **WhatsApp/Email** icons to share it straight to the patient's phone or email on file.
+
+**Patients tab — search, chart, and a fresh visit, all from the tablet.** Alongside the Queue tab, a **Patients** tab lets the dentist search any patient by name or phone — not just today's list — and open their full chart:
+
+- **Medical Information** — blood group, allergies, chronic conditions, current medications, emergency contact — editable right there (useful for anaesthesia-related allergies before a procedure).
+- **Visit History** — every past visit across every date, and every hand-drawn note on file, openable directly. (Tooth Chart and Treatment Plan detail still live on the desktop app.)
+- **Billing (read-only)** — the patient's outstanding balance and recent transactions. Nothing on the tablet can create an invoice, record a payment, or change a credit limit — billing stays view-only here by design.
+- **Start a Fresh Visit** — type a short reason and tap **Start Visit & Write Prescription** to create a new visit for that patient right now and go straight into the writing canvas.
+
+**Walk-ins get the same full record.** A walk-in issued a token in **Token Queue** doesn't automatically have a patient record yet — a plain token has no appointment behind it, so there's nothing for a note to attach to. Look for the small **person-plus icon** on that token's row and tap it: it opens the booking form pre-filled with the walk-in's name (matching them to an existing patient by phone if they've visited before), and once booked, the token is linked to that visit.
 
 **If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the dentist, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

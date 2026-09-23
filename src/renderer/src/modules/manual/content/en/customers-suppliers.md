@@ -1,5 +1,7 @@
 # Customers & Suppliers
 
+> **GP Clinic, Specialist Clinic, Dental Clinic, Vet Clinic, and Physio Clinic** call this same screen **Patients** (or **Owners** for Vet Clinic, since that record is the pet's owner, not the pet) — same underlying record, just relabelled for how a clinic actually talks about it. Those 5 business types also add a Medical Information card and a full Visit History with prescriptions — see that business type's own manual chapter for the clinic-specific detail.
+
 ## Adding customers and suppliers
 
 Open **Customers** or **Suppliers** from the sidebar to see the full list. Click **Add Customer** / **Add Supplier** to create one. A customer record holds name, phone, email, address (city/state/country), tax number, credit limit, and notes; a supplier record holds the equivalent business-side details (name, phone, email, address, tax number, notes).

@@ -2,6 +2,7 @@ import { useState, useEffect, useRef } from 'react'
 import { UserPlus, X, Plus, Search } from 'lucide-react'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 
 export interface CustomerLite {
   id: string
@@ -17,6 +18,14 @@ interface CustomerPickerProps {
   placeholder?: string
   label?: string
   className?: string
+  // 2026-09-23 — TokenQueueScreen.tsx's "Create Visit Record" bridge: when a
+  // walk-in doesn't match an existing patient by phone, the booking form
+  // used to fall back to the free-text "Walk-in" name field — which never
+  // creates a real Customer row at all, just a string on that one
+  // Appointment. That's the opposite of what the bridge exists for (every
+  // patient must get a real, findable record). This opens the quick-add
+  // form pre-filled instead, so staff only has to confirm, not retype.
+  initialQuickAdd?: { name: string; phone: string }
 }
 
 // Debounced phone/name search + inline quick-add, replicating BillingScreen's
@@ -25,13 +34,14 @@ interface CustomerPickerProps {
 // search — that pattern can't find a returning customer by phone and offers
 // no way to add a new one inline, so staff either re-type details every visit
 // or accidentally create duplicate Customer rows.
-export function CustomerPicker({ value, onChange, placeholder, label, className }: CustomerPickerProps) {
+export function CustomerPicker({ value, onChange, placeholder, label, className, initialQuickAdd }: CustomerPickerProps) {
+  const { isDoctorVertical, singular: patientNoun, searchPlaceholder: patientSearchPlaceholder } = usePatientNoun()
   const [query, setQuery] = useState('')
   const [results, setResults] = useState<CustomerLite[]>([])
   const [showDropdown, setShowDropdown] = useState(false)
-  const [showQuickAdd, setShowQuickAdd] = useState(false)
-  const [quickName, setQuickName] = useState('')
-  const [quickPhone, setQuickPhone] = useState('')
+  const [showQuickAdd, setShowQuickAdd] = useState(!!initialQuickAdd && !value)
+  const [quickName, setQuickName] = useState(initialQuickAdd?.name ?? '')
+  const [quickPhone, setQuickPhone] = useState(initialQuickAdd?.phone ?? '')
   const [quickAdding, setQuickAdding] = useState(false)
   const [quickError, setQuickError] = useState('')
   const dropdownRef = useRef<HTMLDivElement>(null)
@@ -117,7 +127,7 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
                 value={query}
                 onChange={(e) => { setQuery(e.target.value); setShowDropdown(true) }}
                 onFocus={() => setShowDropdown(true)}
-                placeholder={placeholder ?? 'Search by name or phone...'}
+                placeholder={placeholder ?? (isDoctorVertical ? patientSearchPlaceholder : 'Search by name or phone...')}
                 className="w-full ps-9 pe-3 py-2 border border-gray-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100"
               />
             </div>
@@ -145,13 +155,13 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
             onClick={() => { setShowQuickAdd(true); setShowDropdown(false) }}
             className="mt-1.5 flex items-center gap-1.5 text-xs text-brand hover:text-blue-600 transition-colors"
           >
-            <Plus size={12} /> Add new customer
+            <Plus size={12} /> {isDoctorVertical ? `Add new ${patientNoun.toLowerCase()}` : 'Add new customer'}
           </button>
         </>
       ) : (
         <div className="border border-gray-200 dark:border-slate-700 rounded-lg p-3 space-y-2">
           <div className="flex items-center justify-between">
-            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">New Customer</p>
+            <p className="text-xs font-semibold text-gray-500 dark:text-slate-400 uppercase">New {isDoctorVertical ? patientNoun : 'Customer'}</p>
             <button type="button" onClick={() => { setShowQuickAdd(false); setQuickError('') }} className="text-gray-400 hover:text-red-600">
               <X size={14} />
             </button>
@@ -159,7 +169,7 @@ export function CustomerPicker({ value, onChange, placeholder, label, className 
           <input
             value={quickName}
             onChange={(e) => setQuickName(e.target.value)}
-            placeholder="Customer name *"
+            placeholder={isDoctorVertical ? `${patientNoun} name *` : 'Customer name *'}
             className={cn('w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-indigo-500 dark:border-slate-600 bg-white dark:bg-slate-900 text-gray-900 dark:text-slate-100')}
           />
           <input

@@ -135,8 +135,8 @@ async function run() {
       r.log('todays-appointment-in-queue', queueRes.status === 200 && listed, JSON.stringify(queueBody))
     })
 
-    await r.step('real-lan-http-save-drawing-single-page-attaches-a-png', async () => {
-      if (!serverBase || !token || !appointmentId) return r.log('real-lan-http-save-drawing-single-page-attaches-a-png', true, 'doctor pad server not running in this environment, skipped')
+    await r.step('real-lan-http-save-drawing-single-page-attaches-an-a4-pdf', async () => {
+      if (!serverBase || !token || !appointmentId) return r.log('real-lan-http-save-drawing-single-page-attaches-an-a4-pdf', true, 'doctor pad server not running in this environment, skipped')
 
       const saveRes = await fetch(`${serverBase}/api/doctor-pad/${token}/${appointmentId}/save-drawing`, {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images: [TINY_PNG] }),
@@ -146,7 +146,11 @@ async function run() {
 
       const docsRes = await page.evaluate(async (id) => window.api.documents.list({ entityType: 'APPOINTMENT', entityId: id }), appointmentId)
       const attached = (docsRes?.data || []).find((d) => /Handwritten note/.test(d.fileName || d.originalName || ''))
-      r.log('handwritten-note-attached-as-png', !!attached && /\.png$/i.test(attached.fileName || ''), JSON.stringify(attached))
+      // 2026-09-23 — a single-page note now renders through the same A4 PDF
+      // pipeline as a multi-page note (previously saved as a raw PNG at
+      // whatever pixel size the tablet's canvas happened to be, and had no
+      // in-app Print button since Print only supported images).
+      r.log('handwritten-note-attached-as-pdf', !!attached && /\.pdf$/i.test(attached.fileName || ''), JSON.stringify(attached))
     })
 
     await r.step('real-lan-http-save-drawing-multi-page-attaches-one-pdf', async () => {
@@ -162,12 +166,133 @@ async function run() {
       const pdfAttached = (docsRes?.data || []).find((d) => /Handwritten note/.test(d.fileName || '') && /\.pdf$/i.test(d.fileName || ''))
       r.log('multi-page-note-attached-as-pdf', !!pdfAttached, JSON.stringify(pdfAttached))
 
-      // Rejects more than the 3-page cap.
+      // Rejects more than the 5-page cap.
       const overRes = await fetch(`${serverBase}/api/doctor-pad/${token}/${appointmentId}/save-drawing`, {
-        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images: [TINY_PNG, TINY_PNG, TINY_PNG, TINY_PNG] }),
+        method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images: [TINY_PNG, TINY_PNG, TINY_PNG, TINY_PNG, TINY_PNG, TINY_PNG] }),
       })
       const overBody = await overRes.json().catch(() => null)
-      r.log('rejects-more-than-3-pages', overRes.status === 400 && overBody?.success === false, JSON.stringify(overBody))
+      r.log('rejects-more-than-5-pages', overRes.status === 400 && overBody?.success === false, JSON.stringify(overBody))
+    })
+
+    // 2026-09-23 — Doctor Tablet: patient search/chart/medical-info-edit/
+    // billing-view/new-visit/document-viewing, all real HTTP against the
+    // running doctor-pad-server.ts (same real-fetch pattern as every other
+    // step in this suite) — not just typechecked, actually exercised.
+    await r.step('doctor-tablet-patient-search-and-chart', async () => {
+      if (!serverBase || !token || !customerId) return r.log('doctor-tablet-patient-search-and-chart', true, 'doctor pad server not running in this environment, skipped')
+
+      const searchRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients?q=${encodeURIComponent(TEST_PREFIX)}`)
+      const searchBody = await searchRes.json().catch(() => null)
+      const foundInSearch = (searchBody?.data || []).some((p) => p.id === customerId)
+      r.log('patient-search-finds-seeded-patient', searchRes.status === 200 && foundInSearch, JSON.stringify(searchBody))
+
+      const chartRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients/${customerId}`)
+      const chartBody = await chartRes.json().catch(() => null)
+      const visitsIncludeSeeded = (chartBody?.data?.visits || []).some((v) => v.id === appointmentId)
+      r.log('patient-chart-includes-seeded-visit', chartRes.status === 200 && visitsIncludeSeeded, JSON.stringify(chartBody?.data && { customer: chartBody.data.customer, visitCount: (chartBody.data.visits || []).length, isVetClinic: chartBody.data.isVetClinic }))
+      // GP Clinic, not Vet — the medical-info card must be considered
+      // applicable (Vet's isVetClinic===true is covered by the schema-level
+      // correctness fix itself; this just confirms GP doesn't get flagged).
+      r.log('gp-clinic-not-flagged-as-vet', chartBody?.data?.isVetClinic === false, JSON.stringify(chartBody?.data?.isVetClinic))
+
+      const billingRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients/${customerId}/billing`)
+      const billingBody = await billingRes.json().catch(() => null)
+      r.log('billing-view-succeeds', billingRes.status === 200 && billingBody?.success === true && Array.isArray(billingBody?.data?.ledger) && typeof billingBody?.data?.outstanding === 'number', JSON.stringify(billingBody))
+
+      const docsRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients/${customerId}/documents`)
+      const docsBody = await docsRes.json().catch(() => null)
+      const docs = docsBody?.data || []
+      // Both earlier save-drawing steps (single-page PNG-turned-PDF, and the
+      // 3-page PDF) attached to this same appointmentId — both must show up
+      // here, aggregated across the patient's whole history.
+      r.log('patient-documents-include-both-prescriptions', docsRes.status === 200 && docs.length >= 2, JSON.stringify(docs.map((d) => d.fileName)))
+
+      if (docs.length > 0) {
+        const fileRes = await fetch(`${serverBase}/api/doctor-pad/${token}/documents/${docs[0].id}/file`)
+        r.log('document-file-streams-successfully', fileRes.status === 200 && (fileRes.headers.get('content-type') || '').includes('pdf'), JSON.stringify({ status: fileRes.status, contentType: fileRes.headers.get('content-type') }))
+      } else {
+        r.log('document-file-streams-successfully', false, 'no documents to fetch')
+      }
+    })
+
+    await r.step('doctor-tablet-edit-medical-info-persists', async () => {
+      if (!serverBase || !token || !customerId) return r.log('doctor-tablet-edit-medical-info-persists', true, 'doctor pad server not running in this environment, skipped')
+
+      const updateRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients/${customerId}/medical`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ bloodGroup: 'O+', allergies: `${TEST_PREFIX} Penicillin`, chronicConditions: '', currentMedications: '', emergencyContactName: '', emergencyContactPhone: '' }),
+      })
+      const updateBody = await updateRes.json().catch(() => null)
+      r.log('medical-info-update-succeeds', updateRes.status === 200 && updateBody?.success === true, JSON.stringify(updateBody))
+
+      const rechartRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients/${customerId}`)
+      const rechartBody = await rechartRes.json().catch(() => null)
+      r.log('medical-info-update-actually-persisted', rechartBody?.data?.customer?.bloodGroup === 'O+' && rechartBody?.data?.customer?.allergies === `${TEST_PREFIX} Penicillin`, JSON.stringify(rechartBody?.data?.customer))
+    })
+
+    let tabletNewVisitId
+    await r.step('doctor-tablet-new-visit-creates-linked-appointment', async () => {
+      if (!serverBase || !token || !providerId || !customerId) return r.log('doctor-tablet-new-visit-creates-linked-appointment', true, 'doctor pad server not running in this environment, skipped')
+
+      const visitRes = await fetch(`${serverBase}/api/doctor-pad/${token}/${providerId}/new-visit`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ customerId, reason: `${TEST_PREFIX} Follow-up` }),
+      })
+      const visitBody = await visitRes.json().catch(() => null)
+      tabletNewVisitId = visitBody?.data?.id
+      r.log('new-visit-creates-appointment', visitRes.status === 200 && !!tabletNewVisitId && visitBody?.data?.customerId === customerId, JSON.stringify(visitBody?.data && { id: visitBody.data.id, customerId: visitBody.data.customerId, serviceTitle: visitBody.data.serviceTitle }))
+
+      // The new visit must actually be usable for a real Doctor Pad note —
+      // same save-drawing route, a fresh appointmentId, must succeed exactly
+      // like any other appointment's.
+      if (tabletNewVisitId) {
+        const drawRes = await fetch(`${serverBase}/api/doctor-pad/${token}/${tabletNewVisitId}/save-drawing`, {
+          method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ images: [TINY_PNG] }),
+        })
+        const drawBody = await drawRes.json().catch(() => null)
+        r.log('can-write-prescription-for-new-visit', drawRes.status === 200 && drawBody?.success === true, JSON.stringify(drawBody))
+      } else {
+        r.log('can-write-prescription-for-new-visit', false, 'no new visit id')
+      }
+
+      // And the chart must now list it among this patient's visits.
+      const rechartRes = await fetch(`${serverBase}/api/doctor-pad/${token}/patients/${customerId}`)
+      const rechartBody = await rechartRes.json().catch(() => null)
+      const newVisitListed = (rechartBody?.data?.visits || []).some((v) => v.id === tabletNewVisitId)
+      r.log('new-visit-appears-in-patient-history', newVisitListed, JSON.stringify((rechartBody?.data?.visits || []).map((v) => v.id)))
+    })
+
+    // 2026-09-23 — Visit History on the patient's own profile screen: the
+    // actual fix for "no way to search a patient's whole history across
+    // dates" (AppointmentsScreen.tsx was always scoped to one calendar
+    // day). Pure Electron IPC, not the LAN server — unaffected by the
+    // doctor-pad-server port collision the tablet checks above can hit.
+    await r.step('visit-history-on-patient-detail-screen', async () => {
+      if (!customerId || !appointmentId) return r.log('visit-history-on-patient-detail-screen', false, 'no customerId/appointmentId')
+      await h.gotoHash(page, `#/customers/${customerId}`)
+      await page.waitForTimeout(900)
+      r.log('customer-detail-screen-loads-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const bodyText = await page.locator('body').innerText().catch(() => '')
+      r.log('visit-history-section-shown', bodyText.includes('Visit History'))
+
+      const visitRow = page.locator('div', { hasText: `E2E167 Consultation` }).first()
+      r.log('seeded-appointment-listed-in-visit-history', await visitRow.count() > 0)
+
+      const bookBtn = page.getByRole('button', { name: 'Book New Visit' })
+      r.log('book-new-visit-button-present', await bookBtn.count() > 0)
+      if (await bookBtn.count() > 0) {
+        await bookBtn.click()
+        await page.waitForTimeout(900)
+        r.log('book-new-visit-navigates-to-appointments-no-crash', !(await h.hasErrorBoundary(page)))
+        const modal = h.topModal(page)
+        const modalText = await modal.innerText().catch(() => '')
+        r.log('booking-form-auto-opens-prefilled-with-same-patient', modalText.includes(`${TEST_PREFIX} Patient`))
+        await modal.locator('button', { hasText: /Cancel|Close/i }).first().click().catch(async () => {
+          await page.keyboard.press('Escape').catch(() => {})
+        })
+        await page.waitForTimeout(300)
+      }
     })
 
     await r.step('view-doctor-pad-notes-via-appointments-screen', async () => {

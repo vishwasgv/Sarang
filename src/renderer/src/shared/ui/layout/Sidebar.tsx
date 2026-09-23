@@ -27,6 +27,7 @@ import { useIndustryStore } from '@app/store/industry.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
 import { BrandIcon, AszurexMark } from '@shared/ui/atoms/Brand'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 
 export interface NavItem {
   label: string
@@ -361,8 +362,12 @@ export function Sidebar() {
 function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
   const location = useLocation()
   const { t } = useTranslation()
+  const { isDoctorVertical, plural: patientNounPlural } = usePatientNoun()
   const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path)
-  const displayLabel = item.i18nKey ? t(item.i18nKey, item.label) : item.label
+  // Customer → Patient, clinic verticals only (see usePatientNoun.ts).
+  const displayLabel = item.path === '/customers' && isDoctorVertical
+    ? patientNounPlural
+    : (item.i18nKey ? t(item.i18nKey, item.label) : item.label)
 
   return (
     <NavLink

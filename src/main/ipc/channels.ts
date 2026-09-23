@@ -1110,6 +1110,7 @@ export interface IpcChannels {
     delete: (payload: { id: string }) => Promise<ApiResponse>
     open: (payload: { id: string }) => Promise<ApiResponse>
     print: (payload: { id: string }) => Promise<ApiResponse<{ printed: boolean }>>
+    exportForShare: (payload: { id: string }) => Promise<ApiResponse<{ cancelled: boolean; filePath?: string }>>
   }
   // Phase 17 — HR & Attendance
   hr: {
@@ -1377,6 +1378,7 @@ export interface IpcChannels {
     list: (payload?: { providerId?: string; customerId?: string; status?: string; dateFrom?: string; dateTo?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     getByDate: (payload: { date: string }) => Promise<ApiResponse>
     get: (payload: { id: string }) => Promise<ApiResponse>
+    getPatientHistory: (payload: { customerId: string }) => Promise<ApiResponse>
     // Phase 58 §2 — petId: which pet a vet visit is for (Vet Clinic only, harmless elsewhere)
     create: (payload: { customerId?: string; customerName?: string; providerId?: string; serviceCatalogId?: string; serviceTitle: string; scheduledDate: string; scheduledTime: string; durationMinutes?: number; notes?: string; totalAmount?: number; depositPaid?: number; chairAssignment?: string; createdBy?: string; services?: string; petId?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; customerId?: string | null; customerName?: string | null; providerId?: string | null; serviceCatalogId?: string | null; serviceTitle?: string; scheduledDate?: string; scheduledTime?: string; durationMinutes?: number; notes?: string | null; privateNotes?: string | null; totalAmount?: number; depositPaid?: number; chairAssignment?: string | null; petId?: string | null }) => Promise<ApiResponse>
@@ -1459,6 +1461,7 @@ export interface IpcChannels {
     seen: (payload: { id: string }) => Promise<ApiResponse>
     skip: (payload: { id: string }) => Promise<ApiResponse>
     reset: (payload: { id: string }) => Promise<ApiResponse>
+    linkAppointment: (payload: { id: string; appointmentId: string }) => Promise<ApiResponse>
     // Phase 62 — self check-in via QR (LAN server), mirrors distributor's
     // own getFieldOrderStatus/regenerateFieldOrderToken/generateFieldOrderQr shape.
     getServerStatus: () => Promise<ApiResponse<{ running: boolean; port: number | null; lanUrls: string[]; token: string | null }>>

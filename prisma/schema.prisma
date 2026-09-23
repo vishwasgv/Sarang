@@ -917,6 +917,23 @@ model Customer {
   // report is opened — same "don't spam" reasoning as every other
   // reminder-cadence field in this schema.
   lastKhataReminderSentAt   DateTime?
+  // 2026-09-23 — clinic verticals (GP/Specialist/Dental/Vet/Physio): a real
+  // gap found while auditing the doctor workflow — VisitNote already has a
+  // rich per-VISIT SOAP structure, but nothing about the PATIENT carries
+  // forward automatically between visits, forcing the same "any allergies?"
+  // question every single time. All free-text and nullable (not a
+  // structured allergy/medication list — this app has no drug database to
+  // validate against, and forcing structure here would be a bigger, riskier
+  // clinical-data-modelling decision than this pass is meant to make).
+  // Generic on Customer like every other field here — harmless and simply
+  // unused/unshown outside the 5 clinic verticals, same convention as
+  // customerClass/lastAgmDate above being CA-Firm/Distributor-only.
+  bloodGroup                String?
+  allergies                 String?
+  chronicConditions         String?
+  currentMedications        String?
+  emergencyContactName      String?
+  emergencyContactPhone     String?
 
   priceList                 PriceList?                    @relation(fields: [priceListId], references: [id])
   salesOrders               SalesOrder[] // Phase 63

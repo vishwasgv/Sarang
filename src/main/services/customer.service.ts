@@ -198,7 +198,13 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
           idProofType: payload.idProofType?.trim() || null,
           idProofNumber: payload.idProofNumber?.trim() || null,
           priceListId: payload.priceListId || null,
-          customFields: serializeCustomFieldValues(payload.customFields)
+          customFields: serializeCustomFieldValues(payload.customFields),
+          bloodGroup: payload.bloodGroup?.trim() || null,
+          allergies: payload.allergies?.trim() || null,
+          chronicConditions: payload.chronicConditions?.trim() || null,
+          currentMedications: payload.currentMedications?.trim() || null,
+          emergencyContactName: payload.emergencyContactName?.trim() || null,
+          emergencyContactPhone: payload.emergencyContactPhone?.trim() || null,
         }
       })
     })
@@ -244,7 +250,13 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
         idProofType: payload.idProofType?.trim() || null,
         idProofNumber: payload.idProofNumber?.trim() || null,
         priceListId: payload.priceListId ?? existing.priceListId,
-        customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields
+        customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields,
+        bloodGroup: payload.bloodGroup !== undefined ? (payload.bloodGroup?.trim() || null) : existing.bloodGroup,
+        allergies: payload.allergies !== undefined ? (payload.allergies?.trim() || null) : existing.allergies,
+        chronicConditions: payload.chronicConditions !== undefined ? (payload.chronicConditions?.trim() || null) : existing.chronicConditions,
+        currentMedications: payload.currentMedications !== undefined ? (payload.currentMedications?.trim() || null) : existing.currentMedications,
+        emergencyContactName: payload.emergencyContactName !== undefined ? (payload.emergencyContactName?.trim() || null) : existing.emergencyContactName,
+        emergencyContactPhone: payload.emergencyContactPhone !== undefined ? (payload.emergencyContactPhone?.trim() || null) : existing.emergencyContactPhone,
       }
     })
 

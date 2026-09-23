@@ -7,6 +7,7 @@ import {
   skipToken,
   resetToken,
   getQueueStats,
+  linkTokenAppointment,
 } from '../../services/token-queue.service'
 import { CreateTokenSchema, TokenQueueIdSchema } from '../../validation/token-queue.validation'
 import { getTokenQueueServerStatus, getOrCreateTokenQueueToken, regenerateTokenQueueToken } from '../../server/token-queue-server'
@@ -59,6 +60,13 @@ export function register(handle: HandleFn): void {
     const parsed = TokenQueueIdSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return resetToken(parsed.data.id)
+  })
+
+  handle('tokenQueue:linkAppointment', async (payload) => {
+    const deny = await requirePermission('tokenQueue.manage'); if (deny) return deny
+    const { id, appointmentId } = (payload ?? {}) as { id?: string; appointmentId?: string }
+    if (!id || !appointmentId) return { success: false, error: { code: 'VAL-001', message: 'id and appointmentId are required.' } }
+    return linkTokenAppointment(id, appointmentId)
   })
 
   // ── Phase 62 — self check-in via QR (phone/laptop, LAN) ──

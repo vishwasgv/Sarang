@@ -109,6 +109,29 @@ export async function callToken(id: string) {
   }
 }
 
+// 2026-09-23 — real gap found+fixed: a genuine walk-in (self-scanned QR or
+// front desk's own "Add Walk-in Token") got a token row with a free-text
+// name/phone and NO Customer or Appointment — meaning neither Doctor Pad nor
+// a typed Visit Note could ever attach to them, since both require a real
+// Appointment. TokenQueueScreen.tsx's new "Create Visit Record" action opens
+// the normal booking form (reusing its existing CustomerPicker, so a
+// returning patient is matched by phone instead of duplicated) and, once
+// that booking succeeds, calls this to link the token back to the
+// Appointment it just produced — closing the loop the same way a token
+// created FROM an existing appointment already worked.
+export async function linkTokenAppointment(tokenId: string, appointmentId: string) {
+  try {
+    const db = getPrisma()
+    const token = await db.tokenQueue.update({
+      where: { id: tokenId },
+      data: { appointmentId },
+    })
+    return { success: true, data: token }
+  } catch (err) {
+    return { success: false, error: { code: 'TQ-008', message: err instanceof Error ? err.message : 'Could not link token to visit record.' } }
+  }
+}
+
 export async function markSeen(id: string) {
   try {
     const db = getPrisma()

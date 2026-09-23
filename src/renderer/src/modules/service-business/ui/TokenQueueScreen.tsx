@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
-import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle, QrCode, RotateCw, Copy, Wifi, Printer } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Hash, Plus, PhoneCall, CheckCircle2, SkipForward, RotateCcw, RefreshCw, X, AlertTriangle, QrCode, RotateCw, Copy, Wifi, Printer, UserPlus } from 'lucide-react'
 import { printLanQrHtml } from '@shared/utils/print-branding'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
@@ -48,11 +49,21 @@ const STATUS_VARIANT: Record<TokenStatus, 'info' | 'warning' | 'success' | 'neut
   SKIPPED: 'neutral',
 }
 
+// The stable core of an Indian mobile number, regardless of how it was
+// typed — with or without a +91/91/0 prefix, spaces, or dashes. Used only to
+// MATCH an existing patient (handleCreateVisitRecord below); never used to
+// store/display a phone number, so it deliberately throws away formatting
+// that's fine to lose for comparison purposes only.
+function normalizePhoneForMatch(phone: string): string {
+  return phone.replace(/\D/g, '').slice(-10)
+}
+
 export function TokenQueueScreen() {
   const { hasPermission } = useAuthStore()
   const { error: toastError, success: toastSuccess } = useNotificationStore()
   const canManage = hasPermission('billing.createInvoice')
   const canManageCheckIn = hasPermission('tokenQueue.manage')
+  const navigate = useNavigate()
   // Phase 67 §9.1 item 20.5 — Specialist Clinic: waitlist prioritization by referral urgency.
   const isReferralUrgency = useIndustryStore((s) => s.isModuleEnabled('referral_urgency'))
 
@@ -184,6 +195,62 @@ export function TokenQueueScreen() {
     const next = tokens.find((t) => t.status === 'WAITING')
     if (!next) return
     await handleAction(next.id, 'call')
+  }
+
+  // 2026-09-23 — real gap found+fixed: a walk-in token (self-scanned QR or
+  // this screen's own "Add Walk-in Token") never had a Customer or
+  // Appointment behind it, so neither Doctor Pad nor a typed Visit Note
+  // could ever attach to them. This opens the normal booking form
+  // pre-filled for this token — matching an existing patient by phone first
+  // (reusing the same search the CustomerPicker itself would do, so a
+  // returning patient never gets duplicated) — and the booking form links
+  // the token back to whatever Appointment it produces (see
+  // AppointmentsScreen.tsx's handleSave).
+  //
+  // REAL BUG found+fixed 2026-09-23: the original match required the
+  // token's phone to be byte-for-byte IDENTICAL to the stored Customer
+  // phone. A returning patient re-entering their number with different
+  // formatting across visits (a leading 0, a +91 country code, spacing, a
+  // dash) would silently fail that exact check and get a brand-new
+  // duplicate Customer record instead of being recognized — exactly the
+  // "double record" risk this bridge exists to prevent. A first attempt at
+  // fixing this just fell back to `contains`, but that's directional —
+  // `contains` only finds a match when the STORED number has extra
+  // characters wrapped around the token's number, not the reverse (a token
+  // phone entered as "+91 98765 43210" is never a substring of a plainly
+  // stored "9876543210"). The actual fix normalizes both sides to their
+  // last 10 digits (the stable core of an Indian mobile number regardless
+  // of any prefix/spacing/punctuation) and compares those — symmetric in
+  // both directions. Two or more normalized matches (a genuinely ambiguous
+  // fragment) still falls through to "no match", the safe direction to fail in.
+  async function handleCreateVisitRecord(token: Token) {
+    let matchedCustomer: { id: string; customerName: string; phone: string | null } | null = null
+    if (token.phone) {
+      try {
+        const normalizedTokenPhone = normalizePhoneForMatch(token.phone)
+        const res = await api.customers.search(normalizedTokenPhone)
+        if (res.success) {
+          const results = (res.data as Array<{ id: string; customerName: string; phone: string | null }>) ?? []
+          const normalizedMatches = results.filter((c) => c.phone && normalizePhoneForMatch(c.phone) === normalizedTokenPhone)
+          matchedCustomer = normalizedMatches.length === 1 ? normalizedMatches[0] : null
+        }
+      } catch {
+        // best-effort dedup — worst case staff picks/creates the customer manually in the form
+      }
+    }
+    navigate('/appointments', {
+      state: {
+        prefillCustomer: matchedCustomer,
+        prefillName: matchedCustomer ? undefined : token.patientName,
+        // No existing match — pre-open the picker's quick-add with the
+        // token's own name+phone, so staff confirms a real Customer record
+        // instead of falling into the free-text "Walk-in" field that never
+        // creates one (see CustomerPicker.tsx's own comment on this prop).
+        prefillPhone: matchedCustomer ? undefined : (token.phone ?? undefined),
+        prefillNotes: token.notes ?? undefined,
+        linkTokenQueueId: token.id,
+      },
+    })
   }
 
   const waiting = tokens.filter((t) => t.status === 'WAITING')
@@ -382,7 +449,7 @@ export function TokenQueueScreen() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Currently Called</p>
                 <div className="space-y-2">
                   {active.map((t) => (
-                    <TokenRow key={t.id} token={t} canManage={canManage} actioning={actioningId === t.id} onAction={handleAction} />
+                    <TokenRow key={t.id} token={t} canManage={canManage} actioning={actioningId === t.id} onAction={handleAction} onCreateVisitRecord={handleCreateVisitRecord} />
                   ))}
                 </div>
               </div>
@@ -394,7 +461,7 @@ export function TokenQueueScreen() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Waiting ({waiting.length})</p>
                 <div className="space-y-2">
                   {waiting.map((t) => (
-                    <TokenRow key={t.id} token={t} canManage={canManage} actioning={actioningId === t.id} onAction={handleAction} />
+                    <TokenRow key={t.id} token={t} canManage={canManage} actioning={actioningId === t.id} onAction={handleAction} onCreateVisitRecord={handleCreateVisitRecord} />
                   ))}
                 </div>
               </div>
@@ -406,7 +473,7 @@ export function TokenQueueScreen() {
                 <p className="text-[10px] font-bold uppercase tracking-widest text-slate-400 mb-2">Completed ({done.length})</p>
                 <div className="space-y-2">
                   {done.map((t) => (
-                    <TokenRow key={t.id} token={t} canManage={canManage} actioning={actioningId === t.id} onAction={handleAction} />
+                    <TokenRow key={t.id} token={t} canManage={canManage} actioning={actioningId === t.id} onAction={handleAction} onCreateVisitRecord={handleCreateVisitRecord} />
                   ))}
                 </div>
               </div>
@@ -425,11 +492,12 @@ export function TokenQueueScreen() {
 
 // ─── Token Row ────────────────────────────────────────────────────────────────
 
-function TokenRow({ token, canManage, actioning, onAction }: {
+function TokenRow({ token, canManage, actioning, onAction, onCreateVisitRecord }: {
   token: Token
   canManage: boolean
   actioning: boolean
   onAction: (id: string, action: 'call' | 'seen' | 'skip' | 'reset') => void
+  onCreateVisitRecord: (token: Token) => void
 }) {
   return (
     <motion.div initial={{ opacity: 0, y: 3 }} animate={{ opacity: 1, y: 0 }}>
@@ -482,6 +550,15 @@ function TokenRow({ token, canManage, actioning, onAction }: {
       {/* Actions */}
       {canManage && (
         <div className="flex items-center gap-1 shrink-0">
+          {!token.appointmentId && token.status !== 'SKIPPED' && (
+            <button
+              onClick={() => onCreateVisitRecord(token)}
+              title="Create a visit record for this patient — required before Doctor Pad or a Visit Note can be attached"
+              className="p-1.5 rounded-lg border border-brand/40 text-brand hover:bg-brand/5 transition-colors"
+            >
+              <UserPlus size={13} />
+            </button>
+          )}
           {token.status === 'WAITING' && (
             <>
               <button disabled={actioning} onClick={() => onAction(token.id, 'call')} title="Call this token" className="p-1.5 rounded-lg border border-amber-300 text-amber-600 hover:bg-amber-50 disabled:opacity-50 transition-colors">

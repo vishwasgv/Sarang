@@ -29,6 +29,13 @@ export function register(handle: HandleFn): void {
     return svc.getAppointment(id)
   })
 
+  handle('appointments:getPatientHistory', async (payload) => {
+    const deny = await requirePermission('billing.view'); if (deny) return deny
+    const { customerId } = payload as { customerId: string }
+    if (!customerId) return { success: false, error: { code: 'VAL-001', message: 'customerId is required.' } }
+    return svc.getPatientHistory(customerId)
+  })
+
   handle('appointments:create', async (payload) => {
     const deny = await requirePermission('appointments.manage'); if (deny) return deny
     const parsed = CreateAppointmentSchema.safeParse(payload)

@@ -33,9 +33,29 @@
      canvas itself is the one element that actually stretches to fill
      whatever's left after the compact toolbar rows — genuinely the full
      available writing surface on any tablet, portrait or landscape. */
+  /* 2026-09-23 — three more asks layered on top of the above: (1) the Save
+     button could end up below the fold on a short/crowded viewport with no
+     way to reach it — body no longer clips overflow; main.pad-wide is now
+     the scrolling element instead, so a tall toolbar stack never traps the
+     Save button off-screen. (2) the canvas gets a min-height floor so it can
+     never be squeezed to nothing by the rows around it. (3) the Save bar is
+     sticky to the bottom of that same scroll container, so on any screen
+     where everything already fits, it just sits fixed at the bottom with no
+     scrolling needed at all — the common case — and only when content
+     genuinely overflows does a scroll reveal it, per the explicit ask. */
   body.canvas-mode { height: 100vh; overflow: hidden; display: flex; flex-direction: column; }
-  body.canvas-mode header { flex: 0 0 auto; }
-  body.canvas-mode main.pad-wide { max-width: calc(100vw - 20px); width: 100%; margin: 0 auto; padding: 8px 10px; display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto; }
+  /* Header shrinks to a thin strip while writing — the patient name and page
+     count already live in .pad-topbar just below it, so the full-size
+     header (business name + subtitle) would just be repeating itself at the
+     cost of canvas height. */
+  body.canvas-mode header { flex: 0 0 auto; padding: 6px 16px; }
+  body.canvas-mode header h1 { font-size: 14px; }
+  body.canvas-mode header p { display: none; }
+  body.canvas-mode main.pad-wide {
+    max-width: calc(100vw - 16px); width: 100%; margin: 0 auto; padding: 6px 8px 0;
+    display: flex; flex-direction: column; min-height: 0; flex: 1 1 auto;
+    overflow-y: auto; -webkit-overflow-scrolling: touch;
+  }
   body.canvas-mode .brand-footer { display: none; }
   .card { background: #fff; border-radius: 14px; padding: 20px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 16px; }
   .hint { color: #64748B; font-size: 14px; line-height: 1.6; text-align: center; margin: 0 0 16px; }
@@ -68,26 +88,73 @@
   .queue-item .time { color: #00AEEF; font-weight: 700; font-size: 14px; white-space: nowrap; margin-left: 10px; }
   .empty-state { text-align: center; color: #94A3B8; padding: 40px 16px; font-size: 14px; }
 
-  .canvas-toolbar { display: flex; gap: 8px; margin-top: 10px; flex: 0 0 auto; flex-wrap: wrap; }
-  .canvas-toolbar button {
-    flex: 1; min-width: 64px; padding: 11px 6px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px;
+  /* 2026-09-23 — Doctor Tablet: patient search/chart, alongside the
+     existing queue. A plain 2-tab strip (Queue / Patients) rather than a
+     bottom nav bar — this page is a single scroll, not a multi-screen app,
+     and a top strip stays out of the canvas's way when writing. */
+  .main-tabs { display: flex; gap: 6px; background: #fff; border-radius: 12px; padding: 4px; margin-bottom: 16px; box-shadow: 0 1px 3px rgba(0,0,0,0.06); }
+  .main-tabs button { flex: 1; padding: 10px; border-radius: 9px; border: none; background: transparent; font-weight: 700; font-size: 13px; color: #64748B; }
+  .main-tabs button.active { background: #00AEEF; color: #fff; }
+  .search-input { width: 100%; padding: 14px 16px; border-radius: 12px; border: 1px solid #E2E8F0; font-size: 15px; margin-bottom: 14px; }
+  .patient-list-item {
+    display: flex; justify-content: space-between; align-items: center;
+    background: #fff; border-radius: 12px; padding: 16px; margin-bottom: 10px; box-shadow: 0 1px 3px rgba(0,0,0,0.06);
   }
-  .canvas-toolbar button.active { border-color: #00AEEF; color: #00AEEF; background: #EFF8FF; }
-  /* 2026-09-22 — tool/size rows, same visual language as .canvas-toolbar
-     (existing Clear/Add Page/Back row) but their own class so icon glyphs
-     can sit above the label without stretching the existing row's height. */
-  .tool-row, .size-row { display: flex; gap: 6px; flex: 0 0 auto; }
-  .tool-row button, .size-row button {
-    flex: 1; padding: 9px 4px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff;
-    font-weight: 700; font-size: 11px; display: flex; flex-direction: column; align-items: center; gap: 3px; color: #475569;
+  .patient-list-item .name { font-weight: 700; font-size: 15px; }
+  .patient-list-item .meta { color: #64748B; font-size: 13px; margin-top: 2px; }
+  .back-link { font-size: 12px; color: #94A3B8; background: none; border: none; text-decoration: underline; padding: 4px; margin-bottom: 10px; display: inline-block; }
+  .patient-header { display: flex; align-items: center; justify-content: space-between; margin-bottom: 14px; }
+  .patient-header h2 { margin: 0 0 2px; font-size: 18px; }
+  .patient-header .sub { color: #64748B; font-size: 13px; }
+  .section-title { display: flex; align-items: center; gap: 6px; font-size: 12px; font-weight: 700; color: #64748B; text-transform: uppercase; letter-spacing: 0.03em; margin: 0 0 10px; }
+  .field-row { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 10px; }
+  .field-row label { display: block; font-size: 11px; font-weight: 700; color: #94A3B8; margin-bottom: 4px; text-align: start; }
+  .field-row input { width: 100%; padding: 10px 12px; border-radius: 9px; border: 1px solid #E2E8F0; font-size: 14px; }
+  .medical-card.has-allergy { border: 2px solid #FCA5A5; }
+  .visit-row { border: 1px solid #E2E8F0; border-radius: 12px; padding: 14px; margin-bottom: 10px; }
+  .visit-row .top { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .visit-row .top .name { font-weight: 700; font-size: 14px; }
+  .visit-row .meta { color: #94A3B8; font-size: 12px; margin-top: 2px; }
+  .visit-row .soap { margin-top: 8px; padding-top: 8px; border-top: 1px solid #F1F5F9; font-size: 13px; color: #334155; }
+  .visit-row .soap p { margin: 3px 0; }
+  .doc-row { display: flex; align-items: center; justify-content: space-between; padding: 10px 0; border-bottom: 1px solid #F1F5F9; font-size: 13px; }
+  .doc-row:last-child { border-bottom: none; }
+  .doc-row a { color: #00AEEF; font-weight: 700; text-decoration: none; }
+  .ledger-row { display: flex; justify-content: space-between; font-size: 13px; padding: 8px 0; border-bottom: 1px solid #F1F5F9; }
+  .ledger-row:last-child { border-bottom: none; }
+  .status-pill { font-size: 10px; font-weight: 700; padding: 3px 8px; border-radius: 999px; background: #F1F5F9; color: #64748B; white-space: nowrap; }
+
+  /* 2026-09-23 redesign — every secondary action (tools, undo, clear, add
+     page, back, page-nav) is now an icon-only button: smaller and more
+     compact than the old text/label buttons, which both satisfies "icons
+     not buttons" and reclaims real vertical space for the canvas itself.
+     Save stays icon+label since it's the one action worth never leaving
+     ambiguous. A single shared .icon-btn class replaces the old
+     .canvas-toolbar/.tool-row/.size-row three-variant setup. */
+  .icon-btn {
+    display: flex; align-items: center; justify-content: center; flex: 1; min-width: 44px; min-height: 44px;
+    padding: 8px; border-radius: 10px; border: 1.5px solid #E2E8F0; background: #fff; color: #475569;
+    transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.06s ease;
   }
-  .tool-row button svg, .size-row .dot { pointer-events: none; }
-  .tool-row button.active, .size-row button.active { border-color: #00AEEF; color: #00AEEF; background: #EFF8FF; }
-  .size-row { margin-top: 6px; }
-  .size-row .dot { border-radius: 50%; background: currentColor; }
-  .color-row { display: flex; gap: 8px; margin-top: 6px; flex: 0 0 auto; align-items: center; justify-content: center; }
-  .color-row button { width: 30px; height: 30px; border-radius: 50%; border: 2px solid #E2E8F0; padding: 0; }
-  .color-row button.active { border-color: #0F172A; box-shadow: 0 0 0 2px #fff, 0 0 0 4px #00AEEF; }
+  .icon-btn:active { transform: scale(0.94); }
+  .icon-btn svg { pointer-events: none; width: 20px; height: 20px; }
+  .icon-btn.active { border-color: #00AEEF; color: #00AEEF; background: #EFF8FF; }
+  .icon-btn:disabled { opacity: 0.35; }
+  .icon-btn.danger:active { background: #FEF2F2; border-color: #FCA5A5; color: #DC2626; }
+  .tool-row, .option-row { display: flex; gap: 6px; flex: 0 0 auto; flex-wrap: wrap; }
+  .tool-row { margin-bottom: 6px; }
+  .size-dot { width: 30px; height: 30px !important; min-width: 30px; padding: 0; border-radius: 50%; }
+  .size-dot .dot { border-radius: 50%; background: currentColor; pointer-events: none; }
+  .color-swatch { width: 30px; height: 30px !important; min-width: 30px; padding: 0; border-radius: 50%; border-width: 2px; }
+  .color-custom {
+    width: 30px; height: 30px !important; min-width: 30px; padding: 2px; border-radius: 8px;
+    -webkit-appearance: none; appearance: none; cursor: pointer;
+  }
+  .color-custom::-webkit-color-swatch-wrapper { padding: 0; }
+  .color-custom::-webkit-color-swatch { border: none; border-radius: 6px; }
+  .color-custom::-moz-color-swatch { border: none; border-radius: 6px; }
+  .color-swatch.active, .color-custom.active { box-shadow: 0 0 0 2px #fff, 0 0 0 4px #00AEEF; }
+  .option-row .row-sep { width: 1px; align-self: stretch; background: #E2E8F0; margin: 2px 2px; flex: 0 0 auto; }
   #drawCanvas {
     width: 100%; aspect-ratio: 4/3; background: #fff; border-radius: 12px; border: 1.5px solid #E2E8F0;
     touch-action: none; display: block;
@@ -95,14 +162,27 @@
   /* Full-size writing surface (see body.canvas-mode above) — the
      aspect-ratio box above is only the fallback for the rare case JS never
      runs; resizeCanvas() below always sizes the real canvas to its flex
-     container's actual pixel box instead. */
-  body.canvas-mode #drawCanvas { aspect-ratio: unset; flex: 1 1 auto; min-height: 0; }
-  .patient-banner { background: #EFF8FF; border-radius: 10px; padding: 8px 14px; font-size: 13px; color: #0369A1; margin-bottom: 8px; text-align: center; flex: 0 0 auto; }
-  .pen-hint { color: #94A3B8; font-size: 11px; text-align: center; margin: 0 0 6px; flex: 0 0 auto; }
-  .page-bar { display: flex; align-items: center; justify-content: center; gap: 12px; margin-bottom: 8px; flex: 0 0 auto; }
-  .page-bar button { padding: 8px 12px; border-radius: 8px; border: 1.5px solid #E2E8F0; background: #fff; font-weight: 700; font-size: 13px; }
-  .page-bar button:disabled { opacity: 0.35; }
-  .page-bar .page-label { font-size: 13px; font-weight: 700; color: #0F172A; min-width: 64px; text-align: center; }
+     container's actual pixel box instead. A min-height floor keeps the
+     writing surface usable even when the toolbar rows above/below it push
+     total content past 100vh and main.pad-wide starts scrolling. */
+  body.canvas-mode #drawCanvas { aspect-ratio: unset; flex: 1 1 auto; min-height: 280px; margin-top: 6px; }
+  /* Patient name + page nav + Back collapse into one compact top strip
+     instead of three separate rows, freeing a full row of height back to
+     the canvas. */
+  .pad-topbar { display: flex; align-items: center; gap: 8px; flex: 0 0 auto; margin-bottom: 6px; }
+  .pad-topbar .patient-name { flex: 1 1 auto; min-width: 0; font-weight: 700; font-size: 14px; color: #0F172A; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  .pad-topbar .page-nav { display: flex; align-items: center; gap: 4px; flex: 0 0 auto; }
+  .pad-topbar .page-nav .icon-btn { flex: 0 0 auto; min-width: 36px; min-height: 36px; padding: 6px; }
+  .pad-topbar .page-nav .icon-btn svg { width: 16px; height: 16px; }
+  .pad-topbar .page-label { font-size: 12px; font-weight: 700; color: #64748B; min-width: 34px; text-align: center; }
+  /* Sticky footer holding the error box + Save button — pinned to the
+     bottom of the scrolling main.pad-wide container. On the common case
+     (everything fits in the viewport) it just sits at the natural bottom
+     with no scrolling involved; on a crowded/short screen it stays reachable
+     as the user scrolls instead of ever falling off the bottom edge. */
+  .save-bar { position: sticky; bottom: 0; background: #F8FAFC; padding: 8px 0 10px; margin-top: 4px; flex: 0 0 auto; z-index: 5; box-shadow: 0 -8px 12px -8px rgba(15,23,42,0.06); }
+  .save-bar .btn { display: flex; align-items: center; justify-content: center; gap: 8px; margin-top: 0; }
+  .save-bar .btn svg { width: 18px; height: 18px; }
 </style>
 </head>
 <body>
@@ -236,17 +316,244 @@
           }).join('')
 
       root.innerHTML =
+        mainTabsHtml('queue') +
         '<div class="queue-header"><h2>Today\'s Patients</h2><button class="forget-link" id="forget-btn">Not you? Switch doctor</button></div>' +
         itemsHtml
 
+      wireMainTabs(providerId, providerName)
       document.getElementById('forget-btn').addEventListener('click', forget)
       var items = root.querySelectorAll('.queue-item')
       for (var i = 0; i < items.length; i++) {
         items[i].addEventListener('click', (function (id, name) {
-          return function () { renderCanvas(id, name) }
+          return function () { renderCanvas(id, name, function () { renderQueue(providerId, providerName) }) }
         })(items[i].getAttribute('data-id'), queue[i].customerName))
       }
     }).catch(function () { renderLanding() })
+  }
+
+  // 2026-09-23 — Doctor Tablet: the tab strip shown atop both the Queue and
+  // the new Patients search/chart screens (never in canvas-mode — writing a
+  // note is deliberately full-screen with no navigation chrome). `active`
+  // is 'queue' or 'patients'; wireMainTabs() must be called right after
+  // setting root.innerHTML since the buttons are freshly created each time.
+  function mainTabsHtml(active) {
+    return '<div class="main-tabs">' +
+      '<button id="tab-queue" class="' + (active === 'queue' ? 'active' : '') + '">Queue</button>' +
+      '<button id="tab-patients" class="' + (active === 'patients' ? 'active' : '') + '">Patients</button>' +
+      '</div>'
+  }
+  function wireMainTabs(providerId, providerName) {
+    document.getElementById('tab-queue').addEventListener('click', function () { renderQueue(providerId, providerName) })
+    document.getElementById('tab-patients').addEventListener('click', function () { renderPatientSearch(providerId, providerName) })
+  }
+
+  // ── Patients: search ──────────────────────────────────────────────────
+  function renderPatientSearch(providerId, providerName) {
+    document.querySelector('main').classList.remove('pad-wide')
+    document.body.classList.remove('canvas-mode')
+    document.getElementById('header-sub').textContent = providerName || ''
+    root.innerHTML =
+      mainTabsHtml('patients') +
+      '<input class="search-input" id="patient-search-input" placeholder="Search by name or phone…" autocomplete="off">' +
+      '<div id="patient-search-results"><div class="empty-state">Search for a patient by name or phone.</div></div>'
+    wireMainTabs(providerId, providerName)
+
+    var input = document.getElementById('patient-search-input')
+    var resultsEl = document.getElementById('patient-search-results')
+    var searchTimer = null
+
+    function runSearch(q) {
+      resultsEl.innerHTML = '<p class="hint">Searching…</p>'
+      apiGet('/patients?q=' + encodeURIComponent(q)).then(function (res) {
+        if (!res.success) { resultsEl.innerHTML = '<div class="empty-state">Could not search right now.</div>'; return }
+        var results = res.data || []
+        if (results.length === 0) { resultsEl.innerHTML = '<div class="empty-state">No patients found.</div>'; return }
+        resultsEl.innerHTML = results.map(function (p) {
+          return '<div class="patient-list-item" data-id="' + escapeHtml(p.id) + '">' +
+            '<div><div class="name">' + escapeHtml(p.customerName) + '</div>' +
+            (p.phone ? '<div class="meta">' + escapeHtml(p.phone) + '</div>' : '') + '</div>' +
+            '</div>'
+        }).join('')
+        var items = resultsEl.querySelectorAll('.patient-list-item')
+        for (var i = 0; i < items.length; i++) {
+          items[i].addEventListener('click', (function (id) {
+            return function () { renderPatientChart(id, providerId, providerName) }
+          })(items[i].getAttribute('data-id')))
+        }
+      }).catch(function () { resultsEl.innerHTML = '<div class="empty-state">Could not search right now.</div>' })
+    }
+
+    input.addEventListener('input', function () {
+      clearTimeout(searchTimer)
+      var q = input.value.trim()
+      if (q.length < 2) { resultsEl.innerHTML = '<div class="empty-state">Type at least 2 characters to search.</div>'; return }
+      searchTimer = setTimeout(function () { runSearch(q) }, 250)
+    })
+    input.focus()
+  }
+
+  var VISIT_STATUS_LABEL = { SCHEDULED: 'Scheduled', CONFIRMED: 'Confirmed', IN_PROGRESS: 'In Progress', COMPLETED: 'Completed', CANCELLED: 'Cancelled', NO_SHOW: 'No Show' }
+
+  // ── Patients: full chart (medical info, visit history, prescriptions,
+  //    read-only billing) + start a fresh visit ────────────────────────────
+  function renderPatientChart(customerId, providerId, providerName) {
+    document.querySelector('main').classList.remove('pad-wide')
+    document.body.classList.remove('canvas-mode')
+    document.getElementById('header-sub').textContent = providerName || ''
+    root.innerHTML = mainTabsHtml('patients') + '<p class="hint">Loading patient record…</p>'
+    wireMainTabs(providerId, providerName)
+
+    var FAILED = { success: false }
+    Promise.all([
+      apiGet('/patients/' + customerId),
+      // Billing/documents are enrichment, not the core record — a failure
+      // in either must never block the medical info + visit history above
+      // from showing (same "non-critical enrichment" rule
+      // CustomerDetailScreen.tsx's own loadInterest/loadCreditRisk follow).
+      apiGet('/patients/' + customerId + '/billing').catch(function () { return FAILED }),
+      apiGet('/patients/' + customerId + '/documents').catch(function () { return FAILED }),
+    ]).then(function (results) {
+      var chartRes = results[0], billingRes = results[1], docsRes = results[2]
+      if (!chartRes.success) {
+        root.innerHTML = mainTabsHtml('patients') + '<div class="empty-state">Could not load this patient.</div>'
+        wireMainTabs(providerId, providerName)
+        return
+      }
+      var customer = chartRes.data.customer
+      var visits = chartRes.data.visits || []
+      var isVetClinic = !!chartRes.data.isVetClinic
+      var ledger = (billingRes.success && billingRes.data && billingRes.data.ledger) || []
+      var outstanding = (billingRes.success && billingRes.data && billingRes.data.outstanding) || 0
+      var docs = (docsRes.success && docsRes.data) || []
+
+      var hasAllergy = !isVetClinic && !!(customer.allergies && customer.allergies.trim())
+
+      // Vet Clinic: this record is the pet's OWNER, not the patient — the
+      // pet is. Showing/editing "allergies, blood group" on the owner would
+      // be wrong, not just mislabeled, so that card is skipped entirely for
+      // this one vertical (see getPatientChartForDoctorPad's own comment).
+      var medicalCardHtml = isVetClinic ? '' :
+        '<div class="card medical-card' + (hasAllergy ? ' has-allergy' : '') + '">' +
+        '<p class="section-title">' + (hasAllergy ? '⚠️ Medical Information' : 'Medical Information') + '</p>' +
+        '<div class="field-row">' +
+        '<div><label>Blood Group</label><input id="field-bloodGroup" value="' + escapeHtml(customer.bloodGroup || '') + '"></div>' +
+        '<div><label>Allergies</label><input id="field-allergies" value="' + escapeHtml(customer.allergies || '') + '" placeholder="e.g. Penicillin"></div>' +
+        '</div>' +
+        '<div class="field-row">' +
+        '<div><label>Chronic Conditions</label><input id="field-chronicConditions" value="' + escapeHtml(customer.chronicConditions || '') + '"></div>' +
+        '<div><label>Current Medications</label><input id="field-currentMedications" value="' + escapeHtml(customer.currentMedications || '') + '"></div>' +
+        '</div>' +
+        '<div class="field-row">' +
+        '<div><label>Emergency Contact Name</label><input id="field-emergencyContactName" value="' + escapeHtml(customer.emergencyContactName || '') + '"></div>' +
+        '<div><label>Emergency Contact Phone</label><input id="field-emergencyContactPhone" value="' + escapeHtml(customer.emergencyContactPhone || '') + '"></div>' +
+        '</div>' +
+        '<button class="btn btn-secondary" id="save-medical-btn" style="margin-top:4px">Save Medical Info</button>' +
+        '</div>'
+
+      root.innerHTML =
+        mainTabsHtml('patients') +
+        '<button class="back-link" id="back-to-search">&larr; Back to search</button>' +
+        '<div class="patient-header"><div><h2>' + escapeHtml(customer.customerName) + '</h2>' +
+        '<div class="sub">' + escapeHtml(customer.phone || 'No phone on file') + (isVetClinic ? ' · Owner' : '') + '</div></div></div>' +
+
+        medicalCardHtml +
+
+        '<div class="card">' +
+        '<p class="section-title">Start a Fresh Visit</p>' +
+        '<input class="search-input" id="new-visit-reason" placeholder="Reason for this visit (e.g. Follow-up, Fever)" style="margin-bottom:10px">' +
+        '<button class="btn" id="new-visit-btn">Start Visit &amp; Write Prescription</button>' +
+        '<div class="error-box" id="new-visit-error"></div>' +
+        '</div>' +
+
+        '<div class="card">' +
+        '<p class="section-title">Billing (read-only)</p>' +
+        '<div class="ledger-row"><strong>Outstanding Balance</strong><strong>' + Number(outstanding).toFixed(2) + '</strong></div>' +
+        (ledger.length === 0 ? '<p class="hint" style="margin:8px 0 0">No billing history.</p>' :
+          ledger.slice(0, 8).map(function (l) {
+            return '<div class="ledger-row"><span>' + escapeHtml(l.remarks || l.referenceType || '') + '</span>' +
+              '<span>' + (l.debitAmount > 0 ? '-' + l.debitAmount.toFixed(2) : '+' + l.creditAmount.toFixed(2)) + '</span></div>'
+          }).join('')) +
+        '</div>' +
+
+        '<div class="card">' +
+        '<p class="section-title">Prescriptions &amp; Documents</p>' +
+        (docs.length === 0 ? '<p class="hint" style="margin:0">Nothing on file yet.</p>' :
+          docs.map(function (d) {
+            return '<div class="doc-row"><span>' + escapeHtml(d.fileName) + '</span>' +
+              '<a href="/api/doctor-pad/' + token + '/documents/' + escapeHtml(d.id) + '/file" target="_blank">Open</a></div>'
+          }).join('')) +
+        '</div>' +
+
+        '<div class="card">' +
+        '<p class="section-title">Visit History</p>' +
+        (visits.length === 0 ? '<p class="hint" style="margin:0">No past visits yet.</p>' :
+          visits.map(function (v) {
+            var soap = v.visitNote && (v.visitNote.chiefComplaint || v.visitNote.assessment || v.visitNote.plan)
+            return '<div class="visit-row">' +
+              '<div class="top"><span class="name">' + escapeHtml(v.scheduledDate ? new Date(v.scheduledDate).toLocaleDateString() : '') + ' · ' + escapeHtml(v.serviceTitle || '') + '</span>' +
+              '<span class="status-pill">' + (VISIT_STATUS_LABEL[v.status] || v.status) + '</span></div>' +
+              '<div class="meta">' + escapeHtml(v.providerName || '') + (v.documentCount > 0 ? ' · ' + v.documentCount + ' document' + (v.documentCount > 1 ? 's' : '') : '') + '</div>' +
+              (soap ? '<div class="soap">' +
+                (v.visitNote.chiefComplaint ? '<p><strong>Chief Complaint:</strong> ' + escapeHtml(v.visitNote.chiefComplaint) + '</p>' : '') +
+                (v.visitNote.assessment ? '<p><strong>Assessment:</strong> ' + escapeHtml(v.visitNote.assessment) + '</p>' : '') +
+                (v.visitNote.plan ? '<p><strong>Plan:</strong> ' + escapeHtml(v.visitNote.plan) + '</p>' : '') +
+                '</div>' : '') +
+              '</div>'
+          }).join(''))
+        + '</div>'
+
+      wireMainTabs(providerId, providerName)
+      document.getElementById('back-to-search').addEventListener('click', function () { renderPatientSearch(providerId, providerName) })
+
+      // Not rendered at all for Vet Clinic (see medicalCardHtml above).
+      var saveMedicalBtn = document.getElementById('save-medical-btn')
+      if (saveMedicalBtn) {
+        saveMedicalBtn.addEventListener('click', function () {
+          var btn = document.getElementById('save-medical-btn')
+          btn.disabled = true
+          var origText = btn.textContent
+          btn.textContent = 'Saving…'
+          apiPost('/patients/' + customerId + '/medical', {
+            bloodGroup: document.getElementById('field-bloodGroup').value,
+            allergies: document.getElementById('field-allergies').value,
+            chronicConditions: document.getElementById('field-chronicConditions').value,
+            currentMedications: document.getElementById('field-currentMedications').value,
+            emergencyContactName: document.getElementById('field-emergencyContactName').value,
+            emergencyContactPhone: document.getElementById('field-emergencyContactPhone').value,
+          }).then(function (res) {
+            btn.disabled = false
+            btn.textContent = res.success ? 'Saved ✓' : origText
+            if (res.success) setTimeout(function () { btn.textContent = origText }, 1500)
+          }).catch(function () { btn.disabled = false; btn.textContent = origText })
+        })
+      }
+
+      document.getElementById('new-visit-btn').addEventListener('click', function () {
+        var errBox = document.getElementById('new-visit-error')
+        errBox.style.display = 'none'
+        var btn = document.getElementById('new-visit-btn')
+        btn.disabled = true
+        apiPost('/' + providerId + '/new-visit', {
+          customerId: customerId,
+          reason: document.getElementById('new-visit-reason').value,
+        }).then(function (res) {
+          btn.disabled = false
+          if (!res.success) {
+            errBox.textContent = (res.error && res.error.message) || 'Could not start the visit.'
+            errBox.style.display = 'block'
+            return
+          }
+          renderCanvas(res.data.id, customer.customerName, function () { renderPatientChart(customerId, providerId, providerName) })
+        }).catch(function () {
+          btn.disabled = false
+          errBox.textContent = 'Could not start the visit. Please check your connection.'
+          errBox.style.display = 'block'
+        })
+      })
+    }).catch(function () {
+      root.innerHTML = mainTabsHtml('patients') + '<div class="empty-state">Could not load this patient.</div>'
+      wireMainTabs(providerId, providerName)
+    })
   }
 
   function escapeHtml(s) {
@@ -255,16 +562,22 @@
     })
   }
 
-  var MAX_PAGES = 3
+  var MAX_PAGES = 5
+  var MAX_UNDO_STEPS = 15 // per page — bounds memory; a doctor mid-note is never 16 strokes from wanting to go further back
 
   // 2026-09-22 — full redesign of the writing surface per the founder's own
   // words: "covers whole of any tab size", "has an eraser, can draw
   // different shapes, can use different font brush/pencil size". Tool
   // state (pen/eraser/line/rect/circle), stroke width, and colour are all
   // new; the page-flip/save/back mechanics below are unchanged from before.
+  //
+  // 2026-09-23 — icon-only toolbar + Undo. Each tool now carries an `icon`
+  // key into the shared ICONS map below instead of rendering as a text
+  // label; `label` is kept only for the title/aria-label tooltip.
   var TOOLS = [
-    { id: 'pen', label: 'Pen' }, { id: 'eraser', label: 'Eraser' },
-    { id: 'line', label: 'Line' }, { id: 'rect', label: 'Rect' }, { id: 'circle', label: 'Circle' }
+    { id: 'pen', label: 'Pen', icon: 'pen' }, { id: 'eraser', label: 'Eraser', icon: 'eraser' },
+    { id: 'line', label: 'Line', icon: 'line' }, { id: 'rect', label: 'Rectangle', icon: 'rect' },
+    { id: 'circle', label: 'Circle', icon: 'circle' }
   ]
   var SIZES = [
     { id: 'fine', label: 'Fine', width: 1.5, dot: 6 },
@@ -274,6 +587,28 @@
   var COLORS = [
     { id: 'black', hex: '#0F172A' }, { id: 'blue', hex: '#1D4ED8' }, { id: 'red', hex: '#DC2626' }
   ]
+  // Feather-icon-style paths, inlined (no external icon font/CDN — this page
+  // is served entirely off the clinic's own LAN, offline-first like the rest
+  // of the app). currentColor lets the existing .active/hover colour rules
+  // just work without any per-icon overrides.
+  var ICONS = {
+    pen: '<path d="M17 3a2.85 2.83 0 114 4L7.5 20.5 2 22l1.5-5.5L17 3z"/>',
+    eraser: '<rect x="5" y="9" width="13" height="7.5" rx="1.5" transform="rotate(-45 11.5 12.75)"/><line x1="4" y1="20" x2="18" y2="20"/>',
+    line: '<line x1="4" y1="20" x2="20" y2="4"/>',
+    rect: '<rect x="4" y="6" width="16" height="12" rx="1.5"/>',
+    circle: '<circle cx="12" cy="12" r="8"/>',
+    undo: '<polyline points="9 14 4 9 9 4"/><path d="M4 9h10.5A5.5 5.5 0 0120 14.5v0A5.5 5.5 0 0114.5 20H11"/>',
+    redo: '<polyline points="15 14 20 9 15 4"/><path d="M20 9H9.5A5.5 5.5 0 004 14.5v0A5.5 5.5 0 009.5 20H13"/>',
+    trash: '<path d="M3 6h18"/><path d="M8 6V4a2 2 0 012-2h4a2 2 0 012 2v2"/><path d="M19 6l-1 14a2 2 0 01-2 2H8a2 2 0 01-2-2L5 6"/><line x1="10" y1="11" x2="10" y2="17"/><line x1="14" y1="11" x2="14" y2="17"/>',
+    filePlus: '<path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6"/><line x1="12" y1="12" x2="12" y2="18"/><line x1="9" y1="15" x2="15" y2="15"/>',
+    back: '<line x1="19" y1="12" x2="5" y2="12"/><polyline points="12 19 5 12 12 5"/>',
+    chevronLeft: '<polyline points="15 18 9 12 15 6"/>',
+    chevronRight: '<polyline points="9 18 15 12 9 6"/>',
+    save: '<path d="M22 11.08V12a10 10 0 11-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>'
+  }
+  function icon(name) {
+    return '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">' + (ICONS[name] || '') + '</svg>'
+  }
   // A true eraser (destination-out compositing) rather than a same-colour
   // "paint over in white" stroke — the canvas is always opaque white so the
   // visual result is identical either way, but destination-out also
@@ -281,7 +616,17 @@
   // colour, which a white-stroke approach would leave a faint edge around.
   var ERASER_WIDTH_MULTIPLIER = 3.2
 
-  function renderCanvas(appointmentId, patientName) {
+  // onDone: called after Back or a successful Save — where the doctor lands
+  // next. Defaults to the remembered provider's queue (the original,
+  // queue-only flow); the new Patients chart flow (renderPatientChart)
+  // passes its own onDone to return there instead.
+  function renderCanvas(appointmentId, patientName, onDone) {
+    if (!onDone) {
+      onDone = function () {
+        var remembered = getRemembered()
+        if (remembered) renderQueue(remembered.providerId, remembered.providerName)
+      }
+    }
     document.querySelector('main').classList.add('pad-wide')
     document.body.classList.add('canvas-mode')
     document.getElementById('header-sub').textContent = 'Writing note'
@@ -290,44 +635,62 @@
     var currentPage = 0
     var currentTool = 'pen'
     var currentSizeIdx = 1 // Medium
-    var currentColorIdx = 0 // Black
+    var currentColorIdx = 0 // Black; -1 means "use customColorHex" (the custom colour picker)
+    var customColorHex = '#16A34A'
+
+    // Per-page undo/redo history: {undo,redo}Stacks[pageIndex] are arrays of
+    // snapshots — either a PNG data URL (page had content) or the string
+    // 'BLANK' (page was empty). Keyed by page index so switching pages never
+    // lets Undo/Redo reach across into a different page's history. Any new
+    // stroke clears that page's redo stack, same as Word/Paint's undo model.
+    var undoStacks = {}
+    var redoStacks = {}
 
     function toolButtonsHtml() {
       return TOOLS.map(function (t) {
-        return '<button data-tool="' + t.id + '" class="' + (t.id === currentTool ? 'active' : '') + '">' + escapeHtml(t.label) + '</button>'
+        return '<button data-tool="' + t.id + '" class="icon-btn' + (t.id === currentTool ? ' active' : '') + '" title="' + escapeHtml(t.label) + '" aria-label="' + escapeHtml(t.label) + '">' + icon(t.icon) + '</button>'
       }).join('')
     }
     function sizeButtonsHtml() {
       return SIZES.map(function (s, i) {
-        return '<button data-size="' + i + '" class="' + (i === currentSizeIdx ? 'active' : '') + '">' +
-          '<span class="dot" style="width:' + s.dot + 'px;height:' + s.dot + 'px"></span>' + escapeHtml(s.label) + '</button>'
+        return '<button data-size="' + i + '" class="icon-btn size-dot' + (i === currentSizeIdx ? ' active' : '') + '" title="' + escapeHtml(s.label) + ' stroke" aria-label="' + escapeHtml(s.label) + ' stroke size">' +
+          '<span class="dot" style="width:' + s.dot + 'px;height:' + s.dot + 'px"></span></button>'
       }).join('')
     }
     function colorButtonsHtml() {
-      return COLORS.map(function (c, i) {
-        return '<button data-color="' + i + '" class="' + (i === currentColorIdx ? 'active' : '') + '" style="background:' + c.hex + '" title="' + escapeHtml(c.id) + '"></button>'
+      var presets = COLORS.map(function (c, i) {
+        return '<button data-color="' + i + '" class="icon-btn color-swatch' + (i === currentColorIdx ? ' active' : '') + '" style="background:' + c.hex + '" title="' + escapeHtml(c.id) + '" aria-label="' + escapeHtml(c.id) + ' ink colour"></button>'
       }).join('')
+      // Native OS colour picker — any ink colour a doctor wants, not just the
+      // 3 presets, without building a custom picker widget from scratch.
+      var custom = '<input type="color" id="custom-color" class="icon-btn color-custom' + (currentColorIdx === -1 ? ' active' : '') + '" value="' + customColorHex + '" title="Custom colour" aria-label="Custom ink colour">'
+      return presets + custom
     }
 
     root.innerHTML =
-      '<div class="patient-banner">' + escapeHtml(patientName || 'Patient') + '</div>' +
-      '<p class="pen-hint">Works best on a tablet with a stylus/pen. Long prescriptions can use up to ' + MAX_PAGES + ' pages.</p>' +
-      '<div class="page-bar">' +
-      '<button id="prev-page-btn">&larr;</button>' +
-      '<span class="page-label" id="page-label">Page 1 of 1</span>' +
-      '<button id="next-page-btn">&rarr;</button>' +
+      '<div class="pad-topbar">' +
+      '<button class="icon-btn" id="back-btn" title="Back to queue" aria-label="Back to queue">' + icon('back') + '</button>' +
+      '<div class="patient-name">' + escapeHtml(patientName || 'Patient') + '</div>' +
+      '<div class="page-nav">' +
+      '<button class="icon-btn" id="prev-page-btn" title="Previous page" aria-label="Previous page">' + icon('chevronLeft') + '</button>' +
+      '<span class="page-label" id="page-label">1/1</span>' +
+      '<button class="icon-btn" id="next-page-btn" title="Next page" aria-label="Next page">' + icon('chevronRight') + '</button>' +
+      '<button class="icon-btn" id="add-page-btn" title="Add page (up to ' + MAX_PAGES + ')" aria-label="Add page">' + icon('filePlus') + '</button>' +
       '</div>' +
-      '<div class="tool-row" id="tool-row">' + toolButtonsHtml() + '</div>' +
-      '<div class="size-row" id="size-row">' + sizeButtonsHtml() + '</div>' +
-      '<div class="color-row" id="color-row">' + colorButtonsHtml() + '</div>' +
+      '</div>' +
+      '<div class="tool-row" id="tool-row">' + toolButtonsHtml() +
+      '<button class="icon-btn" id="undo-btn" title="Undo last stroke" aria-label="Undo last stroke" disabled>' + icon('undo') + '</button>' +
+      '<button class="icon-btn" id="redo-btn" title="Redo" aria-label="Redo" disabled>' + icon('redo') + '</button>' +
+      '</div>' +
+      '<div class="option-row" id="option-row">' + sizeButtonsHtml() + '<span class="row-sep"></span>' + colorButtonsHtml() +
+      '<span class="row-sep"></span>' +
+      '<button class="icon-btn danger" id="clear-btn" title="Clear page" aria-label="Clear page">' + icon('trash') + '</button>' +
+      '</div>' +
       '<canvas id="drawCanvas"></canvas>' +
-      '<div class="canvas-toolbar">' +
-      '<button id="clear-btn">Clear Page</button>' +
-      '<button id="add-page-btn">+ Add Page</button>' +
-      '<button id="back-btn">Back</button>' +
-      '</div>' +
+      '<div class="save-bar">' +
       '<div class="error-box" id="error-box"></div>' +
-      '<button class="btn" id="save-btn">Save Note</button>'
+      '<button class="btn" id="save-btn">' + icon('save') + '<span id="save-label">Save Note</span></button>' +
+      '</div>'
 
     var canvas = document.getElementById('drawCanvas')
     var ctx = canvas.getContext('2d')
@@ -337,9 +700,11 @@
     var prevBtn = document.getElementById('prev-page-btn')
     var nextBtn = document.getElementById('next-page-btn')
     var addPageBtn = document.getElementById('add-page-btn')
+    var undoBtn = document.getElementById('undo-btn')
+    var redoBtn = document.getElementById('redo-btn')
+    var customColorInput = document.getElementById('custom-color')
     var toolRow = document.getElementById('tool-row')
-    var sizeRow = document.getElementById('size-row')
-    var colorRow = document.getElementById('color-row')
+    var optionRow = document.getElementById('option-row')
     // Pixel snapshot taken the instant a shape drag starts (line/rect/
     // circle) — each pointermove restores it, then redraws the shape from
     // the drag's start point to the current point, so the live preview
@@ -349,10 +714,18 @@
     var shapeStart = null
 
     function applyStrokeStyle() {
-      ctx.lineWidth = SIZES[currentSizeIdx].width
+      // REAL BUG found+fixed 2026-09-23: ERASER_WIDTH_MULTIPLIER was declared
+      // above but never actually applied anywhere — the eraser silently drew
+      // at the exact same width as the pen, which is too thin to usefully
+      // erase a mistake in one pass. Multiplying it in here also means the
+      // existing Fine/Medium/Bold row IS the eraser-size control (no
+      // separate UI needed) — it already applies to whichever tool is
+      // active, this just makes the eraser's actual footprint match what a
+      // "bigger eraser" should feel like relative to the pen.
+      ctx.lineWidth = SIZES[currentSizeIdx].width * (currentTool === 'eraser' ? ERASER_WIDTH_MULTIPLIER : 1)
       ctx.lineCap = 'round'
       ctx.lineJoin = 'round'
-      ctx.strokeStyle = COLORS[currentColorIdx].hex
+      ctx.strokeStyle = currentColorIdx === -1 ? customColorHex : COLORS[currentColorIdx].hex
       ctx.globalCompositeOperation = currentTool === 'eraser' ? 'destination-out' : 'source-over'
     }
 
@@ -360,30 +733,91 @@
       var btn = e.target.closest ? e.target.closest('button') : null
       if (!btn || !btn.dataset.tool) return
       currentTool = btn.dataset.tool
-      var all = toolRow.querySelectorAll('button')
+      var all = toolRow.querySelectorAll('button[data-tool]')
       for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn)
     })
-    sizeRow.addEventListener('click', function (e) {
+    optionRow.addEventListener('click', function (e) {
       var btn = e.target.closest ? e.target.closest('button') : null
-      if (!btn || btn.dataset.size === undefined) return
-      currentSizeIdx = parseInt(btn.dataset.size, 10)
-      var all = sizeRow.querySelectorAll('button')
-      for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn)
+      if (!btn) return
+      if (btn.dataset.size !== undefined) {
+        currentSizeIdx = parseInt(btn.dataset.size, 10)
+        var allSizes = optionRow.querySelectorAll('[data-size]')
+        for (var i = 0; i < allSizes.length; i++) allSizes[i].classList.toggle('active', allSizes[i] === btn)
+      } else if (btn.dataset.color !== undefined) {
+        currentColorIdx = parseInt(btn.dataset.color, 10)
+        var allColors = optionRow.querySelectorAll('[data-color]')
+        for (var j = 0; j < allColors.length; j++) allColors[j].classList.toggle('active', allColors[j] === btn)
+        customColorInput.classList.remove('active')
+      }
     })
-    colorRow.addEventListener('click', function (e) {
-      var btn = e.target.closest ? e.target.closest('button') : null
-      if (!btn || btn.dataset.color === undefined) return
-      currentColorIdx = parseInt(btn.dataset.color, 10)
-      var all = colorRow.querySelectorAll('button')
-      for (var i = 0; i < all.length; i++) all[i].classList.toggle('active', all[i] === btn)
+    customColorInput.addEventListener('input', function () {
+      currentColorIdx = -1
+      customColorHex = customColorInput.value
+      var allColors = optionRow.querySelectorAll('[data-color]')
+      for (var k = 0; k < allColors.length; k++) allColors[k].classList.remove('active')
+      customColorInput.classList.add('active')
     })
 
+    function updateHistoryBtns() {
+      var uStack = undoStacks[currentPage]
+      var rStack = redoStacks[currentPage]
+      undoBtn.disabled = !uStack || uStack.length === 0
+      redoBtn.disabled = !rStack || rStack.length === 0
+    }
+
     function updatePageBar() {
-      pageLabel.textContent = 'Page ' + (currentPage + 1) + ' of ' + pages.length
+      pageLabel.textContent = (currentPage + 1) + '/' + pages.length
       prevBtn.disabled = currentPage === 0
       nextBtn.disabled = currentPage === pages.length - 1
       addPageBtn.disabled = pages.length >= MAX_PAGES
+      updateHistoryBtns()
     }
+
+    function currentSnapshot() {
+      return hasDrawnCurrentPage ? canvas.toDataURL('image/png') : 'BLANK'
+    }
+    function applySnapshot(snap) {
+      if (snap === 'BLANK') {
+        ctx.clearRect(0, 0, canvas.width, canvas.height)
+        hasDrawnCurrentPage = false
+        pages[currentPage] = null
+      } else {
+        hasDrawnCurrentPage = true
+        restoreSnapshotImage(snap, canvas.getBoundingClientRect())
+        pages[currentPage] = snap
+      }
+    }
+    // Called right before every stroke (and before Clear) so it can be
+    // undone — captures the state as it was BEFORE this change. Any new
+    // change invalidates the page's redo history, matching how undo/redo
+    // works in Word/Paint.
+    function pushUndoSnapshot() {
+      var stack = undoStacks[currentPage] || (undoStacks[currentPage] = [])
+      stack.push(currentSnapshot())
+      if (stack.length > MAX_UNDO_STEPS) stack.shift()
+      redoStacks[currentPage] = []
+      updateHistoryBtns()
+    }
+    function undo() {
+      var stack = undoStacks[currentPage]
+      if (!stack || stack.length === 0) return
+      var redoStack = redoStacks[currentPage] || (redoStacks[currentPage] = [])
+      redoStack.push(currentSnapshot())
+      if (redoStack.length > MAX_UNDO_STEPS) redoStack.shift()
+      applySnapshot(stack.pop())
+      updateHistoryBtns()
+    }
+    function redo() {
+      var stack = redoStacks[currentPage]
+      if (!stack || stack.length === 0) return
+      var undoStack = undoStacks[currentPage] || (undoStacks[currentPage] = [])
+      undoStack.push(currentSnapshot())
+      if (undoStack.length > MAX_UNDO_STEPS) undoStack.shift()
+      applySnapshot(stack.pop())
+      updateHistoryBtns()
+    }
+    undoBtn.addEventListener('click', undo)
+    redoBtn.addEventListener('click', redo)
 
     // Snapshots the on-screen canvas into pages[currentPage] before we
     // navigate away from it, so switching pages (or saving) never loses
@@ -475,6 +909,7 @@
 
     function start(e) {
       drawing = true
+      pushUndoSnapshot()
       hasDrawnCurrentPage = true
       applyStrokeStyle()
       var p = pos(e)
@@ -516,6 +951,7 @@
     canvas.addEventListener('touchend', end)
 
     document.getElementById('clear-btn').addEventListener('click', function () {
+      pushUndoSnapshot()
       ctx.clearRect(0, 0, canvas.width, canvas.height)
       hasDrawnCurrentPage = false
       pages[currentPage] = null
@@ -536,10 +972,7 @@
       commitCurrentPage()
       loadPage(currentPage + 1)
     })
-    document.getElementById('back-btn').addEventListener('click', function () {
-      var remembered = getRemembered()
-      if (remembered) renderQueue(remembered.providerId, remembered.providerName)
-    })
+    document.getElementById('back-btn').addEventListener('click', function () { onDone() })
     document.getElementById('save-btn').addEventListener('click', function () {
       var box = document.getElementById('error-box')
       box.style.display = 'none'
@@ -547,22 +980,22 @@
       var images = pages.filter(function (p) { return !!p })
       if (images.length === 0) { box.textContent = 'Write something before saving.'; box.style.display = 'block'; return }
       var btn = document.getElementById('save-btn')
+      var label = document.getElementById('save-label')
       btn.disabled = true
-      btn.textContent = 'Saving…'
+      label.textContent = 'Saving…'
       fetch('/api/doctor-pad/' + token + '/' + appointmentId + '/save-drawing', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ images: images })
       }).then(function (r) { return r.json() }).then(function (res) {
         if (!res.success) {
-          btn.disabled = false; btn.textContent = 'Save Note'
+          btn.disabled = false; label.textContent = 'Save Note'
           box.textContent = (res.error && res.error.message) || 'Could not save. Please try again.'
           box.style.display = 'block'
           return
         }
-        var remembered = getRemembered()
-        if (remembered) renderQueue(remembered.providerId, remembered.providerName)
+        onDone()
       }).catch(function () {
-        btn.disabled = false; btn.textContent = 'Save Note'
+        btn.disabled = false; label.textContent = 'Save Note'
         box.textContent = 'Could not save. Please check your connection and try again.'
         box.style.display = 'block'
       })

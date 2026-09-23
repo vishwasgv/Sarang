@@ -82,7 +82,13 @@ async function run() {
     await r.step('customers-add-button-opens-form', async () => {
       await h.gotoHash(page, '#/customers')
       await page.waitForTimeout(600)
-      const addBtn = page.locator('button', { hasText: /Add Customer/i }).first()
+      // 2026-09-23 — this crawl runs against whatever business type is
+      // already active when it starts, which (a documented marathon-only
+      // artifact — business type can leak forward from an earlier suite in
+      // the same run) is sometimes one of the 5 clinic verticals. Those now
+      // show "Add Patient"/"Add New Patient" via usePatientNoun.ts instead
+      // of "Add Customer" — match either rather than assuming non-clinic.
+      const addBtn = page.locator('button', { hasText: /Add (New )?(Customer|Patient|Owner)/i }).first()
       r.log('customers-add-button-present', await addBtn.count() > 0)
       if (await addBtn.count() > 0) {
         await addBtn.click()

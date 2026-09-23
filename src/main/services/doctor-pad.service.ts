@@ -7,8 +7,11 @@ import { getPrisma } from '../database/db'
 import { attachDocument } from './document.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import { secureTokenEquals } from '../security/token-compare'
+import { searchCustomers } from './customer.service'
+import { customerLedgerService } from './customer-ledger.service'
+import { getPatientHistory, createAppointment } from './appointment.service'
 
-const MAX_DOCTOR_PAD_PAGES = 3
+const MAX_DOCTOR_PAD_PAGES = 5
 // The capture group is restricted to the actual base64 alphabet (not just
 // "anything after the prefix") — renderPagesToPdf interpolates this value
 // raw into an <img src="..."> attribute for the multi-page PDF render, so a
@@ -139,15 +142,22 @@ export async function listTodaysAppointmentsForProvider(providerId: string) {
  * today for Beauty Salon's before/after photos) that the same
  * `<DocumentPanel>` component added to each clinic screen can reuse as-is.
  *
- * A prescription can genuinely run to 2-3 pages, so a single page saves as a
- * plain image (matches every other image-attachment flow in the app,
- * including DocumentPanel's own Print button, which only supports images
- * today), while more than one page is combined into a single multi-page PDF
- * — one real printable page per drawn page, built the same way every other
- * "generate a PDF from HTML" flow in this app does (hidden BrowserWindow +
- * webContents.printToPDF, see export.service.ts's exportToPdf) — rather than
- * saving 2-3 separate loose images a doctor would have to reassemble
- * themselves.
+ * REAL BUG found+fixed 2026-09-23: a single-page note used to save as a
+ * plain PNG instead of going through the PDF pipeline below — so a
+ * one-page prescription printed at whatever raw pixel size the tablet's
+ * canvas happened to be (a phone screen and a large landscape tablet
+ * produced differently-shaped images), never as a genuine A4 sheet, and
+ * DocumentPanel's Print button only supported images anyway so a 2+ page
+ * note (already a PDF) had NO in-app print path at all — only "Open", which
+ * hands the doctor off to whatever PDF viewer is installed. Fixed both ends
+ * at once: every note, 1 page or 5, now renders through the same
+ * `renderPagesToPdf` A4 pipeline below (one real printable A4 page per drawn
+ * page, hidden BrowserWindow + webContents.printToPDF, see
+ * export.service.ts's exportToPdf for the same pattern used elsewhere), and
+ * `documents:print` / DocumentPanel's Print button (see document.handler.ts)
+ * now handle `application/pdf` too, not just images — so every prescription,
+ * regardless of length, is both a real A4 document AND printable with one
+ * click inside the app.
  */
 export async function saveHandDrawnNote(appointmentId: string, images: string[]): Promise<{ success: boolean; error?: { code: string; message: string } }> {
   if (!Array.isArray(images) || images.length === 0) {
@@ -156,11 +166,10 @@ export async function saveHandDrawnNote(appointmentId: string, images: string[])
   if (images.length > MAX_DOCTOR_PAD_PAGES) {
     return { success: false, error: { code: 'DP-001', message: `A note can have at most ${MAX_DOCTOR_PAD_PAGES} pages.` } }
   }
-  const decoded: string[] = []
   for (const image of images) {
-    const match = PNG_DATA_URL_PATTERN.exec(image)
-    if (!match) return { success: false, error: { code: 'DP-001', message: 'Invalid image data.' } }
-    decoded.push(match[1])
+    if (!PNG_DATA_URL_PATTERN.test(image)) {
+      return { success: false, error: { code: 'DP-001', message: 'Invalid image data.' } }
+    }
   }
 
   const db = getPrisma()
@@ -170,30 +179,11 @@ export async function saveHandDrawnNote(appointmentId: string, images: string[])
   const tmpDir = await mkdtemp(join(tmpdir(), 'sarang-doctor-pad-'))
   const stamp = new Date().toLocaleString()
   try {
-    if (images.length === 1) {
-      const tmpPath = join(tmpDir, `note-${Date.now()}.png`)
-      await writeFile(tmpPath, Buffer.from(decoded[0], 'base64'))
-      // No logged-in user on this LAN self-service write (same as
-      // token-queue.service.ts's createToken) — `userId` is a real FK to
-      // User.id (onDelete: Restrict), so a fake placeholder string here
-      // would fail the FK constraint on every save and silently trip the
-      // Dashboard's "audit log failure" alert instead of recording the
-      // entry at all.
-      const result = await attachDocument({
-        sourcePath: tmpPath,
-        fileName: `Handwritten note ${stamp}.png`,
-        entityType: 'APPOINTMENT',
-        entityId: appointmentId,
-        notes: 'Captured via Doctor Pad (tablet)'
-      })
-      if (!result.success) return { success: false, error: { code: 'DP-004', message: 'Could not save the drawing.' } }
-      return { success: true }
-    }
-
     const pdfPath = await renderPagesToPdf(images, tmpDir)
+    const pageSuffix = images.length > 1 ? ` (${images.length} pages)` : ''
     const result = await attachDocument({
       sourcePath: pdfPath,
-      fileName: `Handwritten note ${stamp} (${images.length} pages).pdf`,
+      fileName: `Handwritten note ${stamp}${pageSuffix}.pdf`,
       entityType: 'APPOINTMENT',
       entityId: appointmentId,
       notes: 'Captured via Doctor Pad (tablet)'
@@ -224,4 +214,168 @@ async function renderPagesToPdf(images: string[], tmpDir: string): Promise<strin
     win.destroy()
     await unlink(htmlPath).catch(() => {})
   }
+}
+
+// ─────────────────────────────────────────────────────────────────────────
+// Doctor Tablet (2026-09-23) — founder ask: the tablet shouldn't be limited
+// to today's queue + drawing a note. A doctor should be able to search any
+// patient, see their whole record (medical info + every past visit +
+// prescriptions), update medical info, and start a fresh visit — all from
+// the same tablet — with the one deliberate exception of accounting/billing
+// WRITES (no invoice/payment/credit-limit actions ever reach this LAN
+// surface), while billing stays READ-ONLY (their invoice/ledger history).
+// Every function below is read-only or narrowly-scoped-write on purpose —
+// see doctor-pad-server.ts's own header for why this surface stays deliberately
+// minimal despite the wider feature set: unauthenticated beyond a 4-digit
+// PIN, so nothing here ever touches anything outside "this one patient's
+// clinical + read-only billing record."
+// ─────────────────────────────────────────────────────────────────────────
+
+/** Clinic-wide patient search (name/phone) — trimmed to the minimum a results list needs. */
+export async function searchPatientsForDoctorPad(query: string) {
+  const res = await searchCustomers(query)
+  if (!res.success) return res
+  const rows = (res.data as Array<{ id: string; customerName: string; phone: string | null }>).map(
+    (c) => ({ id: c.id, customerName: c.customerName, phone: c.phone })
+  )
+  return { success: true, data: rows }
+}
+
+/** Full patient chart: contact + medical info + every past visit (across all dates, not just today). */
+export async function getPatientChartForDoctorPad(customerId: string) {
+  const db = getPrisma()
+  const [customer, profile] = await Promise.all([
+    db.customer.findUnique({
+      where: { id: customerId },
+      select: {
+        id: true, customerName: true, phone: true, email: true,
+        bloodGroup: true, allergies: true, chronicConditions: true, currentMedications: true,
+        emergencyContactName: true, emergencyContactPhone: true,
+      },
+    }),
+    db.businessProfile.findFirst({ select: { businessType: true } }),
+  ])
+  if (!customer) return { success: false, error: { code: 'DP-005', message: 'Patient not found.' } }
+  const history = await getPatientHistory(customerId)
+  return {
+    success: true,
+    data: {
+      customer,
+      // Vet Clinic: this Customer row is the pet's OWNER, not the patient —
+      // the pet (a separate Pet record, not touched by this pass) is the
+      // actual patient. Showing "allergies/blood group" on the owner would
+      // be actively wrong, not just imprecise, so the tablet hides that
+      // section entirely for this one vertical rather than mislabeling it.
+      isVetClinic: profile?.businessType === 'VET_CLINIC',
+      visits: history.success ? (history.data as { visits: unknown[] }).visits : [],
+    },
+  }
+}
+
+/**
+ * Narrowly scoped to exactly the 6 medical fields — deliberately NOT a
+ * general customer-update route. This LAN surface is authenticated by a
+ * 4-digit PIN only; letting it touch address/credit-limit/tax fields would
+ * be real scope creep on an intentionally minimal attack surface, for
+ * capability nothing on the tablet actually needs.
+ */
+export async function updatePatientMedicalInfoFromDoctorPad(customerId: string, fields: {
+  bloodGroup?: string; allergies?: string; chronicConditions?: string
+  currentMedications?: string; emergencyContactName?: string; emergencyContactPhone?: string
+}) {
+  try {
+    const db = getPrisma()
+    const existing = await db.customer.findUnique({ where: { id: customerId }, select: { id: true } })
+    if (!existing) return { success: false, error: { code: 'DP-005', message: 'Patient not found.' } }
+    const updated = await db.customer.update({
+      where: { id: customerId },
+      data: {
+        bloodGroup: fields.bloodGroup?.trim() || null,
+        allergies: fields.allergies?.trim() || null,
+        chronicConditions: fields.chronicConditions?.trim() || null,
+        currentMedications: fields.currentMedications?.trim() || null,
+        emergencyContactName: fields.emergencyContactName?.trim() || null,
+        emergencyContactPhone: fields.emergencyContactPhone?.trim() || null,
+      },
+      select: {
+        id: true, bloodGroup: true, allergies: true, chronicConditions: true,
+        currentMedications: true, emergencyContactName: true, emergencyContactPhone: true,
+      },
+    })
+    return { success: true, data: updated }
+  } catch (err) {
+    return { success: false, error: { code: 'DP-006', message: err instanceof Error ? err.message : 'Could not update medical information.' } }
+  }
+}
+
+/**
+ * READ-ONLY billing — this patient's ledger/invoice history, reusing the
+ * exact same customerLedgerService.getLedger the desktop CustomerDetailScreen
+ * shows. No write path exists anywhere on this LAN surface for it — "view
+ * accounting and billing" was an explicit ask, but every accounting WRITE
+ * (recording a payment, generating/voiding an invoice, changing a credit
+ * limit) deliberately has zero route here.
+ */
+export async function getPatientBillingForDoctorPad(customerId: string) {
+  return customerLedgerService.getLedger(customerId, { limit: 30 })
+}
+
+/**
+ * Every document (hand-drawn prescription, or anything else staff attached)
+ * across ALL of this patient's past visits, newest first — lets the tablet
+ * show "here's everything on file for this patient", not just today's note.
+ */
+export async function listPatientDocumentsForDoctorPad(customerId: string) {
+  const db = getPrisma()
+  const visits = await db.appointment.findMany({ where: { customerId }, select: { id: true, scheduledDate: true, serviceTitle: true } })
+  if (visits.length === 0) return { success: true, data: [] }
+  const visitById = new Map(visits.map((v) => [v.id, v]))
+  const docs = await db.document.findMany({
+    where: { entityType: 'APPOINTMENT', entityId: { in: visits.map((v) => v.id) } },
+    orderBy: { createdAt: 'desc' },
+  })
+  return {
+    success: true,
+    data: docs.map((d) => ({
+      id: d.id, fileName: d.fileName, mimeType: d.mimeType, createdAt: d.createdAt,
+      visitDate: visitById.get(d.entityId)?.scheduledDate ?? null,
+      visitService: visitById.get(d.entityId)?.serviceTitle ?? null,
+    })),
+  }
+}
+
+/**
+ * Streams a document's raw file for the tablet's browser to open directly
+ * (a phone/tablet browser renders PDFs/images natively — no Electron
+ * shell.openPath available here, this is a plain LAN webpage). Deliberately
+ * restricted to entityType==='APPOINTMENT' — the one document kind this
+ * surface has any business serving; an invoice/report PDF attached
+ * elsewhere in the app must never be fetchable through this LAN route.
+ */
+export async function getDoctorPadDocumentFile(documentId: string) {
+  const db = getPrisma()
+  const doc = await db.document.findUnique({ where: { id: documentId }, select: { filePath: true, fileName: true, mimeType: true, entityType: true } })
+  if (!doc || doc.entityType !== 'APPOINTMENT') return { success: false, error: { code: 'DP-007', message: 'Document not found.' } }
+  return { success: true, data: { filePath: doc.filePath, fileName: doc.fileName, mimeType: doc.mimeType } }
+}
+
+/**
+ * Starts a fresh visit for a patient right from the tablet — "fresh visit +
+ * prescription" for a returning patient, without going back to the front
+ * desk. Scheduled for right now (today, current time); a doctor who wants a
+ * genuinely future-dated follow-up still books that normally on the desktop
+ * app, same as any other appointment.
+ */
+export async function createVisitFromDoctorPad(payload: { customerId: string; providerId: string; reason: string }) {
+  const now = new Date()
+  const scheduledDate = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`
+  const scheduledTime = `${String(now.getHours()).padStart(2, '0')}:${String(now.getMinutes()).padStart(2, '0')}`
+  return createAppointment({
+    customerId: payload.customerId,
+    providerId: payload.providerId,
+    serviceTitle: payload.reason.trim() || 'Consultation',
+    scheduledDate,
+    scheduledTime,
+    durationMinutes: 15,
+  })
 }

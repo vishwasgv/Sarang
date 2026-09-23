@@ -38,9 +38,9 @@ If a patient comes to you referred by an outside doctor, the Consultation Note's
 
 Once that provider finalizes their own note on the referral appointment, its outcome appears back on your original note automatically. If that note is tracking Pain Score and Functional Score across sessions, the outcome shown isn't just their closing remark — it's a quantified before-and-after across the whole course of treatment since the referral (for example, "Pain 7→3, Function 40→75 across 3 sessions"), so you can see at a glance whether the referral actually helped, not just that it happened.
 
-## Doctor Pad — handwritten notes on a tablet
+## Doctor Pad — a full clinical tablet, not just a notepad
 
-Many physiotherapists would rather write a note by hand — a body diagram, a quick sketch of an exercise — than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+Many physiotherapists would rather write a note by hand — a body diagram, a quick sketch of an exercise — than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a writing pad, patient-record lookup, and read-only billing view — no extra hardware to buy, and nothing leaves your clinic's own network.
 
 **Connect a tablet, once.** Open **Provider Schedule**, pick the physiotherapist, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
 
@@ -50,6 +50,19 @@ Many physiotherapists would rather write a note by hand — a body diagram, a qu
 
 Whichever way you connect, the tablet remembers the physiotherapist from then on, so this is normally a one-time setup per tablet.
 
-**Using it during a session.** The tablet shows today's appointments for that physiotherapist. Tap a patient, draw or write by hand, and tap **Save** — the drawing attaches instantly to that patient's appointment, viewable right alongside the typed Consultation Note in its **Documents** section.
+**Writing a note.** The tablet shows today's appointments for that physiotherapist. Tap a patient to open a full-screen writing surface — pen, eraser, line/rectangle/circle (handy for a quick body diagram), three stroke sizes, Undo/Redo, three preset colours plus a custom colour picker, up to 5 pages, all icon-only tools so the canvas gets nearly the whole screen. Tap **Save** and the note attaches instantly to that patient's appointment — every note, whether one page or five, saves as a genuine A4 PDF.
+
+**Printing and sharing a note.** Open any attachment (in **Documents**, on the appointment, or from the tablet's own **Patients** tab below) and use **Print** to print it directly, or the **WhatsApp/Email** icons to share it straight to the patient's phone or email on file.
+
+**Patients tab — search, chart, and a fresh session, all from the tablet.** Alongside the Queue tab, a **Patients** tab lets the physiotherapist search any patient by name or phone — not just today's list — and open their full chart:
+
+- **Medical Information** — blood group, allergies, chronic conditions, current medications, emergency contact — editable right there.
+- **Visit History** — every past session across every date, with a summary of the typed Consultation Note where one exists, and every hand-drawn note on file, openable directly.
+- **Billing (read-only)** — the patient's outstanding balance and recent transactions, so the physiotherapist can see it without asking the front desk. Nothing on the tablet can create an invoice, record a payment, or change a credit limit — billing stays view-only here by design.
+- **Start a Fresh Visit** — type a short reason (e.g. "Follow-up session") and tap **Start Visit & Write Prescription** to create a new visit for that patient right now and go straight into the writing canvas.
+
+**The same chart is also on the desktop app** — open any patient from **Customers**, and the **Visit History** section there shows the identical record, with a **Book New Visit** button that opens the booking form with that patient already selected.
+
+**Walk-ins get the same full record.** A walk-in issued a token in **Token Queue** doesn't automatically have a patient record yet — a plain token has no appointment behind it, so there's nothing for a note to attach to. Look for the small **person-plus icon** on that token's row and tap it: it opens the booking form pre-filled with the walk-in's name (matching them to an existing patient by phone if they've visited before), and once booked, the token is linked to that visit.
 
 **If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the physiotherapist, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { motion } from 'framer-motion'
 import { CalendarDays, Plus, ChevronLeft, ChevronRight, Clock, User, Tag, CheckCircle2, XCircle, AlertCircle, RefreshCw, FileText, Smile, Activity, Package, X, Receipt, Camera, Trash2, PenLine } from 'lucide-react'
-import { useNavigate } from 'react-router-dom'
+import { useNavigate, useLocation } from 'react-router-dom'
 import { api } from '@renderer/services/ipc-client'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
@@ -17,6 +17,7 @@ import { toLocalISODate } from '@shared/utils/locale.util'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@modules/documents/ui/DocumentPanel'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 
 type AppointmentStatus = 'SCHEDULED' | 'CONFIRMED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED' | 'NO_SHOW'
 
@@ -32,7 +33,7 @@ interface Appointment {
   totalAmount: number
   notes: string | null
   chairAssignment: string | null
-  customer: { id: string; customerName: string; phone: string | null } | null
+  customer: { id: string; customerName: string; phone: string | null; email: string | null } | null
   provider: { id: string; fullName: string; providerColor: string | null } | null
   serviceCatalog: { id: string; serviceName: string } | null
   visitNote: { id: string; isFinalized: boolean } | null
@@ -107,17 +108,39 @@ export function AppointmentsScreen() {
   const hasMultiServiceBooking = useIndustryStore((s) => s.isModuleEnabled('multi_service_booking'))
   // Doctor Pad — hand-drawn diagnosis/prescription notes captured on a tablet.
   const hasDoctorPad = useIndustryStore((s) => s.isModuleEnabled('doctor_pad'))
+  const { isDoctorVertical: isDoctorVerticalMain, singular: patientNounMain } = usePatientNoun()
   const currSym = useBusinessStore((s) => s.profile?.currencySymbol ?? '₹')
   const navigate = useNavigate()
+  const location = useLocation()
   const { error: toastError } = useNotificationStore()
 
+  // A patient's Visit History (CustomerDetailScreen.tsx) can land here via
+  // navigate('/appointments', { state: { prefillCustomer } }) — "book a
+  // fresh visit for this same patient" without re-searching for them.
+  // TokenQueueScreen.tsx's "Create Visit Record" action lands here the same
+  // way for a walk-in that has no matched Customer yet (prefillName/
+  // prefillPhone/prefillNotes instead) and additionally passes
+  // linkTokenQueueId so the token can be linked back to whatever Appointment
+  // this booking produces. All captured once via the lazy initializer (not
+  // re-derived on every render) so they stay stable across a manual
+  // close/reopen of the form.
+  const [navState] = useState<{ prefillCustomer: Customer | null; prefillName: string; prefillPhone: string; prefillNotes: string; linkTokenQueueId: string | null }>(() => {
+    const s = (location.state as { prefillCustomer?: Customer; prefillName?: string; prefillPhone?: string; prefillNotes?: string; linkTokenQueueId?: string } | null) ?? {}
+    return {
+      prefillCustomer: s.prefillCustomer ?? null,
+      prefillName: s.prefillName ?? '',
+      prefillPhone: s.prefillPhone ?? '',
+      prefillNotes: s.prefillNotes ?? '',
+      linkTokenQueueId: s.linkTokenQueueId ?? null,
+    }
+  })
   const [selectedDate, setSelectedDate] = useState(new Date())
   const [appointments, setAppointments] = useState<Appointment[]>([])
   const [stats, setStats] = useState({ todayTotal: 0, todayCompleted: 0, pending: 0, totalRevenue: 0 })
   const [loading, setLoading] = useState(false)
   const [statusFilter, setStatusFilter] = useState<string>('ALL')
   const [searchQuery, setSearchQuery] = useState('')
-  const [showForm, setShowForm] = useState(false)
+  const [showForm, setShowForm] = useState(!!(navState.prefillCustomer || navState.prefillName || navState.linkTokenQueueId))
 
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [invoiceError, setInvoiceError] = useState('')
@@ -326,7 +349,7 @@ export function AppointmentsScreen() {
         </div>
         <div className="flex-1 max-w-xs">
           <Input
-            placeholder="Search client or service..."
+            placeholder={isDoctorVerticalMain ? `Search ${patientNounMain.toLowerCase()} or service...` : 'Search client or service...'}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             className="h-8 text-sm"
@@ -541,7 +564,15 @@ export function AppointmentsScreen() {
 
       {/* New Appointment Modal */}
       {showForm && (
-        <NewAppointmentModal onClose={() => setShowForm(false)} onSaved={() => { setShowForm(false); loadAppointments() }} />
+        <NewAppointmentModal
+          onClose={() => setShowForm(false)}
+          onSaved={() => { setShowForm(false); loadAppointments() }}
+          prefillCustomer={navState.prefillCustomer}
+          prefillName={navState.prefillName}
+          prefillPhone={navState.prefillPhone}
+          prefillNotes={navState.prefillNotes}
+          linkTokenQueueId={navState.linkTokenQueueId}
+        />
       )}
 
       {/* Phase 58 §2 — real checkout: service total + optional retail upsell + payment method, one invoice */}
@@ -566,7 +597,11 @@ export function AppointmentsScreen() {
               <button onClick={() => setPhotosAppt(null)} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={20} /></button>
             </div>
             <div className="p-6">
-              <DocumentPanel entityType="APPOINTMENT" entityId={photosAppt.id} />
+              <DocumentPanel
+                entityType="APPOINTMENT" entityId={photosAppt.id}
+                recipientPhone={photosAppt.customer?.phone} recipientEmail={photosAppt.customer?.email}
+                recipientName={photosAppt.customer?.customerName ?? photosAppt.customerName ?? undefined}
+              />
             </div>
           </div>
         </div>
@@ -584,7 +619,11 @@ export function AppointmentsScreen() {
               <button onClick={() => setNotesAppt(null)} className="text-slate-400 hover:text-dark dark:hover:text-slate-100"><X size={20} /></button>
             </div>
             <div className="p-6">
-              <DocumentPanel entityType="APPOINTMENT" entityId={notesAppt.id} />
+              <DocumentPanel
+                entityType="APPOINTMENT" entityId={notesAppt.id}
+                recipientPhone={notesAppt.customer?.phone} recipientEmail={notesAppt.customer?.email}
+                recipientName={notesAppt.customer?.customerName ?? notesAppt.customerName ?? undefined}
+              />
             </div>
           </div>
         </div>
@@ -616,9 +655,13 @@ interface Service { id: string; serviceName: string; durationMinutes: number; ba
 interface Provider { id: string; fullName: string }
 interface Customer { id: string; customerName: string; phone: string | null }
 
-function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
+function NewAppointmentModal({ onClose, onSaved, prefillCustomer, prefillName, prefillPhone, prefillNotes, linkTokenQueueId }: {
+  onClose: () => void; onSaved: () => void; prefillCustomer?: Customer | null
+  prefillName?: string; prefillPhone?: string; prefillNotes?: string; linkTokenQueueId?: string | null
+}) {
   const isDental = useIndustryStore((s) => s.isModuleEnabled('dental_chart'))
   const isSalon = useIndustryStore((s) => s.isModuleEnabled('multi_service_booking'))
+  const { isDoctorVertical, singular: patientNoun, searchPlaceholder: patientSearchPlaceholder } = usePatientNoun()
   // Phase 58 §2 — Vet Clinic: Appointment.petId has existed in the schema
   // since Phase 23 and getAppointment now returns the pet relation, but
   // nothing anywhere ever actually SET it — this booking form is the one
@@ -633,21 +676,21 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
   const { error: toastError } = useNotificationStore()
   const [services, setServices] = useState<Service[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
-  const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(null)
+  const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(prefillCustomer ?? null)
   const [pets, setPets] = useState<Array<{ id: string; petName: string; species: string }>>([])
   const [pickedPetId, setPickedPetId] = useState('')
   const [selectedServices, setSelectedServices] = useState<Service[]>([])
   // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder.
   const [combos, setCombos] = useState<Array<{ id: string; comboName: string; comboPrice: number }>>([])
   const [form, setForm] = useState({
-    customerName: '',
+    customerName: prefillCustomer ? '' : (prefillName ?? ''),
     providerId: '',
     serviceCatalogId: '',
     serviceTitle: '',
     scheduledDate: toLocalISODate(new Date()),
     scheduledTime: '09:00',
     durationMinutes: 30,
-    notes: '',
+    notes: prefillNotes ?? '',
     totalAmount: 0,
     chairAssignment: '',
   })
@@ -845,6 +888,13 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
       const newAppt = res.data as { id: string }
       if (newAppt?.id) {
         api.notificationQueue.createReminder({ appointmentId: newAppt.id }).catch(() => {})
+        // Closes the walk-in loop: TokenQueueScreen.tsx's "Create Visit
+        // Record" sent us here specifically to produce this Appointment —
+        // link the token back to it now that it exists, so Doctor Pad and
+        // a typed Visit Note both have a real record to attach to.
+        if (linkTokenQueueId) {
+          api.tokenQueue.linkAppointment({ id: linkTokenQueueId, appointmentId: newAppt.id }).catch(() => {})
+        }
       }
       setSaving(false)
       onSaved()
@@ -927,16 +977,19 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
             </>
           )}
 
-          {/* Client */}
+          {/* Client / Patient */}
           <CustomerPicker
-            label="Client"
+            label={isDoctorVertical ? patientNoun : 'Client'}
             value={pickedCustomer}
             onChange={setPickedCustomer}
-            placeholder="Search existing client by name or phone..."
+            placeholder={isDoctorVertical ? patientSearchPlaceholder : 'Search existing client by name or phone...'}
+            initialQuickAdd={prefillName ? { name: prefillName, phone: prefillPhone ?? '' } : undefined}
           />
           {!pickedCustomer && (
             <Input
-              label="Client Name (Walk-in — can't be invoiced later; pick/add a client above if you may need to bill this visit)"
+              label={isDoctorVertical
+                ? `${patientNoun} Name (Walk-in — can't be invoiced later; pick/add a ${patientNoun.toLowerCase()} above if you may need to bill this visit)`
+                : "Client Name (Walk-in — can't be invoiced later; pick/add a client above if you may need to bill this visit)"}
               placeholder="Enter name"
               value={form.customerName}
               onChange={(e) => setForm((f) => ({ ...f, customerName: e.target.value }))}
@@ -952,7 +1005,7 @@ function NewAppointmentModal({ onClose, onSaved }: { onClose: () => void; onSave
               value={pickedPetId}
               onChange={(e) => setPickedPetId(e.target.value)}
             >
-              <option value="">{pets.length === 0 ? 'No pets on file for this client' : 'Select pet...'}</option>
+              <option value="">{pets.length === 0 ? 'No pets on file for this owner' : 'Select pet...'}</option>
               {pets.map((p) => (
                 <option key={p.id} value={p.id}>{p.petName} ({p.species})</option>
               ))}

@@ -1,13 +1,16 @@
 import * as http from 'http'
 import { networkInterfaces } from 'os'
-import { readFileSync, existsSync } from 'fs'
+import { readFileSync, existsSync, createReadStream } from 'fs'
 import { join } from 'path'
 import { app } from 'electron'
 import { getPrisma } from '../database/db'
 import { isModuleEnabled } from '../services/industry-template.service'
 import {
   getOrCreateDoctorPadToken, resolveProviderPin, getProviderDisplayName,
-  listTodaysAppointmentsForProvider, saveHandDrawnNote
+  listTodaysAppointmentsForProvider, saveHandDrawnNote,
+  searchPatientsForDoctorPad, getPatientChartForDoctorPad, updatePatientMedicalInfoFromDoctorPad,
+  getPatientBillingForDoctorPad, createVisitFromDoctorPad,
+  listPatientDocumentsForDoctorPad, getDoctorPadDocumentFile
 } from '../services/doctor-pad.service'
 import { getBusinessDisplayInfo } from '../services/field-order.service'
 import { logger } from '../utils/logger'
@@ -25,7 +28,7 @@ const RATE_LIMIT_WINDOW_MS = 60_000
 const GET_RATE_LIMIT_MAX_REQUESTS = 40
 const SUBMIT_RATE_LIMIT_MAX_REQUESTS = 20
 const PIN_RATE_LIMIT_MAX_REQUESTS = 10 // deliberately low — this is the one route brute-forceable (4-digit PIN), so it gets its own strict bucket distinct from the general submit bucket
-const MAX_DRAWING_BYTES = 9_000_000 // ~9MB — a note can be up to 3 pages, ~3MB budget per single-color-ish canvas PNG page, far below what would meaningfully burden the main process
+const MAX_DRAWING_BYTES = 15_000_000 // ~15MB — a note can be up to 5 pages, ~3MB budget per single-color-ish canvas PNG page, far below what would meaningfully burden the main process
 
 let servers: http.Server[] = []
 let activePort: number | null = null
@@ -208,6 +211,98 @@ async function handleRequest(req: http.IncomingMessage, res: http.ServerResponse
         return
       }
       const result = await saveHandDrawnNote(appointmentId, parsed.images)
+      sendJson(res, result.success ? 200 : 400, result)
+      return
+    }
+
+    // ── Doctor Tablet (2026-09-23) — patient search/chart/billing-view/
+    // medical-info-edit/new-visit. See doctor-pad.service.ts's own header
+    // comment on this section for the "read-only or narrowly-scoped-write,
+    // no accounting writes ever" boundary these routes enforce.
+
+    // GET /api/doctor-pad/:token/patients?q=... — clinic-wide search.
+    if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[3] === 'patients' && parts.length === 4) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const q = (url.searchParams.get('q') ?? '').trim()
+      if (q.length < 2) { sendJson(res, 200, { success: true, data: [] }); return }
+      const result = await searchPatientsForDoctorPad(q)
+      sendJson(res, result.success ? 200 : 400, result)
+      return
+    }
+
+    // GET /api/doctor-pad/:token/patients/:customerId — full chart.
+    if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[3] === 'patients' && parts.length === 5) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const result = await getPatientChartForDoctorPad(parts[4])
+      sendJson(res, result.success ? 200 : 404, result)
+      return
+    }
+
+    // GET /api/doctor-pad/:token/patients/:customerId/billing — READ-ONLY.
+    if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[3] === 'patients' && parts[5] === 'billing' && parts.length === 6) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const result = await getPatientBillingForDoctorPad(parts[4])
+      sendJson(res, result.success ? 200 : 400, result)
+      return
+    }
+
+    // GET /api/doctor-pad/:token/patients/:customerId/documents — every
+    // document across every past visit for this patient, newest first.
+    if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[3] === 'patients' && parts[5] === 'documents' && parts.length === 6) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const result = await listPatientDocumentsForDoctorPad(parts[4])
+      sendJson(res, result.success ? 200 : 400, result)
+      return
+    }
+
+    // GET /api/doctor-pad/:token/documents/:documentId/file — streams the
+    // raw file so the tablet's own browser can render/print/save it.
+    if (req.method === 'GET' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[3] === 'documents' && parts[5] === 'file' && parts.length === 6) {
+      if (isRateLimited(ip, 'get', GET_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const fileResult = await getDoctorPadDocumentFile(parts[4])
+      if (!fileResult.success || !fileResult.data || !existsSync(fileResult.data.filePath)) {
+        res.writeHead(404); res.end('Not found'); return
+      }
+      res.writeHead(200, {
+        'Content-Type': fileResult.data.mimeType,
+        'Content-Disposition': `inline; filename="${fileResult.data.fileName.replace(/"/g, '')}"`,
+      })
+      createReadStream(fileResult.data.filePath).pipe(res)
+      return
+    }
+
+    // POST /api/doctor-pad/:token/patients/:customerId/medical
+    if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[3] === 'patients' && parts[5] === 'medical' && parts.length === 6) {
+      if (isRateLimited(ip, 'submit', SUBMIT_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      let body: string
+      try { body = await readBody(req, 10_000) } catch { sendJson(res, 413, { success: false, error: { message: 'Request too large.' } }); return }
+      let fields: Record<string, string>
+      try { fields = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
+      const result = await updatePatientMedicalInfoFromDoctorPad(parts[4], fields)
+      sendJson(res, result.success ? 200 : 400, result)
+      return
+    }
+
+    // POST /api/doctor-pad/:token/:providerId/new-visit — starts a fresh
+    // visit for an existing patient, right now, from the tablet.
+    if (req.method === 'POST' && parts[0] === 'api' && parts[1] === 'doctor-pad' && parts[4] === 'new-visit' && parts.length === 5) {
+      if (isRateLimited(ip, 'submit', SUBMIT_RATE_LIMIT_MAX_REQUESTS)) { sendJson(res, 429, { success: false, error: { message: 'Too many requests — please wait a moment.' } }); return }
+      if (!isOriginAllowed(req)) { sendJson(res, 403, { success: false, error: { message: 'Request origin not allowed.' } }); return }
+      if (!secureTokenEquals(parts[2], expectedToken)) { sendJson(res, 403, { success: false, error: { message: 'Not authorized.' } }); return }
+      const providerId = parts[3]
+      let body: string
+      try { body = await readBody(req, 2_000) } catch { sendJson(res, 413, { success: false, error: { message: 'Request too large.' } }); return }
+      let parsed: { customerId?: string; reason?: string }
+      try { parsed = JSON.parse(body) } catch { sendJson(res, 400, { success: false, error: { message: 'Invalid request.' } }); return }
+      if (!parsed.customerId) { sendJson(res, 400, { success: false, error: { message: 'A patient is required.' } }); return }
+      const result = await createVisitFromDoctorPad({ customerId: parsed.customerId, providerId, reason: parsed.reason ?? '' })
       sendJson(res, result.success ? 200 : 400, result)
       return
     }

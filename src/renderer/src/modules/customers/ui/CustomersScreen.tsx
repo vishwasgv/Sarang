@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { CustomerFormModal } from './CustomerFormModal'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 
 interface Customer {
   id: string; customerCode: string; customerName: string
@@ -21,6 +22,7 @@ export function CustomersScreen() {
   const navigate = useNavigate()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
+  const { isDoctorVertical, singular: patientNoun, plural: patientNounPlural, addNew: addPatientLabel, searchPlaceholder: patientSearchPlaceholder } = usePatientNoun()
   const [customers, setCustomers] = useState<Customer[]>([])
   const [total, setTotal] = useState(0)
   const [loading, setLoading] = useState(true)
@@ -74,7 +76,7 @@ export function CustomersScreen() {
     {
       id: 'name',
       accessorFn: (r) => r.customerName,
-      header: t('customers.customerName'),
+      header: isDoctorVertical ? `${patientNoun} Name` : t('customers.customerName'),
       cell: ({ row }) => (
         <div>
           <p className="font-medium text-dark dark:text-slate-100">{row.original.customerName}</p>
@@ -133,13 +135,13 @@ export function CustomersScreen() {
             <Users size={20} className="text-success" />
           </div>
           <div>
-            <h1 className="text-xl font-bold text-dark dark:text-slate-100">{t('nav.customers')}</h1>
-            <p className="text-sm text-slate-500 dark:text-slate-400">{total} {t('nav.customers').toLowerCase()}</p>
+            <h1 className="text-xl font-bold text-dark dark:text-slate-100">{isDoctorVertical ? patientNounPlural : t('nav.customers')}</h1>
+            <p className="text-sm text-slate-500 dark:text-slate-400">{total} {(isDoctorVertical ? patientNounPlural : t('nav.customers')).toLowerCase()}</p>
           </div>
         </div>
         {canCreate && (
           <Button size="md" onClick={() => { setEditCustomer(null); setFormOpen(true) }}>
-            <Plus size={16} className="me-1.5" /> {t('customers.addCustomer')}
+            <Plus size={16} className="me-1.5" /> {isDoctorVertical ? addPatientLabel : t('customers.addCustomer')}
           </Button>
         )}
       </div>
@@ -148,17 +150,21 @@ export function CustomersScreen() {
         <div className="bg-brand/5 border border-brand/20 rounded-xl px-5 py-4 flex items-center gap-4">
           <Users size={28} className="text-brand shrink-0" />
           <div>
-            <p className="text-sm font-semibold text-brand">Add customers to track credit and ledger</p>
-            <p className="text-xs text-slate-500 mt-0.5">Customers you add here can be selected on invoices and their payment history is tracked automatically.</p>
+            <p className="text-sm font-semibold text-brand">{isDoctorVertical ? `Add ${patientNoun.toLowerCase()}s to keep their records and visit history in one place` : 'Add customers to track credit and ledger'}</p>
+            <p className="text-xs text-slate-500 mt-0.5">
+              {isDoctorVertical
+                ? `${patientNoun}s you add here can be booked for appointments, and their full visit history and prescriptions are tracked automatically.`
+                : 'Customers you add here can be selected on invoices and their payment history is tracked automatically.'}
+            </p>
           </div>
         </div>
       )}
       <DataTable
         data={customers}
         columns={columns}
-        searchPlaceholder={t('customers.searchCustomers')}
+        searchPlaceholder={isDoctorVertical ? patientSearchPlaceholder : t('customers.searchCustomers')}
         loading={loading}
-        emptyMessage={t('customers.noCustomers')}
+        emptyMessage={isDoctorVertical ? `No ${patientNounPlural.toLowerCase()} yet` : t('customers.noCustomers')}
         onRowClick={(customer) => navigate(`/customers/${customer.id}`)}
       />
 

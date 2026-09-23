@@ -42,9 +42,9 @@ Open **Reports → Vaccination Compliance** to see how many follow-up doses actu
 
 **Case-Type Volume Trend** charts how many cases you're handling per case type, month by month — one line per type. Your case types come straight from whatever categories you've set up in your own Service Catalog (Consultation, Grooming, Diagnostics, or anything else you've added, including Surgery if you track it there), plus a dedicated **Vaccinations** line sourced from real administered doses rather than booked appointments. Only pet-linked, non-cancelled appointments count as a real case.
 
-## Doctor Pad — handwritten notes on a tablet
+## Doctor Pad — a full clinical tablet, not just a notepad
 
-Many vets would rather write a diagnosis or prescription by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a simple writing pad — no extra hardware to buy, and nothing leaves your clinic's own network.
+Many vets would rather write a diagnosis or prescription by hand than type it. **Doctor Pad** turns any tablet on your clinic's own Wi-Fi into a writing pad, patient-record lookup, and read-only billing view — no extra hardware to buy, and nothing leaves your clinic's own network.
 
 **Connect a tablet, once.** Open **Provider Schedule**, pick the vet, and you'll see a **Doctor Pad** panel with three ways to connect a tablet — use whichever is easiest:
 
@@ -54,6 +54,18 @@ Many vets would rather write a diagnosis or prescription by hand than type it. *
 
 Whichever way you connect, the tablet remembers the vet from then on, so this is normally a one-time setup per tablet.
 
-**Using it during a consultation.** The tablet shows today's appointments for that vet. Tap a patient, write the diagnosis or prescription by hand, and tap **Save** — the drawing attaches instantly to that appointment, viewable right alongside the typed Clinical Note in its **Documents** section.
+**Writing a note.** The tablet shows today's appointments for that vet. Tap a patient to open a full-screen writing surface — pen, eraser, line/rectangle/circle, three stroke sizes, Undo/Redo, three preset colours plus a custom colour picker, up to 5 pages, all icon-only tools so the canvas gets nearly the whole screen. Tap **Save** and the note attaches instantly to that appointment, viewable right alongside the typed Clinical Note in its **Documents** section — every note, whether one page or five, saves as a genuine A4 PDF.
+
+**Printing and sharing a prescription.** Open any attachment and use **Print** to print it directly, or the **WhatsApp/Email** icons to share it straight to the owner's phone or email on file.
+
+**Patients tab — search and a fresh visit, from the tablet.** Alongside the Queue tab, a **Patients** tab lets the vet search by **owner** name or phone — not just today's list — and open their record:
+
+- **Visit History** — every past visit across every date for that owner, and every hand-drawn note on file, openable directly.
+- **Billing (read-only)** — the owner's outstanding balance and recent transactions. Nothing on the tablet can create an invoice, record a payment, or change a credit limit — billing stays view-only here by design.
+- **Start a Fresh Visit** — type a short reason and tap **Start Visit & Write Prescription** to create a new visit right now and go straight into the writing canvas.
+
+One important distinction for this vertical: the record you search and open here is the **pet's owner**, not the pet itself — that's why you won't see a "Medical Information" card (allergies, blood group) on this screen; those belong on the pet's own record, which stays on the desktop app's **Pets** section for now, not yet on the tablet.
+
+**Walk-ins get the same full record.** A walk-in issued a token in **Token Queue** doesn't automatically have a record yet — a plain token has no appointment behind it, so there's nothing for a note to attach to. Look for the small **person-plus icon** on that token's row and tap it: it opens the booking form pre-filled with the walk-in's name (matching them to an existing owner by phone if they've visited before), and once booked, the token is linked to that visit.
 
 **If a PIN leaks, or you're retiring an old tablet**, open **Provider Schedule**, select the vet, and click **Change PIN** — the old PIN stops working immediately. A tablet that already connected via QR code or bookmarked link keeps working, since it never needs the PIN again.

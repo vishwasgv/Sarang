@@ -870,6 +870,7 @@ const api: IpcChannels = {
     delete: (p) => invoke('documents:delete', p),
     open: (p) => invoke('documents:open', p),
     print: (p) => invoke('documents:print', p),
+    exportForShare: (p) => invoke('documents:exportForShare', p),
   },
   // Phase 17 — HR & Attendance
   hr: {
@@ -1113,6 +1114,7 @@ const api: IpcChannels = {
     list: (p?: unknown) => invoke('appointments:list', p),
     getByDate: (p: unknown) => invoke('appointments:getByDate', p),
     get: (p: unknown) => invoke('appointments:get', p),
+    getPatientHistory: (p: unknown) => invoke('appointments:getPatientHistory', p),
     create: (p: unknown) => invoke('appointments:create', p),
     update: (p: unknown) => invoke('appointments:update', p),
     updateStatus: (p: unknown) => invoke('appointments:updateStatus', p),
@@ -1188,6 +1190,7 @@ const api: IpcChannels = {
     seen: (p: unknown) => invoke('tokenQueue:seen', p),
     skip: (p: unknown) => invoke('tokenQueue:skip', p),
     reset: (p: unknown) => invoke('tokenQueue:reset', p),
+    linkAppointment: (p: unknown) => invoke('tokenQueue:linkAppointment', p),
     getServerStatus: () => invoke('tokenQueue:getServerStatus'),
     regenerateServerToken: () => invoke('tokenQueue:regenerateServerToken'),
     generateServerQr: () => invoke('tokenQueue:generateServerQr'),

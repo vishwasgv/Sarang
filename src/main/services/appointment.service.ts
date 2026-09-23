@@ -155,7 +155,7 @@ export async function listAppointments(filters?: {
       db.appointment.findMany({
         where,
         include: {
-          customer: { select: { id: true, customerName: true, phone: true } },
+          customer: { select: { id: true, customerName: true, phone: true, email: true } },
           provider: { select: { id: true, fullName: true, specialization: true, providerColor: true } },
           serviceCatalog: { select: { id: true, serviceName: true, durationMinutes: true, basePrice: true } },
         },
@@ -190,7 +190,7 @@ export async function getAppointmentsByDate(date: string) {
         status: { not: 'CANCELLED' },
       },
       include: {
-        customer: { select: { id: true, customerName: true, phone: true } },
+        customer: { select: { id: true, customerName: true, phone: true, email: true } },
         provider: { select: { id: true, fullName: true, providerColor: true, specialization: true } },
         serviceCatalog: { select: { id: true, serviceName: true, durationMinutes: true } },
         visitNote: { select: { id: true, isFinalized: true } },              // Phase 24 — show note badge
@@ -223,6 +223,68 @@ export async function getAppointment(id: string) {
     return { success: true, data: item }
   } catch (err) {
     return { success: false, error: { code: 'APT-003', message: err instanceof Error ? err.message : 'Could not fetch appointment.' } }
+  }
+}
+
+// Founder ask (2026-09-23): when the same patient revisits, staff/doctor
+// should be able to pull up their WHOLE record — every past visit, not just
+// today's — in one place, and easily. Appointment/VisitNote/Document all
+// already exist per-visit and are already linked to the same Customer
+// (patient) row across visits; what was missing was a single query that
+// walks them all back for one customerId instead of forcing a day-by-day
+// flip through AppointmentsScreen's (necessarily) single-day view. Generic
+// across every vertical that books appointments, not just the 5 clinic
+// ones — no per-vertical branching needed since it just returns whatever
+// each visit actually has (visitNote is null for verticals that don't use
+// it, exactly like every other optional relation in this schema).
+export async function getPatientHistory(customerId: string) {
+  try {
+    const db = getPrisma()
+    const customer = await db.customer.findUnique({
+      where: { id: customerId },
+      select: { id: true, customerName: true, phone: true, email: true },
+    })
+    if (!customer) return { success: false, error: { code: 'APT-027', message: 'Patient not found.' } }
+
+    const visits = await db.appointment.findMany({
+      where: { customerId },
+      include: {
+        provider: { select: { id: true, fullName: true } },
+        visitNote: { select: { id: true, isFinalized: true, chiefComplaint: true, assessment: true, plan: true } },
+      },
+      orderBy: [{ scheduledDate: 'desc' }, { scheduledTime: 'desc' }],
+    })
+
+    // Document has no real Prisma relation to Appointment (entityType/
+    // entityId is a loose polymorphic reference shared across ~20 entity
+    // types, see Document's own schema comment) — one batched query for all
+    // this patient's visit ids instead of N+1 per-visit lookups.
+    const visitIds = visits.map((v) => v.id)
+    const docs = visitIds.length > 0
+      ? await db.document.findMany({ where: { entityType: 'APPOINTMENT', entityId: { in: visitIds } }, select: { entityId: true } })
+      : []
+    const docCountByVisit = new Map<string, number>()
+    for (const d of docs) docCountByVisit.set(d.entityId, (docCountByVisit.get(d.entityId) ?? 0) + 1)
+
+    return {
+      success: true,
+      data: {
+        customer,
+        visits: visits.map((v) => ({
+          id: v.id,
+          appointmentNumber: v.appointmentNumber,
+          scheduledDate: v.scheduledDate,
+          scheduledTime: v.scheduledTime,
+          serviceTitle: v.serviceTitle,
+          status: v.status,
+          providerName: v.provider?.fullName ?? null,
+          visitNote: v.visitNote,
+          documentCount: docCountByVisit.get(v.id) ?? 0,
+        })),
+      },
+    }
+  } catch (err) {
+    return { success: false, error: { code: 'APT-027', message: err instanceof Error ? err.message : 'Could not fetch patient history.' } }
   }
 }
 

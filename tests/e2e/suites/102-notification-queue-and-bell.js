@@ -42,7 +42,10 @@ async function run() {
       // this fixed literal name repeats across hundreds of prior E2E runs in
       // this shared dev DB, so a name-based search+`.first()` click can grab
       // a stale duplicate customer instead of the one just created above.
-      await modal.getByPlaceholder('Search existing client by name or phone...').fill(phone)
+      // 2026-09-23 — GP_CLINIC (see the switch above) now shows the
+      // "Patient"-flavoured placeholder via usePatientNoun.ts, not the
+      // generic "client" one every other (non-clinic) vertical still gets.
+      await modal.getByPlaceholder('Search by name or phone…').fill(phone)
       await page.waitForTimeout(700)
       await modal.locator('button', { hasText: phone }).first().click()
       await page.waitForTimeout(300)

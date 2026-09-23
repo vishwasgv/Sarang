@@ -4,6 +4,7 @@ import { Paperclip, Trash2, ExternalLink, FileText, Image, FileSpreadsheet, Refr
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
+import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 
 interface DocRecord {
   id: string
@@ -35,9 +36,18 @@ interface Props {
   entityType: EntityType
   entityId: string
   compact?: boolean
+  // Founder ask (2026-09-23): share an attached document (e.g. a Doctor Pad
+  // prescription PDF) straight to the person it's about via WhatsApp/Email,
+  // the same one-click flow every generated Invoice/Report/Quotation already
+  // has (see ShareMenu.tsx). Optional and omitted by every other caller of
+  // this shared panel today — the Share buttons only render once a caller
+  // actually has someone to share with (a phone or email on file).
+  recipientPhone?: string | null
+  recipientEmail?: string | null
+  recipientName?: string
 }
 
-export function DocumentPanel({ entityType, entityId, compact = false }: Props) {
+export function DocumentPanel({ entityType, entityId, compact = false, recipientPhone, recipientEmail, recipientName }: Props) {
   const { t } = useTranslation()
   const { error: toastError } = useNotificationStore()
   const [docs, setDocs] = useState<DocRecord[]>([])
@@ -135,6 +145,17 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
     }
   }
 
+  // Doctor Pad notes (and any other attachment) can't be "re-exported" from
+  // source the way an Invoice/Report PDF can (they're stored drawings/files,
+  // not re-derivable from HTML) — this just copies the already-attached file
+  // to a location the owner picks, same `{cancelled, filePath}` contract
+  // ShareMenu expects from every other document type's export flow.
+  async function handleExportForShare(doc: DocRecord): Promise<ExportPdfResult> {
+    const res = await api.documents.exportForShare({ id: doc.id })
+    if (!res.success) return { success: false, error: { message: t('documents.couldNotExport') } }
+    return { success: true, cancelled: res.data?.cancelled, filePath: res.data?.filePath }
+  }
+
   async function handlePrint(id: string) {
     setPrintingId(id)
     try {
@@ -200,12 +221,22 @@ export function DocumentPanel({ entityType, entityId, compact = false }: Props) 
                   title={t('documents.open')}>
                   <ExternalLink size={13} />
                 </button>
-                {doc.mimeType.startsWith('image/') && (
+                {(doc.mimeType.startsWith('image/') || doc.mimeType === 'application/pdf') && (
                   <button onClick={() => handlePrint(doc.id)} disabled={printingId === doc.id}
                     className="p-1.5 rounded-lg text-slate-400 hover:text-brand hover:bg-brand/5 transition-colors disabled:opacity-50"
                     title={t('documents.print')}>
                     {printingId === doc.id ? <RefreshCw size={13} className="animate-spin" /> : <Printer size={13} />}
                   </button>
+                )}
+                {(recipientPhone || recipientEmail) && (
+                  <ShareMenu
+                    recipientPhone={recipientPhone}
+                    recipientEmail={recipientEmail}
+                    buildWhatsAppMessage={() => recipientName ? `Sharing "${doc.fileName}" — ${recipientName}.` : `Sharing "${doc.fileName}".`}
+                    buildEmailSubject={() => doc.fileName}
+                    buildEmailBody={() => `Please find attached: ${doc.fileName}`}
+                    onExportPdf={() => handleExportForShare(doc)}
+                  />
                 )}
                 <button onClick={() => setConfirmDelete(doc)} disabled={deletingId === doc.id}
                   className="p-1.5 rounded-lg text-slate-400 hover:text-danger hover:bg-danger/5 transition-colors"

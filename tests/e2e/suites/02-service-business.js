@@ -73,7 +73,12 @@ async function run() {
       await page.waitForTimeout(500)
       const modal = h.topModal(page)
 
-      const custSearch = modal.getByPlaceholder('Search existing client by name or phone...')
+      // 2026-09-23 — this suite runs in GP_CLINIC (see the switch above),
+      // one of the 5 verticals usePatientNoun.ts now relabels — the
+      // AppointmentsScreen.tsx CustomerPicker here shows the "Patient"-
+      // flavoured placeholder for this vertical, not the generic "client"
+      // one every other (non-clinic) vertical still gets.
+      const custSearch = modal.getByPlaceholder('Search by name or phone…')
       await custSearch.fill('E2E Svc Client')
       await page.waitForTimeout(700)
       const custOption = modal.locator('button', { hasText: 'E2E Svc Client' }).first()

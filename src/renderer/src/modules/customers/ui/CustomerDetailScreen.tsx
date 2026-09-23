@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
-import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown, Percent, MessageCircle } from 'lucide-react'
+import { ArrowLeft, Users, Phone, Mail, MapPin, CreditCard, TrendingUp, TrendingDown, Percent, MessageCircle, CalendarClock, ChevronDown, ChevronUp, Stethoscope, Plus, AlertTriangle } from 'lucide-react'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 import { useAuthStore } from '@app/store/auth.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -14,12 +15,15 @@ import { Button } from '@shared/ui/atoms/Button'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { SendTemplateMessageModal } from '@shared/ui/organisms/SendTemplateMessageModal'
 import { api } from '@renderer/services/ipc-client'
+import { cn } from '@shared/utils/cn'
 
 interface Customer {
   id: string; customerCode: string; customerName: string
   phone?: string | null; email?: string | null
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
   taxNumber?: string | null; creditLimit: number; notes?: string | null; isActive: boolean
+  bloodGroup?: string | null; allergies?: string | null; chronicConditions?: string | null
+  currentMedications?: string | null; emergencyContactName?: string | null; emergencyContactPhone?: string | null
 }
 
 interface LedgerEntry {
@@ -33,6 +37,37 @@ interface InterestPreview { ratePercent: number; type: 'SIMPLE' | 'COMPOUND'; li
 // Phase 67 §9.1 — Distributor item 5: risk-scored retailer credit.
 interface CreditRisk { riskTier: 'LOW' | 'MEDIUM' | 'HIGH' | 'UNRATED'; effectiveCreditLimit: number; avgDaysLate: number; currentOverdueCount: number }
 
+// 2026-09-23 — Visit History. Every past Appointment for this customer
+// (patient), across every past date — see appointment.service.ts's
+// getPatientHistory for why this couldn't just reuse AppointmentsScreen's
+// own (necessarily single-day) fetch. Generic across every appointment-
+// based vertical, not just the 5 clinic ones — visitNote is simply null for
+// verticals that never create one.
+// Matches AppointmentsScreen.tsx's own STATUS_LABEL/STATUS_VARIANT — status
+// text is deliberately plain English here too (see AppointmentsScreen.tsx:
+// appointment status has never been translated, same "service-vertical
+// screen" convention VisitNoteScreen's clinical field labels follow).
+const VISIT_STATUS_LABEL: Record<string, string> = {
+  SCHEDULED: 'Scheduled', CONFIRMED: 'Confirmed', IN_PROGRESS: 'In Progress',
+  COMPLETED: 'Completed', CANCELLED: 'Cancelled', NO_SHOW: 'No Show',
+}
+const VISIT_STATUS_VARIANT: Record<string, 'info' | 'brand' | 'warning' | 'success' | 'danger' | 'neutral'> = {
+  SCHEDULED: 'info', CONFIRMED: 'brand', IN_PROGRESS: 'warning',
+  COMPLETED: 'success', CANCELLED: 'danger', NO_SHOW: 'neutral',
+}
+
+interface PatientVisit {
+  id: string
+  appointmentNumber: string
+  scheduledDate: string
+  scheduledTime: string
+  serviceTitle: string
+  status: string
+  providerName: string | null
+  visitNote: { id: string; isFinalized: boolean; chiefComplaint: string | null; assessment: string | null; plan: string | null } | null
+  documentCount: number
+}
+
 export function CustomerDetailScreen() {
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
@@ -40,6 +75,7 @@ export function CustomerDetailScreen() {
   const { hasPermission } = useAuthStore()
   const canSendTemplateMessage = hasPermission('messageTemplates.view')
   const { isModuleEnabled } = useIndustryStore()
+  const { isDoctorVertical, hasPatientMedicalRecord, singular: patientNoun } = usePatientNoun()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [sendMessageOpen, setSendMessageOpen] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
@@ -56,6 +92,10 @@ export function CustomerDetailScreen() {
   const [reverseTarget, setReverseTarget] = useState<LedgerEntry | null>(null)
   const [reverseReason, setReverseReason] = useState('')
   const [reversing, setReversing] = useState(false)
+  const [visits, setVisits] = useState<PatientVisit[]>([])
+  const [visitsLoading, setVisitsLoading] = useState(false)
+  const [visitsError, setVisitsError] = useState<string | null>(null)
+  const [expandedVisitId, setExpandedVisitId] = useState<string | null>(null)
 
   const canViewLedger = hasPermission('customers.viewLedger')
   const canViewInterest = hasPermission('creditInterest.view')
@@ -141,12 +181,41 @@ export function CustomerDetailScreen() {
     }
   }, [id, canViewLedger, isModuleEnabled])
 
+  // Visit History — works for any vertical that books appointments (the
+  // `appointments` module), not gated to the 5 clinic verticals specifically:
+  // matches this codebase's "config flags only, no template-specific
+  // if/else" convention, and a non-clinic vertical's visits simply never
+  // have a visitNote to show.
+  const loadVisitHistory = useCallback(async () => {
+    if (!id || !isModuleEnabled('appointments')) return
+    setVisitsLoading(true)
+    setVisitsError(null)
+    try {
+      const res = await api.appointments.getPatientHistory({ customerId: id })
+      if (res.success && res.data) {
+        setVisits((res.data as { visits: PatientVisit[] }).visits ?? [])
+      } else {
+        setVisitsError(res.error?.message ?? t('common.error'))
+      }
+    } catch {
+      setVisitsError(t('common.error'))
+    } finally {
+      setVisitsLoading(false)
+    }
+  }, [id, isModuleEnabled, t])
+
   useEffect(() => {
     loadCustomer()
     loadLedger()
     loadInterest()
     loadCreditRisk()
-  }, [loadCustomer, loadLedger, loadInterest, loadCreditRisk])
+    loadVisitHistory()
+  }, [loadCustomer, loadLedger, loadInterest, loadCreditRisk, loadVisitHistory])
+
+  function handleBookNewVisit() {
+    if (!customer) return
+    navigate('/appointments', { state: { prefillCustomer: { id: customer.id, customerName: customer.customerName, phone: customer.phone ?? null } } })
+  }
 
   async function handlePostInterest() {
     if (!id) return
@@ -207,9 +276,9 @@ export function CustomerDetailScreen() {
     return (
       <div className="p-6 flex flex-col items-center justify-center min-h-[60vh]">
         <Users size={40} className="text-slate-200 mb-4" />
-        <p className="text-slate-500 dark:text-slate-400 text-sm">{error ?? t('customers.notFound')}</p>
+        <p className="text-slate-500 dark:text-slate-400 text-sm">{error ?? (isDoctorVertical ? `${patientNoun} not found.` : t('customers.notFound'))}</p>
         <button onClick={() => navigate('/customers')} className="mt-4 text-brand text-sm font-medium hover:underline">
-          {t('customers.backToCustomers')}
+          {isDoctorVertical ? `Back to ${patientNoun}s` : t('customers.backToCustomers')}
         </button>
       </div>
     )
@@ -251,6 +320,29 @@ export function CustomerDetailScreen() {
           customerPhone={customer.phone ?? null}
           onClose={() => setSendMessageOpen(false)}
         />
+      )}
+
+      {/* Medical Information — clinic verticals only. Deliberately the FIRST
+          thing shown below the header, before contact/account: allergies are
+          safety-critical, a doctor needs them visible before anything else,
+          not buried below a credit-limit card. Hardcoded English labels —
+          see CustomerFormModal.tsx's own comment on why (languageLock). */}
+      {hasPatientMedicalRecord && (customer.bloodGroup || customer.allergies || customer.chronicConditions || customer.currentMedications || customer.emergencyContactName) && (
+        <Card padding="md" className={cn('space-y-3 border-2', customer.allergies ? 'border-danger/30' : 'border-slate-200 dark:border-slate-700')}>
+          <div className="flex items-center gap-2">
+            {customer.allergies ? <AlertTriangle size={15} className="text-danger" /> : <Stethoscope size={15} className="text-brand" />}
+            <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">Medical Information</p>
+          </div>
+          <div className="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+            {customer.bloodGroup && <p><span className="text-slate-400">Blood Group: </span><span className="font-medium text-dark dark:text-slate-100">{customer.bloodGroup}</span></p>}
+            {customer.allergies && <p className="text-danger"><span className="text-danger/70">Allergies: </span><span className="font-semibold">{customer.allergies}</span></p>}
+            {customer.chronicConditions && <p><span className="text-slate-400">Chronic Conditions: </span>{customer.chronicConditions}</p>}
+            {customer.currentMedications && <p><span className="text-slate-400">Current Medications: </span>{customer.currentMedications}</p>}
+            {customer.emergencyContactName && (
+              <p><span className="text-slate-400">Emergency Contact: </span>{customer.emergencyContactName}{customer.emergencyContactPhone ? ` (${customer.emergencyContactPhone})` : ''}</p>
+            )}
+          </div>
+        </Card>
       )}
 
       {/* Info cards */}
@@ -447,10 +539,93 @@ export function CustomerDetailScreen() {
         </Card>
       )}
 
+      {/* Visit History — founder ask (2026-09-23): when the same patient
+          revisits, staff/the doctor should see their WHOLE record in one
+          searchable place (this screen already IS that place — reached from
+          the same searchable Customers list every vertical uses) and be able
+          to start a fresh visit from right here. */}
+      {customer && isModuleEnabled('appointments') && (
+        <Card padding="lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <CalendarClock size={16} className="text-brand" />
+              <p className="text-sm font-semibold text-dark dark:text-slate-100">{t('customers.visitHistory')}</p>
+            </div>
+            <Button size="sm" icon={<Plus size={14} />} onClick={handleBookNewVisit}>{t('customers.bookNewVisit')}</Button>
+          </div>
+
+          {visitsLoading ? (
+            <div className="space-y-3">
+              {Array.from({ length: 3 }).map((_, i) => (
+                <div key={i} className="h-12 bg-slate-100 dark:bg-slate-800 rounded-xl animate-pulse" />
+              ))}
+            </div>
+          ) : visitsError ? (
+            <div className="flex flex-col items-center justify-center py-8 gap-2">
+              <p className="text-sm text-danger">{visitsError}</p>
+              <button onClick={loadVisitHistory} className="text-sm text-brand hover:underline">{t('common.refresh')}</button>
+            </div>
+          ) : visits.length === 0 ? (
+            <div className="text-center py-8">
+              <p className="text-sm text-slate-400">{t('customers.noVisitsYet')}</p>
+            </div>
+          ) : (
+            <div className="space-y-2">
+              {visits.map((visit) => {
+                const isExpanded = expandedVisitId === visit.id
+                return (
+                  <div key={visit.id} className="border border-slate-100 dark:border-slate-800 rounded-xl overflow-hidden">
+                    <button
+                      onClick={() => setExpandedVisitId(isExpanded ? null : visit.id)}
+                      className="w-full flex items-center justify-between gap-3 px-4 py-3 bg-slate-50 dark:bg-slate-800 hover:bg-slate-100 dark:hover:bg-slate-700 transition-colors text-start"
+                    >
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium text-dark dark:text-slate-100 truncate">
+                          {formatDate(visit.scheduledDate)} · {visit.scheduledTime} — {visit.serviceTitle}
+                        </p>
+                        <p className="text-xs text-slate-400 truncate">
+                          {visit.providerName ? `${visit.providerName} · ` : ''}{visit.appointmentNumber}
+                          {visit.documentCount > 0 && ` · ${visit.documentCount} document${visit.documentCount > 1 ? 's' : ''}`}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
+                        <Badge variant={VISIT_STATUS_VARIANT[visit.status] ?? 'neutral'}>{VISIT_STATUS_LABEL[visit.status] ?? visit.status}</Badge>
+                        {isExpanded ? <ChevronUp size={16} className="text-slate-400" /> : <ChevronDown size={16} className="text-slate-400" />}
+                      </div>
+                    </button>
+                    {isExpanded && (
+                      <div className="p-4 space-y-4 bg-white dark:bg-slate-900">
+                        {visit.visitNote && (visit.visitNote.chiefComplaint || visit.visitNote.assessment || visit.visitNote.plan) && (
+                          <div className="space-y-1.5 text-sm">
+                            <div className="flex items-center gap-1.5 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase tracking-wide">
+                              <Stethoscope size={12} /> Clinical Note{!visit.visitNote.isFinalized && ' (Draft)'}
+                            </div>
+                            {visit.visitNote.chiefComplaint && <p className="text-slate-700 dark:text-slate-300"><span className="text-slate-400">Chief Complaint: </span>{visit.visitNote.chiefComplaint}</p>}
+                            {visit.visitNote.assessment && <p className="text-slate-700 dark:text-slate-300"><span className="text-slate-400">Assessment: </span>{visit.visitNote.assessment}</p>}
+                            {visit.visitNote.plan && <p className="text-slate-700 dark:text-slate-300"><span className="text-slate-400">Plan: </span>{visit.visitNote.plan}</p>}
+                          </div>
+                        )}
+                        <DocumentPanel
+                          entityType="APPOINTMENT" entityId={visit.id} compact
+                          recipientPhone={customer.phone} recipientEmail={customer.email} recipientName={customer.customerName}
+                        />
+                      </div>
+                    )}
+                  </div>
+                )
+              })}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* Attached documents */}
       {customer && (
         <Card padding="lg">
-          <DocumentPanel entityType="CUSTOMER" entityId={customer.id} />
+          <DocumentPanel
+            entityType="CUSTOMER" entityId={customer.id}
+            recipientPhone={customer.phone} recipientEmail={customer.email} recipientName={customer.customerName}
+          />
         </Card>
       )}
 

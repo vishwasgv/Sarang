@@ -12,6 +12,18 @@ const customerKindFields = {
   idProofNumber: z.string().max(50).optional(),
 }
 
+// 2026-09-23 — clinic verticals only (harmless/unused elsewhere, same
+// convention as customerKindFields above). Free text, no drug/condition
+// database in this app to validate structure against.
+const patientMedicalFields = {
+  bloodGroup: z.string().max(10).optional(),
+  allergies: z.string().max(1000).optional(),
+  chronicConditions: z.string().max(1000).optional(),
+  currentMedications: z.string().max(1000).optional(),
+  emergencyContactName: z.string().max(200).optional(),
+  emergencyContactPhone: z.string().max(30).optional(),
+}
+
 export const CreateCustomerSchema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
   phone: z.string().min(1, 'Phone number is required').max(30),
@@ -33,7 +45,8 @@ export const CreateCustomerSchema = z.object({
   // Phase 63 — formal Price List assignment, additive alongside customerClass.
   priceListId: z.string().min(1).optional(),
   customFields: CustomFieldValuesSchema,
-  ...customerKindFields
+  ...customerKindFields,
+  ...patientMedicalFields
 })
 
 export const UpdateCustomerSchema = z.object({
@@ -58,7 +71,8 @@ export const UpdateCustomerSchema = z.object({
   // Phase 63 — formal Price List assignment, additive alongside customerClass.
   priceListId: z.string().min(1).optional(),
   customFields: CustomFieldValuesSchema,
-  ...customerKindFields
+  ...customerKindFields,
+  ...patientMedicalFields
 })
 
 export type CreateCustomerPayload = z.infer<typeof CreateCustomerSchema>

@@ -10,6 +10,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 
 const schema = z.object({
   customerName: z.string().min(1, 'Customer name is required').max(200),
@@ -41,7 +42,20 @@ const schema = z.object({
   // verification: the backend field/validation/service already accepted
   // this, but no UI anywhere ever let a user actually set it, so an
   // assigned Price List could never resolve at billing time in real use).
-  priceListId: z.string().optional()
+  priceListId: z.string().optional(),
+  // 2026-09-23 — clinic verticals only (see usePatientNoun.ts). Deliberately
+  // hardcoded-English labels below, not t() — this section only ever
+  // renders when isDoctorVertical is true, and every clinic vertical is
+  // languageLock:'en' (enforced app-wide, see industry.store.ts's
+  // enforceLanguageLock), so translating these labels would be genuine dead
+  // code. Same convention VisitNoteScreen's SOAP field labels and
+  // AppointmentsScreen's STATUS_LABEL already follow.
+  bloodGroup: z.string().max(10).optional(),
+  allergies: z.string().max(1000).optional(),
+  chronicConditions: z.string().max(1000).optional(),
+  currentMedications: z.string().max(1000).optional(),
+  emergencyContactName: z.string().max(200).optional(),
+  emergencyContactPhone: z.string().max(30).optional(),
 })
 
 type FormValues = z.infer<typeof schema>
@@ -56,6 +70,8 @@ interface Customer {
   idProofType?: string | null; idProofNumber?: string | null
   priceListId?: string | null
   customFields?: string | null
+  bloodGroup?: string | null; allergies?: string | null; chronicConditions?: string | null
+  currentMedications?: string | null; emergencyContactName?: string | null; emergencyContactPhone?: string | null
 }
 
 interface CustomerFormModalProps {
@@ -75,6 +91,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
   const fieldOrderCaptureEnabled = isModuleEnabled('field_order_capture')
+  const { isDoctorVertical, hasPatientMedicalRecord, singular: patientNoun } = usePatientNoun()
   const isEdit = !!customer
 
   const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
@@ -113,7 +130,13 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         contactPersonName: customer?.contactPersonName ?? '',
         idProofType: customer?.idProofType ?? '',
         idProofNumber: customer?.idProofNumber ?? '',
-        priceListId: customer?.priceListId ?? ''
+        priceListId: customer?.priceListId ?? '',
+        bloodGroup: customer?.bloodGroup ?? '',
+        allergies: customer?.allergies ?? '',
+        chronicConditions: customer?.chronicConditions ?? '',
+        currentMedications: customer?.currentMedications ?? '',
+        emergencyContactName: customer?.emergencyContactName ?? '',
+        emergencyContactPhone: customer?.emergencyContactPhone ?? ''
       })
       setCustomFieldValues(parseCustomFields(customer?.customFields))
     }
@@ -142,13 +165,13 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
     <Modal
       open={open}
       onClose={onClose}
-      title={isEdit ? t('customers.editCustomer') : t('customers.addCustomer')}
+      title={isDoctorVertical ? (isEdit ? `Edit ${patientNoun}` : `Add ${patientNoun}`) : (isEdit ? t('customers.editCustomer') : t('customers.addCustomer'))}
       size="lg"
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
           <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
-            {isEdit ? t('common.saveChanges') : t('customers.addCustomer')}
+            {isEdit ? t('common.saveChanges') : (isDoctorVertical ? `Add ${patientNoun}` : t('customers.addCustomer'))}
           </Button>
         </>
       }
@@ -163,7 +186,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           ))}
         </div>
         <Input
-          label={customerKind === 'BUSINESS' ? `${t('customers.businessCompanyName')} *` : `${t('customers.customerName')} *`}
+          label={customerKind === 'BUSINESS' ? `${t('customers.businessCompanyName')} *` : (isDoctorVertical ? `${patientNoun} Name *` : `${t('customers.customerName')} *`)}
           placeholder={customerKind === 'BUSINESS' ? t('customers.businessNamePlaceholder') : t('customers.individualNamePlaceholder')}
           {...register('customerName')}
           error={errors.customerName?.message}
@@ -219,6 +242,23 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
             <Input label={t('customers.taxExemptReasonLabel')} placeholder={t('customers.taxExemptReasonPlaceholder')} {...register('taxExemptReason')} />
           )}
         </div>
+        {hasPatientMedicalRecord && (
+          <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-3">
+            <p className="text-sm font-medium text-slate-700 dark:text-slate-200">Medical Information</p>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Blood Group" placeholder="e.g. O+" {...register('bloodGroup')} />
+              <Input label="Allergies" placeholder="e.g. Penicillin, Peanuts" {...register('allergies')} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Chronic Conditions" placeholder="e.g. Type 2 Diabetes, Hypertension" {...register('chronicConditions')} />
+              <Input label="Current Medications" placeholder="e.g. Metformin 500mg twice daily" {...register('currentMedications')} />
+            </div>
+            <div className="grid grid-cols-2 gap-4">
+              <Input label="Emergency Contact Name" {...register('emergencyContactName')} />
+              <Input label="Emergency Contact Phone" {...register('emergencyContactPhone')} />
+            </div>
+          </div>
+        )}
         <div>
           <label className="block text-xs font-medium text-slate-600 dark:text-slate-400 mb-1.5">{t('common.notes')}</label>
           <textarea {...register('notes')} rows={2} placeholder={t('common.optionalNotesPlaceholder')}

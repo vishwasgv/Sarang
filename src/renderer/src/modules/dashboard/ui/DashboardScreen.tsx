@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { useIndustryStore } from '@app/store/industry.store'
+import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 import { useNotificationStore } from '@app/store/notification.store'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
@@ -112,6 +113,7 @@ export function DashboardScreen() {
   const numberFormat = useBusinessStore((s) => s.getSetting('number_format', 'IN'))
   const hasPermission = useAuthStore((s) => s.hasPermission)
   const { isModuleEnabled } = useIndustryStore()
+  const { isDoctorVertical, addNew: addPatientLabel } = usePatientNoun()
   const { error: toastError } = useNotificationStore()
   const navigate = useNavigate()
   const sym = profile?.currencySymbol ?? '₹'
@@ -794,7 +796,7 @@ export function DashboardScreen() {
               {[
                 { label: t('billing.newInvoice'), path: '/billing/new', icon: <ShoppingCart size={22} />, color: 'text-brand bg-brand/10' },
                 { label: t('products.addProduct'), path: '/products?action=new', icon: <Package size={22} />, color: 'text-success bg-success/10' },
-                { label: t('customers.addCustomer'), path: '/customers?action=new', icon: <Users size={22} />, color: 'text-purple-600 bg-purple-50' },
+                { label: isDoctorVertical ? addPatientLabel : t('customers.addCustomer'), path: '/customers?action=new', icon: <Users size={22} />, color: 'text-purple-600 bg-purple-50' },
                 { label: t('nav.reports'), path: '/reports', icon: <TrendingUp size={22} />, color: 'text-info bg-info/10' },
                 { label: t('nav.inventory'), path: '/inventory', icon: <Layers size={22} />, color: 'text-slate-600 bg-slate-100' },
                 { label: t('nav.backup'), path: '/backup', icon: <AlertTriangle size={22} />, color: 'text-warning bg-warning/10' }

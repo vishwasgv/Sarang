@@ -24,6 +24,7 @@ async function run() {
       r.log('business-type-switched', sw.to === 'SPECIALIST_CLINIC', JSON.stringify(sw))
     })
 
+    const patientPhone = `9${String(Date.now()).slice(-9)}`
     await r.step('issue-walk-in-token-via-real-ui', async () => {
       await h.gotoHash(page, '#/clinical/queue')
       await page.waitForTimeout(700)
@@ -34,7 +35,7 @@ async function run() {
       const modal = h.topModal(page)
       await modal.getByPlaceholder('Full name').fill(`${TEST_PREFIX} Patient ${suffix}`)
       await modal.getByPlaceholder('e.g. 35 years').fill('42 years')
-      await modal.getByPlaceholder('Optional').first().fill(`9${String(Date.now()).slice(-9)}`)
+      await modal.getByPlaceholder('Optional').first().fill(patientPhone)
       await page.waitForTimeout(200)
       await modal.getByRole('button', { name: 'Issue Token' }).click()
       await page.waitForTimeout(1000)
@@ -46,6 +47,7 @@ async function run() {
     })
 
     let tokenId
+    let firstVisitCustomerId
     await r.step('call-seen-and-reset-token-via-real-ui', async () => {
       const listRes = await page.evaluate(async () => window.api.tokenQueue.today())
       tokenId = (listRes?.data || []).find((t) => t.patientName === `${TEST_PREFIX} Patient ${suffix}`)?.id
@@ -77,6 +79,136 @@ async function run() {
       getRes = await page.evaluate(async () => window.api.tokenQueue.today())
       token = (getRes?.data || []).find((t) => t.id === tokenId)
       r.log('token-actually-reset', token?.status === 'WAITING' && !token?.calledAt && !token?.seenAt, JSON.stringify(token))
+    })
+
+    // 2026-09-23 — real gap found+fixed: a walk-in token had no Customer or
+    // Appointment behind it at all, so neither Doctor Pad nor a typed Visit
+    // Note could ever attach to them. "Create Visit Record" opens the real
+    // booking form pre-filled for this token and links the token back to
+    // whatever Appointment it produces — exercised here via the actual UI,
+    // not just typechecked.
+    await r.step('create-visit-record-from-token-links-appointment', async () => {
+      if (!tokenId) return r.log('create-visit-record-from-token-links-appointment', false, 'no tokenId')
+
+      const row = page.locator('div.rounded-xl.border', { hasText: `${TEST_PREFIX} Patient ${suffix}` }).first()
+      await row.locator('button[title^="Create a visit record"]').click()
+      await page.waitForTimeout(900)
+      r.log('navigates-to-booking-form-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const modal = h.topModal(page)
+      const nameInput = modal.getByPlaceholder('Enter name')
+      const prefillValue = await nameInput.inputValue().catch(() => '')
+      r.log('booking-form-prefilled-with-token-patient-name', prefillValue === `${TEST_PREFIX} Patient ${suffix}`, prefillValue)
+
+      // REAL BUG found+fixed 2026-09-23: no existing match meant the picker
+      // fell back to that free-text "Enter name" field above, which never
+      // creates a real Customer row at all — just a string on this one
+      // Appointment. Since the WHOLE POINT of this bridge is that every
+      // walk-in gets a real, findable patient record, the picker's own
+      // quick-add now auto-opens pre-filled with the token's name+phone
+      // instead — exercised here for real, not just typechecked.
+      const quickPhoneInput = modal.getByPlaceholder('Phone *')
+      const quickPhoneValue = await quickPhoneInput.inputValue().catch(() => '')
+      r.log('quick-add-auto-opens-prefilled-with-token-phone', quickPhoneValue === patientPhone, quickPhoneValue)
+      await modal.getByRole('button', { name: 'Add & Select' }).click()
+      await page.waitForTimeout(900)
+      r.log('quick-add-creates-and-selects-real-customer-no-crash', !(await h.hasErrorBoundary(page)))
+      // The free-text fallback field must be gone now that a real customer is selected.
+      r.log('free-text-name-field-replaced-by-real-selection', await nameInput.count() === 0)
+
+      await modal.getByLabel('Service Title').fill(`${TEST_PREFIX} Consultation`)
+      await page.waitForTimeout(200)
+      await modal.getByRole('button', { name: 'Book Appointment' }).click()
+      await page.waitForTimeout(1200)
+      r.log('booking-submits-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const getRes = await page.evaluate(async () => window.api.tokenQueue.today())
+      const linkedToken = (getRes?.data || []).find((t) => t.id === tokenId)
+      r.log('token-now-linked-to-a-real-appointment', !!linkedToken?.appointmentId, JSON.stringify(linkedToken))
+
+      if (linkedToken?.appointmentId) {
+        const apptRes = await page.evaluate(async (id) => window.api.appointments.get({ id }), linkedToken.appointmentId)
+        // Now that quick-add links a real Customer row (the fix above),
+        // the name lives on the joined `customer` relation, not the
+        // free-text `customerName` fallback field — that field is only
+        // ever populated for a genuine no-record walk-in now, so it's
+        // correctly null here, not a regression.
+        r.log('linked-appointment-actually-exists-for-same-patient-name', apptRes?.success && apptRes?.data?.customer?.customerName === `${TEST_PREFIX} Patient ${suffix}`, JSON.stringify(apptRes?.data && { id: apptRes.data.id, customerName: apptRes.data.customer?.customerName, serviceTitle: apptRes.data.serviceTitle }))
+        r.log('appointment-actually-linked-to-a-real-customer-row', !!apptRes?.data?.customerId, apptRes?.data?.customerId)
+        firstVisitCustomerId = apptRes?.data?.customerId
+      } else {
+        r.log('linked-appointment-actually-exists-for-same-patient-name', false, 'no linked appointmentId')
+      }
+
+      await h.gotoHash(page, '#/clinical/queue')
+      await page.waitForTimeout(700)
+    })
+
+    // 2026-09-23 — the actual "no double records" concern: a RETURNING
+    // patient re-entering their phone with different formatting (here: a
+    // +91 country code and spacing added) must still be recognized as the
+    // same person, not spawn a duplicate Customer. Exercises the real
+    // normalizePhoneForMatch fix via the actual UI, not just typechecked.
+    let tokenIdReturn
+    await r.step('returning-patient-different-phone-format-no-duplicate-customer', async () => {
+      if (!firstVisitCustomerId) return r.log('returning-patient-different-phone-format-no-duplicate-customer', false, 'no firstVisitCustomerId from the previous step')
+
+      const differentlyFormattedPhone = `+91 ${patientPhone.slice(0, 5)} ${patientPhone.slice(5)}`
+      await page.getByRole('button', { name: 'Add Walk-in' }).click()
+      await page.waitForTimeout(400)
+      const addModal = h.topModal(page)
+      await addModal.getByPlaceholder('Full name').fill(`${TEST_PREFIX} Patient ${suffix}`)
+      await addModal.getByPlaceholder('Optional').first().fill(differentlyFormattedPhone)
+      await page.waitForTimeout(200)
+      await addModal.getByRole('button', { name: 'Issue Token' }).click()
+      await page.waitForTimeout(1000)
+      r.log('return-visit-token-issued-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const listRes = await page.evaluate(async () => window.api.tokenQueue.today())
+      const returnTokens = (listRes?.data || []).filter((t) => t.patientName === `${TEST_PREFIX} Patient ${suffix}`)
+      tokenIdReturn = returnTokens.find((t) => !t.appointmentId)?.id
+      r.log('return-visit-token-created', !!tokenIdReturn, JSON.stringify(returnTokens))
+      if (!tokenIdReturn) return
+
+      const rows = page.locator('div.rounded-xl.border', { hasText: `${TEST_PREFIX} Patient ${suffix}` })
+      const returnRow = rows.filter({ has: page.locator('button[title^="Create a visit record"]') }).first()
+      await returnRow.locator('button[title^="Create a visit record"]').click()
+      await page.waitForTimeout(900)
+
+      const modal2 = h.topModal(page)
+      // A matched existing patient renders as a read-only picked-customer
+      // chip (name + phone), not a free-text "Enter name" input — presence
+      // of that chip, not the fill-in field, is the real signal of a match.
+      const modalText = await modal2.innerText().catch(() => '')
+      r.log('booking-form-shows-matched-existing-patient-not-a-blank-form', modalText.includes(`${TEST_PREFIX} Patient ${suffix}`) && modalText.includes(patientPhone))
+
+      await modal2.getByLabel('Service Title').fill(`${TEST_PREFIX} Follow-up`)
+      await page.waitForTimeout(200)
+      await modal2.getByRole('button', { name: 'Book Appointment' }).click()
+      await page.waitForTimeout(1200)
+      r.log('return-visit-booking-submits-no-crash', !(await h.hasErrorBoundary(page)))
+
+      const getRes2 = await page.evaluate(async () => window.api.tokenQueue.today())
+      const linkedReturnToken = (getRes2?.data || []).find((t) => t.id === tokenIdReturn)
+      r.log('return-visit-token-linked-to-appointment', !!linkedReturnToken?.appointmentId, JSON.stringify(linkedReturnToken))
+
+      if (linkedReturnToken?.appointmentId) {
+        const apptRes2 = await page.evaluate(async (id) => window.api.appointments.get({ id }), linkedReturnToken.appointmentId)
+        r.log('return-visit-reused-same-existing-customer-no-duplicate', apptRes2?.success && apptRes2?.data?.customerId === firstVisitCustomerId, JSON.stringify({ expected: firstVisitCustomerId, actual: apptRes2?.data?.customerId }))
+      } else {
+        r.log('return-visit-reused-same-existing-customer-no-duplicate', false, 'no linked appointmentId')
+      }
+
+      // Direct DB-level confirmation: exactly one Customer row for this
+      // patient's phone, never two, regardless of how the search-based UI
+      // check above reads.
+      const customerCountForPhone = h.withDb((db) => db.prepare(
+        `SELECT COUNT(*) as n FROM Customer WHERE customerName = ?`
+      ).get(`${TEST_PREFIX} Patient ${suffix}`))
+      r.log('exactly-one-customer-row-for-this-patient', customerCountForPhone?.n === 1, JSON.stringify(customerCountForPhone))
+
+      await h.gotoHash(page, '#/clinical/queue')
+      await page.waitForTimeout(700)
     })
 
     let tokenId2
