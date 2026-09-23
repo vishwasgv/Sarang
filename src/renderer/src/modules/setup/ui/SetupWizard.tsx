@@ -248,7 +248,7 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
           <BrandIcon size={56} className="mx-auto mb-4" />
           <h1 className="text-2xl font-bold text-dark dark:text-slate-100">Sarang Business OS</h1>
           <p className="text-sm text-slate-500 dark:text-slate-400 mt-1 inline-flex items-center gap-1.5">
-            Free · Offline · Private · Powered by Aszurex <AszurexMark width={14} />
+            Offline · Private · Powered by Aszurex <AszurexMark width={14} />
           </p>
         </div>
 
