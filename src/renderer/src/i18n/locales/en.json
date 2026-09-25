@@ -6483,6 +6483,11 @@
       "paperThermal58": "Thermal 58mm"
     },
     "messageTemplates": {
+        "savedRefreshed_one": "Saved. {{count}} waiting reminder was updated to the new wording.",
+        "savedRefreshed_other": "Saved. {{count}} waiting reminders were updated to the new wording.",
+        "perLanguageNote": "Wording you save is kept for the reminder language chosen above. Choose another language to write its own wording.",
+        "signatureToggle": "End messages with \"Powered by Sarang\"",
+        "unknownTokens": "These placeholders will not be filled in: {{tokens}}",
       "title": "Message Templates",
       "subtitle": "Customize what your WhatsApp reminders say, across every business type.",
       "helpText": "Edit the wording below — each message lists its available placeholders underneath; they get replaced with real customer/order details when a reminder is sent. Sending stays manual, one click at a time, same as WhatsApp Reminders.",

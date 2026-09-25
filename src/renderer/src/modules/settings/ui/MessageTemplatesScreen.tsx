@@ -12,6 +12,14 @@ import { Select } from '@shared/ui/atoms/Select'
 import { cn } from '@shared/utils/cn'
 
 const REMINDER_LANGUAGE_SETTING_KEY = 'reminder_message_language'
+const SIGNATURE_SETTING_KEY = 'message_signature_enabled'
+
+// Placeholders the message can never fill in, so the owner sees the mistake while typing (the server checks again on save).
+function unknownTokens(body: string, allowed: string[]): string[] {
+  const bad = new Set<string>()
+  for (const m of body.matchAll(/\{\{\s*([A-Za-z0-9_]+)\s*\}\}/g)) if (!allowed.includes(m[1])) bad.add(m[1])
+  return [...bad]
+}
 
 interface TemplateRow {
   key: string
@@ -47,14 +55,17 @@ export function MessageTemplatesScreen() {
   const [previews, setPreviews] = useState<Record<string, string>>({})
   const [reminderLanguage, setReminderLanguageState] = useState('en')
   const [languageSaving, setLanguageSaving] = useState(false)
+  const [signatureOn, setSignatureOn] = useState(true)
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
-      const [listRes, langRes] = await Promise.all([
+      const [listRes, langRes, sigRes] = await Promise.all([
         api.messageTemplates.list(),
         api.settings.get(REMINDER_LANGUAGE_SETTING_KEY),
+        api.settings.get(SIGNATURE_SETTING_KEY),
       ])
+      setSignatureOn(!(sigRes.success && sigRes.data === 'false'))
       if (listRes.success) {
         const data = (listRes.data as TemplateRow[]) ?? []
         setTemplates(data)
@@ -87,6 +98,13 @@ export function MessageTemplatesScreen() {
     } finally {
       setLanguageSaving(false)
     }
+  }
+
+  async function handleSignatureChange(on: boolean) {
+    const res = await api.settings.set({ key: SIGNATURE_SETTING_KEY, value: on ? 'true' : 'false' })
+    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('settings.messageTemplates.saveFailed')); return }
+    setSignatureOn(on)
+    await load()
   }
 
   async function handleTogglePreview(key: string) {
@@ -127,7 +145,8 @@ export function MessageTemplatesScreen() {
     try {
       const res = await api.messageTemplates.update({ key, body })
       if (res.success) {
-        toastSuccess(t('settings.messageTemplates.savedTitle'), t('settings.messageTemplates.savedMessage'))
+        const refreshed = (res as { refreshed?: number }).refreshed ?? 0
+        toastSuccess(t('settings.messageTemplates.savedTitle'), refreshed > 0 ? t('settings.messageTemplates.savedRefreshed', { count: refreshed }) : t('settings.messageTemplates.savedMessage'))
         await load()
       } else {
         toastError(t('common.error'), res.error?.message ?? t('settings.messageTemplates.saveFailed'))
@@ -184,8 +203,15 @@ export function MessageTemplatesScreen() {
         )}
       </div>
 
-      <div className="px-6 py-3 bg-brand/5 border-b border-brand/20 shrink-0">
+      <div className="px-6 py-3 bg-brand/5 border-b border-brand/20 shrink-0 space-y-2">
         <p className="text-xs text-brand">{t('settings.messageTemplates.helpText')}</p>
+        <p className="text-xs text-brand">{t('settings.messageTemplates.perLanguageNote')}</p>
+        {canManage && (
+          <label className="flex items-center gap-2 text-xs text-brand cursor-pointer">
+            <input type="checkbox" checked={signatureOn} onChange={(e) => handleSignatureChange(e.target.checked)} className="w-4 h-4 accent-brand" />
+            {t('settings.messageTemplates.signatureToggle')}
+          </label>
+        )}
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-4">
@@ -226,6 +252,9 @@ export function MessageTemplatesScreen() {
                             rows={3}
                             className="w-full text-sm text-dark dark:text-slate-100 bg-slate-50 dark:bg-slate-800 rounded-lg px-3 py-2 border border-slate-200 dark:border-slate-700 focus:outline-none focus:border-brand disabled:opacity-60"
                           />
+                          {unknownTokens(drafts[tpl.key] ?? '', tpl.tokens).length > 0 && (
+                            <p className="text-xs text-danger mt-1">{t('settings.messageTemplates.unknownTokens', { tokens: unknownTokens(drafts[tpl.key] ?? '', tpl.tokens).map((x) => `{{${x}}}`).join(', ') })}</p>
+                          )}
                           <div className="flex items-center justify-between mt-2 gap-3">
                             <p className="text-[11px] text-slate-400 flex-1">
                               {t('settings.messageTemplates.tokensLabel')}: {tpl.tokens.map((tok) => (

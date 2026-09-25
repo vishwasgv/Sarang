@@ -59,11 +59,18 @@ export async function setSetting(key: string, value: string): Promise<ApiRespons
   }
   try {
     const db = getPrisma()
-    await db.setting.upsert({
+    const write = () => db.setting.upsert({
       where: { settingKey: key },
       create: { settingKey: key, settingValue: value },
       update: { settingValue: value }
     })
+    if (key === 'reminder_message_language' || key === 'message_signature_enabled') {
+      // Reminders already waiting in the queue are re-worded to match (message-template.service.ts).
+      const { withPendingRefresh } = await import('./message-template.service')
+      await withPendingRefresh(write)
+    } else {
+      await write()
+    }
     return { success: true }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }

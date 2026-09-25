@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { getSetting } from './settings.service'
 import { MESSAGE_TEMPLATE_DEFS, MESSAGE_TEMPLATE_DEFAULTS_BY_KEY, SAMPLE_TOKEN_VALUES } from './message-template.defaults'
+import { substitute, templateProblemMessage, rerenderMessage, stripSignature } from './message-tokens.util'
 
 // A dedicated BUSINESS-level setting, deliberately separate from each staff
 // member's own UI display language (src/renderer/src/i18n/index.ts's
@@ -37,31 +38,34 @@ function resolveLocalizedDefault(key: string, lang: string): string {
  * schema.prisma's MessageTemplate model for the sparse-override design.
  */
 
-// Same {{token}} split/join substitution already proven in
-// src/main/i18n/dashboardAlerts.ts — deliberately not a templating library
-// for a handful of plain substitutions. A {{token}} the caller doesn't
-// supply a value for is left as literal text in the output rather than
-// silently stripped or thrown on, so an owner who mistypes a token in the
-// editor sees their own mistake in the resulting message instead of a
-// vanished word.
-function substitute(template: string, params: Record<string, string>): string {
-  let out = template
-  for (const [k, v] of Object.entries(params)) {
-    out = out.split(`{{${k}}}`).join(v)
+// Owners may switch off the closing "Powered by Sarang" line. On by default.
+export const SIGNATURE_SETTING_KEY = 'message_signature_enabled'
+
+async function signatureEnabled(): Promise<boolean> {
+  try {
+    const res = await getSetting(SIGNATURE_SETTING_KEY)
+    return !(res.success && res.data === 'false')
+  } catch {
+    return true
   }
-  return out
 }
 
-/** The current effective body for one template key — a DB override if the owner customized it, else the built-in default in the business's chosen reminder-message language (English if never set). */
+/** Stored override keys are "KEY" (any language) or "KEY@hi" (one language); the language-specific one wins. */
+export function overrideKeysFor(key: string, lang: string): string[] {
+  return lang === 'en' ? [key] : [`${key}@${lang}`, key]
+}
+
+/** The current effective body for one template key: the owner's wording for the reminder language, else their wording for any language, else the built-in default in that language (English if never set). */
 export async function getEffectiveTemplateBody(key: string): Promise<string> {
   const def = MESSAGE_TEMPLATE_DEFAULTS_BY_KEY[key]
   const englishFallback = def?.defaultBody ?? ''
   try {
     const db = getPrisma()
-    const row = await db.messageTemplate.findUnique({ where: { templateKey: key } })
-    if (row) return row.body
     const lang = await getReminderMessageLanguage()
-    return resolveLocalizedDefault(key, lang) || englishFallback
+    const rows = await db.messageTemplate.findMany({ where: { templateKey: { in: overrideKeysFor(key, lang) } } })
+    const row = overrideKeysFor(key, lang).map((k) => rows.find((r) => r.templateKey === k)).find(Boolean)
+    const body = row ? row.body : (resolveLocalizedDefault(key, lang) || englishFallback)
+    return (await signatureEnabled()) ? body : stripSignature(body)
   } catch {
     return englishFallback
   }
@@ -93,14 +97,16 @@ export async function listMessageTemplates(): Promise<{ success: true; data: Mes
   try {
     const db = getPrisma()
     const lang = await getReminderMessageLanguage()
+    const withSignature = await signatureEnabled()
+    const shown = (text: string) => (withSignature ? text : stripSignature(text))
     const overrides = await db.messageTemplate.findMany()
     const overrideByKey = new Map(overrides.map((o) => [o.templateKey, o.body]))
     const data: MessageTemplateListItem[] = MESSAGE_TEMPLATE_DEFS.map((def) => {
-      const override = overrideByKey.get(def.key)
-      const localizedDefault = resolveLocalizedDefault(def.key, lang)
+      const override = overrideKeysFor(def.key, lang).map((k) => overrideByKey.get(k)).find((b) => b !== undefined)
+      const localizedDefault = shown(resolveLocalizedDefault(def.key, lang))
       return {
         key: def.key, vertical: def.vertical, label: def.label, tokens: def.tokens, sendable: def.sendable,
-        defaultBody: localizedDefault, currentBody: override ?? localizedDefault, isCustomized: override !== undefined,
+        defaultBody: localizedDefault, currentBody: override !== undefined ? shown(override) : localizedDefault, isCustomized: override !== undefined,
       }
     })
     return { success: true, data }
@@ -109,32 +115,71 @@ export async function listMessageTemplates(): Promise<{ success: true; data: Mes
   }
 }
 
-export async function updateMessageTemplate(key: string, body: string): Promise<{ success: true } | { success: false; error: { code: string; message: string } }> {
-  if (!MESSAGE_TEMPLATE_DEFAULTS_BY_KEY[key]) {
+/**
+ * Runs a change to templates or template settings, then brings every reminder still waiting in the queue up to date
+ * so it reads the way the new wording says. Reminders whose text can no longer be matched to their template are left as they were.
+ */
+export async function withPendingRefresh<T>(change: () => Promise<T>): Promise<{ result: T; refreshed: number; untouched: number }> {
+  const db = getPrisma()
+  const pending = await db.notificationQueue.findMany({ where: { status: 'PENDING' }, select: { id: true, notificationType: true, templateBody: true, customerPhone: true } })
+  const keys = [...new Set(pending.map((r) => r.notificationType).filter((k) => MESSAGE_TEMPLATE_DEFAULTS_BY_KEY[k]))]
+  const before = new Map<string, string>()
+  for (const k of keys) before.set(k, await getEffectiveTemplateBody(k))
+  const result = await change()
+  let refreshed = 0
+  let untouched = 0
+  const { buildReminderWhatsAppLink } = await import('./notification-queue.service')
+  for (const row of pending) {
+    const oldBody = before.get(row.notificationType)
+    if (oldBody === undefined) continue
+    const newBody = await getEffectiveTemplateBody(row.notificationType)
+    if (newBody === oldBody) continue
+    const text = rerenderMessage(oldBody, newBody, row.templateBody)
+    if (text === null) { untouched++; continue }
+    const link = row.customerPhone ? await buildReminderWhatsAppLink(row.customerPhone, text) : null
+    await db.notificationQueue.update({ where: { id: row.id }, data: { templateBody: text, ...(link ? { whatsappLink: link } : {}) } })
+    refreshed++
+  }
+  return { result, refreshed, untouched }
+}
+
+type Outcome = { success: true; refreshed?: number; untouched?: number } | { success: false; error: { code: string; message: string } }
+
+export async function updateMessageTemplate(key: string, body: string): Promise<Outcome> {
+  const def = MESSAGE_TEMPLATE_DEFAULTS_BY_KEY[key]
+  if (!def) {
     return { success: false, error: { code: 'MSGTPL-002', message: 'Unknown template key.' } }
   }
   const trimmed = body.trim()
   if (!trimmed) {
     return { success: false, error: { code: 'MSGTPL-003', message: 'The message cannot be empty.' } }
   }
+  const problem = templateProblemMessage(trimmed, def.tokens)
+  if (problem) return { success: false, error: { code: 'MSGTPL-007', message: problem } }
   try {
     const db = getPrisma()
-    await db.messageTemplate.upsert({
-      where: { templateKey: key },
-      create: { templateKey: key, body: trimmed },
+    const lang = await getReminderMessageLanguage()
+    const storeKey = overrideKeysFor(key, lang)[0]
+    const { refreshed, untouched } = await withPendingRefresh(() => db.messageTemplate.upsert({
+      where: { templateKey: storeKey },
+      create: { templateKey: storeKey, body: trimmed },
       update: { body: trimmed },
-    })
-    return { success: true }
+    }))
+    return { success: true, refreshed, untouched }
   } catch (err) {
     return { success: false, error: { code: 'MSGTPL-004', message: err instanceof Error ? err.message : 'Could not save the template.' } }
   }
 }
 
-export async function resetMessageTemplate(key: string): Promise<{ success: true } | { success: false; error: { code: string; message: string } }> {
+export async function resetMessageTemplate(key: string): Promise<Outcome> {
   try {
     const db = getPrisma()
-    await db.messageTemplate.deleteMany({ where: { templateKey: key } })
-    return { success: true }
+    const lang = await getReminderMessageLanguage()
+    // Removes the wording that is in effect right now: the language-specific one if there is one, else the any-language one.
+    const existing = await db.messageTemplate.findMany({ where: { templateKey: { in: overrideKeysFor(key, lang) } }, select: { templateKey: true } })
+    const storeKey = overrideKeysFor(key, lang).find((k) => existing.some((e) => e.templateKey === k)) ?? key
+    const { refreshed, untouched } = await withPendingRefresh(() => db.messageTemplate.deleteMany({ where: { templateKey: storeKey } }))
+    return { success: true, refreshed, untouched }
   } catch (err) {
     return { success: false, error: { code: 'MSGTPL-005', message: err instanceof Error ? err.message : 'Could not reset the template.' } }
   }

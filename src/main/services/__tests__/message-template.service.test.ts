@@ -19,6 +19,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
       upsert: vi.fn().mockResolvedValue({}),
       deleteMany: vi.fn().mockResolvedValue({ count: 1 }),
     },
+    notificationQueue: { findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) },
     ...overrides,
   } as Record<string, any>
   return db
@@ -57,7 +58,7 @@ describe('getEffectiveTemplateBody / renderMessageTemplate', () => {
 
   it('uses the DB override body when the owner has customized it', async () => {
     const db = makeDb({
-      messageTemplate: { findUnique: vi.fn().mockResolvedValue({ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'Custom: {{customerName}} expires {{expiryDate}}' }) },
+      messageTemplate: { findMany: vi.fn().mockResolvedValue([{ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'Custom: {{customerName}} expires {{expiryDate}}' }]) },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -76,7 +77,7 @@ describe('getEffectiveTemplateBody / renderMessageTemplate', () => {
   })
 
   it('falls back to the built-in default if the DB lookup itself throws (e.g. pre-migration DB)', async () => {
-    const db = makeDb({ messageTemplate: { findUnique: vi.fn().mockRejectedValue(new Error('no such table')) } })
+    const db = makeDb({ messageTemplate: { findMany: vi.fn().mockRejectedValue(new Error('no such table')) } })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const body = await getEffectiveTemplateBody('MEMBERSHIP_EXPIRY_7D')
@@ -111,7 +112,7 @@ describe('getEffectiveTemplateBody / renderMessageTemplate', () => {
 
   it('a DB override always wins regardless of the reminder-message-language setting', async () => {
     const db = makeDb({
-      messageTemplate: { findUnique: vi.fn().mockResolvedValue({ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'Owner override' }) },
+      messageTemplate: { findMany: vi.fn().mockResolvedValue([{ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'Owner override' }]) },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(getSetting).mockResolvedValue({ success: true, data: 'hi' })
@@ -133,7 +134,7 @@ describe('getEffectiveTemplateBody / renderMessageTemplate', () => {
 
   it('applies a customized template body when rendering, not the default', async () => {
     const db = makeDb({
-      messageTemplate: { findUnique: vi.fn().mockResolvedValue({ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'Hi {{customerName}}! Renew by {{expiryDate}}.' }) },
+      messageTemplate: { findMany: vi.fn().mockResolvedValue([{ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'Hi {{customerName}}! Renew by {{expiryDate}}.' }]) },
     })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -245,5 +246,60 @@ describe('previewMessageTemplate', () => {
   it('never touches the DB — pure synchronous rendering', () => {
     // No getPrisma mock configured/returned here at all; a DB call would throw.
     expect(() => previewMessageTemplate('Hi {{customerName}}')).not.toThrow()
+  })
+})
+
+describe('per-language wording, signature switch and queued reminders', () => {
+  it('a language-specific override beats the any-language one', async () => {
+    const db = makeDb({
+      messageTemplate: { findMany: vi.fn().mockResolvedValue([
+        { templateKey: 'MEMBERSHIP_EXPIRY_7D', body: 'English wording' },
+        { templateKey: 'MEMBERSHIP_EXPIRY_7D@hi', body: 'Hindi wording' }
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getSetting).mockImplementation(async (k: string) => ({ success: true, data: k === 'reminder_message_language' ? 'hi' : null }) as never)
+    expect(await getEffectiveTemplateBody('MEMBERSHIP_EXPIRY_7D')).toBe('Hindi wording')
+  })
+
+  it('saving while a language other than English is chosen writes that language only', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getSetting).mockImplementation(async (k: string) => ({ success: true, data: k === 'reminder_message_language' ? 'hi' : null }) as never)
+    await updateMessageTemplate('MEMBERSHIP_EXPIRY_7D', 'नमस्ते {{customerName}}')
+    expect(db.messageTemplate.upsert.mock.calls[0][0].where.templateKey).toBe('MEMBERSHIP_EXPIRY_7D@hi')
+  })
+
+  it('rejects a placeholder the message cannot fill in', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await updateMessageTemplate('MEMBERSHIP_EXPIRY_7D', 'Hi {{nmae}}')
+    expect(res.success).toBe(false)
+    expect(db.messageTemplate.upsert).not.toHaveBeenCalled()
+  })
+
+  it('the signature can be switched off', async () => {
+    const db = makeDb()
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getSetting).mockImplementation(async (k: string) => ({ success: true, data: k === 'message_signature_enabled' ? 'false' : null }) as never)
+    expect(await getEffectiveTemplateBody('MEMBERSHIP_EXPIRY_7D')).not.toMatch(/Powered by Sarang/)
+  })
+
+  it('re-words a waiting reminder when its template is edited', async () => {
+    const def = MESSAGE_TEMPLATE_DEFS.find((d) => d.key === 'MEMBERSHIP_EXPIRY_7D')!
+    const oldText = def.defaultBody.split('{{customerName}}').join('Asha').split('{{expiryDate}}').join('1 Oct')
+    const db = makeDb({
+      notificationQueue: {
+        findMany: vi.fn().mockResolvedValue([{ id: 'n1', notificationType: 'MEMBERSHIP_EXPIRY_7D', templateBody: oldText, customerPhone: null }]),
+        update: vi.fn().mockResolvedValue({})
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    let stored: string | null = null
+    db.messageTemplate.findMany = vi.fn(async () => (stored === null ? [] : [{ templateKey: 'MEMBERSHIP_EXPIRY_7D', body: stored }]))
+    db.messageTemplate.upsert = vi.fn(async (a: { create: { body: string } }) => { stored = a.create.body; return {} })
+    const res = await updateMessageTemplate('MEMBERSHIP_EXPIRY_7D', 'Hi {{customerName}}, renew by {{expiryDate}}.')
+    expect(res.success).toBe(true)
+    expect(db.notificationQueue.update.mock.calls[0][0].data.templateBody).toBe('Hi Asha, renew by 1 Oct.')
   })
 })
