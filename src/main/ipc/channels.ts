@@ -357,6 +357,10 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  duplicates: {
+    find: (payload: { kind: 'Customer' | 'Supplier' }) => Promise<ApiResponse>
+    merge: (payload: { kind: 'Customer' | 'Supplier'; keepId: string; removeId: string }) => Promise<ApiResponse>
+  }
   branchSummaries: {
     export: (payload: { branchName?: string; dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     import: () => Promise<ApiResponse>

@@ -134,9 +134,12 @@ export function SuppliersScreen() {
           </div>
         </div>
         {canCreate && (
+          <div className="flex items-center gap-2">
+          <Button size="sm" variant="outline" onClick={() => navigate('/duplicates/suppliers')}>{t('duplicates.find')}</Button>
           <Button size="sm" onClick={() => { setEditSupplier(null); setFormOpen(true) }}>
             <Plus size={14} className="me-1.5" /> {t('suppliers.addSupplier')}
           </Button>
+          </div>
         )}
       </div>
 

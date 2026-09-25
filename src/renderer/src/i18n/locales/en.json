@@ -2530,6 +2530,20 @@
     "fileSaved": "E-way bill file saved",
     "couldNotPrepare": "Could not prepare the e-way bill file."
   },
+  "duplicates": {
+    "find": "Find duplicates",
+    "titleCustomers": "Duplicate customers",
+    "titleSuppliers": "Duplicate suppliers",
+    "subtitle": "Records that look like the same person or business. Choose the one to keep and merge the others into it.",
+    "none": "No duplicates found.",
+    "reason": { "PHONE": "Same phone number", "TAX_NUMBER": "Same tax number", "EMAIL": "Same email", "NAME": "Same name in the same city" },
+    "keepThis": "Keep this one",
+    "merge": "Merge into the chosen record",
+    "merged": "Merged",
+    "failed": "Could not merge.",
+    "confirmTitle": "Merge these records?",
+    "confirmText": "Everything recorded against the other records (bills, payments, history) moves to {{name}}, and the others are archived. This cannot be undone."
+  },
   "reports": {
     "title": "Reports",
     "selectReport": "Select a report",

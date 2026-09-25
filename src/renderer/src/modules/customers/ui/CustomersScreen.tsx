@@ -141,9 +141,12 @@ export function CustomersScreen() {
           </div>
         </div>
         {canCreate && (
+          <div className="flex items-center gap-2">
+          <Button size="md" variant="outline" onClick={() => navigate('/duplicates/customers')}>{t('duplicates.find')}</Button>
           <Button size="md" onClick={() => { setEditCustomer(null); setFormOpen(true) }}>
             <Plus size={16} className="me-1.5" /> {isDoctorVertical ? addPatientLabel : t('customers.addCustomer')}
           </Button>
+          </div>
         )}
       </div>
 

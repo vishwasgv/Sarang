@@ -1,3 +1,4 @@
+import { checkCustomerUniqueness, validateCustomerFormats, normaliseCustomerIdentifiers } from './customer-checks'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
@@ -147,6 +148,12 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
   try {
     const db = getPrisma()
 
+    normaliseCustomerIdentifiers(payload)
+    const formatError = await validateCustomerFormats(payload)
+    if (formatError) return formatError
+    const duplicate = await checkCustomerUniqueness(payload)
+    if (duplicate) return duplicate
+
     // C001: Phone unique when provided
     if (payload.phone) {
       const phoneExists = await db.customer.findFirst({ where: { phone: payload.phone, isActive: true } })
@@ -222,6 +229,12 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
     const db = getPrisma()
     const existing = await db.customer.findUnique({ where: { id: payload.id } })
     if (!existing) return { success: false, error: { code: 'CUS-001', message: 'Customer not found.' } }
+
+    normaliseCustomerIdentifiers(payload)
+    const formatError = await validateCustomerFormats(payload)
+    if (formatError) return formatError
+    const duplicate = await checkCustomerUniqueness(payload, payload.id)
+    if (duplicate) return duplicate
 
     // C001: Phone unique (exclude self)
     if (payload.phone && payload.phone !== existing.phone) {

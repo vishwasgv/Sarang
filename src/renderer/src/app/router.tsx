@@ -43,6 +43,7 @@ import { BankDepositScreen } from '@modules/accounting/ui/BankDepositScreen'
 import { GstPaymentScreen } from '@modules/accounting/ui/GstPaymentScreen'
 import { GstReturnsScreen } from '@modules/accounting/ui/GstReturnsScreen'
 import { BranchSummariesScreen } from '@modules/accounting/ui/BranchSummariesScreen'
+import { DuplicatesScreen } from '@modules/customers/ui/DuplicatesScreen'
 import { FixedAssetsScreen } from '@modules/accounting/ui/FixedAssetsScreen'
 import { FixedAssetDetailScreen } from '@modules/accounting/ui/FixedAssetDetailScreen'
 import { LedgerSettingsScreen } from '@modules/accounting/ui/LedgerSettingsScreen'
@@ -345,6 +346,7 @@ export function AppRouter() {
         <Route path="/accounting/bank-accounts/:id" element={<ProtectedRoute permission="bankReconciliation.view"><BankReconciliationScreen /></ProtectedRoute>} />
         <Route path="/accounting/post-dated-cheques" element={<ProtectedRoute permission="postDatedCheques.view"><PostDatedChequesScreen /></ProtectedRoute>} />
         <Route path="/accounting/branch-summaries" element={<ProtectedRoute permission="analytics.viewProfit"><BranchSummariesScreen /></ProtectedRoute>} />
+        <Route path="/duplicates/:kind" element={<ProtectedRoute permission="customers.update"><DuplicatesScreen /></ProtectedRoute>} />
         <Route path="/accounting/gst-returns" element={<ProtectedRoute permission="reports.tax"><GstReturnsScreen /></ProtectedRoute>} />
         <Route path="/accounting/gst-payments" element={<ProtectedRoute permission="journalEntries.view"><GstPaymentScreen /></ProtectedRoute>} />
         <Route path="/accounting/bank-deposits" element={<ProtectedRoute permission="bankAccounts.view"><BankDepositScreen /></ProtectedRoute>} />
