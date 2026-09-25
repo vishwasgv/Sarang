@@ -5529,6 +5529,13 @@
       "saveFailed": "Failed to save.",
       "updated": "Business profile updated."
     },
+    "stockRules": {
+      "title": "Stock rules",
+      "allowNegative": "Allow selling more than the stock on hand",
+      "allowNegativeHelp": "Turn this on if you sell before you record the purchase. Stock can then go below zero until the purchase is entered.",
+      "saved": "Stock rules saved",
+      "saveFailed": "Could not save the stock rules."
+    },
     "tax": {
       "loadFailed": "Failed to load tax rates.",
       "olderRates": "Older rates (before 22 Sep 2025)",
