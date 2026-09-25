@@ -1,4 +1,5 @@
 import { EInvoiceCard } from './EInvoiceCard'
+import { EwayBillCard } from './EwayBillCard'
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCrossed, Scissors, Truck } from 'lucide-react'
@@ -707,6 +708,8 @@ export function InvoiceDetailScreen() {
       {invoice.customer?.taxNumber && invoice.status !== 'CANCELLED' && (
         <EInvoiceCard invoice={invoice} onChanged={loadInvoice} />
       )}
+
+      {invoice.status !== 'CANCELLED' && invoice.invoiceType !== 'RETURN' && <EwayBillCard invoiceId={invoice.id} />}
 
       {/* Attached documents */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 p-5">

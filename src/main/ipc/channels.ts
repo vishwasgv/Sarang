@@ -361,6 +361,7 @@ export interface IpcChannels {
     exportJson: (payload: { invoiceId: string }) => Promise<ApiResponse>
     saveIrn: (payload: { invoiceId: string; irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) => Promise<ApiResponse>
     clearIrn: (payload: { invoiceId: string }) => Promise<ApiResponse>
+    exportEwayBill: (payload: { invoiceId: string; mode: string; vehicleNumber?: string; transporterId?: string; transporterName?: string; transportDocNo?: string; transportDocDate?: string; distanceKm?: number }) => Promise<ApiResponse>
   }
   gstReturns: {
     exportGstr1: (payload: { month: string }) => Promise<ApiResponse>

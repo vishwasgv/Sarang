@@ -283,7 +283,8 @@ const api: IpcChannels = {
   einvoice: {
     exportJson: (p) => invoke('einvoice:exportJson', p),
     saveIrn: (p) => invoke('einvoice:saveIrn', p),
-    clearIrn: (p) => invoke('einvoice:clearIrn', p)
+    clearIrn: (p) => invoke('einvoice:clearIrn', p),
+    exportEwayBill: (p) => invoke('einvoice:exportEwayBill', p)
   },
   gstReturns: {
     exportGstr1: (p) => invoke('gstReturns:exportGstr1', p),

@@ -91,3 +91,20 @@ describe('einvoiceService.register', () => {
     expect(r.rows[1]).toMatchObject({ kind: 'CREDIT_NOTE', irn: '' })
   })
 })
+
+describe('einvoiceService.exportEwayBill', () => {
+  it('needs a vehicle or transporter, then writes the portal file', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      invoice: { findUnique: vi.fn().mockResolvedValue(fullInvoice()) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue(profile) }
+    } as never)
+    const missing = await einvoiceService.exportEwayBill('inv-1', { mode: 'ROAD' })
+    expect(missing).toMatchObject({ success: false, error: { code: 'EWB-001' } })
+
+    vi.mocked(dialog.showSaveDialog).mockResolvedValue({ canceled: false, filePath: 'C:/x/EWB_INV-1.json' } as never)
+    const ok = await einvoiceService.exportEwayBill('inv-1', { mode: 'ROAD', vehicleNumber: 'MH12AB1234' })
+    expect(ok).toMatchObject({ success: true, data: { saved: true } })
+    const body = JSON.parse(vi.mocked(writeFile).mock.calls.at(-1)![1] as string)
+    expect(body.billLists[0]).toMatchObject({ docNo: 'INV-1', vehicleNo: 'MH12AB1234' })
+  })
+})

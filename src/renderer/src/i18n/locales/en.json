@@ -2490,6 +2490,19 @@
     "couldNotPrepare": "Could not prepare the e-invoice file.",
     "couldNotSave": "Could not save the IRN."
   },
+  "ewayBill": {
+    "title": "E-way bill",
+    "help": "Prepare the file to generate an e-way bill on the e-way bill portal. Add the vehicle number or the transporter ID.",
+    "mode": "Mode of transport",
+    "modes": { "ROAD": "Road", "RAIL": "Rail", "AIR": "Air", "SHIP": "Ship" },
+    "vehicle": "Vehicle number",
+    "transporterId": "Transporter ID (GSTIN)",
+    "transporterName": "Transporter name",
+    "distance": "Distance in km (0 lets the portal work it out)",
+    "download": "Download e-way bill file",
+    "fileSaved": "E-way bill file saved",
+    "couldNotPrepare": "Could not prepare the e-way bill file."
+  },
   "reports": {
     "title": "Reports",
     "selectReport": "Select a report",

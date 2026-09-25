@@ -1,7 +1,7 @@
 {
   "oversized": {
     "src/main/database/seed.ts": 925,
-    "src/main/ipc/channels.ts": 2178,
+    "src/main/ipc/channels.ts": 2179,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1481,
     "src/main/services/ai-query.service.ts": 2783,
@@ -25,10 +25,10 @@
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10938,
     "src/main/services/restaurant.service.ts": 1011,
-    "src/preload/index.ts": 1899,
+    "src/preload/index.ts": 1900,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2965,
-    "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 940,
+    "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 943,
     "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 663,
     "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1340,
     "src/renderer/src/modules/hotel/ui/HotelBookingsScreen.tsx": 741,

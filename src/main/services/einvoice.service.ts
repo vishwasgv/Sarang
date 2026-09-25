@@ -5,6 +5,7 @@ import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 import { logAction } from './audit.service'
 import { saveJsonFile } from './gst-returns.service'
 import { buildEInvoiceJson, einvoiceProblems, type EInvoiceSource } from './einvoice-json.util'
+import { buildEwayBillJson, ewayProblems, type EwayTransport } from './ewaybill-json.util'
 
 // E-invoice file for one invoice (to upload on the e-invoice portal) and the register of IRNs the owner
 // pastes back after the portal returns them. Nothing here talks to the government.
@@ -65,6 +66,21 @@ export const einvoiceService = {
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Could not prepare the e-invoice file.' } }
+    }
+  },
+
+  async exportEwayBill(invoiceId: string, transport: EwayTransport) {
+    try {
+      const source = await loadEInvoiceSource(invoiceId)
+      const problems = ewayProblems(source, transport)
+      if (problems.length > 0) {
+        return { success: false, error: { code: 'EWB-001', message: `Before the e-way bill file can be made, add: ${problems.join('; ')}.`, details: problems } }
+      }
+      const safeName = source.invoiceNumber.replace(/[^A-Za-z0-9_-]+/g, '_')
+      return { success: true, data: await saveJsonFile(`EWB_${safeName}.json`, buildEwayBillJson(source, transport)) }
+    } catch (err) {
+      if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
+      return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Could not prepare the e-way bill file.' } }
     }
   },
 
