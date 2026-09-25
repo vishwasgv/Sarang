@@ -47,6 +47,7 @@ import { register as registerDuplicates } from './handlers/duplicates.handler'
 import { register as registerHubs } from './handlers/hub.handler'
 import { register as registerStockTakes } from './handlers/stock-take.handler'
 import { register as registerBins } from './handlers/bin-location.handler'
+import { register as registerBankRules } from './handlers/bank-rule.handler'
 import { register as registerStockJournals } from './handlers/stock-journal.handler'
 import { register as registerChequeBooks } from './handlers/cheque-book.handler'
 import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
@@ -266,6 +267,7 @@ export function registerAllIpcHandlers(): void {
   registerHubs(h)
   registerStockTakes(h)
   registerBins(h)
+  registerBankRules(h)
   registerStockJournals(h)
   registerChequeBooks(h)
   registerFixedAssets(h)

@@ -2,8 +2,10 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
+vi.mock('../journal-entry.service', () => ({ reverseEntryBySourceTx: vi.fn().mockResolvedValue(undefined) }))
 
 import { getPrisma } from '../../database/db'
+import { reverseEntryBySourceTx } from '../journal-entry.service'
 import { bankStatementService } from '../bank-statement.service'
 
 function makeDb(overrides: Record<string, unknown> = {}) {
@@ -164,6 +166,7 @@ describe('bankStatementService.reconcileLine / unreconcileLine', () => {
 
   it('unreconcileLine clears the match', async () => {
     const db = makeDb({ bankStatementLine: { findUnique: vi.fn().mockResolvedValue({ id: 'line-1' }), update: vi.fn().mockResolvedValue({}) } })
+    db.$transaction = vi.fn(async (cb: (t: unknown) => unknown) => cb(db))
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await bankStatementService.unreconcileLine('line-1')
@@ -173,6 +176,16 @@ describe('bankStatementService.reconcileLine / unreconcileLine', () => {
       where: { id: 'line-1' },
       data: expect.objectContaining({ reconciled: false, matchedType: null, matchedId: null })
     })
+    expect(reverseEntryBySourceTx).not.toHaveBeenCalled()
+  })
+
+  it('undoing a line posted by a bank rule also reverses that journal entry', async () => {
+    const db = makeDb({ bankStatementLine: { findUnique: vi.fn().mockResolvedValue({ id: 'line-1', matchedType: 'JOURNAL_ENTRY' }), update: vi.fn().mockResolvedValue({}) } })
+    db.$transaction = vi.fn(async (cb: (t: unknown) => unknown) => cb(db))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await bankStatementService.unreconcileLine('line-1', 'u1')
+    expect(res.success).toBe(true)
+    expect(reverseEntryBySourceTx).toHaveBeenCalledWith(db, 'BANK_RULE', 'line-1', expect.any(String), 'u1')
   })
 })
 

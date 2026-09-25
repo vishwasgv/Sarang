@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { randomUUID } from 'crypto'
 import { logAction } from './audit.service'
+import { reverseEntryBySourceTx } from './journal-entry.service'
 import { parseLocalDateStart } from '../utils/date.util'
 import { roundCurrency, moneyEpsilon } from './currency.service'
 import { getBusinessCurrencyDecimals } from './settings.service'
@@ -153,9 +154,12 @@ export const bankStatementService = {
     try {
       const line = await db.bankStatementLine.findUnique({ where: { id: lineId } })
       if (!line) return { success: false, error: { code: 'BANK-002', message: 'Statement line not found.' } }
-      const updated = await db.bankStatementLine.update({
-        where: { id: lineId },
-        data: { reconciled: false, reconciledAt: null, matchedType: null, matchedId: null }
+      const updated = await db.$transaction(async (tx) => {
+        if (line.matchedType === 'JOURNAL_ENTRY') await reverseEntryBySourceTx(tx, 'BANK_RULE', lineId, 'Bank rule posting undone', userId)
+        return tx.bankStatementLine.update({
+          where: { id: lineId },
+          data: { reconciled: false, reconciledAt: null, matchedType: null, matchedId: null }
+        })
       })
       await logAction({ userId, action: 'BANK_STATEMENT_LINE_UNRECONCILED', entityType: 'BankStatementLine', entityId: lineId })
       return { success: true, data: updated }

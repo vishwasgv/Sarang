@@ -362,6 +362,14 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     create: (payload: { notes?: string; lines: Array<{ kind: 'OUT' | 'IN'; productId: string; quantity: number }> }) => Promise<ApiResponse>
   }
+  bankRules: {
+    list: () => Promise<ApiResponse>
+    create: (payload: { name: string; bankAccountId?: string | null; direction: 'DEBIT' | 'CREDIT' | 'ANY'; contains: string; minAmount?: number | null; maxAmount?: number | null; accountId: string; priority?: number }) => Promise<ApiResponse>
+    update: (payload: { id: string; name: string; bankAccountId?: string | null; direction: 'DEBIT' | 'CREDIT' | 'ANY'; contains: string; minAmount?: number | null; maxAmount?: number | null; accountId: string; priority?: number; isActive?: boolean }) => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
+    suggestions: (payload: { bankAccountId: string }) => Promise<ApiResponse>
+    apply: (payload: { lineId: string; ruleId: string }) => Promise<ApiResponse>
+  }
   bins: {
     list: (payload: { locationId: string; search?: string }) => Promise<ApiResponse>
     set: (payload: { productId: string; locationId: string; binCode: string }) => Promise<ApiResponse>

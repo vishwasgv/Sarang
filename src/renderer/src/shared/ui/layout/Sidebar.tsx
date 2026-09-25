@@ -18,7 +18,7 @@ import {
   Scissors, Bug, UsersRound,
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat, Tent,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
-  BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank, Cake, Bus,
+  BookText, Wallet, Wand2, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank, Cake, Bus,
   MessageSquareText, ChevronDown,
   type LucideIcon
 } from 'lucide-react'
@@ -268,6 +268,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Chart of Accounts', path: '/accounting/chart-of-accounts', icon: Landmark, permissionKey: 'chartOfAccounts.view' },
   { label: 'Journal Entries', path: '/accounting/journal-entries', icon: BookText, permissionKey: 'journalEntries.view' },
   { label: 'Bank Accounts', path: '/accounting/bank-accounts', icon: Wallet, permissionKey: 'bankAccounts.view' },
+  { label: 'Bank Rules', path: '/accounting/bank-rules', icon: Wand2, permissionKey: 'bankReconciliation.view' },
   { label: 'Post-Dated Cheques', path: '/accounting/post-dated-cheques', icon: Receipt, permissionKey: 'postDatedCheques.view' },
   // 2026-09-02 — Bank Deposit Slips.
   { label: 'Bank Deposits', path: '/accounting/bank-deposits', icon: PiggyBank, permissionKey: 'bankAccounts.view' },
@@ -334,7 +335,7 @@ const PATH_GROUP: Record<string, NavGroupId> = {
   '/products': 'inventory', '/inventory': 'inventory', '/inventory/stock-takes': 'inventory', '/inventory/bins': 'inventory', '/inventory/journal': 'inventory', '/locations': 'inventory',
   '/products/print-labels': 'inventory', '/pharmacy/batches': 'inventory', '/electronics/serials': 'inventory',
   '/expenses': 'accounting', '/cash-close': 'accounting', '/accounting/chart-of-accounts': 'accounting',
-  '/accounting/journal-entries': 'accounting', '/accounting/bank-accounts': 'accounting',
+  '/accounting/journal-entries': 'accounting', '/accounting/bank-accounts': 'accounting', '/accounting/bank-rules': 'accounting',
   '/accounting/post-dated-cheques': 'accounting', '/accounting/bank-deposits': 'accounting', '/accounting/gst-payments': 'accounting', '/accounting/gst-returns': 'accounting', '/accounting/branch-summaries': 'accounting',
   '/accounting/fixed-assets': 'accounting', '/accounting/ledger-settings': 'accounting',
   '/cost-centres': 'accounting', '/budgets': 'accounting', '/recurring-profiles': 'accounting',

@@ -901,6 +901,24 @@ model StockJournalLine {
   @@index([productId])
 }
 
+// Says which account a bank statement line belongs to, by its words, direction and amount. Plain ids, no relations.
+model BankRule {
+  id            String   @id @default(cuid())
+  name          String
+  bankAccountId String? // null = every bank account
+  direction     String   @default("ANY") // DEBIT (money out) | CREDIT (money in) | ANY
+  contains      String   @default("")
+  minAmount     Float?
+  maxAmount     Float?
+  accountId     String
+  priority      Int      @default(100)
+  isActive      Boolean  @default(true)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([isActive, priority])
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CUSTOMERS
 // ─────────────────────────────────────────────────────────────────────────────
