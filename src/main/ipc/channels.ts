@@ -437,6 +437,7 @@ export interface IpcChannels {
     generalLedger: (payload: { accountId: string; dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     dayBook: (payload: { dateFrom: string; dateTo: string; voucherType?: string }) => Promise<ApiResponse>
     cashFlowStatement: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    gstNetPayable: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>

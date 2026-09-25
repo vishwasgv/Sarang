@@ -8,7 +8,7 @@ import { fileURLToPath } from 'url'
 // stays fast and never renders the very large ReportsScreen file.
 
 const read = (rel: string) => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8')
-const SOURCES = [read('../ReportsScreen.tsx'), read('../FinancialStatementViews.tsx')]
+const SOURCES = [read('../ReportsScreen.tsx'), read('../FinancialStatementViews.tsx'), read('../GstReportViews.tsx')]
 
 // Components that draw a Recharts chart directly.
 const RECHARTS_MARKERS = ['ResponsiveContainer', 'BreakdownChart', 'SeriesBarChart', 'SeriesLineChart', 'DonutChart', 'FunnelBarChart']
@@ -50,7 +50,7 @@ describe('report chart catalogue', () => {
   const catalogue = reportCatalogue()
 
   it('finds the full report catalogue in ReportContent', () => {
-    expect(catalogue.length).toBeGreaterThanOrEqual(177)
+    expect(catalogue.length).toBeGreaterThanOrEqual(178)
     expect(new Set(catalogue.map(c => c.id)).size).toBe(catalogue.length)
   })
 

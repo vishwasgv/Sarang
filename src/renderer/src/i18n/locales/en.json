@@ -2465,6 +2465,32 @@
       "hotel": "Hotel",
       "distributor": "Distributor"
     },
+    "gst": {
+      "taxOnSales": "Tax on sales",
+      "reverseCharge": "Reverse-charge tax",
+      "taxPayable": "Tax payable",
+      "inputCredit": "Input tax credit",
+      "netPayable": "Net GST payable",
+      "creditForward": "Credit carried forward",
+      "creditForwardNote": "Your input credit is more than the tax due, so nothing is payable and the extra credit carries forward.",
+      "chartTitle": "Tax payable, input credit and net, by tax type",
+      "head": "Tax type",
+      "documents": "Purchases that gave input credit",
+      "document": "Document",
+      "party": "Supplier",
+      "noRows": "No purchases with input credit in this period.",
+      "source": {
+        "BILL": "Supplier bill",
+        "PURCHASE_ORDER": "Purchase order",
+        "DEBIT_NOTE": "Debit note"
+      },
+      "note": {
+        "earlierPurchases": "Input credit comes from supplier bills, received purchase orders and debit notes recorded from this version on. Purchases recorded earlier had the tax inside the cost.",
+        "setOffLater": "Net payable is a plain total for each tax type. Confirm with your accountant which credit may be set against which tax.",
+        "composition": "Your business is on the composition scheme, so no input credit is claimed.",
+        "stateUnknown": "{{count}} purchase document(s) have no known state; their tax is shown as CGST + SGST."
+      }
+    },
     "fs": {
       "asOfDate": "As of date",
       "compareWith": "Compare with",
@@ -2645,6 +2671,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "gstNetPayable": {
+        "label": "GST Net Payable & Input Credit",
+        "description": "Tax on sales, reverse-charge tax and input tax credit by CGST, SGST and IGST, with what is left to pay or carry forward"
       },
       "audit": {
         "label": "Audit Log Report",

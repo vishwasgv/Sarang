@@ -51,6 +51,7 @@ import {
   FINANCIAL_STATEMENT_IDS, financialStatementExport, financialStatementSummary, financialStatementCharts,
   type FinancialStatementId
 } from './FinancialStatementViews'
+import { GstNetPayableView, GST_REPORT_IDS, gstReportExport, gstReportSummary, gstReportCharts, type GstReportId } from './GstReportViews'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (local duplicates — avoids cross-boundary imports from main process)
@@ -962,7 +963,7 @@ type ReportChart =
 
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
-  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'audit' | 'backup'
+  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'gstNetPayable' | 'audit' | 'backup'
   | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'orderChannelBreakdown' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'donationToIssueCycleTime' | 'jewellery'
@@ -1096,6 +1097,7 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'generalLedger', icon: <BookOpen size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'dayBook', icon: <CalendarDays size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'cashFlowStatement', icon: <ArrowRightLeft size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'gstNetPayable', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -1433,6 +1435,7 @@ function localDateString(d: Date): string {
 }
 function today() { return localDateString(new Date()) }
 function isFinancialStatement(id: ReportType): id is FinancialStatementId { return (FINANCIAL_STATEMENT_IDS as string[]).includes(id) }
+function isGstReport(id: ReportType): id is GstReportId { return (GST_REPORT_IDS as string[]).includes(id) }
 function monthStart() { const d = new Date(); d.setDate(1); return localDateString(d) }
 
 // Table Turnover by Hour's day-of-week axis — uses the browser's native
@@ -1647,6 +1650,9 @@ export function ReportsScreen() {
           break
         case 'cashFlowStatement':
           res = await window.api.reports.cashFlowStatement({ dateFrom, dateTo })
+          break
+        case 'gstNetPayable':
+          res = await window.api.reports.gstNetPayable({ dateFrom, dateTo })
           break
         case 'audit':
           res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: 1, limit: AUDIT_PAGE_SIZE })
@@ -2195,6 +2201,7 @@ export function ReportsScreen() {
   function buildExportData(): { headers: string[]; rows: (string | number | null)[][] } {
     if (!reportData) return { headers: [], rows: [] }
     if (isFinancialStatement(activeReport)) return financialStatementExport(activeReport, reportData, t, currencySymbol)
+    if (isGstReport(activeReport)) return gstReportExport(activeReport, reportData, t, currencySymbol)
     const yn = (b: boolean) => b ? t('common.yes') : t('common.no')
     switch (activeReport) {
       case 'sales': {
@@ -3588,6 +3595,7 @@ export function ReportsScreen() {
   function getSummaryCards(): { label: string; value: string }[] {
     if (!reportData) return []
     if (isFinancialStatement(activeReport)) return financialStatementSummary(activeReport, reportData, t, fmt)
+    if (isGstReport(activeReport)) return gstReportSummary(activeReport, reportData, t, fmt)
     switch (activeReport) {
       case 'sales': {
         const d = reportData as SalesReport
@@ -4659,6 +4667,7 @@ export function ReportsScreen() {
   function getReportCharts(): ReportChart[] {
     if (!reportData) return []
     if (isFinancialStatement(activeReport)) return financialStatementCharts(activeReport, reportData, t)
+    if (isGstReport(activeReport)) return gstReportCharts(activeReport, reportData, t)
     // Reports whose on-screen charts were added in the every-report-has-a-chart pass are built by
     // viewPdfCharts from the same data builders; their older chart-free cases in the switch below are superseded.
     const viewCharts = viewPdfCharts(activeReport, reportData, t)
@@ -5761,6 +5770,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange, onOpenLedger 
     case 'generalLedger': return <GeneralLedgerView data={data as React.ComponentProps<typeof GeneralLedgerView>['data']} fmt={fmt} />
     case 'dayBook': return <DayBookView data={data as React.ComponentProps<typeof DayBookView>['data']} fmt={fmt} />
     case 'cashFlowStatement': return <CashFlowStatementView data={data as React.ComponentProps<typeof CashFlowStatementView>['data']} fmt={fmt} />
+    case 'gstNetPayable': return <GstNetPayableView data={data as React.ComponentProps<typeof GstNetPayableView>['data']} fmt={fmt} />
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />

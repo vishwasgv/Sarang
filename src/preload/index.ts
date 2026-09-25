@@ -355,6 +355,7 @@ const api: IpcChannels = {
     generalLedger: (p) => invoke('reports:generalLedger', p),
     dayBook: (p) => invoke('reports:dayBook', p),
     cashFlowStatement: (p) => invoke('reports:cashFlowStatement', p),
+    gstNetPayable: (p) => invoke('reports:gstNetPayable', p),
     costCentreTreemap: (p) => invoke('reports:costCentreTreemap', p),
     budgetVsActual: (p) => invoke('reports:budgetVsActual', p),
     statutoryComplianceSummary: (p) => invoke('reports:statutoryComplianceSummary', p),
