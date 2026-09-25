@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import { afterCreate } from '../../services/workflow-rule.service'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
 import { billService } from '../../services/bill.service'
@@ -33,7 +34,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('bills.create'); if (deny) return deny
     const parsed = CreateBillSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    return billService.createBill(parsed.data, getCurrentSession()?.userId)
+    return afterCreate('BILL_CREATED', await billService.createBill(parsed.data, getCurrentSession()?.userId))
   })
 
   handle('bills:update', async (payload) => {

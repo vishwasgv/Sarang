@@ -1,4 +1,5 @@
 import * as expenseService from '../../services/expense.service'
+import { afterCreate } from '../../services/workflow-rule.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
@@ -24,7 +25,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('expenses.create'); if (deny) return deny
     const parsed = CreateExpenseSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
-    return expenseService.createExpense(parsed.data, getCurrentSession()?.userId)
+    return afterCreate('EXPENSE_CREATED', await expenseService.createExpense(parsed.data, getCurrentSession()?.userId))
   })
 
   handle('expenses:update', async (payload) => {

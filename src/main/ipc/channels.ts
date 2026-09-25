@@ -362,6 +362,12 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     create: (payload: { notes?: string; lines: Array<{ kind: 'OUT' | 'IN'; productId: string; quantity: number }> }) => Promise<ApiResponse>
   }
+  workflowRules: {
+    list: () => Promise<ApiResponse>
+    add: (payload: { name: string; event: string; minAmount: number }) => Promise<ApiResponse>
+    setEnabled: (payload: { id: string; enabled: boolean }) => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
+  }
   customKpis: {
     list: () => Promise<ApiResponse>
     add: (payload: { name: string; metric: string; period: string }) => Promise<ApiResponse>

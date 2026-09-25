@@ -285,6 +285,12 @@ const api: IpcChannels = {
     get: (p) => invoke('stockJournals:get', p),
     create: (p) => invoke('stockJournals:create', p)
   },
+  workflowRules: {
+    list: () => invoke('workflowRules:list'),
+    add: (p) => invoke('workflowRules:add', p),
+    setEnabled: (p) => invoke('workflowRules:setEnabled', p),
+    remove: (p) => invoke('workflowRules:remove', p)
+  },
   customKpis: {
     list: () => invoke('customKpis:list'),
     add: (p) => invoke('customKpis:add', p),

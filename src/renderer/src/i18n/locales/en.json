@@ -6159,6 +6159,20 @@
     "couldNotVerifyChain": "Could not verify the audit chain."
   },
   "settings": {
+    "workflowRules": {
+      "title": "Alert rules",
+      "hint": "Get a notification when a sale, supplier bill or expense of at least an amount you choose is saved.",
+      "namePlaceholder": "Rule name",
+      "amountPlaceholder": "At least (amount)",
+      "atLeast": "at least",
+      "on": "On",
+      "off": "Off",
+      "events": {
+        "INVOICE_CREATED": "Invoice saved",
+        "BILL_CREATED": "Supplier bill saved",
+        "EXPENSE_CREATED": "Expense saved"
+      }
+    },
     "title": "Settings",
     "languageLockedTitle": "Language locked to English",
     "languageLockedDesc": "This business type's own screens are built in English only, so the interface language is locked to keep everything consistent. This doesn't affect your business data — only the app's language.",
