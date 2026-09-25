@@ -84,3 +84,11 @@ describe('report chart catalogue', () => {
     }
   })
 })
+
+describe('generic reports', () => {
+  it('the generic view draws a chart with every report and reports use it through ReportContent', () => {
+    const generic = read('../GenericReportViews.tsx')
+    expect(generic).toContain('<ResponsiveContainer')
+    expect(SOURCES[0]).toContain('if (isGenericReport(reportType)) return <GenericReportView')
+  })
+})

@@ -462,6 +462,7 @@ export interface IpcChannels {
     gstr9Data: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     irnRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     vatReturn: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    generic: (payload: { id: string; dateFrom?: string; dateTo?: string; asOf?: string }) => Promise<ApiResponse>
     costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>

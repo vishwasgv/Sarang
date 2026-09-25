@@ -52,6 +52,7 @@ import {
   FINANCIAL_STATEMENT_IDS, financialStatementExport, financialStatementSummary, financialStatementCharts,
   type FinancialStatementId
 } from './FinancialStatementViews'
+import { GenericReportView, GENERIC_REPORT_IDS, isGenericReport, genericReportExport, genericReportSummary, genericReportCharts, type GenericReportId } from './GenericReportViews'
 import { VatReturnView, VAT_REPORT_IDS, vatReportExport, vatReportSummary, vatReportCharts, type VatReportId } from './VatReportViews'
 import { GstNetPayableView, PurchaseGstRegisterView, PurchaseHsnSummaryView, TdsDeductedView, Gstr9View, IrnRegisterView, GST_REPORT_IDS, gstReportExport, gstReportSummary, gstReportCharts, type GstReportId } from './GstReportViews'
 
@@ -964,6 +965,7 @@ type ReportChart =
   | { type: 'pie'; title: string; data: { label: string; value: number; color?: string }[]; valueIsCurrency?: boolean }
 
 type ReportType =
+  | GenericReportId
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
   | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted' | 'gstr9Data' | 'irnRegister' | 'vatReturn' | 'audit' | 'backup'
   | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'orderChannelBreakdown' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
@@ -1108,6 +1110,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'gstr9Data', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
   { id: 'irnRegister', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
   { id: 'vatReturn', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax', outsideIndiaOnly: true },
+  { id: 'salesByCustomer', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
+  { id: 'salesByItem', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
+  { id: 'salesByCategory', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
+  { id: 'salesBySalesperson', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -2208,6 +2214,10 @@ export function ReportsScreen() {
           res = await window.api.reports.eventProfitability({ dateFrom, dateTo })
           break
         default:
+          if (isGenericReport(activeReport)) {
+            res = await window.api.reports.generic({ id: activeReport, dateFrom, dateTo, asOf: dateTo })
+            break
+          }
           return
       }
 
@@ -2248,6 +2258,7 @@ export function ReportsScreen() {
     if (isFinancialStatement(activeReport)) return financialStatementExport(activeReport, reportData, t, currencySymbol)
     if (isGstReport(activeReport)) return gstReportExport(activeReport, reportData, t, currencySymbol)
     if (isVatReport(activeReport)) return vatReportExport(activeReport, reportData, t, currencySymbol)
+    if (isGenericReport(activeReport)) return genericReportExport(reportData, t, currencySymbol)
     const yn = (b: boolean) => b ? t('common.yes') : t('common.no')
     switch (activeReport) {
       case 'sales': {
@@ -3643,6 +3654,7 @@ export function ReportsScreen() {
     if (isFinancialStatement(activeReport)) return financialStatementSummary(activeReport, reportData, t, fmt)
     if (isGstReport(activeReport)) return gstReportSummary(activeReport, reportData, t, fmt)
     if (isVatReport(activeReport)) return vatReportSummary(activeReport, reportData, t, fmt)
+    if (isGenericReport(activeReport)) return genericReportSummary(reportData, t, fmt)
     switch (activeReport) {
       case 'sales': {
         const d = reportData as SalesReport
@@ -4716,6 +4728,7 @@ export function ReportsScreen() {
     if (isFinancialStatement(activeReport)) return financialStatementCharts(activeReport, reportData, t)
     if (isGstReport(activeReport)) return gstReportCharts(activeReport, reportData, t)
     if (isVatReport(activeReport)) return vatReportCharts(activeReport, reportData, t)
+    if (isGenericReport(activeReport)) return genericReportCharts(reportData, t)
     // Reports whose on-screen charts were added in the every-report-has-a-chart pass are built by
     // viewPdfCharts from the same data builders; their older chart-free cases in the switch below are superseded.
     const viewCharts = viewPdfCharts(activeReport, reportData, t)
@@ -5804,6 +5817,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange, onOpenLedger 
   onAuditPageChange: (page: number) => void
   onOpenLedger: (accountId: string) => void
 }) {
+  if (isGenericReport(reportType)) return <GenericReportView data={data as React.ComponentProps<typeof GenericReportView>['data']} fmt={fmt} />
   switch (reportType) {
     case 'sales': return <SalesReportView data={data as SalesReport} fmt={fmt} />
     case 'inventory': return <InventoryReportView data={data as InventoryReport} fmt={fmt} />

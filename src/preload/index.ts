@@ -380,6 +380,7 @@ const api: IpcChannels = {
     gstr9Data: (p) => invoke('reports:gstr9Data', p),
     irnRegister: (p) => invoke('reports:irnRegister', p),
     vatReturn: (p) => invoke('reports:vatReturn', p),
+    generic: (p) => invoke('reports:generic', p),
     costCentreTreemap: (p) => invoke('reports:costCentreTreemap', p),
     budgetVsActual: (p) => invoke('reports:budgetVsActual', p),
     statutoryComplianceSummary: (p) => invoke('reports:statutoryComplianceSummary', p),
