@@ -5,7 +5,7 @@ import { resolve } from 'path'
 // A database that answers every query with "nothing found", so each report can be built and its labels checked.
 const emptyDb = () => new Proxy({}, {
   get: () => new Proxy({}, {
-    get: (_t, method) => async () => (method === 'findMany' ? [] : method === 'findFirst' ? { currencyCode: 'INR' } : method === 'aggregate' ? { _sum: {} } : null)
+    get: (_t, method) => async () => (method === 'findMany' || method === 'groupBy' ? [] : method === 'findFirst' ? { currencyCode: 'INR' } : method === 'aggregate' ? { _sum: {} } : null)
   })
 })
 vi.mock('../../database/db', () => ({ getPrisma: () => emptyDb() }))
@@ -54,8 +54,9 @@ describe('generic report registry', () => {
       ]
       for (const k of keys) expect(typeof at(k), `${id}: reports.gen.${k}`).toBe('string')
       for (const row of r.rows) for (const c of r.columns) expect(c.key in row, `${id}.${c.key}`).toBe(true)
-      expect(r.columns.some((c) => c.key === r.chart.xKey)).toBe(true)
-      for (const s of r.chart.series) expect(r.columns.some((c) => c.key === s.key)).toBe(true)
+      const chartKeys = new Set([...r.columns.map((c) => c.key), ...(r.chartRows ?? []).flatMap((row) => Object.keys(row))])
+      expect(chartKeys.has(r.chart.xKey)).toBe(true)
+      for (const s of r.chart.series) expect(r.columns.some((c) => c.key === s.key) || r.chartRows !== undefined, `${id}.${s.key}`).toBe(true)
     })
   }
 })

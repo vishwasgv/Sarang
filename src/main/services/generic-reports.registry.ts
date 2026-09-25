@@ -2,6 +2,7 @@ import { sumMoney, prorateAmount } from '../../shared/utils/money'
 import type { GenericReport, GenericReportDefinition, GenericReportParams, CellValue } from './generic-report.types'
 import { loadSalesLines, type SalesLine } from './sales-lines.query'
 import { MONEY_REPORTS } from './generic-reports.money'
+import { STOCK_REPORTS } from './generic-reports.stock'
 
 // Reports described as data (see generic-report.types.ts). Each entry names the permission it needs and how to
 // build it. To add one: write the function, add it to REGISTRY, add its name to reports.defs and its column names
@@ -85,7 +86,8 @@ export const GENERIC_REPORTS: Record<string, GenericReportDefinition> = {
   salesByItem: { permission: 'reports.sales', run: salesBy('salesByItem', 'item', 'bar') },
   salesByCategory: { permission: 'reports.sales', run: salesBy('salesByCategory', 'category', 'pie') },
   salesBySalesperson: { permission: 'reports.sales', run: salesBy('salesBySalesperson', 'salesperson', 'bar') },
-  ...MONEY_REPORTS
+  ...MONEY_REPORTS,
+  ...STOCK_REPORTS
 }
 
 export const GENERIC_REPORT_IDS: string[] = Object.keys(GENERIC_REPORTS)

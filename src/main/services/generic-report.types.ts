@@ -32,6 +32,8 @@ export interface GenericReport {
   rows: Array<Record<string, CellValue>>
   totals?: Record<string, CellValue>
   chart: GenericChart
+  /** When the chart needs different rows from the table (for example one bar per movement type). */
+  chartRows?: Array<Record<string, CellValue>>
   /** Fixed explanations, keys under reports.gen.notes. */
   notes: string[]
 }

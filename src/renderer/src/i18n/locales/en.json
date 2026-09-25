@@ -2606,6 +2606,15 @@
         },
         "assets": {
           "asOfToday": "Depreciation is what has been posted so far."
+        },
+        "stock": {
+          "currentStock": "Quantities and values are as they stand now, using each item's cost method."
+        },
+        "ledger": {
+          "signed": "Movements that take stock out are shown in the Out column. Opening is the balance before the first date."
+        },
+        "ageing": {
+          "method": "The stock on hand is taken to be the most recent receipts (first in, first out); stock with no receipt on record counts as the oldest."
         }
       },
       "salesBy": {
@@ -2715,6 +2724,21 @@
           "vendor": "Expenses by vendor"
         }
       },
+      "stock": {
+        "totalValue": "Stock value", "items": "Items", "low": "Low stock", "out": "Out of stock", "item": "Item", "sku": "SKU", "category": "Category",
+        "quantity": "Quantity", "unitCost": "Unit cost", "value": "Value", "status": "Status",
+        "chart": {"value": "Items holding the most stock value"}
+      },
+      "ledger": {
+        "movements": "Movements", "in": "In", "out": "Out", "items": "Items", "date": "Date", "type": "Type", "balance": "Balance", "location": "Location",
+        "reference": "Reference", "quantity": "Quantity", "chart": "Quantity moved by type"
+      },
+      "ageing": {
+        "total": "Stock value", "b0": "0-30 days", "b31": "31-60 days", "b61": "61-90 days", "b90": "Over 90 days", "olderShare": "Share held over 90 days",
+        "chart": "Stock value by age, oldest stock first"
+      },
+      "location": {"count": "Locations", "name": "Location", "products": "Items", "chart": "Stock value by location"},
+      "transfers": {"count": "Transfers", "quantity": "Quantity moved", "direction": "Direction", "chart": "Quantity transferred by day"},
       "assets": {
         "count": "Assets",
         "cost": "Cost",
@@ -3008,6 +3032,26 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "stockSummary": {
+        "label": "Stock Summary & Valuation",
+        "description": "Every item with quantity, cost, stock value and whether it is low or out, with the total value of your stock"
+      },
+      "stockLedger": {
+        "label": "Stock Ledger",
+        "description": "Every stock movement of the period for each item with the opening balance and a running balance"
+      },
+      "inventoryAgeing": {
+        "label": "Inventory Ageing",
+        "description": "How long the stock you hold has been on the shelf: value in 0-30, 31-60, 61-90 and over 90 days"
+      },
+      "stockByLocation": {
+        "label": "Stock by Location",
+        "description": "Stock and its value at each location or godown"
+      },
+      "transfersRegister": {
+        "label": "Stock Transfers Register",
+        "description": "Every transfer of stock between locations in the period"
       },
       "profitByItem": {
         "label": "Profit by Item",

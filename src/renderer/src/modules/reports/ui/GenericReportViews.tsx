@@ -19,6 +19,7 @@ export interface GenericReport {
   rows: Record<string, CellValue>[]
   totals?: Record<string, CellValue>
   chart: GenericChart
+  chartRows?: Record<string, CellValue>[]
   notes: string[]
 }
 
@@ -35,7 +36,12 @@ export const GENERIC_REPORT_IDS = [
   'salesRegister',
   'expenseByCategory',
   'expenseByVendor',
-  'fixedAssetRegister'
+  'fixedAssetRegister',
+  'stockSummary',
+  'stockLedger',
+  'inventoryAgeing',
+  'stockByLocation',
+  'transfersRegister'
 ] as const
 export type GenericReportId = typeof GENERIC_REPORT_IDS[number]
 
@@ -61,8 +67,9 @@ function show(t: TFunction, v: CellValue, type: ColumnType, fmt: Fmt, isNameColu
 }
 
 function chartRows(d: GenericReport, t: TFunction) {
-  const limit = d.chart.limit ?? d.rows.length
-  return d.rows.slice(0, limit).map((r) => {
+  const source = d.chartRows ?? d.rows
+  const limit = d.chart.limit ?? source.length
+  return source.slice(0, limit).map((r) => {
     const out: Record<string, CellValue> = { name: r[d.chart.xKey] === '' ? t('reports.gen.unassigned') : (r[d.chart.xKey] as CellValue) }
     for (const s of d.chart.series) out[label(t, s.labelKey)] = r[s.key] as CellValue
     return out
@@ -85,7 +92,7 @@ export function GenericReportView({ data, fmt }: { data: GenericReport; fmt: Fmt
         ))}
       </div>
 
-      {data.rows.length > 0 && (
+      {(data.chartRows ?? data.rows).length > 0 && (
         <div className={cn(PANEL, 'p-5')}>
           <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{label(t, data.chart.titleKey)}</h3>
           <ResponsiveContainer width="100%" height={280}>
@@ -186,10 +193,11 @@ type PdfChart =
 
 export function genericReportCharts(data: unknown, t: TFunction): PdfChart[] {
   const d = data as GenericReport
-  if (d.rows.length === 0) return []
-  const limit = d.chart.limit ?? d.rows.length
+  const source = d.chartRows ?? d.rows
+  if (source.length === 0) return []
+  const limit = d.chart.limit ?? source.length
   const s = d.chart.series[0]
-  const points = d.rows.slice(0, limit).map((r, i) => ({
+  const points = source.slice(0, limit).map((r, i) => ({
     label: r[d.chart.xKey] === '' ? t('reports.gen.unassigned') : String(r[d.chart.xKey] ?? ''),
     value: Number(r[s.key] ?? 0),
     color: PALETTE[i % PALETTE.length]
