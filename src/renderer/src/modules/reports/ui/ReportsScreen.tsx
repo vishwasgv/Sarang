@@ -52,6 +52,7 @@ import {
   FINANCIAL_STATEMENT_IDS, financialStatementExport, financialStatementSummary, financialStatementCharts,
   type FinancialStatementId
 } from './FinancialStatementViews'
+import { VatReturnView, VAT_REPORT_IDS, vatReportExport, vatReportSummary, vatReportCharts, type VatReportId } from './VatReportViews'
 import { GstNetPayableView, PurchaseGstRegisterView, PurchaseHsnSummaryView, TdsDeductedView, Gstr9View, IrnRegisterView, GST_REPORT_IDS, gstReportExport, gstReportSummary, gstReportCharts, type GstReportId } from './GstReportViews'
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -964,7 +965,7 @@ type ReportChart =
 
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
-  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted' | 'gstr9Data' | 'irnRegister' | 'audit' | 'backup'
+  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted' | 'gstr9Data' | 'irnRegister' | 'vatReturn' | 'audit' | 'backup'
   | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'orderChannelBreakdown' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'donationToIssueCycleTime' | 'jewellery'
@@ -1057,9 +1058,11 @@ interface ReportDef {
   // shared module flag for this, since their underlying referral mechanisms
   // are genuinely different — see report.service.ts's own comment).
   requiredBusinessType?: string | string[]
+  /** VAT / sales-tax return for a business outside India. */
+  outsideIndiaOnly?: boolean
 }
 
-const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string; requiresDateRange: boolean; requiresEntity?: 'customer' | 'supplier'; permission: string; requiredModule?: TemplateModule; requiredBusinessType?: string | string[] }[] = [
+const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string; requiresDateRange: boolean; requiresEntity?: 'customer' | 'supplier'; permission: string; requiredModule?: TemplateModule; requiredBusinessType?: string | string[]; outsideIndiaOnly?: boolean }[] = [
   { id: 'sales', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },
   { id: 'inventory', icon: <Package size={18} />, category: 'inventory', requiresDateRange: false, permission: 'reports.inventory' },
   { id: 'tax', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax' },
@@ -1104,6 +1107,7 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'tdsDeducted', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'gstr9Data', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
   { id: 'irnRegister', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
+  { id: 'vatReturn', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax', outsideIndiaOnly: true },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -1442,6 +1446,7 @@ function localDateString(d: Date): string {
 function today() { return localDateString(new Date()) }
 function isFinancialStatement(id: ReportType): id is FinancialStatementId { return (FINANCIAL_STATEMENT_IDS as string[]).includes(id) }
 function isGstReport(id: ReportType): id is GstReportId { return (GST_REPORT_IDS as string[]).includes(id) }
+function isVatReport(id: ReportType): id is VatReportId { return (VAT_REPORT_IDS as string[]).includes(id) }
 function monthStart() { const d = new Date(); d.setDate(1); return localDateString(d) }
 
 // Table Turnover by Hour's day-of-week axis — uses the browser's native
@@ -1675,6 +1680,9 @@ export function ReportsScreen() {
           break
         case 'irnRegister':
           res = await window.api.reports.irnRegister({ dateFrom, dateTo })
+          break
+        case 'vatReturn':
+          res = await window.api.reports.vatReturn({ dateFrom, dateTo })
           break
         case 'audit':
           res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: 1, limit: AUDIT_PAGE_SIZE })
@@ -2224,6 +2232,7 @@ export function ReportsScreen() {
     if (!reportData) return { headers: [], rows: [] }
     if (isFinancialStatement(activeReport)) return financialStatementExport(activeReport, reportData, t, currencySymbol)
     if (isGstReport(activeReport)) return gstReportExport(activeReport, reportData, t, currencySymbol)
+    if (isVatReport(activeReport)) return vatReportExport(activeReport, reportData, t, currencySymbol)
     const yn = (b: boolean) => b ? t('common.yes') : t('common.no')
     switch (activeReport) {
       case 'sales': {
@@ -3618,6 +3627,7 @@ export function ReportsScreen() {
     if (!reportData) return []
     if (isFinancialStatement(activeReport)) return financialStatementSummary(activeReport, reportData, t, fmt)
     if (isGstReport(activeReport)) return gstReportSummary(activeReport, reportData, t, fmt)
+    if (isVatReport(activeReport)) return vatReportSummary(activeReport, reportData, t, fmt)
     switch (activeReport) {
       case 'sales': {
         const d = reportData as SalesReport
@@ -4690,6 +4700,7 @@ export function ReportsScreen() {
     if (!reportData) return []
     if (isFinancialStatement(activeReport)) return financialStatementCharts(activeReport, reportData, t)
     if (isGstReport(activeReport)) return gstReportCharts(activeReport, reportData, t)
+    if (isVatReport(activeReport)) return vatReportCharts(activeReport, reportData, t)
     // Reports whose on-screen charts were added in the every-report-has-a-chart pass are built by
     // viewPdfCharts from the same data builders; their older chart-free cases in the switch below are superseded.
     const viewCharts = viewPdfCharts(activeReport, reportData, t)
@@ -5447,6 +5458,7 @@ export function ReportsScreen() {
           {CATEGORY_IDS.map(cat => {
             const defs = REPORT_DEFS.filter(r => {
               if (r.category === 'gst' && (taxModel !== 'GST' || !showIndiaFeatures(country))) return false
+              if (r.outsideIndiaOnly && (showIndiaFeatures(country) || taxModel === 'NONE')) return false
               if (r.requiredModule && !isModuleEnabled(r.requiredModule)) return false
               if (r.requiredBusinessType) {
                 const allowed = Array.isArray(r.requiredBusinessType) ? r.requiredBusinessType : [r.requiredBusinessType]
@@ -5798,6 +5810,7 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange, onOpenLedger 
     case 'tdsDeducted': return <TdsDeductedView data={data as React.ComponentProps<typeof TdsDeductedView>['data']} fmt={fmt} />
     case 'gstr9Data': return <Gstr9View data={data as React.ComponentProps<typeof Gstr9View>['data']} fmt={fmt} />
     case 'irnRegister': return <IrnRegisterView data={data as React.ComponentProps<typeof IrnRegisterView>['data']} fmt={fmt} />
+    case 'vatReturn': return <VatReturnView data={data as React.ComponentProps<typeof VatReturnView>['data']} fmt={fmt} />
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />

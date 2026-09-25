@@ -2558,6 +2558,24 @@
       "hotel": "Hotel",
       "distributor": "Distributor"
     },
+    "vat": {
+      "taxOnSales": "{{tax}} on sales",
+      "taxOnPurchases": "{{tax}} on purchases",
+      "toPay": "Net tax to pay",
+      "refund": "Net tax to claim back",
+      "chartTitle": "Sales and purchases by tax treatment",
+      "taxed": "Taxed",
+      "zero": "Zero-rated",
+      "exempt": "Exempt",
+      "sales": "Sales",
+      "purchases": "Purchases",
+      "box": "Box",
+      "description": "Description",
+      "note": {
+        "workingPaper": "This is a working paper made from your books. Check every box against your country's official form with your accountant before you file.",
+        "genericLayout": "Your country's own box layout is not built in yet, so the figures are shown as a plain summary you can copy onto the form."
+      }
+    },
     "gst": {
       "taxOnSales": "Tax on sales",
       "reverseCharge": "Reverse-charge tax",
@@ -2838,6 +2856,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "vatReturn": {
+        "label": "VAT / Sales Tax Return",
+        "description": "The period's sales and purchases by tax treatment, laid out under the boxes of your country's return, with the net tax to pay or claim"
       },
       "irnRegister": {
         "label": "E-invoice IRN Register",
