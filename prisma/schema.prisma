@@ -6549,6 +6549,12 @@ model DeliveryChallan {
   vehicleId       String?
   driverName      String?
   driverPhone     String?
+  // What a delivery challan must show when goods move without an invoice.
+  customerGstin   String?
+  placeOfSupply   String?
+  transportReason String?   // SUPPLY | JOB_WORK | SAMPLE | RETURN | OTHER
+  transporterName String?
+  lrNumber        String?   // transport document / lorry receipt number
   dispatchDate    DateTime?
   expectedReturn  DateTime?
   returnedAt      DateTime?
@@ -6573,6 +6579,7 @@ model ChallanItem {
   challanId   String
   productId   String?
   productName String
+  hsnCode     String?
   quantity    Float
   unit        String  @default("PCS")
   unitValue   Float   @default(0)

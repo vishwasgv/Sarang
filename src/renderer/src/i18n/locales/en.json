@@ -7392,6 +7392,13 @@
       "actionFailedMessage": "Could not complete this action."
     },
     "challan": {
+      "customerGstin": "Customer GSTIN",
+      "placeOfSupply": "Place of supply (state)",
+      "reason": "Reason for moving the goods",
+      "reasons": { "SUPPLY": "Supply", "JOB_WORK": "Job work", "SAMPLE": "Sample", "RETURN": "Return", "OTHER": "Other" },
+      "transporterName": "Transporter name",
+      "lrNumber": "Transport document / LR number",
+      "hsn": "HSN",
       "title": "Delivery Challans",
       "newChallan": "+ New Challan",
       "searchPlaceholder": "Search customer / challan #...",

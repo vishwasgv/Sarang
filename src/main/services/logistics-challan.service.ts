@@ -45,13 +45,14 @@ function toRecord(r: any) {
     shipmentId: r.shipmentId, invoiceId: r.invoiceId, vehicleId: r.vehicleId,
     vehicleNumber: r.vehicle?.vehicleNumber ?? null,
     driverName: r.driverName, driverPhone: r.driverPhone,
+    customerGstin: r.customerGstin, placeOfSupply: r.placeOfSupply, transportReason: r.transportReason, transporterName: r.transporterName, lrNumber: r.lrNumber,
     dispatchDate: r.dispatchDate?.toISOString() ?? null,
     expectedReturn: r.expectedReturn?.toISOString() ?? null,
     returnedAt: r.returnedAt?.toISOString() ?? null,
     status: r.status, totalValue: r.totalValue, notes: r.notes,
     createdAt: r.createdAt.toISOString(), updatedAt: r.updatedAt.toISOString(),
     items: (r.items ?? []).map((i: any) => ({
-      id: i.id, productId: i.productId, productName: i.productName,
+      id: i.id, productId: i.productId, productName: i.productName, hsnCode: i.hsnCode,
       quantity: i.quantity, returnedQty: i.returnedQty, unit: i.unit,
       unitValue: i.unitValue, totalValue: i.totalValue, notes: i.notes,
     })),
@@ -94,8 +95,9 @@ export async function createChallan(payload: {
   challanType?: string; customerId?: string; customerName: string; customerAddress?: string
   shipmentId?: string; invoiceId?: string; vehicleId?: string
   driverName?: string; driverPhone?: string
+  customerGstin?: string; placeOfSupply?: string; transportReason?: string; transporterName?: string; lrNumber?: string
   dispatchDate?: string; expectedReturn?: string; notes?: string
-  items: Array<{ productId?: string; productName: string; quantity: number; unit?: string; unitValue?: number; notes?: string }>
+  items: Array<{ productId?: string; productName: string; hsnCode?: string; quantity: number; unit?: string; unitValue?: number; notes?: string }>
 }, userId?: string) {
   try {
     const db = getPrisma()
@@ -116,12 +118,17 @@ export async function createChallan(payload: {
           vehicleId: payload.vehicleId ?? null,
           driverName: payload.driverName?.trim() || null,
           driverPhone: payload.driverPhone?.trim() || null,
+          customerGstin: payload.customerGstin?.trim().toUpperCase() || null,
+          placeOfSupply: payload.placeOfSupply?.trim() || null,
+          transportReason: payload.transportReason ?? 'SUPPLY',
+          transporterName: payload.transporterName?.trim() || null,
+          lrNumber: payload.lrNumber?.trim() || null,
           dispatchDate: payload.dispatchDate ? parseLocalDateStart(payload.dispatchDate) : null,
           expectedReturn: payload.expectedReturn ? parseLocalDateStart(payload.expectedReturn) : null,
           totalValue, notes: payload.notes?.trim() || null,
           items: {
             create: payload.items.map(i => ({
-              productId: i.productId ?? null, productName: i.productName,
+              productId: i.productId ?? null, productName: i.productName, hsnCode: i.hsnCode?.trim() || null,
               quantity: i.quantity, unit: i.unit ?? 'PCS',
               unitValue: i.unitValue ?? 0, totalValue: roundCurrency((i.unitValue ?? 0) * i.quantity),
               notes: i.notes ?? null,
@@ -196,8 +203,9 @@ export async function updateChallanStatus(payload: { id: string; status: string 
 export async function updateChallan(payload: {
   id: string; challanType?: string; customerName?: string; customerAddress?: string
   vehicleId?: string | null; driverName?: string; driverPhone?: string
+  customerGstin?: string; placeOfSupply?: string; transportReason?: string; transporterName?: string; lrNumber?: string
   dispatchDate?: string; expectedReturn?: string | null; notes?: string
-  items?: Array<{ productId?: string; productName: string; quantity: number; unit?: string; unitValue?: number; notes?: string }>
+  items?: Array<{ productId?: string; productName: string; hsnCode?: string; quantity: number; unit?: string; unitValue?: number; notes?: string }>
 }, userId?: string) {
   try {
     const db = getPrisma()
@@ -224,6 +232,11 @@ export async function updateChallan(payload: {
           ...(payload.vehicleId !== undefined && { vehicleId: payload.vehicleId }),
           ...(payload.driverName !== undefined && { driverName: payload.driverName?.trim() || null }),
           ...(payload.driverPhone !== undefined && { driverPhone: payload.driverPhone?.trim() || null }),
+          ...(payload.customerGstin !== undefined && { customerGstin: payload.customerGstin?.trim().toUpperCase() || null }),
+          ...(payload.placeOfSupply !== undefined && { placeOfSupply: payload.placeOfSupply?.trim() || null }),
+          ...(payload.transportReason !== undefined && { transportReason: payload.transportReason }),
+          ...(payload.transporterName !== undefined && { transporterName: payload.transporterName?.trim() || null }),
+          ...(payload.lrNumber !== undefined && { lrNumber: payload.lrNumber?.trim() || null }),
           ...(payload.dispatchDate !== undefined && { dispatchDate: payload.dispatchDate ? parseLocalDateStart(payload.dispatchDate) : null }),
           ...(payload.expectedReturn !== undefined && { expectedReturn: payload.expectedReturn ? parseLocalDateStart(payload.expectedReturn) : null }),
           ...(payload.notes !== undefined && { notes: payload.notes?.trim() || null }),
@@ -231,7 +244,7 @@ export async function updateChallan(payload: {
           ...(payload.items !== undefined && {
             items: {
               create: payload.items.map(i => ({
-                productId: i.productId ?? null, productName: i.productName,
+                productId: i.productId ?? null, productName: i.productName, hsnCode: i.hsnCode?.trim() || null,
                 quantity: i.quantity, unit: i.unit ?? 'PCS',
                 unitValue: i.unitValue ?? 0, totalValue: roundCurrency((i.unitValue ?? 0) * i.quantity),
                 notes: i.notes ?? null,

@@ -306,3 +306,24 @@ describe('recordChallanReturn — inventory restoration', () => {
     expect(inventoryService.addStockTx).not.toHaveBeenCalled()
   })
 })
+
+describe('createChallan — fields a delivery challan must carry', () => {
+  it('stores GSTIN (upper-cased), place of supply, reason (default SUPPLY), transporter, LR number and item HSN', async () => {
+    const db: Record<string, any> = {
+      deliveryChallan: {
+        findMany: vi.fn().mockResolvedValue([]),
+        create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve({ ...makeChallan(), ...data, createdAt: new Date(), updatedAt: new Date(), items: [] }))
+      }
+    }
+    db.$transaction = vi.fn(async (cb: (tx: unknown) => unknown) => cb(db))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await createChallan({
+      customerName: 'Acme', customerGstin: ' 27abcde1234f1z5 ', placeOfSupply: 'Maharashtra', transporterName: 'Fast Movers', lrNumber: 'LR-77',
+      items: [{ productName: 'Widget', hsnCode: ' 8471 ', quantity: 2, unitValue: 10 }]
+    })
+    expect(res.success).toBe(true)
+    const data = db.deliveryChallan.create.mock.calls[0][0].data
+    expect(data).toMatchObject({ customerGstin: '27ABCDE1234F1Z5', placeOfSupply: 'Maharashtra', transportReason: 'SUPPLY', transporterName: 'Fast Movers', lrNumber: 'LR-77' })
+    expect(data.items.create[0].hsnCode).toBe('8471')
+  })
+})

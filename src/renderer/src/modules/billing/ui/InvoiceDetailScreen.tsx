@@ -39,6 +39,7 @@ interface InvoiceItem {
   // print.service.ts's own `generateInvoiceHtml` test already documents
   // and guards against for the print path specifically.
   productName: string
+  hsnCode?: string | null
   product: { id: string; sku?: string | null; unit: string }
   quantity: number; unitPrice: number; discountAmount: number; taxRate: number; taxAmount: number; lineTotal: number
 }
@@ -60,12 +61,13 @@ interface Invoice {
   ewayBillNumber?: string | null
   irn?: string | null; irnAckNo?: string | null; irnAckDate?: string | null
   salesperson?: { id: string; fullName: string } | null
+  buyerState?: string | null
   gstType?: string | null
   pricesIncludeTax?: boolean
   // Phase 58 §2 — the dine-in table this invoice was opened for (restaurant
   // only; null for every other sale).
   tableId?: string | null
-  customer: { id: string; customerName: string; phone?: string | null; email?: string | null; customerCode?: string | null; taxNumber?: string | null } | null
+  customer: { id: string; customerName: string; phone?: string | null; email?: string | null; customerCode?: string | null; taxNumber?: string | null; state?: string | null; address?: string | null } | null
   createdBy: { id: string; fullName: string } | null
   items: InvoiceItem[]
   payments: Payment[]
@@ -250,12 +252,17 @@ export function InvoiceDetailScreen() {
         challanType: 'DELIVERY_NOTE',
         customerId: invoice.customer.id,
         customerName: invoice.customer.customerName,
+        customerGstin: invoice.customer.taxNumber || undefined,
+        placeOfSupply: invoice.buyerState || invoice.customer.state || undefined,
+        customerAddress: invoice.customer.address || undefined,
+        transportReason: 'SUPPLY',
         invoiceId: invoice.id,
         dispatchDate: toLocalISODate(new Date()),
         notes: t('billing.deliveryNoteFromInvoice', { number: invoice.invoiceNumber }),
         items: invoice.items.map(item => ({
           productId: item.product.id,
           productName: item.productName,
+          hsnCode: item.hsnCode || undefined,
           quantity: item.quantity,
           unit: item.product.unit,
           unitValue: item.unitPrice

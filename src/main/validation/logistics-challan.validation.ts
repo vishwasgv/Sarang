@@ -5,6 +5,7 @@ const ChallanItemSchema = z.object({
   productName: z.string().min(1, 'Item product name is required'),
   quantity: z.number().positive('Item quantity must be greater than zero'),
   unit: z.string().max(20).optional(),
+  hsnCode: z.string().max(20).optional(),
   unitValue: z.number().nonnegative('Item value cannot be negative').finite().optional(),
   notes: z.string().max(500).optional(),
 })
@@ -19,6 +20,11 @@ export const CreateChallanSchema = z.object({
   vehicleId: z.string().optional(),
   driverName: z.string().max(100).optional(),
   driverPhone: z.string().max(30).optional(),
+  customerGstin: z.string().max(20).optional(),
+  placeOfSupply: z.string().max(100).optional(),
+  transportReason: z.enum(['SUPPLY', 'JOB_WORK', 'SAMPLE', 'RETURN', 'OTHER']).optional(),
+  transporterName: z.string().max(100).optional(),
+  lrNumber: z.string().max(50).optional(),
   dispatchDate: z.string().optional(),
   expectedReturn: z.string().optional(),
   notes: z.string().max(2000).optional(),
@@ -33,6 +39,11 @@ export const UpdateChallanSchema = z.object({
   vehicleId: z.string().nullable().optional(),
   driverName: z.string().max(100).optional(),
   driverPhone: z.string().max(30).optional(),
+  customerGstin: z.string().max(20).optional(),
+  placeOfSupply: z.string().max(100).optional(),
+  transportReason: z.enum(['SUPPLY', 'JOB_WORK', 'SAMPLE', 'RETURN', 'OTHER']).optional(),
+  transporterName: z.string().max(100).optional(),
+  lrNumber: z.string().max(50).optional(),
   dispatchDate: z.string().optional(),
   // Real bug found live (2026-09-03 E2E audit): nullable, not just optional —
   // ChallanScreen.tsx's saveEdit() explicitly sends `expectedReturn: null`

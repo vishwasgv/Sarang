@@ -980,7 +980,7 @@ export const billingService = {
       include: {
         // email added for the Share feature (Section 4/5.1 of
         // FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md).
-        customer: { select: { id: true, customerName: true, phone: true, customerCode: true, email: true, taxNumber: true } },
+        customer: { select: { id: true, customerName: true, phone: true, customerCode: true, email: true, taxNumber: true, state: true, address: true } },
         createdBy: { select: { id: true, fullName: true } },
         salesperson: { select: { id: true, fullName: true } },
         items: {

@@ -11,7 +11,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
 interface ChallanItem {
-  id: string; productId: string | null; productName: string; quantity: number
+  id: string; productId: string | null; productName: string; hsnCode?: string | null; quantity: number
   returnedQty: number; unit: string; unitValue: number; totalValue: number; notes: string | null
 }
 
@@ -19,6 +19,7 @@ interface Challan {
   id: string; challanNumber: string; challanType: string; customerId: string | null
   customerName: string; customerAddress: string | null; shipmentId: string | null; invoiceId: string | null
   vehicleId: string | null; vehicleNumber: string | null; driverName: string | null; driverPhone: string | null
+  customerGstin?: string | null; placeOfSupply?: string | null; transportReason?: string | null; transporterName?: string | null; lrNumber?: string | null
   dispatchDate: string | null; expectedReturn: string | null; returnedAt: string | null
   status: string; totalValue: number; notes: string | null; createdAt: string; items: ChallanItem[]
 }
@@ -33,8 +34,8 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'warning' 
   CANCELLED: 'danger',
 }
 
-const EMPTY_FORM = { challanType: 'DELIVERY', customerName: '', customerAddress: '', vehicleId: '', driverName: '', driverPhone: '', dispatchDate: '', expectedReturn: '', notes: '' }
-const EMPTY_ITEM = { productName: '', quantity: '', unit: 'PCS', unitValue: '', notes: '' }
+const EMPTY_FORM = { challanType: 'DELIVERY', customerName: '', customerAddress: '', vehicleId: '', driverName: '', driverPhone: '', customerGstin: '', placeOfSupply: '', transportReason: 'SUPPLY', transporterName: '', lrNumber: '', dispatchDate: '', expectedReturn: '', notes: '' }
+const EMPTY_ITEM = { productName: '', hsnCode: '', quantity: '', unit: 'PCS', unitValue: '', notes: '' }
 
 interface ReturnItem { itemId: string; productName: string; quantity: number; returnedQty: number }
 
@@ -118,9 +119,11 @@ export default function ChallanScreen() {
         customerAddress: form.customerAddress || undefined,
         vehicleId: form.vehicleId || undefined,
         driverName: form.driverName || undefined, driverPhone: form.driverPhone || undefined,
+        customerGstin: form.customerGstin || undefined, placeOfSupply: form.placeOfSupply || undefined, transportReason: form.transportReason || undefined,
+        transporterName: form.transporterName || undefined, lrNumber: form.lrNumber || undefined,
         dispatchDate: form.dispatchDate || undefined, expectedReturn: form.expectedReturn || undefined,
         notes: form.notes || undefined,
-        items: validItems.map(i => ({ productName: i.productName, quantity: parseFloat(i.quantity), unit: i.unit, unitValue: i.unitValue ? parseFloat(i.unitValue) : 0, notes: i.notes || undefined }))
+        items: validItems.map(i => ({ productName: i.productName, hsnCode: i.hsnCode || undefined, quantity: parseFloat(i.quantity), unit: i.unit, unitValue: i.unitValue ? parseFloat(i.unitValue) : 0, notes: i.notes || undefined }))
       })
       if (res.success) { setShowForm(false); setForm({ ...EMPTY_FORM }); setItems([{ ...EMPTY_ITEM }]); load() }
       else setError(res.error?.message ?? t('common.error'))
@@ -157,12 +160,14 @@ export default function ChallanScreen() {
       challanType: c.challanType, customerName: c.customerName,
       customerAddress: c.customerAddress ?? '', vehicleId: c.vehicleId ?? '',
       driverName: c.driverName ?? '', driverPhone: c.driverPhone ?? '',
+      customerGstin: c.customerGstin ?? '', placeOfSupply: c.placeOfSupply ?? '', transportReason: c.transportReason ?? 'SUPPLY',
+      transporterName: c.transporterName ?? '', lrNumber: c.lrNumber ?? '',
       dispatchDate: c.dispatchDate ? c.dispatchDate.split('T')[0] : '',
       expectedReturn: c.expectedReturn ? c.expectedReturn.split('T')[0] : '',
       notes: c.notes ?? '',
     })
     setEditItems(c.items.map(i => ({
-      productName: i.productName, quantity: i.quantity.toString(),
+      productName: i.productName, hsnCode: i.hsnCode ?? '', quantity: i.quantity.toString(),
       unit: i.unit, unitValue: i.unitValue.toString(), notes: i.notes ?? '',
     })))
     setEditChallanId(c.id); setEditError(null)
@@ -185,11 +190,13 @@ export default function ChallanScreen() {
         customerAddress: editForm.customerAddress || undefined,
         vehicleId: editForm.vehicleId || null,
         driverName: editForm.driverName || undefined, driverPhone: editForm.driverPhone || undefined,
+        customerGstin: editForm.customerGstin || undefined, placeOfSupply: editForm.placeOfSupply || undefined, transportReason: editForm.transportReason || undefined,
+        transporterName: editForm.transporterName || undefined, lrNumber: editForm.lrNumber || undefined,
         dispatchDate: editForm.dispatchDate || undefined,
         expectedReturn: editForm.challanType === 'RETURNABLE' ? (editForm.expectedReturn || undefined) : null,
         notes: editForm.notes || undefined,
         items: validEditItems.map(i => ({
-          productName: i.productName, quantity: parseFloat(i.quantity),
+          productName: i.productName, hsnCode: i.hsnCode || undefined, quantity: parseFloat(i.quantity),
           unit: i.unit, unitValue: parseFloat(i.unitValue) || 0, notes: i.notes || undefined,
         })),
       })
@@ -262,7 +269,7 @@ export default function ChallanScreen() {
       ? `<div style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%) rotate(-30deg);opacity:0.08;z-index:-1;pointer-events:none;"><img src="${logoDataUri}" style="width:60vw;max-width:400px;object-fit:contain;" alt="" /></div>`
       : ''
     const logoImgHtml = logoDataUri ? `<img src="${logoDataUri}" alt="" style="max-height:48px;max-width:120px;object-fit:contain;display:block;margin-bottom:6px;" />` : ''
-    const html = `<html><head><style>body{position:relative;z-index:0;font-family:Arial,sans-serif;font-size:12px;padding:20px}h2{margin-bottom:16px}.biz{margin-bottom:12px}.biz-name{font-size:15px;font-weight:bold}.biz-addr{font-size:11px;color:#666}.meta{margin-bottom:12px;font-size:11px;color:#666}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px}th{background:#f5f5f5}.total{text-align:right;font-weight:bold;margin-top:8px}footer{margin-top:24px;font-size:10px;color:#888;text-align:center}</style></head><body>${watermarkHtml}<div class="biz">${logoImgHtml}${bizName ? `<div class="biz-name">${bizName}</div>` : ''}${bizAddr ? `<div class="biz-addr">${bizAddr}</div>` : ''}</div><h2>Delivery Challan: ${c.challanNumber}</h2><div class="meta">Customer: ${c.customerName} | Type: ${c.challanType} | Vehicle: ${c.vehicleNumber ?? '-'} | Driver: ${c.driverName ?? '-'}</div><table><thead><tr><th>Item</th><th>Qty</th><th>Returned</th><th>Unit</th><th>Value</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total: ${formatCurrency(c.totalValue)}</div><footer>${aszurexFooterHtml(10)}</footer></body></html>`
+    const html = `<html><head><style>body{position:relative;z-index:0;font-family:Arial,sans-serif;font-size:12px;padding:20px}h2{margin-bottom:16px}.biz{margin-bottom:12px}.biz-name{font-size:15px;font-weight:bold}.biz-addr{font-size:11px;color:#666}.meta{margin-bottom:12px;font-size:11px;color:#666}table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:6px}th{background:#f5f5f5}.total{text-align:right;font-weight:bold;margin-top:8px}footer{margin-top:24px;font-size:10px;color:#888;text-align:center}</style></head><body>${watermarkHtml}<div class="biz">${logoImgHtml}${bizName ? `<div class="biz-name">${bizName}</div>` : ''}${bizAddr ? `<div class="biz-addr">${bizAddr}</div>` : ''}</div><h2>Delivery Challan: ${c.challanNumber}</h2><div class="meta">Customer: ${c.customerName}${c.customerGstin ? ' | GSTIN: ' + c.customerGstin : ''}${c.customerAddress ? ' | Address: ' + c.customerAddress : ''}${c.placeOfSupply ? ' | Place of supply: ' + c.placeOfSupply : ''} | Type: ${c.challanType}${c.transportReason ? ' | Reason: ' + c.transportReason.replace('_', ' ') : ''}</div><div class="meta">Vehicle: ${c.vehicleNumber ?? '-'} | Driver: ${c.driverName ?? '-'}${c.transporterName ? ' | Transporter: ' + c.transporterName : ''}${c.lrNumber ? ' | LR/Doc no: ' + c.lrNumber : ''}</div><table><thead><tr><th>Item</th><th>Qty</th><th>Returned</th><th>Unit</th><th>Value</th><th>Total</th></tr></thead><tbody>${rows}</tbody></table><div class="total">Total: ${formatCurrency(c.totalValue)}</div><footer>${aszurexFooterHtml(10)}</footer></body></html>`
     if (w) { w.document.write(html); w.document.close(); w.print() }
   }
 
@@ -372,6 +379,28 @@ export default function ChallanScreen() {
                 <textarea value={form.customerAddress} onChange={e => setForm(f => ({ ...f, customerAddress: e.target.value }))} rows={2} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.customerGstin')}</label>
+                <input value={form.customerGstin} onChange={e => setForm(f => ({ ...f, customerGstin: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.placeOfSupply')}</label>
+                <input value={form.placeOfSupply} onChange={e => setForm(f => ({ ...f, placeOfSupply: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.reason')}</label>
+                <select value={form.transportReason} onChange={e => setForm(f => ({ ...f, transportReason: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  {['SUPPLY', 'JOB_WORK', 'SAMPLE', 'RETURN', 'OTHER'].map(r => <option key={r} value={r}>{t(`logistics.challan.reasons.${r}`)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.transporterName')}</label>
+                <input value={form.transporterName} onChange={e => setForm(f => ({ ...f, transporterName: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.lrNumber')}</label>
+                <input value={form.lrNumber} onChange={e => setForm(f => ({ ...f, lrNumber: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
                 <label className="text-sm font-medium text-gray-700">{t('logistics.challan.driverName')}</label>
                 <input value={form.driverName} onChange={e => setForm(f => ({ ...f, driverName: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
@@ -410,7 +439,10 @@ export default function ChallanScreen() {
                     <input type="number" min="0" value={item.unitValue} onChange={e => updateItem(idx, 'unitValue', e.target.value)} placeholder={t('logistics.challan.valuePlaceholder', { symbol: currSym })} className="col-span-2 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
                     <button onClick={() => removeItem(idx)} className="col-span-1 text-red-400 hover:text-red-600 text-xs font-bold">✕</button>
                   </div>
-                  <input value={item.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
+                  <div className="flex gap-2">
+                    <input value={item.hsnCode} onChange={e => updateItem(idx, 'hsnCode', e.target.value)} placeholder={t('logistics.challan.hsn')} className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-600 placeholder-gray-300" />
+                    <input value={item.notes} onChange={e => updateItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
+                  </div>
                 </div>
               ))}
             </div>
@@ -445,6 +477,28 @@ export default function ChallanScreen() {
               <div className="col-span-2">
                 <label className="text-sm font-medium text-gray-700">{t('logistics.challan.customerAddress')}</label>
                 <textarea value={editForm.customerAddress} onChange={e => setEditForm(f => ({ ...f, customerAddress: e.target.value }))} rows={2} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.customerGstin')}</label>
+                <input value={editForm.customerGstin} onChange={e => setEditForm(f => ({ ...f, customerGstin: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.placeOfSupply')}</label>
+                <input value={editForm.placeOfSupply} onChange={e => setEditForm(f => ({ ...f, placeOfSupply: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.reason')}</label>
+                <select value={editForm.transportReason} onChange={e => setEditForm(f => ({ ...f, transportReason: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm">
+                  {['SUPPLY', 'JOB_WORK', 'SAMPLE', 'RETURN', 'OTHER'].map(r => <option key={r} value={r}>{t(`logistics.challan.reasons.${r}`)}</option>)}
+                </select>
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.transporterName')}</label>
+                <input value={editForm.transporterName} onChange={e => setEditForm(f => ({ ...f, transporterName: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
+              </div>
+              <div>
+                <label className="text-sm font-medium text-gray-700">{t('logistics.challan.lrNumber')}</label>
+                <input value={editForm.lrNumber} onChange={e => setEditForm(f => ({ ...f, lrNumber: e.target.value }))} className="mt-1 w-full border border-gray-300 rounded-lg px-3 py-2 text-sm" />
               </div>
               <div>
                 <label className="text-sm font-medium text-gray-700">{t('logistics.challan.driverName')}</label>
@@ -485,7 +539,10 @@ export default function ChallanScreen() {
                     <input type="number" min="0" value={item.unitValue} onChange={e => updateEditItem(idx, 'unitValue', e.target.value)} placeholder={t('logistics.challan.valuePlaceholder', { symbol: currSym })} className="col-span-2 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
                     <button onClick={() => removeEditItem(idx)} className="col-span-1 text-red-400 hover:text-red-600 text-xs font-bold">✕</button>
                   </div>
-                  <input value={item.notes} onChange={e => updateEditItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="w-full border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
+                  <div className="flex gap-2">
+                    <input value={item.hsnCode} onChange={e => updateEditItem(idx, 'hsnCode', e.target.value)} placeholder={t('logistics.challan.hsn')} className="w-28 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-600 placeholder-gray-300" />
+                    <input value={item.notes} onChange={e => updateEditItem(idx, 'notes', e.target.value)} placeholder={t('logistics.shipments.itemNotesPlaceholder')} className="flex-1 border border-gray-200 rounded-lg px-2 py-1 text-xs text-gray-500 placeholder-gray-300" />
+                  </div>
                 </div>
               ))}
             </div>
