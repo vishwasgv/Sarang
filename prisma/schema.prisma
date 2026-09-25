@@ -2129,6 +2129,9 @@ model TaxConfiguration {
   isDefault Boolean  @default(false)
   isActive  Boolean  @default(true)
   isLegacy  Boolean  @default(false)
+  // Named parts of this rate as JSON [{name, rate}] (for example GST 5% + PST 7% = 12%). Shown on documents and in
+  // the Tax by Part report; the amount charged always comes from the combined rate.
+  components String?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 

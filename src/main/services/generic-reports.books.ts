@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
-import { getCurrencyDecimals, sumMoney, prorateAmount, roundMoney } from '../../shared/utils/money'
+import { getCurrencyDecimals, sumMoney, prorateAmount, roundMoney, storedLineTaxable } from '../../shared/utils/money'
+import { parseTaxComponents, splitTaxByComponents, type TaxComponent } from '../../shared/utils/tax-components'
 import { parseLocalDateStart, parseLocalDateEnd, toLocalISODate } from '../utils/date.util'
 import { classifyAccount, YEAR_END_SOURCE, financialStatementsService } from './financial-statements.service'
 import type { CellValue, GenericReport, GenericReportDefinition, GenericReportParams } from './generic-report.types'
@@ -347,6 +348,94 @@ async function salesReturnRegister(p: GenericReportParams): Promise<GenericRepor
   }
 }
 
+// ── Tax by part (for rates split into named parts, e.g. GST + PST) ───────────────────────────────────────
+async function taxByPart(p: GenericReportParams): Promise<GenericReport> {
+  const db = getPrisma()
+  const decimals = await decimalsOf()
+  const from = parseLocalDateStart(p.dateFrom)
+  const to = parseLocalDateEnd(p.dateTo)
+  const configs = await db.taxConfiguration.findMany({ where: { isActive: true, components: { not: null } }, select: { rate: true, components: true, isDefault: true } })
+  const partsByRate = new Map<number, TaxComponent[]>()
+  for (const c of [...configs].sort((a, b) => Number(b.isDefault) - Number(a.isDefault))) {
+    const key = Math.round(c.rate * 10000) / 10000
+    const parts = parseTaxComponents(c.components)
+    if (parts.length >= 2 && !partsByRate.has(key)) partsByRate.set(key, parts)
+  }
+  const [invoices, bills] = await Promise.all([
+    db.invoice.findMany({
+      where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
+      select: { invoiceType: true, pricesIncludeTax: true, items: { select: { quantity: true, unitPrice: true, discountAmount: true, taxAmount: true, lineTotal: true, taxRate: true } } }
+    }),
+    db.bill.findMany({ where: { billDate: { gte: from, lte: to }, status: { not: 'VOID' } }, select: { items: { select: { taxRate: true, taxAmount: true, total: true } } } })
+  ])
+  // rate -> signed taxable values and tax amounts
+  const sales = new Map<number, { taxable: number[]; tax: number[] }>()
+  const purchases = new Map<number, { taxable: number[]; tax: number[] }>()
+  const add = (m: Map<number, { taxable: number[]; tax: number[] }>, rate: number, taxable: number, tax: number) => {
+    const key = Math.round(rate * 10000) / 10000
+    const g = m.get(key) ?? { taxable: [], tax: [] }
+    g.taxable.push(taxable); g.tax.push(tax)
+    m.set(key, g)
+  }
+  for (const inv of invoices) {
+    const isReturn = inv.invoiceType === 'RETURN'
+    const sign = isReturn ? -1 : 1
+    for (const it of inv.items) add(sales, it.taxRate, sign * storedLineTaxable(it, { pricesIncludeTax: inv.pricesIncludeTax, isReturn }), sign * Math.abs(it.taxAmount))
+  }
+  for (const bl of bills) for (const it of bl.items) add(purchases, it.taxRate, roundMoney(it.total - it.taxAmount, decimals), it.taxAmount)
+
+  // part name + its rate -> totals
+  const rows = new Map<string, { part: string; rate: number; salesTaxable: number[]; salesTax: number[]; purchaseTax: number[] }>()
+  const bucket = (part: string, rate: number) => {
+    const key = `${part}|${rate}`
+    const r = rows.get(key) ?? { part, rate, salesTaxable: [], salesTax: [], purchaseTax: [] }
+    rows.set(key, r)
+    return r
+  }
+  for (const [rate, g] of sales) {
+    const parts = partsByRate.get(rate)
+    const tax = sumMoney(g.tax, decimals)
+    const taxable = sumMoney(g.taxable, decimals)
+    if (!parts) { const r = bucket('', rate); r.salesTaxable.push(taxable); r.salesTax.push(tax); continue }
+    for (const x of splitTaxByComponents(tax, parts, decimals)) { const r = bucket(x.name, x.rate); r.salesTaxable.push(taxable); r.salesTax.push(x.amount) }
+  }
+  for (const [rate, g] of purchases) {
+    const parts = partsByRate.get(rate)
+    const tax = sumMoney(g.tax, decimals)
+    if (!parts) { bucket('', rate).purchaseTax.push(tax); continue }
+    for (const x of splitTaxByComponents(tax, parts, decimals)) bucket(x.name, x.rate).purchaseTax.push(x.amount)
+  }
+  const out: Row[] = [...rows.values()]
+    .filter((r) => r.salesTax.length + r.purchaseTax.length > 0)
+    .sort((a, b) => (a.part === '' ? 1 : b.part === '' ? -1 : a.part.localeCompare(b.part)) || a.rate - b.rate)
+    .map((r) => {
+      const st = sumMoney(r.salesTax, decimals)
+      const pt = sumMoney(r.purchaseTax, decimals)
+      return { part: r.part, rate: r.rate, salesTaxable: sumMoney(r.salesTaxable, decimals), salesTax: st, purchaseTax: pt, net: roundMoney(st - pt, decimals) }
+    })
+  const sum = (k: string) => sumMoney(out.map((r) => Number(r[k])), decimals)
+  return {
+    id: 'taxByPart', dateFrom: p.dateFrom, dateTo: p.dateTo, decimals,
+    summary: [
+      { labelKey: 'taxByPart.salesTax', type: 'money', value: sum('salesTax') },
+      { labelKey: 'taxByPart.purchaseTax', type: 'money', value: sum('purchaseTax') },
+      { labelKey: 'taxByPart.net', type: 'money', value: sum('net') }
+    ],
+    columns: [
+      { key: 'part', labelKey: 'taxByPart.part', type: 'text' },
+      { key: 'rate', labelKey: 'taxByPart.rate', type: 'percent' },
+      { key: 'salesTaxable', labelKey: 'taxByPart.salesTaxable', type: 'money' },
+      { key: 'salesTax', labelKey: 'taxByPart.salesTax', type: 'money' },
+      { key: 'purchaseTax', labelKey: 'taxByPart.purchaseTax', type: 'money' },
+      { key: 'net', labelKey: 'taxByPart.net', type: 'money' }
+    ],
+    rows: out,
+    totals: { part: '', rate: null, salesTaxable: null, salesTax: sum('salesTax'), purchaseTax: sum('purchaseTax'), net: sum('net') },
+    chart: { type: 'bar', titleKey: 'taxByPart.chart', xKey: 'part', series: [{ key: 'salesTax', labelKey: 'taxByPart.salesTax', money: true }, { key: 'purchaseTax', labelKey: 'taxByPart.purchaseTax', money: true }], limit: 12 },
+    notes: ['taxByPart.note']
+  }
+}
+
 // ── TDS receivable (tax customers kept back) ─────────────────────────────────────────────────────────────
 async function tdsReceivable(p: GenericReportParams): Promise<GenericReport> {
   const db = getPrisma()
@@ -435,6 +524,7 @@ async function costCategoryProfit(p: GenericReportParams): Promise<GenericReport
 }
 
 export const BOOKS_REPORTS: Record<string, GenericReportDefinition> = {
+  taxByPart: { permission: 'reports.financial', run: taxByPart },
   tdsReceivable: { permission: 'reports.financial', run: tdsReceivable },
   costCategoryProfit: { permission: 'analytics.viewProfit', run: costCategoryProfit },
   fundFlow: { permission: 'analytics.viewProfit', run: fundFlow },

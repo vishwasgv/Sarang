@@ -4,6 +4,7 @@ import { CustomFieldRulesEditor, EMPTY_RULES, rulesPayload, type FieldRulesForm 
 import { WorkflowRulesCard } from './WorkflowRulesCard'
 import { ExchangeRatesCard } from './ExchangeRatesCard'
 import { LateInterestCard } from './LateInterestCard'
+import { TaxComponentsEditor, partsPayload, type TaxPartForm } from './TaxComponentsEditor'
 import { StaleRatesCard } from './StaleRatesCard'
 import React, { useState, useEffect, useCallback } from 'react'
 import {
@@ -960,6 +961,7 @@ function UsersSection() {
 interface TaxConfig {
   id: string; taxName: string; taxType: string; rate: number
   country?: string | null; isDefault: boolean; isActive: boolean; isLegacy?: boolean
+  components?: Array<{ name: string; rate: number }>
 }
 
 const TAX_TYPES = ['GST', 'VAT', 'SALES_TAX', 'CUSTOM', 'NONE'] as const
@@ -976,6 +978,7 @@ function TaxConfigurationSection() {
   const [loading, setLoading] = useState(true)
   const [showForm, setShowForm] = useState(false)
   const [editId, setEditId] = useState<string | null>(null)
+  const [parts, setParts] = useState<TaxPartForm[]>([])
   const [deleteTarget, setDeleteTarget] = useState<TaxConfig | null>(null)
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
@@ -1035,6 +1038,7 @@ function TaxConfigurationSection() {
   function startEdit(tax: TaxConfig) {
     setEditId(tax.id)
     setForm({ taxName: tax.taxName, taxType: tax.taxType, rate: String(tax.rate), country: tax.country ?? '', isDefault: tax.isDefault })
+    setParts((tax.components ?? []).map((c) => ({ name: c.name, rate: String(c.rate) })))
     setShowForm(false)
   }
 
@@ -1042,6 +1046,7 @@ function TaxConfigurationSection() {
     setEditId(null)
     setShowForm(false)
     setForm({ taxName: '', taxType: 'GST', rate: '', country: '', isDefault: false })
+    setParts([])
   }
 
   async function handleSave() {
@@ -1052,7 +1057,7 @@ function TaxConfigurationSection() {
     }
     setSaving(true)
     try {
-      const payload = { taxName: form.taxName.trim(), taxType: form.taxType, rate, country: form.country || undefined, isDefault: form.isDefault }
+      const payload = { taxName: form.taxName.trim(), taxType: form.taxType, rate, country: form.country || undefined, isDefault: form.isDefault, components: partsPayload(parts) }
       const res = editId
         ? await window.api.tax.update({ id: editId, ...payload })
         : await window.api.tax.create(payload)
@@ -1061,7 +1066,7 @@ function TaxConfigurationSection() {
         resetForm()
         loadTaxes()
       } else {
-        toastError(t('common.error'), t('settings.tax.saveFailed'))
+        toastError(t('common.error'), res.error?.code === 'TAX-010' ? (res.error.message ?? t('settings.tax.saveFailed')) : t('settings.tax.saveFailed'))
       }
     } catch {
       toastError(t('common.error'), t('settings.tax.saveFailed'))
@@ -1162,6 +1167,7 @@ function TaxConfigurationSection() {
               <datalist id="tax-country-options">{TAX_COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}</datalist>
             </div>
           </div>
+          <TaxComponentsEditor rate={form.rate} parts={parts} onChange={setParts} />
           <label className="flex items-center gap-2 text-base text-slate-700 cursor-pointer select-none">
             <input type="checkbox" checked={form.isDefault} onChange={(e) => setForm(f => ({ ...f, isDefault: e.target.checked }))}
               className="w-5 h-5 rounded border-slate-300 text-brand focus:ring-brand" />

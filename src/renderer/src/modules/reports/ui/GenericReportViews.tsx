@@ -48,6 +48,7 @@ export const GENERIC_REPORT_IDS = [
   'ratioAnalysis',
   'costCategoryProfit',
   'tdsReceivable',
+  'taxByPart',
   'yearOverYear',
   'creditNoteRegister',
   'debitNoteRegister',

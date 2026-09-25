@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electron'
+import { refreshTaxComponentsCache } from './services/tax-components-cache'
 import { processDueReversals } from './services/journal-extras.service'
 import { join } from 'path'
 import { existsSync } from 'fs'
@@ -374,6 +375,7 @@ app.whenReady().then(async () => {
   quotationService.expireOverdue().catch(() => {})
   processDueReversals().catch(() => {})
   sweepReminderQueue().catch(() => {})
+  refreshTaxComponentsCache().catch(() => {})
   cleanupLegacyReferenceTokens().catch(() => {})
   setInterval(() => {
     checkAutoBackupReminder().catch(() => {})

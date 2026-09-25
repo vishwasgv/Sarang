@@ -2898,6 +2898,9 @@
         "expenses": {
           "vendorNote": "Expenses with no vendor entered are listed together as Not assigned."
         },
+        "taxByPart": {
+          "note": "Only rates you have split into parts (Settings > Tax) are broken down; tax at any other rate is shown as Not assigned. Parts are worked out from the combined rate."
+        },
         "tdsReceivable": {
           "note": "Record TDS from the invoice page (payment method: TDS deducted). Match these with the certificates your customers give you and with your tax statement."
         },
@@ -3115,6 +3118,15 @@
         "quantity": "Quantity moved",
         "direction": "Direction",
         "chart": "Quantity transferred by day"
+      },
+      "taxByPart": {
+        "part": "Tax part",
+        "rate": "Rate",
+        "salesTaxable": "Sales value",
+        "salesTax": "Tax on sales",
+        "purchaseTax": "Tax on purchases",
+        "net": "Net to pay",
+        "chart": "Tax on sales and purchases by part"
       },
       "tdsReceivable": {
         "total": "TDS kept back",
@@ -3552,6 +3564,10 @@
       "bankReconciliationSummary": {
         "label": "Bank Reconciliation Summary",
         "description": "For each bank account, how many statement lines are matched with your books and how many are still open"
+      },
+      "taxByPart": {
+        "label": "Tax by Part",
+        "description": "Tax on sales and on purchases split into the named parts of each tax rate (for example federal GST and provincial PST), so each part can be filed with its own authority"
       },
       "tdsReceivable": {
         "label": "TDS Receivable",
@@ -6351,6 +6367,13 @@
       "saveFailed": "Could not save the stock rules."
     },
     "tax": {
+      "parts": {
+        "title": "Parts of this rate (optional)",
+        "add": "Add part",
+        "hint": "Split a rate into named parts, for example GST 5% and PST 7% for a 12% rate. The parts must add up to the rate. Documents and the Tax by Part report then show each part; the amount charged does not change.",
+        "namePlaceholder": "Name, for example GST",
+        "sum": "The parts add up to {{sum}}% (rate {{rate}}%)"
+      },
       "loadFailed": "Failed to load tax rates.",
       "olderRates": "Older rates (before 22 Sep 2025)",
       "olderRatesHint": "These rates were withdrawn on 22 September 2025. Old documents keep them; nothing is recalculated.",

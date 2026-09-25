@@ -158,3 +158,30 @@ describe('year over year and registers', () => {
     expect(sr.rows[0]).toMatchObject({ number: 'R-1', original: 'INV-1', amount: 59, tax: 9 })
   })
 })
+
+describe('tax by part', () => {
+  it('splits sales and purchase tax of a 12% rate into GST 5% and PST 7%, leaving other rates unassigned', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: profile,
+      taxConfiguration: { findMany: vi.fn().mockResolvedValue([{ rate: 12, isDefault: true, components: JSON.stringify([{ name: 'GST', rate: 5 }, { name: 'PST', rate: 7 }]) }]) },
+      invoice: {
+        findMany: vi.fn().mockResolvedValue([
+          { invoiceType: 'RETAIL', pricesIncludeTax: false, items: [{ quantity: 1, unitPrice: 1000, discountAmount: 0, taxAmount: 120, lineTotal: 1120, taxRate: 12 }, { quantity: 1, unitPrice: 100, discountAmount: 0, taxAmount: 0, lineTotal: 100, taxRate: 0 }] },
+          { invoiceType: 'RETURN', pricesIncludeTax: false, items: [{ quantity: 1, unitPrice: 100, discountAmount: 0, taxAmount: 12, lineTotal: 112, taxRate: 12 }] }
+        ])
+      },
+      bill: { findMany: vi.fn().mockResolvedValue([{ items: [{ taxRate: 12, taxAmount: 60, total: 560 }] }]) }
+    } as never)
+
+    const r = await BOOKS_REPORTS.taxByPart.run(p)
+
+    const gst = r.rows.find((x) => x.part === 'GST')!
+    const pst = r.rows.find((x) => x.part === 'PST')!
+    expect(gst.salesTax).toBe(45) // (120 - 12) x 5/12
+    expect(pst.salesTax).toBe(63)
+    expect(gst.purchaseTax).toBe(25)
+    expect(pst.purchaseTax).toBe(35)
+    expect(Number(gst.net) + Number(pst.net)).toBe(48) // 108 sales tax - 60 purchase tax
+    expect(r.summary[0].value).toBe(108)
+  })
+})

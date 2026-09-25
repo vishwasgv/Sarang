@@ -1,4 +1,5 @@
 import QRCode from 'qrcode'
+import { taxLinesByComponents } from './tax-components-cache'
 import { readFileSync } from 'fs'
 import { join } from 'path'
 import { aszurexFooterHtml, aszurexBrandSuffixHtml } from '../utils/branding'
@@ -29,7 +30,8 @@ function documentTaxLines(
 ): Array<{ label: string; amount: number }> {
   if (!(doc.taxAmount > 0)) return []
   if (profile?.taxModel === 'GST') return gstPresentationLines(doc.gstType, doc.taxAmount, getCurrencyDecimals(profile?.currencyCode), rateTaxes)
-  return [{ label: 'Tax', amount: doc.taxAmount }]
+  const byPart = rateTaxes ? taxLinesByComponents(rateTaxes, doc.taxAmount, getCurrencyDecimals(profile?.currencyCode)) : null
+  return byPart ?? [{ label: 'Tax', amount: doc.taxAmount }]
 }
 
 function quotationRateTaxes(q: { items: Array<{ quantity: number; unitPrice: number; discount: number; taxRate: number }>; pricesIncludeTax?: boolean | null }, currencyCode?: string | null) {
@@ -500,7 +502,8 @@ export const printService = {
     const taxHtml = invoice.taxAmount > 0
       ? isGstModel
         ? gstLines.map(l => `<div class="totals-row"><span>${l.label}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')
-        : `<div class="totals-row"><span>${escHtml(getTaxLabel(profile?.taxModel, profile?.country))}</span><span>${formatAmount(invoice.taxAmount, sym)}</span></div>`
+        : (taxLinesByComponents(invoice.items, invoice.taxAmount, getCurrencyDecimals(profile?.currencyCode)) ?? [{ label: getTaxLabel(profile?.taxModel, profile?.country), amount: invoice.taxAmount }])
+            .map(l => `<div class="totals-row"><span>${escHtml(l.label)}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')
       : ''
 
     // HSN/SAC is a legally-required GST line-item field in India above
