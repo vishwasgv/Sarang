@@ -50,6 +50,7 @@ import { register as registerBins } from './handlers/bin-location.handler'
 import { register as registerBankRules } from './handlers/bank-rule.handler'
 import { register as registerVoucherClasses } from './handlers/voucher-class.handler'
 import { register as registerCustomKpis } from './handlers/custom-kpi.handler'
+import { register as registerExchangeRates } from './handlers/exchange-rate.handler'
 import { register as registerPartyAddresses } from './handlers/party-address.handler'
 import { register as registerJournalExtras } from './handlers/journal-extras.handler'
 import { register as registerExpenseClaims } from './handlers/expense-claim.handler'
@@ -276,6 +277,7 @@ export function registerAllIpcHandlers(): void {
   registerBankRules(h)
   registerVoucherClasses(h)
   registerCustomKpis(h)
+  registerExchangeRates(h)
   registerPartyAddresses(h)
   registerJournalExtras(h)
   registerExpenseClaims(h)

@@ -2,6 +2,7 @@ import { ScheduledReportsCard } from '@modules/reports/scheduled/ScheduledReport
 import { StockRulesCard } from './StockRulesCard'
 import { CustomFieldRulesEditor, EMPTY_RULES, rulesPayload, type FieldRulesForm } from './CustomFieldRulesEditor'
 import { WorkflowRulesCard } from './WorkflowRulesCard'
+import { ExchangeRatesCard } from './ExchangeRatesCard'
 import { StaleRatesCard } from './StaleRatesCard'
 import React, { useState, useEffect, useCallback } from 'react'
 import {
@@ -493,7 +494,7 @@ export function SettingsScreen() {
         {activeSection === 'industry' && <IndustrySettingsScreen />}
         {activeSection === 'language' && <LanguageSection />}
         {activeSection === 'appearance' && <AppearanceSection />}
-        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><WorkflowRulesCard /><ScheduledReportsCard /></>)}
+        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><WorkflowRulesCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
         {activeSection === 'barcode' && <BarcodeSection />}
         {activeSection === 'invoiceTemplates' && <InvoiceTemplatesSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}

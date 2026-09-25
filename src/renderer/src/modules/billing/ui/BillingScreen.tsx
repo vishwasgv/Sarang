@@ -2449,6 +2449,13 @@ export function BillingScreen() {
                   type="text"
                   value={foreignCurrencyCode}
                   onChange={e => setForeignCurrencyCode(e.target.value.toUpperCase())}
+                  onBlur={async () => {
+                    const code = foreignCurrencyCode.trim()
+                    if (code.length !== 3 || foreignExchangeRate) return
+                    const res = await window.api.exchangeRates.latest({ currencyCode: code })
+                    const found = res.success ? (res.data as { rate: number } | null) : null
+                    if (found) setForeignExchangeRate(String(found.rate))
+                  }}
                   placeholder={t('billing.foreignCurrency.codePlaceholder')}
                   maxLength={10}
                   className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"

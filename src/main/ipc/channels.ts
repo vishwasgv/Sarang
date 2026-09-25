@@ -387,6 +387,13 @@ export interface IpcChannels {
     save: (payload: { id?: string; partyType: 'CUSTOMER' | 'SUPPLIER'; partyId: string; label: string; addressText: string; isDefault?: boolean }) => Promise<ApiResponse>
     remove: (payload: { id: string; partyType: 'CUSTOMER' | 'SUPPLIER' }) => Promise<ApiResponse>
   }
+  exchangeRates: {
+    list: (payload?: { currencyCode?: string }) => Promise<ApiResponse>
+    latest: (payload: { currencyCode: string; onDate?: string }) => Promise<ApiResponse>
+    save: (payload: { currencyCode: string; rate: number; rateDate: string }) => Promise<ApiResponse>
+    importCsv: (payload: { text: string }) => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
+  }
   customKpis: {
     list: () => Promise<ApiResponse>
     add: (payload: { name: string; metric: string; period: string }) => Promise<ApiResponse>

@@ -2353,6 +2353,17 @@
     "couldNotTransfer": "Could not transfer stock.",
     "stockTransferred": "Stock transferred."
   },
+  "exchangeRates": {
+    "title": "Exchange rates",
+    "hint": "Keep your own table of exchange rates. When you make an invoice in a foreign currency the latest rate is filled in for you, and you can still change it.",
+    "codePlaceholder": "USD",
+    "ratePlaceholder": "Rate in your currency",
+    "importCsv": "Import CSV",
+    "csvHelp": "CSV columns: currency, rate, date (for example USD, 83.25, 2026-09-05). The rate is how much of your own currency one unit of the foreign currency is worth. Nothing is imported if any row has a problem.",
+    "empty": "No rates yet.",
+    "imported": "Rates imported",
+    "importFailed": "Could not import"
+  },
   "addresses": {
     "title": "Other addresses",
     "add": "Add address",

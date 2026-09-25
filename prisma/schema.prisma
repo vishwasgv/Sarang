@@ -952,6 +952,17 @@ model PartyAddress {
   @@index([partyType, partyId])
 }
 
+// One exchange rate for one currency on one day: how much of the business currency one unit of the foreign currency is worth.
+model ExchangeRate {
+  id           String   @id @default(cuid())
+  currencyCode String
+  rate         Float
+  rateDate     DateTime
+  createdAt    DateTime @default(now())
+
+  @@unique([currencyCode, rateDate])
+}
+
 // A note about something that is not an accounting entry (yet). Never posted to the books.
 model JournalMemo {
   id          String   @id @default(cuid())

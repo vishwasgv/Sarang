@@ -310,6 +310,13 @@ const api: IpcChannels = {
     save: (p) => invoke('partyAddresses:save', p),
     remove: (p) => invoke('partyAddresses:remove', p)
   },
+  exchangeRates: {
+    list: (p) => invoke('exchangeRates:list', p),
+    latest: (p) => invoke('exchangeRates:latest', p),
+    save: (p) => invoke('exchangeRates:save', p),
+    importCsv: (p) => invoke('exchangeRates:importCsv', p),
+    remove: (p) => invoke('exchangeRates:remove', p)
+  },
   customKpis: {
     list: () => invoke('customKpis:list'),
     add: (p) => invoke('customKpis:add', p),
