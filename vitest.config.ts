@@ -26,6 +26,7 @@ export default defineConfig({
       '@money': resolve(__dirname, 'src/shared/utils/money.ts'),
       '@gst': resolve(__dirname, 'src/shared/utils/gst-presentation.ts'),
       '@taxpresets': resolve(__dirname, 'src/shared/data/tax-presets.ts'),
+      '@tds': resolve(__dirname, 'src/shared/data/tds-sections.ts'),
       '@shared': resolve(__dirname, 'src/renderer/src/shared'),
       '@modules': resolve(__dirname, 'src/renderer/src/modules'),
       '@app': resolve(__dirname, 'src/renderer/src/app'),

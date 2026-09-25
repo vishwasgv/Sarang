@@ -16,11 +16,12 @@
       "@money": ["src/shared/utils/money.ts"],
       "@gst": ["src/shared/utils/gst-presentation.ts"],
       "@taxpresets": ["src/shared/data/tax-presets.ts"],
+      "@tds": ["src/shared/data/tds-sections.ts"],
       "@shared/*": ["src/renderer/src/shared/*"],
       "@modules/*": ["src/renderer/src/modules/*"],
       "@app/*": ["src/renderer/src/app/*"],
       "@assets/*": ["src/renderer/src/assets/*"]
     }
   },
-  "include": ["src/renderer/src/**/*", "src/main/ipc/channels.ts", "src/shared/utils/money.ts", "src/shared/utils/gst-presentation.ts", "src/shared/data/tax-presets.ts"]
+  "include": ["src/renderer/src/**/*", "src/main/ipc/channels.ts", "src/shared/utils/money.ts", "src/shared/utils/gst-presentation.ts", "src/shared/data/tax-presets.ts", "src/shared/data/tds-sections.ts"]
 }

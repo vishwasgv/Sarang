@@ -445,6 +445,7 @@ export interface IpcChannels {
     gstNetPayable: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     purchaseGstRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     purchaseHsnSummary: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    tdsDeducted: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>

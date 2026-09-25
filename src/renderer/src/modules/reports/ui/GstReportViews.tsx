@@ -44,8 +44,18 @@ export interface PurchaseHsnReport {
   missingHsnCount: number
 }
 
-export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary'
-export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary']
+export interface TdsRow { date: string; paymentRef: string; billNumber: string; supplier: string; pan: string; section: string; amountPaid: number; tdsDeducted: number; effectiveRatePercent: number }
+export interface TdsReport {
+  dateFrom: string; dateTo: string; decimals: number
+  rows: TdsRow[]
+  bySection: { section: string; count: number; amountPaid: number; tdsDeducted: number }[]
+  totals: { amountPaid: number; tdsDeducted: number }
+  payableBalance: number
+  missingPanCount: number
+}
+
+export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted'
+export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary', 'tdsDeducted']
 
 type Fmt = (n: number) => string
 type Cell = string | number | null
@@ -381,6 +391,85 @@ export function PurchaseHsnSummaryView({ data, fmt }: { data: PurchaseHsnReport;
   )
 }
 
+export function TdsDeductedView({ data, fmt }: { data: TdsReport; fmt: Fmt }) {
+  const { t } = useTranslation()
+  const cards = [
+    { label: t('reports.gst.tds.deducted'), value: fmt(data.totals.tdsDeducted) },
+    { label: t('reports.gst.tds.amountPaid'), value: fmt(data.totals.amountPaid) },
+    { label: t('reports.gst.tds.notDeposited'), value: fmt(data.payableBalance) },
+    { label: t('reports.gst.tds.payments'), value: String(data.rows.length) }
+  ]
+  const chart = data.bySection.map((s) => ({ name: s.section === 'NOT GIVEN' ? t('reports.gst.tds.notGiven') : s.section, [t('reports.gst.tds.deducted')]: s.tdsDeducted }))
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {cards.map((c) => (
+          <Card key={c.label} padding="md">
+            <div className="text-xs font-semibold text-slate-400 uppercase mb-1">{c.label}</div>
+            <div className="text-xl font-bold text-dark dark:text-slate-100">{c.value}</div>
+          </Card>
+        ))}
+      </div>
+      <div className={cn(PANEL, 'p-5')}>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.gst.tds.chartTitle')}</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chart}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Bar dataKey={t('reports.gst.tds.deducted')} fill={COLORS.warning} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={cn(PANEL, 'overflow-x-auto')}>
+        {data.rows.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">{t('reports.gst.tds.noRows')}</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400">
+                <th className="px-4 py-3 text-start">{t('common.date')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.party')}</th>
+                <th className="px-4 py-3 text-start">PAN</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.tds.bill')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.tds.section')}</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.tds.amountPaid')}</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.tds.deducted')}</th>
+                <th className="px-4 py-3 text-end">%</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r, i) => (
+                <tr key={`${r.billNumber}-${i}`} className="border-b border-slate-50 dark:border-slate-800">
+                  <td className="px-4 py-2.5">{formatDate(r.date)}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{r.supplier}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs">{r.pan || '—'}</td>
+                  <td className="px-4 py-2.5">{r.billNumber}</td>
+                  <td className="px-4 py-2.5">{r.section === 'NOT GIVEN' ? t('reports.gst.tds.notGiven') : r.section}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.amountPaid)}</td>
+                  <td className="px-4 py-2.5 text-end font-semibold">{fmt(r.tdsDeducted)}</td>
+                  <td className="px-4 py-2.5 text-end">{r.effectiveRatePercent}</td>
+                </tr>
+              ))}
+              <tr className="font-bold">
+                <td className="px-4 py-3" colSpan={5}>{t('common.total')}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.amountPaid)}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.tdsDeducted)}</td>
+                <td />
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </div>
+      <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1 list-disc ps-5">
+        {data.missingPanCount > 0 && <li>{t('reports.gst.tds.missingPan', { count: data.missingPanCount })}</li>}
+        <li>{t('reports.gst.tds.confirm')}</li>
+      </ul>
+    </div>
+  )
+}
+
 export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cur: string): { headers: string[]; rows: Cell[][] } {
   if (id === 'purchaseGstRegister') {
     const d = data as PurchaseRegisterReport
@@ -390,6 +479,17 @@ export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cu
       rows: [
         ...d.rows.map((r): Cell[] => [r.date, `${t(`reports.gst.register.kind.${r.kind}`)} ${r.number}${r.reverseCharge ? ` (${t('reports.gst.register.rcm')})` : ''}`, r.supplier, r.supplierGstin, r.taxable, r.cgst, r.sgst, r.igst, r.total]),
         [t('common.total'), '', '', '', d.totals.taxable, d.totals.cgst, d.totals.sgst, d.totals.igst, d.totals.total]
+      ]
+    }
+  }
+  if (id === 'tdsDeducted') {
+    const d = data as TdsReport
+    const sectionName = (s: string) => (s === 'NOT GIVEN' ? t('reports.gst.tds.notGiven') : s)
+    return {
+      headers: [t('common.date'), t('reports.gst.party'), 'PAN', t('reports.gst.tds.bill'), t('reports.gst.tds.section'), `${t('reports.gst.tds.amountPaid')} (${cur})`, `${t('reports.gst.tds.deducted')} (${cur})`, '%'],
+      rows: [
+        ...d.rows.map((r): Cell[] => [r.date, r.supplier, r.pan, r.billNumber, sectionName(r.section), r.amountPaid, r.tdsDeducted, r.effectiveRatePercent]),
+        [t('common.total'), '', '', '', '', d.totals.amountPaid, d.totals.tdsDeducted, '']
       ]
     }
   }
@@ -415,6 +515,14 @@ export function gstReportSummary(id: GstReportId, data: unknown, t: TFunction, f
       { label: t('reports.gst.register.total'), value: fmt(d.totals.total) }
     ]
   }
+  if (id === 'tdsDeducted') {
+    const d = data as TdsReport
+    return [
+      { label: t('reports.gst.tds.deducted'), value: fmt(d.totals.tdsDeducted) },
+      { label: t('reports.gst.tds.amountPaid'), value: fmt(d.totals.amountPaid) },
+      { label: t('reports.gst.tds.notDeposited'), value: fmt(d.payableBalance) }
+    ]
+  }
   if (id === 'purchaseHsnSummary') {
     const d = data as PurchaseHsnReport
     return [
@@ -430,6 +538,11 @@ export function gstReportCharts(id: GstReportId, data: unknown, t: TFunction): P
     const d = data as PurchaseRegisterReport
     if (d.byMonth.length === 0) return []
     return [{ type: 'bar', title: t('reports.gst.register.chartTitle'), valueIsCurrency: true, data: d.byMonth.map((m) => ({ label: m.month, value: m.taxable, color: COLORS.brand })) }]
+  }
+  if (id === 'tdsDeducted') {
+    const d = data as TdsReport
+    if (d.bySection.length === 0) return []
+    return [{ type: 'bar', title: t('reports.gst.tds.chartTitle'), valueIsCurrency: true, data: d.bySection.map((s) => ({ label: s.section === 'NOT GIVEN' ? t('reports.gst.tds.notGiven') : s.section, value: s.tdsDeducted, color: COLORS.warning })) }]
   }
   if (id === 'purchaseHsnSummary') {
     const d = data as PurchaseHsnReport

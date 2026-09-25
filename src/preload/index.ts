@@ -363,6 +363,7 @@ const api: IpcChannels = {
     gstNetPayable: (p) => invoke('reports:gstNetPayable', p),
     purchaseGstRegister: (p) => invoke('reports:purchaseGstRegister', p),
     purchaseHsnSummary: (p) => invoke('reports:purchaseHsnSummary', p),
+    tdsDeducted: (p) => invoke('reports:tdsDeducted', p),
     costCentreTreemap: (p) => invoke('reports:costCentreTreemap', p),
     budgetVsActual: (p) => invoke('reports:budgetVsActual', p),
     statutoryComplianceSummary: (p) => invoke('reports:statutoryComplianceSummary', p),

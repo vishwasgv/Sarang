@@ -2,6 +2,7 @@ import { reportService } from '../../services/report.service'
 import { financialStatementsService } from '../../services/financial-statements.service'
 import { gstInputCreditService } from '../../services/gst-input-credit.service'
 import { gstPurchaseReportsService } from '../../services/gst-purchase-reports.service'
+import { tdsReportService } from '../../services/tds-report.service'
 import { requirePermission } from '../permission-guard'
 import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
@@ -167,6 +168,14 @@ export function register(handle: HandleFn): void {
     const parsed = GstPurchaseReportSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await gstPurchaseReportsService.generatePurchaseHsnSummary(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:tdsDeducted', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = GstPurchaseReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await tdsReportService.generateTdsDeducted(parsed.data)
     return { success: true, data }
   })
 

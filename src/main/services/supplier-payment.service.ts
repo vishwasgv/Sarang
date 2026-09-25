@@ -1,3 +1,4 @@
+import { taxOnAmount } from '../../shared/utils/money'
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { supplierLedgerService } from './supplier-ledger.service'
@@ -67,7 +68,7 @@ async function getTdsConfig(): Promise<{ thresholdAmount: number; ratePercent: n
 async function suggestTds(amount: number): Promise<{ applicable: boolean; suggestedAmount: number; thresholdAmount: number; ratePercent: number }> {
   const { thresholdAmount, ratePercent } = await getTdsConfig()
   const applicable = amount >= thresholdAmount
-  return { applicable, suggestedAmount: applicable ? roundCurrency(amount * ratePercent / 100) : 0, thresholdAmount, ratePercent }
+  return { applicable, suggestedAmount: applicable ? taxOnAmount(amount, ratePercent, 2) : 0, thresholdAmount, ratePercent }
 }
 
 // 2026-09 — realized FX gain/loss on fully settling a foreign-currency Bill

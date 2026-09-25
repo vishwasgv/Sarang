@@ -2517,6 +2517,19 @@
         "noRows": "No purchases in this period.",
         "unknownState": "{{count}} document(s) have no known supplier state; their tax is shown as CGST + SGST."
       },
+      "tds": {
+        "deducted": "Tax deducted",
+        "amountPaid": "Amount paid",
+        "notDeposited": "Deducted, not yet deposited",
+        "payments": "Payments",
+        "bill": "Bill",
+        "section": "Section",
+        "notGiven": "Section not given",
+        "chartTitle": "Tax deducted by section",
+        "noRows": "No payments with tax deducted in this period.",
+        "missingPan": "{{count}} payment(s) are to suppliers with no PAN on file. Add the PAN on the supplier; tax may have to be deducted at a higher rate without it.",
+        "confirm": "Rates and sections depend on the payee and the year. Confirm with your accountant before you file."
+      },
       "hsn": {
         "code": "HSN / SAC",
         "description": "Description",
@@ -2718,6 +2731,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "tdsDeducted": {
+        "label": "TDS Deducted",
+        "description": "Tax deducted from supplier payments by payee, PAN and section, laid out for your quarterly return, with what is still to deposit"
       },
       "purchaseGstRegister": {
         "label": "Purchase GST Register",
