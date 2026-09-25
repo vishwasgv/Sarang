@@ -1549,6 +1549,21 @@ export function ReportsScreen() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [])
 
+  // Deep link from a customer or supplier page: /reports?report=customerLedger&customerId=..&name=..
+  useEffect(() => {
+    const report = searchParams.get('report')
+    const name = searchParams.get('name') ?? ''
+    const customer = searchParams.get('customerId')
+    const supplier = searchParams.get('supplierId')
+    if (report === 'customerLedger' && customer) { setActiveReport('customerLedger'); setCustomerId(customer); setCustomerSearch(name) }
+    else if (report === 'supplierLedger' && supplier) { setActiveReport('supplierLedger'); setSupplierId(supplier); setSupplierSearch(name) }
+    else return
+    setDateFrom(''); setDateTo('')
+    setSearchParams({}, { replace: true })
+    setAutoRunTick((c) => c + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
   useEffect(() => {
     if (autoRunTick > 0) void runReport()
     // eslint-disable-next-line react-hooks/exhaustive-deps

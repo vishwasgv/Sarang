@@ -244,6 +244,14 @@ export function SupplierDetailScreen() {
             <p className="text-sm text-slate-400">{supplier.supplierCode ?? t('suppliers.noCode')}</p>
           </div>
         </div>
+        {hasPermission('reports.financial') && (
+          <button
+            onClick={() => navigate(`/reports?report=supplierLedger&supplierId=${supplier.id}&name=${encodeURIComponent(supplier.supplierName)}`)}
+            className="ms-auto px-4 py-2 rounded-lg border border-slate-200 dark:border-slate-700 text-sm font-semibold text-dark dark:text-slate-100 hover:border-brand"
+          >
+            {t('suppliers.statement')}
+          </button>
+        )}
         {!supplier.isActive && (
           <Badge variant="neutral" size="sm" className="ms-auto">{t('suppliers.archived')}</Badge>
         )}

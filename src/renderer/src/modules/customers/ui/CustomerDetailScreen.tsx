@@ -304,6 +304,11 @@ export function CustomerDetailScreen() {
           </div>
         </div>
         <div className="ms-auto flex items-center gap-2">
+          {hasPermission('reports.invoices') && (
+            <Button size="sm" variant="outline" onClick={() => navigate(`/reports?report=customerLedger&customerId=${customer.id}&name=${encodeURIComponent(customer.customerName)}`)}>
+              {t('customers.statement')}
+            </Button>
+          )}
           {canSendTemplateMessage && customer.phone && (
             <Button size="sm" variant="outline" onClick={() => setSendMessageOpen(true)}>
               <MessageCircle size={14} className="me-1" /> {t('customers.sendWhatsAppMessage')}
