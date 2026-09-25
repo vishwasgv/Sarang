@@ -3344,6 +3344,8 @@ model HeldSale {
 model Quotation {
   id              String    @id @default(cuid())
   quotationNumber String    @unique
+  // QUOTATION or PROFORMA. A proforma invoice is a quotation-style document that is not a tax invoice; it converts to a real invoice the same way.
+  documentKind    String    @default("QUOTATION")
   customerId      String?
   customerName    String?
   validUntil      DateTime?

@@ -111,6 +111,7 @@ export function QuotationFormScreen() {
 
   const [customerName, setCustomerName] = useState('')
   const [validUntil, setValidUntil] = useState('')
+  const [documentKind, setDocumentKind] = useState<'QUOTATION' | 'PROFORMA'>('QUOTATION')
   const [retainerType, setRetainerType] = useState<'' | 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'>('')
   const [notes, setNotes] = useState('')
   const [items, setItems] = useState<LineItem[]>([
@@ -185,6 +186,7 @@ export function QuotationFormScreen() {
         customerId: selectedCustomerId || undefined,
         customerName: selectedCustomerId ? undefined : customerName || undefined,
         validUntil: validUntil || undefined,
+        documentKind,
         retainerType: retainerType || undefined,
         pricesIncludeTax,
         gstType: gstChoice.isGst ? gstChoice.gstType : undefined,
@@ -239,6 +241,10 @@ export function QuotationFormScreen() {
               />
             </div>
           )}
+          <Select label={t('quotations.documentKind')} value={documentKind} onChange={e => setDocumentKind(e.target.value as 'QUOTATION' | 'PROFORMA')}>
+            <option value="QUOTATION">{t('quotations.kindQuotation')}</option>
+            <option value="PROFORMA">{t('quotations.kindProforma')}</option>
+          </Select>
           <div>
             <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">{t('quotations.validUntil')}</label>
             <input type="date" value={validUntil} onChange={e => setValidUntil(e.target.value)}

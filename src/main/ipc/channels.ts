@@ -1371,7 +1371,7 @@ export interface IpcChannels {
   quotations: {
     list: (payload?: { status?: string; customerId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { customerId?: string; customerName?: string; validUntil?: string; retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'; pricesIncludeTax?: boolean; gstType?: 'CGST_SGST' | 'IGST' | 'GST'; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; customerName?: string; validUntil?: string; documentKind?: 'QUOTATION' | 'PROFORMA'; retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'; pricesIncludeTax?: boolean; gstType?: 'CGST_SGST' | 'IGST' | 'GST'; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
     // Share feature (Section 4/5.3): same HTML as `print`, saved to a chosen

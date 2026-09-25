@@ -28,6 +28,7 @@ export interface CreateQuotationPayload {
   retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'
   pricesIncludeTax?: boolean
   gstType?: 'CGST_SGST' | 'IGST' | 'GST'
+  documentKind?: 'QUOTATION' | 'PROFORMA'
   items: Array<{
     productId?: string
     productName: string
@@ -88,17 +89,19 @@ export const quotationService = {
     // insert — see sequence.service.ts's header comment for why a plain
     // pre-transaction read is a real race under concurrent creates.
     const quotation = await db.$transaction(async (tx) => {
+      const isProforma = payload.documentKind === 'PROFORMA'
       const quotationNumber = await generateSequenceNumber(
-        tx, 'quotation_sequence', 'QT', 5,
+        tx, isProforma ? 'proforma_sequence' : 'quotation_sequence', isProforma ? 'PF' : 'QT', 5,
         async () => {
-          const last = await tx.quotation.findFirst({ orderBy: { createdAt: 'desc' }, select: { quotationNumber: true } })
-          return last ? parseInt(last.quotationNumber.replace('QT-', ''), 10) : 0
+          const last = await tx.quotation.findFirst({ where: { documentKind: isProforma ? 'PROFORMA' : 'QUOTATION' }, orderBy: { createdAt: 'desc' }, select: { quotationNumber: true } })
+          return last ? parseInt(last.quotationNumber.replace(/^[A-Z]+-/, ''), 10) : 0
         }
       )
 
       return tx.quotation.create({
         data: {
           quotationNumber,
+          documentKind: payload.documentKind ?? 'QUOTATION',
           customerId: payload.customerId ?? null,
           customerName: payload.customerName ?? null,
           // Real bug found live (2026-07-28 core-commerce audit): a bare

@@ -21,7 +21,7 @@ interface QuotationItem {
   id: string; productName: string; quantity: number; unitPrice: number; discount: number; taxRate: number; lineTotal: number
 }
 interface Quotation {
-  id: string; quotationNumber: string; customerName?: string | null; status: string
+  id: string; quotationNumber: string; documentKind?: string; customerName?: string | null; status: string
   totalAmount: number; taxAmount?: number; gstType?: string | null; pricesIncludeTax?: boolean; validUntil?: string | null; createdAt: string; items?: QuotationItem[]
   invoice?: { id: string; invoiceNumber: string } | null
   salesOrder?: { id: string; soNumber: string } | null
@@ -260,6 +260,7 @@ export function QuotationsScreen() {
                 <div className="flex items-center gap-2">
                   <p className="text-sm font-semibold text-dark dark:text-slate-100">{q.quotationNumber}</p>
                   <Badge variant={STATUS_VARIANT[q.status] ?? 'neutral'} size="sm">{q.status}</Badge>
+                  {q.documentKind === 'PROFORMA' && <Badge variant="info" size="sm">{t('quotations.kindProforma')}</Badge>}
                 </div>
                 <p className="text-xs text-slate-400 mt-0.5">
                   {q.customer?.customerName ?? q.customerName ?? t('billing.walkIn')} • {formatDate(q.createdAt)}

@@ -934,6 +934,7 @@ export const printService = {
 
   async generateQuotationHtml(quotation: {
     quotationNumber: string
+    documentKind?: string | null
     validUntil?: string | Date | null
     customerName?: string | null
     customer?: { customerName: string; phone?: string | null } | null
@@ -970,7 +971,7 @@ export const printService = {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Quotation ${quotation.quotationNumber}</title>
+<title>${quotation.documentKind === 'PROFORMA' ? 'Proforma Invoice' : 'Quotation'} ${quotation.quotationNumber}</title>
 <style>
   * { box-sizing: border-box; margin: 0; padding: 0; }
   body { font-family: 'Segoe UI', Arial, sans-serif; font-size: 12px; color: #1e293b; background: #fff; padding: 20mm; }
@@ -1014,7 +1015,8 @@ export const printService = {
       </div>
     </div>
     <div class="qt-meta">
-      <div class="qt-label">QUOTATION</div>
+      <div class="qt-label">${quotation.documentKind === 'PROFORMA' ? 'PROFORMA INVOICE' : 'QUOTATION'}</div>
+      ${quotation.documentKind === 'PROFORMA' ? '<div style="font-size:10px;color:#64748b">Not a tax invoice</div>' : ''}
       <div class="qt-number">${escHtml(quotation.quotationNumber)}</div>
       <div class="qt-date">Date: ${formatDate(new Date())}</div>
       <div class="validity-badge">Valid until: ${validUntilStr}</div>
@@ -1072,6 +1074,7 @@ export const printService = {
   // printer is a thermal one.
   async generateQuotationReceiptHtml(quotation: {
     quotationNumber: string
+    documentKind?: string | null
     validUntil?: string | Date | null
     customerName?: string | null
     customer?: { customerName: string; phone?: string | null } | null
@@ -1125,7 +1128,8 @@ export const printService = {
   ${profile?.address ? `<div class="center" style="font-size:8px">${[profile.address, profile.city].filter(Boolean).map(escHtml).join(', ')}</div>` : ''}
   ${profile?.phone ? `<div class="center" style="font-size:8px">${escHtml(profile.phone)}</div>` : ''}
   <div class="divider"></div>
-  <div class="bold">QUOTATION: ${escHtml(quotation.quotationNumber)}</div>
+  <div class="bold">${quotation.documentKind === 'PROFORMA' ? 'PROFORMA INVOICE' : 'QUOTATION'}: ${escHtml(quotation.quotationNumber)}</div>
+  ${quotation.documentKind === 'PROFORMA' ? '<div style="font-size:8px">Not a tax invoice</div>' : ''}
   <div style="font-size:8px">Date: ${formatDate(new Date())}</div>
   <div style="font-size:8px">Valid until: ${validUntilStr}</div>
   <div style="font-size:8px">Customer: ${customerDisplay}</div>
