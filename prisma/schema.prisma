@@ -873,6 +873,34 @@ model ProductBin {
   @@index([locationId, binCode])
 }
 
+// Items taken out of stock and items brought in, in one entry. Value out becomes value in.
+model StockJournal {
+  id            String   @id @default(cuid())
+  journalNumber String   @unique
+  notes         String?
+  createdById   String?
+  createdAt     DateTime @default(now())
+
+  lines StockJournalLine[]
+
+  @@index([createdAt])
+}
+
+model StockJournalLine {
+  id             String @id @default(cuid())
+  stockJournalId String
+  kind           String // OUT | IN
+  productId      String
+  productName    String
+  quantity       Float
+  unitCost       Float  @default(0)
+
+  stockJournal StockJournal @relation(fields: [stockJournalId], references: [id], onDelete: Cascade)
+
+  @@index([stockJournalId])
+  @@index([productId])
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CUSTOMERS
 // ─────────────────────────────────────────────────────────────────────────────

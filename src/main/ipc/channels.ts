@@ -357,6 +357,11 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  stockJournals: {
+    list: () => Promise<ApiResponse>
+    get: (payload: { id: string }) => Promise<ApiResponse>
+    create: (payload: { notes?: string; lines: Array<{ kind: 'OUT' | 'IN'; productId: string; quantity: number }> }) => Promise<ApiResponse>
+  }
   bins: {
     list: (payload: { locationId: string; search?: string }) => Promise<ApiResponse>
     set: (payload: { productId: string; locationId: string; binCode: string }) => Promise<ApiResponse>

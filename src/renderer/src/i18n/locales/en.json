@@ -2593,6 +2593,22 @@
     "none": "No items with stock in this location.",
     "couldNot": "Could not save the bin."
   },
+  "stockJournal": {
+    "title": "Stock Journal",
+    "subtitle": "Turn some items into others, such as repacking or putting a set together",
+    "new": "New entry",
+    "help": "Choose what leaves your stock and what comes into it. The value of what leaves is shared over what comes in, so your total stock value does not change.",
+    "takenOut": "Taken out of stock",
+    "broughtIn": "Brought into stock",
+    "findItem": "Find an item",
+    "notes": "Note (optional)",
+    "save": "Save entry",
+    "saved": "Stock journal saved",
+    "none": "No stock journal entries yet.",
+    "outShort": "Out:",
+    "inShort": "In:",
+    "couldNot": "Could not save this entry."
+  },
   "stockTake": {
     "title": "Stock Counts",
     "subtitle": "Count what is on the shelf and correct the books",
