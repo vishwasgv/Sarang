@@ -46,6 +46,7 @@ import { BranchSummariesScreen } from '@modules/accounting/ui/BranchSummariesScr
 import { DuplicatesScreen } from '@modules/customers/ui/DuplicatesScreen'
 import { HubScreen } from '@modules/dashboard/ui/HubScreen'
 import { StockTakeScreen } from '@modules/inventory/ui/StockTakeScreen'
+import { BinLocationsScreen } from '@modules/inventory/ui/BinLocationsScreen'
 import { FixedAssetsScreen } from '@modules/accounting/ui/FixedAssetsScreen'
 import { FixedAssetDetailScreen } from '@modules/accounting/ui/FixedAssetDetailScreen'
 import { LedgerSettingsScreen } from '@modules/accounting/ui/LedgerSettingsScreen'
@@ -349,6 +350,7 @@ export function AppRouter() {
         <Route path="/accounting/post-dated-cheques" element={<ProtectedRoute permission="postDatedCheques.view"><PostDatedChequesScreen /></ProtectedRoute>} />
         <Route path="/accounting/branch-summaries" element={<ProtectedRoute permission="analytics.viewProfit"><BranchSummariesScreen /></ProtectedRoute>} />
         <Route path="/duplicates/:kind" element={<ProtectedRoute permission="customers.update"><DuplicatesScreen /></ProtectedRoute>} />
+        <Route path="/inventory/bins" element={<ProtectedRoute permission="inventory.view"><BinLocationsScreen /></ProtectedRoute>} />
         <Route path="/inventory/stock-takes" element={<ProtectedRoute permission="inventory.view"><StockTakeScreen /></ProtectedRoute>} />
         <Route path="/inventory/stock-takes/:id" element={<ProtectedRoute permission="inventory.view"><StockTakeScreen /></ProtectedRoute>} />
         <Route path="/hub/sales" element={<ProtectedRoute permission="reports.sales"><HubScreen /></ProtectedRoute>} />

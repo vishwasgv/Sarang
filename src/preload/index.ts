@@ -280,6 +280,10 @@ const api: IpcChannels = {
     get: (p) => invoke('bankDeposits:get', p),
     listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
   },
+  bins: {
+    list: (p) => invoke('bins:list', p),
+    set: (p) => invoke('bins:set', p)
+  },
   stockTakes: {
     list: () => invoke('stockTakes:list'),
     get: (p) => invoke('stockTakes:get', p),

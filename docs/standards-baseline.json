@@ -1,7 +1,7 @@
 {
   "oversized": {
     "src/main/database/seed.ts": 925,
-    "src/main/ipc/channels.ts": 2208,
+    "src/main/ipc/channels.ts": 2212,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,
     "src/main/services/ai-query.service.ts": 2783,
@@ -25,7 +25,7 @@
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10982,
     "src/main/services/restaurant.service.ts": 1011,
-    "src/preload/index.ts": 1929,
+    "src/preload/index.ts": 1933,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2997,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 960,

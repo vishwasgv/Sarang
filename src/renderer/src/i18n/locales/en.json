@@ -2581,6 +2581,18 @@
       "outOfStock": "Out of stock"
     }
   },
+  "bins": {
+    "title": "Bin Locations",
+    "subtitle": "Which shelf, rack or bin each item sits on",
+    "location": "Location",
+    "search": "Find an item",
+    "help": "Type a shelf, rack or bin label such as A-3-2 and press Enter. Clear it to remove. Items appear here once they have stock in this location.",
+    "item": "Item",
+    "quantity": "In stock",
+    "bin": "Bin",
+    "none": "No items with stock in this location.",
+    "couldNot": "Could not save the bin."
+  },
   "stockTake": {
     "title": "Stock Counts",
     "subtitle": "Count what is on the shelf and correct the books",

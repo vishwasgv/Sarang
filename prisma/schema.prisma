@@ -861,6 +861,18 @@ model LocationStock {
   @@index([locationId])
 }
 
+// Shelf / rack / bin label of an item inside a location. Plain ids, no relations, so it never blocks deleting or merging.
+model ProductBin {
+  id         String   @id @default(cuid())
+  productId  String
+  locationId String
+  binCode    String
+  updatedAt  DateTime @updatedAt
+
+  @@unique([productId, locationId])
+  @@index([locationId, binCode])
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // CUSTOMERS
 // ─────────────────────────────────────────────────────────────────────────────

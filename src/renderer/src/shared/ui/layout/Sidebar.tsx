@@ -233,6 +233,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Payroll', i18nKey: 'nav.payroll', path: '/hr/payroll', icon: Banknote, permissionKey: 'hr.view' },
   { label: 'Products', i18nKey: 'nav.products', path: '/products', icon: Package, permissionKey: 'products.view' },
   { label: 'Inventory', i18nKey: 'nav.inventory', path: '/inventory', icon: Warehouse, permissionKey: 'inventory.view' },
+  { label: 'Bin Locations', path: '/inventory/bins', icon: MapPin, permissionKey: 'inventory.view' },
   { label: 'Stock Counts', path: '/inventory/stock-takes', icon: ClipboardList, permissionKey: 'inventory.view' },
   // Phase 64 — multi-location stock. Always in the nav (not module-gated) —
   // a single-location install just sees one row and never needs to act on it.
@@ -329,7 +330,7 @@ const PATH_GROUP: Record<string, NavGroupId> = {
   '/pricing/schemes': 'sales', '/pricing/markdowns': 'sales', '/pricing/loyalty': 'sales',
   '/suppliers': 'purchases', '/purchase-orders': 'purchases', '/logistics/grn': 'purchases',
   '/bills': 'purchases', '/supplier-payments': 'purchases', '/billing/debit-notes': 'purchases',
-  '/products': 'inventory', '/inventory': 'inventory', '/inventory/stock-takes': 'inventory', '/locations': 'inventory',
+  '/products': 'inventory', '/inventory': 'inventory', '/inventory/stock-takes': 'inventory', '/inventory/bins': 'inventory', '/locations': 'inventory',
   '/products/print-labels': 'inventory', '/pharmacy/batches': 'inventory', '/electronics/serials': 'inventory',
   '/expenses': 'accounting', '/cash-close': 'accounting', '/accounting/chart-of-accounts': 'accounting',
   '/accounting/journal-entries': 'accounting', '/accounting/bank-accounts': 'accounting',
