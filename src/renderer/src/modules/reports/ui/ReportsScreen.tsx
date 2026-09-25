@@ -1136,6 +1136,7 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'creditNoteRegister', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.invoices' },
   { id: 'debitNoteRegister', icon: <BarChart3 size={18} />, category: 'suppliers', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'salesReturnRegister', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.invoices' },
+  { id: 'payrollChallan', icon: <ShieldCheck size={18} />, category: 'finance', requiresDateRange: true, permission: 'hr.view' },
   { id: 'branchConsolidation', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'stockTakeVariance', icon: <Package size={18} />, category: 'inventory', requiresDateRange: true, permission: 'reports.inventory' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },

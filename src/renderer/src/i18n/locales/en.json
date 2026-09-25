@@ -2835,6 +2835,10 @@
         },
         "takeVariance": {
           "method": "Only counts that were posted are included. Value uses each item's cost today. Items with no difference are left out."
+        },
+        "payroll": {
+          "employeeShare": "These are the amounts deducted from employees. The employer contribution is not calculated here.",
+          "method": "Check means the amount deducted differs from what your rates in Settings would give for that basic pay. Rates are yours to set and confirm with your accountant."
         }
       },
       "salesBy": {
@@ -3097,6 +3101,18 @@
         "variance": "Difference",
         "value": "Value",
         "chart": "Largest differences by value"
+      },
+      "payroll": {
+        "employees": "Employees",
+        "employee": "Employee",
+        "code": "Code",
+        "basic": "Basic pay",
+        "pf": "PF",
+        "esi": "ESI",
+        "pt": "Professional Tax",
+        "other": "Other deductions",
+        "check": "Check",
+        "chart": "Deductions by employee"
       }
     },
     "gst": {
@@ -3379,6 +3395,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "payrollChallan": {
+        "label": "PF, ESI and Professional Tax by Employee",
+        "description": "For the month of the end date: what was deducted for each employee, checked against your rates, with totals for the challan"
       },
       "branchConsolidation": {
         "label": "Branch Consolidation",

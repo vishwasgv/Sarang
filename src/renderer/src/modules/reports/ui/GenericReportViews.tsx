@@ -51,7 +51,8 @@ export const GENERIC_REPORT_IDS = [
   'debitNoteRegister',
   'salesReturnRegister',
   'branchConsolidation',
-  'stockTakeVariance'
+  'stockTakeVariance',
+  'payrollChallan'
 ] as const
 export type GenericReportId = typeof GENERIC_REPORT_IDS[number]
 
