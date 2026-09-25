@@ -1,3 +1,4 @@
+import { PartyDuplicateIndex } from './import-duplicates.util'
 import { dialog, BrowserWindow } from 'electron'
 import { readFileSync } from 'fs'
 import { extname } from 'path'
@@ -563,6 +564,7 @@ export async function validatePreview(
     const existingPhones = new Set<string>()
     const existingSupplierNames = new Set<string>()
     let customersForLookup: { id: string; customerName: string; phone: string | null }[] = []
+    const partyIndex = new PartyDuplicateIndex(module === 'suppliers' ? 'suppliers' : 'customers')
 
     if (module === 'products' || module === 'inventory') {
       const products = await db.product.findMany({ select: { sku: true, barcode: true } })
@@ -580,10 +582,15 @@ export async function validatePreview(
       // dedupe could wrongly block re-using a phone the app itself allows.
       customersForLookup = await db.customer.findMany({ where: { isActive: true }, select: { id: true, customerName: true, phone: true } })
       customersForLookup.forEach(c => { if (c.phone) existingPhones.add(c.phone) })
+      if (module === 'customers') {
+        const everyone = await db.customer.findMany({ select: { customerName: true, phone: true, email: true, taxNumber: true, isActive: true } })
+        partyIndex.load(everyone.map(c => ({ name: c.customerName, phone: c.phone, email: c.email, taxNumber: c.taxNumber, phoneCounts: c.isActive })))
+      }
     }
     if (module === 'suppliers') {
-      const suppliers = await db.supplier.findMany({ select: { supplierName: true } })
+      const suppliers = await db.supplier.findMany({ select: { supplierName: true, phone: true, email: true, taxNumber: true } })
       suppliers.forEach(s => existingSupplierNames.add(s.supplierName.toLowerCase()))
+      partyIndex.load(suppliers.map(s => ({ name: s.supplierName, phone: s.phone, email: s.email, taxNumber: s.taxNumber })))
     }
 
     // These sets are mutated as we walk the sampled rows (mirroring what
@@ -610,13 +617,17 @@ export async function validatePreview(
       }
       if (module === 'customers') {
         const phone = data.phone as string | null
+        const why = partyIndex.reason(data)
         if (phone && existingPhones.has(phone)) { rowWarnings.push(`Phone "${phone}" already exists — this row will be skipped`); willSkip = true }
-        if (errors.length === 0 && !willSkip && phone) existingPhones.add(phone)
+        else if (why) { rowWarnings.push(`${why} — this row will be skipped`); willSkip = true }
+        if (errors.length === 0 && !willSkip) { if (phone) existingPhones.add(phone); partyIndex.remember(data) }
       }
       if (module === 'suppliers') {
         const name = (data.supplierName as string)?.toLowerCase()
+        const why = partyIndex.reason(data)
         if (name && existingSupplierNames.has(name)) { rowWarnings.push(`Supplier "${data.supplierName}" already exists — this row will be skipped`); willSkip = true }
-        if (errors.length === 0 && !willSkip && name) existingSupplierNames.add(name)
+        else if (why) { rowWarnings.push(`${why} — this row will be skipped`); willSkip = true }
+        if (errors.length === 0 && !willSkip) { if (name) existingSupplierNames.add(name); partyIndex.remember(data) }
       }
       if (module === 'inventory') {
         const sku = (data.sku as string)?.toLowerCase()
@@ -703,8 +714,15 @@ export async function executeImport(
     const phoneToCustomerId = new Map(existingCustomers.filter(c => c.phone).map(c => [c.phone!, c.id]))
     const existingPhones = new Set(existingCustomers.filter(c => c.phone).map(c => c.phone!))
 
-    const existingSuppliers = await db.supplier.findMany({ select: { supplierName: true } })
+    const existingSuppliers = await db.supplier.findMany({ select: { supplierName: true, phone: true, email: true, taxNumber: true } })
     const existingSupplierNames = new Set(existingSuppliers.map(s => s.supplierName.toLowerCase()))
+    const customerIndex = new PartyDuplicateIndex('customers')
+    const supplierIndex = new PartyDuplicateIndex('suppliers')
+    if (module === 'customers') {
+      const everyone = await db.customer.findMany({ select: { customerName: true, phone: true, email: true, taxNumber: true, isActive: true } })
+      customerIndex.load(everyone.map(c => ({ name: c.customerName, phone: c.phone, email: c.email, taxNumber: c.taxNumber, phoneCounts: c.isActive })))
+    }
+    supplierIndex.load(existingSuppliers.map(s => ({ name: s.supplierName, phone: s.phone, email: s.email, taxNumber: s.taxNumber })))
 
     const existingCategories = await db.productCategory.findMany({ select: { id: true, name: true } })
     const categoryNameToId = new Map(existingCategories.map(c => [c.name.toLowerCase(), c.id]))
@@ -783,6 +801,7 @@ export async function executeImport(
           else if (module === 'customers') {
             const phone = data.phone as string | null
             if (phone && existingPhones.has(phone)) { skipped++; continue }
+            if (customerIndex.reason(data)) { skipped++; continue }
 
             await db.customer.create({
               data: {
@@ -797,13 +816,14 @@ export async function executeImport(
             })
 
             if (phone) existingPhones.add(phone)
+            customerIndex.remember(data)
             imported++
           }
 
           // ── Suppliers ─────────────────────────────────────────────────────────
           else if (module === 'suppliers') {
             const nameKey = (data.supplierName as string).toLowerCase()
-            if (existingSupplierNames.has(nameKey)) { skipped++; continue }
+            if (existingSupplierNames.has(nameKey) || supplierIndex.reason(data)) { skipped++; continue }
 
             await db.supplier.create({
               data: {
@@ -817,6 +837,7 @@ export async function executeImport(
             })
 
             existingSupplierNames.add(nameKey)
+            supplierIndex.remember(data)
             imported++
           }
 
