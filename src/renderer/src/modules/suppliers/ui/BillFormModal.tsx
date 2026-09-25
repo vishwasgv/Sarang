@@ -95,6 +95,9 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
   const [categories, setCategories] = useState<ExpenseCategory[]>([])
+  const [newCategoryFor, setNewCategoryFor] = useState<number | null>(null)
+  const [newCategoryName, setNewCategoryName] = useState('')
+  const [savingCategory, setSavingCategory] = useState(false)
   const [costCentres, setCostCentres] = useState<CostCentre[]>([])
   const [loadingData, setLoadingData] = useState(true)
   const [supplierFormOpen, setSupplierFormOpen] = useState(false)
@@ -386,6 +389,27 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
                               <option value="">{t('bills.categoryOptional')}</option>
                               {categories.map(c => <option key={c.id} value={c.id}>{c.categoryName}</option>)}
                             </select>
+                            {newCategoryFor === index ? (
+                              <div className="flex gap-1">
+                                <input autoFocus value={newCategoryName} onChange={e => setNewCategoryName(e.target.value)} placeholder={t('bills.newCategoryName')}
+                                  className="flex-1 h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-xs bg-white dark:bg-slate-900" />
+                                <Button size="sm" loading={savingCategory} disabled={!newCategoryName.trim()} onClick={async () => {
+                                  setSavingCategory(true)
+                                  try {
+                                    const res = await window.api.expenses.createCategory({ categoryName: newCategoryName.trim() })
+                                    if (res.success && res.data) {
+                                      const created = res.data as ExpenseCategory
+                                      setCategories(prev => [...prev, created].sort((a, b) => a.categoryName.localeCompare(b.categoryName)))
+                                      setValue(`items.${index}.serviceCategoryId`, created.id)
+                                      setNewCategoryFor(null); setNewCategoryName('')
+                                    } else toastError(t('common.error'), res.error?.message ?? t('bills.couldNotAddCategory'))
+                                  } finally { setSavingCategory(false) }
+                                }}>{t('common.add')}</Button>
+                                <Button size="sm" variant="ghost" onClick={() => { setNewCategoryFor(null); setNewCategoryName('') }}>{t('common.cancel')}</Button>
+                              </div>
+                            ) : (
+                              <button type="button" onClick={() => setNewCategoryFor(index)} className="text-xs text-brand hover:underline">{t('bills.addCategory')}</button>
+                            )}
                           </div>
                         )}
                         {errors.items?.[index] && (
