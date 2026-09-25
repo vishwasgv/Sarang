@@ -357,6 +357,11 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  gstPayments: {
+    record: (payload: unknown) => Promise<ApiResponse>
+    list: () => Promise<ApiResponse>
+    void: (payload: { id: string; reason: string }) => Promise<ApiResponse>
+  }
   fixedAssets: {
     create: (payload: unknown) => Promise<ApiResponse>
     list: (payload?: { status?: string; category?: string }) => Promise<ApiResponse>
