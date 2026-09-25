@@ -2353,7 +2353,18 @@
     "couldNotTransfer": "Could not transfer stock.",
     "stockTransferred": "Stock transferred."
   },
+  "addresses": {
+    "title": "Other addresses",
+    "add": "Add address",
+    "empty": "No other addresses. Add a ship-to, warehouse or branch address if this party has more than one.",
+    "default": "Default",
+    "labelPlaceholder": "Name, for example Warehouse",
+    "addressPlaceholder": "Full address",
+    "makeDefault": "Use as the default address"
+  },
   "costCentres": {
+    "category": "Category",
+    "categoryPlaceholder": "For example Department or Project",
     "title": "Cost Centres",
     "subtitle": "{{count}} cost centres — tag invoices, bills, expenses and employees to see profit/spend by department, branch or project",
     "name": "Name",
@@ -2851,6 +2862,9 @@
         "expenses": {
           "vendorNote": "Expenses with no vendor entered are listed together as Not assigned."
         },
+        "costCategory": {
+          "note": "Entries with no cost centre, or a cost centre with no category, are shown as Not assigned."
+        },
         "assets": {
           "asOfToday": "Depreciation is what has been posted so far."
         },
@@ -3062,6 +3076,13 @@
         "quantity": "Quantity moved",
         "direction": "Direction",
         "chart": "Quantity transferred by day"
+      },
+      "costCategory": {
+        "category": "Category",
+        "revenue": "Revenue",
+        "expense": "Expenses",
+        "profit": "Profit",
+        "chart": "Revenue and expenses by category"
       },
       "assets": {
         "count": "Assets",
@@ -3480,6 +3501,10 @@
       "bankReconciliationSummary": {
         "label": "Bank Reconciliation Summary",
         "description": "For each bank account, how many statement lines are matched with your books and how many are still open"
+      },
+      "costCategoryProfit": {
+        "label": "Profit by Cost Category",
+        "description": "Revenue, expenses and profit added up by the category you gave each cost centre (for example department or project)"
       },
       "ratioAnalysis": {
         "label": "Ratio Analysis",

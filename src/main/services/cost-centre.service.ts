@@ -20,22 +20,23 @@ export const costCentreService = {
     return { success: true, data: count > 0 }
   },
 
-  async create(payload: { name: string; code?: string }, userId?: string) {
+  async create(payload: { name: string; code?: string; category?: string }, userId?: string) {
     const db = getPrisma()
     const trimmed = payload.name.trim()
     if (!trimmed) return { success: false, error: { code: 'CC-001', message: 'Cost centre name is required.' } }
-    const created = await db.costCentre.create({ data: { name: trimmed, code: payload.code?.trim() || null } })
+    const created = await db.costCentre.create({ data: { name: trimmed, code: payload.code?.trim() || null, category: payload.category?.trim() || null } })
     await logAction({ userId, action: 'COST_CENTRE_CREATE', entityType: 'CostCentre', entityId: created.id, newValue: created })
     return { success: true, data: created }
   },
 
-  async update(id: string, payload: { name?: string; code?: string; isActive?: boolean }, userId?: string) {
+  async update(id: string, payload: { name?: string; code?: string; category?: string; isActive?: boolean }, userId?: string) {
     const db = getPrisma()
     const existing = await db.costCentre.findUnique({ where: { id } })
     if (!existing) return { success: false, error: { code: 'CC-002', message: 'Cost centre not found.' } }
     const data: Record<string, unknown> = {}
     if (payload.name !== undefined) data.name = payload.name.trim()
     if (payload.code !== undefined) data.code = payload.code.trim() || null
+    if (payload.category !== undefined) data.category = payload.category.trim() || null
     if (payload.isActive !== undefined) data.isActive = payload.isActive
     const updated = await db.costCentre.update({ where: { id }, data })
     await logAction({ userId, action: 'COST_CENTRE_UPDATE', entityType: 'CostCentre', entityId: id, oldValue: existing, newValue: updated })

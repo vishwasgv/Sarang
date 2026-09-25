@@ -305,6 +305,11 @@ const api: IpcChannels = {
     addMemo: (p) => invoke('journalExtras:addMemo', p),
     removeMemo: (p) => invoke('journalExtras:removeMemo', p)
   },
+  partyAddresses: {
+    list: (p) => invoke('partyAddresses:list', p),
+    save: (p) => invoke('partyAddresses:save', p),
+    remove: (p) => invoke('partyAddresses:remove', p)
+  },
   customKpis: {
     list: () => invoke('customKpis:list'),
     add: (p) => invoke('customKpis:add', p),

@@ -347,7 +347,55 @@ async function salesReturnRegister(p: GenericReportParams): Promise<GenericRepor
   }
 }
 
+// ── Profit by cost category ───────────────────────────────────────────────────────────────────────────
+async function costCategoryProfit(p: GenericReportParams): Promise<GenericReport> {
+  const db = getPrisma()
+  const decimals = await decimalsOf()
+  const [centres, lines] = await Promise.all([
+    db.costCentre.findMany({ select: { id: true, category: true } }),
+    db.journalEntryLine.findMany({
+      where: { journalEntry: { entryDate: { gte: parseLocalDateStart(p.dateFrom), lte: parseLocalDateEnd(p.dateTo) } } },
+      select: { costCentreId: true, debitAmount: true, creditAmount: true, account: { select: { accountType: true } } }
+    })
+  ])
+  const categoryOf = new Map(centres.map((c) => [c.id, c.category?.trim() || '']))
+  const revenue = new Map<string, number[]>()
+  const expense = new Map<string, number[]>()
+  const push = (m: Map<string, number[]>, k: string, v: number) => { const a = m.get(k) ?? []; a.push(v); m.set(k, a) }
+  for (const l of lines) {
+    const cat = l.costCentreId ? (categoryOf.get(l.costCentreId) ?? '') : ''
+    if (l.account.accountType === 'INCOME') push(revenue, cat, l.creditAmount - l.debitAmount)
+    else if (l.account.accountType === 'EXPENSE') push(expense, cat, l.debitAmount - l.creditAmount)
+  }
+  const names = Array.from(new Set([...revenue.keys(), ...expense.keys()])).sort((a, b) => (a === '' ? 1 : b === '' ? -1 : a.localeCompare(b)))
+  const rows: Row[] = names.map((n) => {
+    const rev = sumMoney(revenue.get(n) ?? [], decimals)
+    const exp = sumMoney(expense.get(n) ?? [], decimals)
+    return { category: n, revenue: rev, expense: exp, profit: roundMoney(rev - exp, decimals) }
+  })
+  const sum = (k: string) => sumMoney(rows.map((r) => Number(r[k])), decimals)
+  return {
+    id: 'costCategoryProfit', dateFrom: p.dateFrom, dateTo: p.dateTo, decimals,
+    summary: [
+      { labelKey: 'costCategory.revenue', type: 'money', value: sum('revenue') },
+      { labelKey: 'costCategory.expense', type: 'money', value: sum('expense') },
+      { labelKey: 'costCategory.profit', type: 'money', value: sum('profit') }
+    ],
+    columns: [
+      { key: 'category', labelKey: 'costCategory.category', type: 'text' },
+      { key: 'revenue', labelKey: 'costCategory.revenue', type: 'money' },
+      { key: 'expense', labelKey: 'costCategory.expense', type: 'money' },
+      { key: 'profit', labelKey: 'costCategory.profit', type: 'money' }
+    ],
+    rows,
+    totals: { category: '', revenue: sum('revenue'), expense: sum('expense'), profit: sum('profit') },
+    chart: { type: 'bar', titleKey: 'costCategory.chart', xKey: 'category', series: [{ key: 'revenue', labelKey: 'costCategory.revenue', money: true }, { key: 'expense', labelKey: 'costCategory.expense', money: true }], limit: 12 },
+    notes: ['costCategory.note']
+  }
+}
+
 export const BOOKS_REPORTS: Record<string, GenericReportDefinition> = {
+  costCategoryProfit: { permission: 'analytics.viewProfit', run: costCategoryProfit },
   fundFlow: { permission: 'analytics.viewProfit', run: fundFlow },
   bankBook: { permission: 'reports.financial', run: bankBook },
   bankReconciliationSummary: { permission: 'reports.financial', run: bankReconciliationSummary },

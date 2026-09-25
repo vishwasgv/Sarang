@@ -46,6 +46,7 @@ export const GENERIC_REPORT_IDS = [
   'bankBook',
   'bankReconciliationSummary',
   'ratioAnalysis',
+  'costCategoryProfit',
   'yearOverYear',
   'creditNoteRegister',
   'debitNoteRegister',

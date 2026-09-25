@@ -9,7 +9,7 @@ import { SkeletonTable } from '@shared/ui/Skeleton'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 
-interface CostCentre { id: string; name: string; code: string | null; isActive: boolean }
+interface CostCentre { id: string; name: string; code: string | null; category: string | null; isActive: boolean }
 
 // Phase 65 — Reporting Tags / Cost & Profit Centres. A flat list (not a
 // hierarchy) — see schema.prisma's own CostCentre comment. Every install
@@ -81,6 +81,7 @@ export function CostCentresScreen() {
               <tr className="border-b border-slate-100 dark:border-slate-800 bg-slate-50 dark:bg-slate-800/60">
                 <th className="text-start px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('costCentres.name')}</th>
                 <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('costCentres.code')}</th>
+                <th className="text-start px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('costCentres.category')}</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.status')}</th>
                 <th className="text-end px-6 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('common.actions')}</th>
               </tr>
@@ -90,6 +91,7 @@ export function CostCentresScreen() {
                 <tr key={cc.id} className="border-b border-slate-50 dark:border-slate-800 hover:bg-slate-50/50 dark:hover:bg-slate-800/50 transition-colors">
                   <td className="px-6 py-3 font-semibold text-dark dark:text-slate-100">{cc.name}</td>
                   <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{cc.code ?? '—'}</td>
+                  <td className="px-4 py-3 text-slate-500 dark:text-slate-400">{cc.category ?? '—'}</td>
                   <td className="px-4 py-3 text-center">
                     <Badge variant={cc.isActive ? 'success' : 'neutral'} size="sm">{cc.isActive ? t('common.active') : t('common.inactive')}</Badge>
                   </td>
@@ -120,6 +122,7 @@ function CostCentreFormModal({ costCentre, onClose, onSaved }: { costCentre?: Co
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [name, setName] = useState(costCentre?.name ?? '')
   const [code, setCode] = useState(costCentre?.code ?? '')
+  const [category, setCategory] = useState(costCentre?.category ?? '')
   const [isActive, setIsActive] = useState(costCentre?.isActive ?? true)
   const [saving, setSaving] = useState(false)
 
@@ -128,8 +131,8 @@ function CostCentreFormModal({ costCentre, onClose, onSaved }: { costCentre?: Co
     setSaving(true)
     try {
       const res = costCentre
-        ? await window.api.costCentres.update({ id: costCentre.id, name: name.trim(), code: code.trim() || undefined, isActive })
-        : await window.api.costCentres.create({ name: name.trim(), code: code.trim() || undefined })
+        ? await window.api.costCentres.update({ id: costCentre.id, name: name.trim(), code: code.trim() || undefined, category: category.trim(), isActive })
+        : await window.api.costCentres.create({ name: name.trim(), code: code.trim() || undefined, category: category.trim() || undefined })
       if (!res.success) { toastError(t('common.error'), t('costCentres.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       onSaved()
@@ -155,6 +158,7 @@ function CostCentreFormModal({ costCentre, onClose, onSaved }: { costCentre?: Co
       <div className="space-y-4">
         <Input label={`${t('costCentres.name')} *`} value={name} onChange={(e) => setName(e.target.value)} placeholder={t('costCentres.namePlaceholder')} />
         <Input label={t('costCentres.code')} value={code} onChange={(e) => setCode(e.target.value)} placeholder={t('costCentres.codePlaceholder')} />
+        <Input label={t('costCentres.category')} value={category} onChange={(e) => setCategory(e.target.value)} placeholder={t('costCentres.categoryPlaceholder')} />
         {costCentre && (
           <label className="flex items-center gap-2 cursor-pointer">
             <input type="checkbox" checked={isActive} onChange={(e) => setIsActive(e.target.checked)} className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />

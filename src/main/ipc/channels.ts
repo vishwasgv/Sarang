@@ -155,8 +155,8 @@ export interface IpcChannels {
   costCentres: {
     list: () => Promise<ApiResponse>
     hasAny: () => Promise<ApiResponse<boolean>>
-    create: (payload: { name: string; code?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; name?: string; code?: string; isActive?: boolean }) => Promise<ApiResponse>
+    create: (payload: { name: string; code?: string; category?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; name?: string; code?: string; category?: string; isActive?: boolean }) => Promise<ApiResponse>
   }
   // Phase 66 — Custom Fields.
   customFields: {
@@ -381,6 +381,11 @@ export interface IpcChannels {
     listMemos: () => Promise<ApiResponse>
     addMemo: (payload: { title: string; notes?: string; memoDate?: string }) => Promise<ApiResponse>
     removeMemo: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  partyAddresses: {
+    list: (payload: { partyType: 'CUSTOMER' | 'SUPPLIER'; partyId: string }) => Promise<ApiResponse>
+    save: (payload: { id?: string; partyType: 'CUSTOMER' | 'SUPPLIER'; partyId: string; label: string; addressText: string; isDefault?: boolean }) => Promise<ApiResponse>
+    remove: (payload: { id: string; partyType: 'CUSTOMER' | 'SUPPLIER' }) => Promise<ApiResponse>
   }
   customKpis: {
     list: () => Promise<ApiResponse>

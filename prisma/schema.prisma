@@ -938,6 +938,20 @@ model ExpenseClaim {
   @@index([status])
 }
 
+// An extra address of a customer or supplier (ship-to, warehouse, branch). partyId points at Customer or Supplier by partyType.
+model PartyAddress {
+  id          String   @id @default(cuid())
+  partyType   String // CUSTOMER | SUPPLIER
+  partyId     String
+  label       String
+  addressText String
+  isDefault   Boolean  @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  @@index([partyType, partyId])
+}
+
 // A note about something that is not an accounting entry (yet). Never posted to the books.
 model JournalMemo {
   id          String   @id @default(cuid())
@@ -7351,6 +7365,8 @@ model CostCentre {
   id        String   @id @default(cuid())
   name      String
   code      String?
+  // Groups cost centres (for example Department or Project) so reports can add them up.
+  category  String?
   isActive  Boolean  @default(true)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt

@@ -1,7 +1,7 @@
 {
   "oversized": {
     "src/main/database/seed.ts": 937,
-    "src/main/ipc/channels.ts": 2256,
+    "src/main/ipc/channels.ts": 2261,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,
     "src/main/services/ai-query.service.ts": 2783,
@@ -25,11 +25,11 @@
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10982,
     "src/main/services/restaurant.service.ts": 1011,
-    "src/preload/index.ts": 1977,
+    "src/preload/index.ts": 1982,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2997,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 963,
-    "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 668,
+    "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 671,
     "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1358,
     "src/renderer/src/modules/hotel/ui/HotelBookingsScreen.tsx": 741,
     "src/renderer/src/modules/import/ui/ImportWizardScreen.tsx": 671,
@@ -42,7 +42,7 @@
     "src/renderer/src/modules/products/ui/ProductFormModal.tsx": 1050,
     "src/renderer/src/modules/reports/ui/FinancialStatementViews.tsx": 649,
     "src/renderer/src/modules/reports/ui/GstReportViews.tsx": 777,
-    "src/renderer/src/modules/reports/ui/ReportsScreen.tsx": 13054,
+    "src/renderer/src/modules/reports/ui/ReportsScreen.tsx": 13055,
     "src/renderer/src/modules/restaurant/ui/RestaurantTablesScreen.tsx": 1056,
     "src/renderer/src/modules/service/ui/JobCardsScreen.tsx": 810,
     "src/renderer/src/modules/service-business/ui/AppointmentsScreen.tsx": 1298,
@@ -70,7 +70,7 @@
     "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3645,
     "src/renderer/src/modules/setup/ui/SetupWizard.tsx": 898,
     "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 641,
-    "src/renderer/src/modules/suppliers/ui/SupplierDetailScreen.tsx": 603
+    "src/renderer/src/modules/suppliers/ui/SupplierDetailScreen.tsx": 606
   },
   "rawMoneyMath": {
     "src/main/services/credit-interest.service.ts": 1

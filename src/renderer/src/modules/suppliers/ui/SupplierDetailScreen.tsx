@@ -1,4 +1,5 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { PartyAddressesCard } from '@shared/ui/organisms/PartyAddressesCard'
 import { useTranslation } from 'react-i18next'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Building2, Phone, Mail, MapPin, TrendingUp, TrendingDown, PlusCircle, X, Receipt } from 'lucide-react'
@@ -265,6 +266,8 @@ export function SupplierDetailScreen() {
           </button>
         )}
       </div>
+
+      <PartyAddressesCard partyType="SUPPLIER" partyId={supplier.id} canEdit={hasPermission('suppliers.update')} />
 
       {/* Info cards */}
       <div className="grid grid-cols-2 gap-4">

@@ -26,7 +26,7 @@ describe('costCentreService.create', () => {
     const db = makeDb()
     const result = await costCentreService.create({ name: 'Downtown Branch', code: 'DT' }, 'user-1')
     expect(result.success).toBe(true)
-    expect(db.costCentre.create).toHaveBeenCalledWith({ data: { name: 'Downtown Branch', code: 'DT' } })
+    expect(db.costCentre.create).toHaveBeenCalledWith({ data: { name: 'Downtown Branch', code: 'DT', category: null } })
   })
 
   it('rejects an empty/whitespace-only name', async () => {
