@@ -1721,6 +1721,26 @@
       "created": "Cheque book added",
       "useNextNumber": "Use next cheque book number (#{{number}})"
     },
+    "branches": {
+      "title": "Branch Summaries",
+      "subtitle": "Send this shop's figures to head office, or read the files sent by other shops",
+      "sendTitle": "Send my figures",
+      "sendHelp": "Makes a small file with this shop's sales, purchases, expenses, receivables, payables, stock and cash for the dates chosen. Send the file to head office by email or a memory stick.",
+      "branchName": "Branch name",
+      "from": "From",
+      "to": "To",
+      "makeFile": "Make the file",
+      "exported": "File saved",
+      "receiveTitle": "Read files from branches",
+      "receiveHelp": "Choose the files the branches sent. Importing the same branch and dates again replaces the earlier figures.",
+      "chooseFiles": "Choose files",
+      "openReport": "Open Reports",
+      "imported": "{{count}} file(s) imported",
+      "period": "Dates",
+      "sales": "Sales",
+      "couldNot": "Could not complete this.",
+      "note": "The files carry figures only, no customer or supplier names. Nothing is sent over the internet by Sarang."
+    },
     "gstReturns": {
       "title": "GST Return Files",
       "subtitle": "Prepare GSTR-1 and GSTR-3B files from your books to check and upload on the GST portal",
@@ -2665,6 +2685,10 @@
         "party": {
           "credit": "Customer",
           "debit": "Supplier"
+        },
+        "branches": {
+          "method": "Includes this business (figures worked out now) and every imported file whose dates fall inside the dates you chose. Sales are before tax.",
+          "currencyMixed": "Some files use a different currency from this business; the totals add them as they are, without converting."
         }
       },
       "salesBy": {
@@ -2903,6 +2927,18 @@
         "purchasesThis": "Purchases this year",
         "purchasesLast": "Purchases last year",
         "chart": "Sales, this year and last year"
+      },
+      "branches": {
+        "count": "Businesses",
+        "branch": "Business or branch",
+        "sales": "Sales",
+        "purchases": "Purchases",
+        "expenses": "Expenses",
+        "receivables": "Receivables",
+        "payables": "Payables",
+        "stockValue": "Stock value",
+        "cashAndBank": "Cash and bank",
+        "chart": "Sales and purchases by business"
       }
     },
     "gst": {
@@ -3185,6 +3221,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "branchConsolidation": {
+        "label": "Branch Consolidation",
+        "description": "This business and the branch files you imported, side by side: sales, purchases, expenses, receivables, payables, stock and cash"
       },
       "fundFlow": {
         "label": "Fund Flow",

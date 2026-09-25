@@ -280,6 +280,12 @@ const api: IpcChannels = {
     get: (p) => invoke('bankDeposits:get', p),
     listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
   },
+  branchSummaries: {
+    export: (p) => invoke('branchSummaries:export', p),
+    import: () => invoke('branchSummaries:import'),
+    list: () => invoke('branchSummaries:list'),
+    remove: (p) => invoke('branchSummaries:remove', p)
+  },
   reportFiles: {
     chooseFolder: () => invoke('reportFiles:chooseFolder'),
     save: (p) => invoke('reportFiles:save', p)

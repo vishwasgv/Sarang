@@ -49,7 +49,8 @@ export const GENERIC_REPORT_IDS = [
   'yearOverYear',
   'creditNoteRegister',
   'debitNoteRegister',
-  'salesReturnRegister'
+  'salesReturnRegister',
+  'branchConsolidation'
 ] as const
 export type GenericReportId = typeof GENERIC_REPORT_IDS[number]
 

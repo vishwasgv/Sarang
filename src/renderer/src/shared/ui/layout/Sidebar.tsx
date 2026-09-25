@@ -269,6 +269,7 @@ export const NAV_ITEMS: NavItem[] = [
   // 2026-09-02 — Bank Deposit Slips.
   { label: 'Bank Deposits', path: '/accounting/bank-deposits', icon: PiggyBank, permissionKey: 'bankAccounts.view' },
   { label: 'GST Payments', path: '/accounting/gst-payments', icon: Receipt, permissionKey: 'journalEntries.view', indiaOnly: true },
+  { label: 'Branch Summaries', path: '/accounting/branch-summaries', icon: Boxes, permissionKey: 'analytics.viewProfit' },
   { label: 'GST Return Files', path: '/accounting/gst-returns', icon: Receipt, permissionKey: 'reports.tax', indiaOnly: true },
   { label: 'Fixed Assets', path: '/accounting/fixed-assets', icon: Boxes, permissionKey: 'fixedAssets.view' },
   { label: 'Ledger Settings', path: '/accounting/ledger-settings', icon: Lock, permissionKey: 'bankAccounts.view' },
@@ -326,7 +327,7 @@ const PATH_GROUP: Record<string, NavGroupId> = {
   '/products/print-labels': 'inventory', '/pharmacy/batches': 'inventory', '/electronics/serials': 'inventory',
   '/expenses': 'accounting', '/cash-close': 'accounting', '/accounting/chart-of-accounts': 'accounting',
   '/accounting/journal-entries': 'accounting', '/accounting/bank-accounts': 'accounting',
-  '/accounting/post-dated-cheques': 'accounting', '/accounting/bank-deposits': 'accounting', '/accounting/gst-payments': 'accounting', '/accounting/gst-returns': 'accounting',
+  '/accounting/post-dated-cheques': 'accounting', '/accounting/bank-deposits': 'accounting', '/accounting/gst-payments': 'accounting', '/accounting/gst-returns': 'accounting', '/accounting/branch-summaries': 'accounting',
   '/accounting/fixed-assets': 'accounting', '/accounting/ledger-settings': 'accounting',
   '/cost-centres': 'accounting', '/budgets': 'accounting', '/recurring-profiles': 'accounting',
   '/approval-workflows': 'accounting',

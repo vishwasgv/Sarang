@@ -357,6 +357,12 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  branchSummaries: {
+    export: (payload: { branchName?: string; dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    import: () => Promise<ApiResponse>
+    list: () => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
+  }
   reportFiles: {
     chooseFolder: () => Promise<ApiResponse>
     save: (payload: { folder: string; fileName: string; format: 'CSV' | 'XLSX'; sheetName?: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>

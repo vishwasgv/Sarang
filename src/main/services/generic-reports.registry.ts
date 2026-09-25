@@ -4,6 +4,7 @@ import { loadSalesLines, type SalesLine } from './sales-lines.query'
 import { MONEY_REPORTS } from './generic-reports.money'
 import { STOCK_REPORTS } from './generic-reports.stock'
 import { BOOKS_REPORTS } from './generic-reports.books'
+import { BRANCH_REPORTS } from './generic-reports.branches'
 
 // Reports described as data (see generic-report.types.ts). Each entry names the permission it needs and how to
 // build it. To add one: write the function, add it to REGISTRY, add its name to reports.defs and its column names
@@ -89,7 +90,8 @@ export const GENERIC_REPORTS: Record<string, GenericReportDefinition> = {
   salesBySalesperson: { permission: 'reports.sales', run: salesBy('salesBySalesperson', 'salesperson', 'bar') },
   ...MONEY_REPORTS,
   ...STOCK_REPORTS,
-  ...BOOKS_REPORTS
+  ...BOOKS_REPORTS,
+  ...BRANCH_REPORTS
 }
 
 export const GENERIC_REPORT_IDS: string[] = Object.keys(GENERIC_REPORTS)

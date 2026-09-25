@@ -7847,3 +7847,20 @@ model VehicleServiceLog {
   @@index([vehicleId])
   @@index([serviceDate])
 }
+
+// A branch's figures for a period, imported from the file that branch exported. Used only for the consolidation report.
+model BranchSummary {
+  id          String   @id @default(cuid())
+  branchName  String
+  periodFrom  String   // YYYY-MM-DD
+  periodTo    String   // YYYY-MM-DD
+  currency    String   @default("")
+  figures     String   // JSON of the figures in the file
+  checksum    String
+  generatedAt String   // when the branch made the file
+  importedAt  DateTime @default(now())
+
+  @@unique([branchName, periodFrom, periodTo])
+  @@index([periodFrom, periodTo])
+}
+
