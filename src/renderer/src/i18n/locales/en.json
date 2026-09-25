@@ -2594,6 +2594,13 @@
     "none": "No items with stock in this location.",
     "couldNot": "Could not save the bin."
   },
+  "journalTemplates": {
+    "use": "Start from a saved pattern",
+    "saveAs": "Save these accounts as a pattern",
+    "name": "Pattern name",
+    "saved": "Pattern saved",
+    "couldNot": "Could not save the pattern."
+  },
   "bankRules": {
     "title": "Bank Rules",
     "subtitle": "Teach Sarang where your bank statement lines belong",

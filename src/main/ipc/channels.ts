@@ -362,6 +362,11 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     create: (payload: { notes?: string; lines: Array<{ kind: 'OUT' | 'IN'; productId: string; quantity: number }> }) => Promise<ApiResponse>
   }
+  voucherClasses: {
+    list: () => Promise<ApiResponse>
+    save: (payload: { name: string; narration?: string; lines: Array<{ accountId: string; side: 'DEBIT' | 'CREDIT'; remarks?: string }> }) => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
+  }
   bankRules: {
     list: () => Promise<ApiResponse>
     create: (payload: { name: string; bankAccountId?: string | null; direction: 'DEBIT' | 'CREDIT' | 'ANY'; contains: string; minAmount?: number | null; maxAmount?: number | null; accountId: string; priority?: number }) => Promise<ApiResponse>

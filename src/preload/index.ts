@@ -285,6 +285,11 @@ const api: IpcChannels = {
     get: (p) => invoke('stockJournals:get', p),
     create: (p) => invoke('stockJournals:create', p)
   },
+  voucherClasses: {
+    list: () => invoke('voucherClasses:list'),
+    save: (p) => invoke('voucherClasses:save', p),
+    remove: (p) => invoke('voucherClasses:remove', p)
+  },
   bankRules: {
     list: () => invoke('bankRules:list'),
     create: (p) => invoke('bankRules:create', p),

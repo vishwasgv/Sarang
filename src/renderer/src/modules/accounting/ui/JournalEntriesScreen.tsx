@@ -166,7 +166,9 @@ export function JournalEntriesScreen() {
   )
 }
 
-interface DraftLine { accountId: string; debitAmount: string; creditAmount: string; remarks: string }
+import { JournalTemplateBar } from './JournalTemplateBar'
+
+interface DraftLine { accountId: string; debitAmount: string; creditAmount: string; remarks: string; side?: 'DEBIT' | 'CREDIT' }
 
 function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; onSaved: () => void }) {
   const { t } = useTranslation()
@@ -192,6 +194,10 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
 
   function updateLine(idx: number, patch: Partial<DraftLine>) {
     setLines((prev) => prev.map((l, i) => (i === idx ? { ...l, ...patch } : l)))
+  }
+  function applyTemplate(text: string, tpl: Array<{ accountId: string; side: 'DEBIT' | 'CREDIT'; remarks?: string }>) {
+    if (text) setNarration(text)
+    setLines(tpl.map((l) => ({ accountId: l.accountId, debitAmount: '', creditAmount: '', remarks: l.remarks ?? '', side: l.side })))
   }
   function addLine() {
     setLines((prev) => [...prev, { accountId: '', debitAmount: '', creditAmount: '', remarks: '' }])
@@ -247,6 +253,12 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
                 className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
           </div>
+
+          <JournalTemplateBar
+            narration={narration}
+            current={lines.filter((l) => l.accountId).map((l) => ({ accountId: l.accountId, side: l.side ?? (parseFloat(l.creditAmount) > 0 ? 'CREDIT' : 'DEBIT'), remarks: l.remarks || undefined }))}
+            onApply={applyTemplate}
+          />
 
           <div className="space-y-2">
             {lines.map((line, idx) => (
