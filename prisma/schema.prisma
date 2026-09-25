@@ -7869,3 +7869,36 @@ model BranchSummary {
   @@index([periodFrom, periodTo])
 }
 
+// A physical stock count: the quantities on the shelf are entered against a snapshot of what the books say, and posting
+// turns each difference into a stock adjustment.
+model StockTake {
+  id          String   @id @default(cuid())
+  takeNumber  String   @unique
+  status      String   @default("IN_PROGRESS") // IN_PROGRESS | POSTED | CANCELLED
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+  postedAt    DateTime?
+
+  lines StockTakeLine[]
+
+  @@index([status])
+  @@index([postedAt])
+}
+
+model StockTakeLine {
+  id          String   @id @default(cuid())
+  stockTakeId String
+  productId   String
+  productName String
+  sku         String?
+  systemQty   Float    // what the books said when the count started
+  countedQty  Float?   // null until counted
+  posted      Boolean  @default(false)
+
+  stockTake StockTake @relation(fields: [stockTakeId], references: [id], onDelete: Cascade)
+
+  @@unique([stockTakeId, productId])
+  @@index([stockTakeId])
+}
+

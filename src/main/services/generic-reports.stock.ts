@@ -254,10 +254,57 @@ async function stockLedgerWithChart(p: GenericReportParams): Promise<GenericRepo
   return { ...r, chartRows: ledgerByType(r.rows) }
 }
 
+async function stockTakeVariance(p: GenericReportParams): Promise<GenericReport> {
+  const db = getPrisma()
+  const decimals = await decimalsOf()
+  const takes = await db.stockTake.findMany({
+    where: { status: 'POSTED', postedAt: { gte: parseLocalDateStart(p.dateFrom), lte: parseLocalDateEnd(p.dateTo) } },
+    select: { lines: { where: { countedQty: { not: null } }, select: { productId: true, productName: true, systemQty: true, countedQty: true } } }
+  })
+  const map = new Map<string, { name: string; system: number[]; counted: number[] }>()
+  for (const t of takes) {
+    for (const l of t.lines) {
+      const g = map.get(l.productId) ?? { name: l.productName, system: [], counted: [] }
+      g.system.push(l.systemQty)
+      g.counted.push(l.countedQty as number)
+      map.set(l.productId, g)
+    }
+  }
+  const costs = await getProductCostsBatch(Array.from(map.keys()))
+  const rows: Row[] = Array.from(map.entries()).map(([id, g]) => {
+    const system = sumMoney(g.system, 3)
+    const counted = sumMoney(g.counted, 3)
+    const variance = roundMoney(counted - system, 3)
+    return { name: g.name, counts: g.system.length, system, counted, variance, value: prorateAmount(costs.get(id) ?? 0, variance, 1, decimals) }
+  }).filter((r) => Number(r.variance) !== 0).sort((a, b) => Math.abs(Number(b.value)) - Math.abs(Number(a.value)))
+  return {
+    id: 'stockTakeVariance', dateFrom: p.dateFrom, dateTo: p.dateTo, decimals,
+    summary: [
+      { labelKey: 'takeVariance.counts', type: 'number', value: takes.length },
+      { labelKey: 'takeVariance.items', type: 'number', value: rows.length },
+      { labelKey: 'takeVariance.surplus', type: 'money', value: sumMoney(rows.filter((r) => Number(r.value) > 0).map((r) => Number(r.value)), decimals) },
+      { labelKey: 'takeVariance.shortage', type: 'money', value: sumMoney(rows.filter((r) => Number(r.value) < 0).map((r) => -Number(r.value)), decimals) }
+    ],
+    columns: [
+      { key: 'name', labelKey: 'stock.item', type: 'text' },
+      { key: 'counts', labelKey: 'takeVariance.times', type: 'number' },
+      { key: 'system', labelKey: 'takeVariance.system', type: 'number' },
+      { key: 'counted', labelKey: 'takeVariance.counted', type: 'number' },
+      { key: 'variance', labelKey: 'takeVariance.variance', type: 'number' },
+      { key: 'value', labelKey: 'takeVariance.value', type: 'money' }
+    ],
+    rows,
+    totals: { name: '', counts: null, system: sumMoney(rows.map((r) => Number(r.system)), 3), counted: sumMoney(rows.map((r) => Number(r.counted)), 3), variance: sumMoney(rows.map((r) => Number(r.variance)), 3), value: sumMoney(rows.map((r) => Number(r.value)), decimals) },
+    chart: { type: 'bar', titleKey: 'takeVariance.chart', xKey: 'name', series: [{ key: 'value', labelKey: 'takeVariance.value', money: true }], limit: 10 },
+    notes: ['takeVariance.method']
+  }
+}
+
 export const STOCK_REPORTS: Record<string, GenericReportDefinition> = {
   stockSummary: { permission: 'reports.inventory', run: stockSummary },
   stockLedger: { permission: 'reports.inventory', run: stockLedgerWithChart },
   inventoryAgeing: { permission: 'reports.inventory', run: inventoryAgeing },
   stockByLocation: { permission: 'reports.inventory', run: stockByLocation },
-  transfersRegister: { permission: 'reports.inventory', run: transfersRegister }
+  transfersRegister: { permission: 'reports.inventory', run: transfersRegister },
+  stockTakeVariance: { permission: 'reports.inventory', run: stockTakeVariance }
 }

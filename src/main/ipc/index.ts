@@ -45,6 +45,7 @@ import { register as registerReportFiles } from './handlers/report-file.handler'
 import { register as registerBranchSummaries } from './handlers/branch-summary.handler'
 import { register as registerDuplicates } from './handlers/duplicates.handler'
 import { register as registerHubs } from './handlers/hub.handler'
+import { register as registerStockTakes } from './handlers/stock-take.handler'
 import { register as registerChequeBooks } from './handlers/cheque-book.handler'
 import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
 import { register as registerYearEndClose } from './handlers/year-end-close.handler'
@@ -261,6 +262,7 @@ export function registerAllIpcHandlers(): void {
   registerBranchSummaries(h)
   registerDuplicates(h)
   registerHubs(h)
+  registerStockTakes(h)
   registerChequeBooks(h)
   registerFixedAssets(h)
   registerYearEndClose(h)

@@ -357,6 +357,14 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  stockTakes: {
+    list: () => Promise<ApiResponse>
+    get: (payload: { id: string }) => Promise<ApiResponse>
+    start: (payload: { notes?: string; categoryId?: string }) => Promise<ApiResponse>
+    setCounts: (payload: { id: string; counts: Array<{ lineId: string; countedQty: number | null }> }) => Promise<ApiResponse>
+    post: (payload: { id: string }) => Promise<ApiResponse>
+    cancel: (payload: { id: string }) => Promise<ApiResponse>
+  }
   hubs: {
     summary: (payload: { group: 'sales' | 'purchases' | 'accounting' | 'inventory' }) => Promise<ApiResponse>
   }

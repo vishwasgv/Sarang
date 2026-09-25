@@ -108,3 +108,20 @@ describe('by location and transfers', () => {
     expect(r.summary[0].value).toBe(1)
   })
 })
+
+describe('stock count variance report', () => {
+  it('adds the differences of every posted count in the period by item and drops items with no difference', async () => {
+    vi.mocked(getPrisma).mockReturnValue({
+      businessProfile: profile,
+      stockTake: {
+        findMany: vi.fn().mockResolvedValue([
+          { lines: [{ productId: 'p1', productName: 'Flour', systemQty: 10, countedQty: 8 }, { productId: 'p2', productName: 'Gold', systemQty: 5, countedQty: 5 }] },
+          { lines: [{ productId: 'p1', productName: 'Flour', systemQty: 20, countedQty: 21 }] }
+        ])
+      }
+    } as never)
+    const r = await STOCK_REPORTS.stockTakeVariance.run(p)
+    expect(r.rows).toEqual([{ name: 'Flour', counts: 2, system: 30, counted: 29, variance: -1, value: -10 }])
+    expect(r.summary.map((s) => s.value)).toEqual([2, 1, 0, 10])
+  })
+})

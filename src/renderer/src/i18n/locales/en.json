@@ -2579,6 +2579,34 @@
       "outOfStock": "Out of stock"
     }
   },
+  "stockTake": {
+    "title": "Stock Counts",
+    "subtitle": "Count what is on the shelf and correct the books",
+    "startTitle": "Start a new count",
+    "startHelp": "Takes a snapshot of what the books say for every stocked item. You then type what you counted. Nothing changes in your stock until you post the count.",
+    "notes": "Note (optional)",
+    "start": "Start counting",
+    "none": "No stock counts yet.",
+    "items": "items",
+    "status": { "IN_PROGRESS": "Counting", "POSTED": "Posted", "CANCELLED": "Cancelled" },
+    "counted": "Counted",
+    "withDifference": "With a difference",
+    "surplus": "Surplus",
+    "shortage": "Shortage",
+    "search": "Find an item",
+    "howTo": "Type the counted quantity and press Enter. Leave a row empty if you did not count that item; it will not be changed.",
+    "item": "Item",
+    "system": "Books said",
+    "countedCol": "Counted",
+    "difference": "Difference",
+    "value": "Value",
+    "post": "Post the count",
+    "cancel": "Cancel this count",
+    "posted": "Stock count posted",
+    "adjusted": "{{count}} item(s) corrected",
+    "badQuantity": "Enter a quantity of zero or more.",
+    "couldNot": "Could not complete this."
+  },
   "reports": {
     "title": "Reports",
     "selectReport": "Select a report",
@@ -2738,6 +2766,9 @@
         "branches": {
           "method": "Includes this business (figures worked out now) and every imported file whose dates fall inside the dates you chose. Sales are before tax.",
           "currencyMixed": "Some files use a different currency from this business; the totals add them as they are, without converting."
+        },
+        "takeVariance": {
+          "method": "Only counts that were posted are included. Value uses each item's cost today. Items with no difference are left out."
         }
       },
       "salesBy": {
@@ -2988,6 +3019,18 @@
         "stockValue": "Stock value",
         "cashAndBank": "Cash and bank",
         "chart": "Sales and purchases by business"
+      },
+      "takeVariance": {
+        "counts": "Counts posted",
+        "items": "Items with a difference",
+        "surplus": "Surplus value",
+        "shortage": "Shortage value",
+        "times": "Times counted",
+        "system": "Books said",
+        "counted": "Counted",
+        "variance": "Difference",
+        "value": "Value",
+        "chart": "Largest differences by value"
       }
     },
     "gst": {
@@ -3306,6 +3349,10 @@
       "salesReturnRegister": {
         "label": "Sales Return Register",
         "description": "Every sales return in the period with the invoice it came from"
+      },
+      "stockTakeVariance": {
+        "label": "Stock Count Variances",
+        "description": "Differences between the books and the physical counts posted in the period, by item, with their value"
       },
       "stockSummary": {
         "label": "Stock Summary & Valuation",
