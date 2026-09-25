@@ -42,7 +42,7 @@
     "src/renderer/src/modules/products/ui/ProductFormModal.tsx": 1050,
     "src/renderer/src/modules/reports/ui/FinancialStatementViews.tsx": 649,
     "src/renderer/src/modules/reports/ui/GstReportViews.tsx": 777,
-    "src/renderer/src/modules/reports/ui/ReportsScreen.tsx": 13029,
+    "src/renderer/src/modules/reports/ui/ReportsScreen.tsx": 13037,
     "src/renderer/src/modules/restaurant/ui/RestaurantTablesScreen.tsx": 1056,
     "src/renderer/src/modules/service/ui/JobCardsScreen.tsx": 810,
     "src/renderer/src/modules/service-business/ui/AppointmentsScreen.tsx": 1298,

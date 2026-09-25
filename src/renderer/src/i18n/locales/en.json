@@ -2590,20 +2590,142 @@
         "salesBy": {
           "returnsNetted": "Returns are taken off the sales they came from. Amounts are before tax unless a tax column is shown.",
           "creditNotesExcluded": "Credit notes that are plain amounts (no product on them) are not included here."
+        },
+        "profit": {
+          "currentCost": "Cost is each item's cost today; the cost at the time of sale is not stored on the invoice line.",
+          "returnsNetted": "Returns are taken off the sales and the cost they came from."
+        },
+        "open": {
+          "dueDateNote": "A document with no due date is counted as due on its own date."
+        },
+        "register": {
+          "returnsNegative": "Returns show as negative amounts."
+        },
+        "expenses": {
+          "vendorNote": "Expenses with no vendor entered are listed together as Not assigned."
+        },
+        "assets": {
+          "asOfToday": "Depreciation is what has been posted so far."
         }
       },
       "salesBy": {
         "totalSales": "Total sales",
         "average": "Average per row",
-        "count": { "customer": "Customers", "item": "Items sold", "category": "Categories", "salesperson": "Salespeople" },
-        "name": { "customer": "Customer", "item": "Item", "category": "Category", "salesperson": "Salesperson" },
+        "count": {
+          "customer": "Customers",
+          "item": "Items sold",
+          "category": "Categories",
+          "salesperson": "Salespeople"
+        },
+        "name": {
+          "customer": "Customer",
+          "item": "Item",
+          "category": "Category",
+          "salesperson": "Salesperson"
+        },
         "invoices": "Invoices",
         "quantity": "Quantity",
         "taxable": "Sales",
         "tax": "Tax",
         "total": "Total with tax",
         "share": "Share",
-        "chart": { "customer": "Top customers by sales", "item": "Top items by sales", "category": "Sales by category", "salesperson": "Sales by salesperson" }
+        "chart": {
+          "customer": "Top customers by sales",
+          "item": "Top items by sales",
+          "category": "Sales by category",
+          "salesperson": "Sales by salesperson"
+        }
+      },
+      "profit": {
+        "revenue": "Sales",
+        "cost": "Cost",
+        "profit": "Profit",
+        "margin": "Margin",
+        "quantity": "Quantity",
+        "name": {
+          "item": "Item",
+          "customer": "Customer"
+        },
+        "chart": {
+          "item": "Most profitable items",
+          "customer": "Most profitable customers"
+        }
+      },
+      "open": {
+        "total": {
+          "receivable": "Total receivable",
+          "payable": "Total payable"
+        },
+        "parties": {
+          "receivable": "Customers owing",
+          "payable": "Suppliers owed"
+        },
+        "name": {
+          "receivable": "Customer",
+          "payable": "Supplier"
+        },
+        "documents": {
+          "receivable": "Invoices",
+          "payable": "Bills"
+        },
+        "overdue": "Overdue",
+        "dueThisWeek": "Due in 7 days",
+        "balance": "Balance",
+        "oldestDays": "Oldest overdue (days)",
+        "chart": {
+          "receivable": "Largest amounts owed to you",
+          "payable": "Largest amounts you owe"
+        }
+      },
+      "register": {
+        "documents": "Documents",
+        "subtotal": "Before tax",
+        "tax": "Tax",
+        "total": "Total",
+        "date": "Date",
+        "number": "Invoice",
+        "customer": "Customer",
+        "taxNumber": "Tax number",
+        "paymentStatus": "Payment",
+        "billNumber": "Bill",
+        "supplierInvoice": "Supplier invoice",
+        "supplier": "Supplier",
+        "paid": "Paid",
+        "balance": "Balance",
+        "chart": {
+          "sales": "Sales by invoice date",
+          "purchases": "Purchases by bill date"
+        }
+      },
+      "expenses": {
+        "total": "Total expenses",
+        "entries": "Entries",
+        "amount": "Amount",
+        "share": "Share",
+        "count": {
+          "category": "Categories",
+          "vendor": "Vendors"
+        },
+        "name": {
+          "category": "Category",
+          "vendor": "Vendor"
+        },
+        "chart": {
+          "category": "Expenses by category",
+          "vendor": "Expenses by vendor"
+        }
+      },
+      "assets": {
+        "count": "Assets",
+        "cost": "Cost",
+        "depreciation": "Depreciation",
+        "bookValue": "Book value",
+        "code": "Code",
+        "name": "Asset",
+        "category": "Category",
+        "purchaseDate": "Bought on",
+        "status": "Status",
+        "chart": "Cost and book value of each asset"
       }
     },
     "gst": {
@@ -2886,6 +3008,38 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "profitByItem": {
+        "label": "Profit by Item",
+        "description": "Revenue, cost and profit for each item sold, most profitable first"
+      },
+      "profitByCustomer": {
+        "label": "Profit by Customer",
+        "description": "Revenue, cost and profit for each customer, most profitable first"
+      },
+      "receivablesSummary": {
+        "label": "Receivables Summary",
+        "description": "What each customer owes you, how much is overdue and what falls due in the next 7 days"
+      },
+      "payablesSummary": {
+        "label": "Payables Summary",
+        "description": "What you owe each supplier, how much is overdue and what falls due in the next 7 days"
+      },
+      "salesRegister": {
+        "label": "Sales Register",
+        "description": "Every invoice and return in the period with customer, tax number, amounts and payment status"
+      },
+      "expenseByCategory": {
+        "label": "Expenses by Category",
+        "description": "Where the money went: expenses grouped by category with each category's share"
+      },
+      "expenseByVendor": {
+        "label": "Expenses by Vendor",
+        "description": "Expenses grouped by the vendor they were paid to"
+      },
+      "fixedAssetRegister": {
+        "label": "Fixed Asset Register",
+        "description": "Every fixed asset with cost, depreciation so far and book value"
       },
       "salesByCustomer": {
         "label": "Sales by Customer",

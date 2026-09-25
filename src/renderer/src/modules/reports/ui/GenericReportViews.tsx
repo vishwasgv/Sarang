@@ -24,7 +24,18 @@ export interface GenericReport {
 
 /** Ids of the reports served by the generic channel. Keep in step with generic-reports.registry.ts (a test checks it). */
 export const GENERIC_REPORT_IDS = [
-  'salesByCustomer', 'salesByItem', 'salesByCategory', 'salesBySalesperson'
+  'salesByCustomer',
+  'salesByItem',
+  'salesByCategory',
+  'salesBySalesperson',
+  'profitByItem',
+  'profitByCustomer',
+  'receivablesSummary',
+  'payablesSummary',
+  'salesRegister',
+  'expenseByCategory',
+  'expenseByVendor',
+  'fixedAssetRegister'
 ] as const
 export type GenericReportId = typeof GENERIC_REPORT_IDS[number]
 

@@ -2,7 +2,14 @@ import { describe, it, expect, vi } from 'vitest'
 import { readFileSync } from 'fs'
 import { resolve } from 'path'
 
-vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
+// A database that answers every query with "nothing found", so each report can be built and its labels checked.
+const emptyDb = () => new Proxy({}, {
+  get: () => new Proxy({}, {
+    get: (_t, method) => async () => (method === 'findMany' ? [] : method === 'findFirst' ? { currencyCode: 'INR' } : method === 'aggregate' ? { _sum: {} } : null)
+  })
+})
+vi.mock('../../database/db', () => ({ getPrisma: () => emptyDb() }))
+vi.mock('../valuation.service', () => ({ getProductCostsBatch: vi.fn().mockResolvedValue(new Map()) }))
 vi.mock('../sales-lines.query', () => ({
   loadSalesLines: vi.fn().mockResolvedValue({
     decimals: 2,
