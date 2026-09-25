@@ -1,3 +1,4 @@
+import { stockShortagesForOrder } from './sales-order-reservations'
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
@@ -215,7 +216,8 @@ export const salesOrderService = {
         return tx.salesOrder.update({ where: { id }, data: { status: 'CONFIRMED' } })
       })
       await logAction({ userId: getCurrentSession()?.userId, action: 'SO_CONFIRMED', entityType: 'SalesOrder', entityId: id, newValue: { status: 'CONFIRMED' } })
-      return { success: true, data: updated }
+      const shortages = await stockShortagesForOrder(id).catch(() => [])
+      return { success: true, data: { ...updated, shortages } }
     } catch (err) {
       if (err instanceof ServiceError) return { success: false, error: { code: err.code, message: err.message } }
       return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }

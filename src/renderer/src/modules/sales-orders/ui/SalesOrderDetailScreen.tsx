@@ -94,6 +94,8 @@ export function SalesOrderDetailScreen() {
       if (res.success) {
         const status = (res.data as { status: string }).status
         toastSuccess(status === 'PENDING_APPROVAL' ? t('salesOrders.submittedForApproval') : t('salesOrders.confirmed'), so.soNumber)
+        const shortages = (res.data as { shortages?: Array<{ productName: string; needed: number; available: number }> }).shortages ?? []
+        for (const sh of shortages) toastError(sh.productName, t('salesOrders.shortStock', { needed: sh.needed, available: sh.available }))
         loadSO()
       } else {
         toastError(t('common.error'), t('salesOrders.confirmFailedMessage'))

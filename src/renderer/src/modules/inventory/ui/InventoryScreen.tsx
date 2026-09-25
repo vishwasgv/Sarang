@@ -150,7 +150,7 @@ export function InventoryScreen() {
       accessorKey: 'quantity',
       header: t('inventory.currentStock'),
       cell: ({ row }) => {
-        const { quantity, reorderLevel, product } = row.original
+        const { quantity, reorderLevel, product, reservedQuantity } = row.original
         const isLow = quantity <= reorderLevel
         const isOut = quantity === 0
         return (
@@ -161,6 +161,7 @@ export function InventoryScreen() {
             )}>
               {quantity} {product.unit}
             </span>
+            {reservedQuantity > 0 && <span className="text-xs text-slate-400">{t('inventory.reservedNote', { count: reservedQuantity })}</span>}
             {isLow && !isOut && <AlertTriangle size={12} className="text-warning shrink-0" />}
             {isOut && <AlertTriangle size={12} className="text-danger shrink-0" />}
           </div>

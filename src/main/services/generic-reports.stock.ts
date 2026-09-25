@@ -1,3 +1,4 @@
+import { reservedBySalesOrders } from './sales-order-reservations'
 import { getPrisma } from '../database/db'
 import { getCurrencyDecimals, sumMoney, prorateAmount, roundMoney } from '../../shared/utils/money'
 import { parseLocalDateStart, parseLocalDateEnd, toLocalISODate, startOfLocalDay } from '../utils/date.util'
@@ -20,6 +21,7 @@ async function stockSummary(p: GenericReportParams): Promise<GenericReport> {
     select: { productId: true, quantity: true, reservedQuantity: true, reorderLevel: true, product: { select: { productName: true, sku: true, unit: true, isActive: true, category: { select: { name: true } } } } }
   })
   const costs = await getProductCostsBatch(inventories.map((i) => i.productId))
+  const reservedMap = await reservedBySalesOrders()
   const rows: Row[] = inventories
     .filter((i) => i.product.isActive)
     .map((i) => {
@@ -27,7 +29,7 @@ async function stockSummary(p: GenericReportParams): Promise<GenericReport> {
       const status = i.quantity <= 0 ? 'OUT' : i.reorderLevel > 0 && i.quantity <= i.reorderLevel ? 'LOW' : 'OK'
       return {
         name: i.product.productName, sku: i.product.sku ?? '', category: i.product.category?.name ?? '', unit: i.product.unit,
-        quantity: i.quantity, reserved: i.reservedQuantity, unitCost, value: prorateAmount(unitCost, i.quantity, 1, decimals), status
+        quantity: i.quantity, reserved: reservedMap.get(i.productId) ?? 0, unitCost, value: prorateAmount(unitCost, i.quantity, 1, decimals), status
       }
     })
     .sort((a, b) => Number(b.value) - Number(a.value))

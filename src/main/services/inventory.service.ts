@@ -1,3 +1,4 @@
+import { reservedBySalesOrders } from './sales-order-reservations'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
@@ -87,7 +88,9 @@ export const inventoryService = {
       : all
 
     const total = filtered.length
-    const items = filtered.slice(skip, skip + limit)
+    const pageRows = filtered.slice(skip, skip + limit)
+    const reserved = await reservedBySalesOrders(pageRows.map(i => i.productId))
+    const items = pageRows.map(i => ({ ...i, reservedQuantity: reserved.get(i.productId) ?? 0 }))
 
     return { success: true, data: { inventory: items, total } }
   },

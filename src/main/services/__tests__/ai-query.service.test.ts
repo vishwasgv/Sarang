@@ -1,3 +1,4 @@
+vi.mock('../sales-order-reservations', () => ({ reservedBySalesOrders: vi.fn().mockResolvedValue(new Map()), stockShortagesForOrder: vi.fn().mockResolvedValue([]) }))
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
 // Hoisted spies for the real http/https `request` exports — ESM module

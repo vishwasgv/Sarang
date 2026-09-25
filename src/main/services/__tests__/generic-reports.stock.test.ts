@@ -1,3 +1,4 @@
+vi.mock('../sales-order-reservations', () => ({ reservedBySalesOrders: vi.fn().mockResolvedValue(new Map()), stockShortagesForOrder: vi.fn().mockResolvedValue([]) }))
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
