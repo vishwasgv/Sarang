@@ -280,6 +280,10 @@ const api: IpcChannels = {
     get: (p) => invoke('bankDeposits:get', p),
     listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
   },
+  gstReturns: {
+    exportGstr1: (p) => invoke('gstReturns:exportGstr1', p),
+    exportGstr3b: (p) => invoke('gstReturns:exportGstr3b', p)
+  },
   gstPayments: {
     record: (p) => invoke('gstPayments:record', p),
     list: () => invoke('gstPayments:list'),

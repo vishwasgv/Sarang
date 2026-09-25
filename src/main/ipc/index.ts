@@ -39,6 +39,7 @@ import { register as registerCreditInterest } from './handlers/credit-interest.h
 import { register as registerPostDatedCheques } from './handlers/post-dated-cheque.handler'
 import { register as registerBankDeposits } from './handlers/bank-deposit.handler'
 import { register as registerGstPayments } from './handlers/gst-payment.handler'
+import { register as registerGstReturns } from './handlers/gst-returns.handler'
 import { register as registerChequeBooks } from './handlers/cheque-book.handler'
 import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
 import { register as registerYearEndClose } from './handlers/year-end-close.handler'
@@ -249,6 +250,7 @@ export function registerAllIpcHandlers(): void {
   registerPostDatedCheques(h)
   registerBankDeposits(h)
   registerGstPayments(h)
+  registerGstReturns(h)
   registerChequeBooks(h)
   registerFixedAssets(h)
   registerYearEndClose(h)

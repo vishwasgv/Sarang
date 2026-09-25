@@ -1714,6 +1714,19 @@
       "created": "Cheque book added",
       "useNextNumber": "Use next cheque book number (#{{number}})"
     },
+    "gstReturns": {
+      "title": "GST Return Files",
+      "subtitle": "Prepare GSTR-1 and GSTR-3B files from your books to check and upload on the GST portal",
+      "month": "Month",
+      "gstr1Title": "GSTR-1 (sales)",
+      "gstr1Help": "Invoices to registered buyers, retail sales by state and rate, credit notes, nil and exempt supplies, and the HSN summary.",
+      "gstr3bTitle": "GSTR-3B (summary)",
+      "gstr3bHelp": "Tax on sales, reverse-charge tax, inter-state supplies to unregistered buyers and your input tax credit.",
+      "download": "Download file",
+      "saved": "File saved",
+      "couldNotPrepare": "Could not prepare the file.",
+      "disclaimer": "These files are drafts made from your books. Open them in the GST portal's offline tool, check every figure with your accountant, and file from the portal. Sarang does not send anything to the government."
+    },
     "gstPayments": {
       "title": "GST Payments",
       "subtitle": "Record the GST you pay to the government, using your input tax credit first",
