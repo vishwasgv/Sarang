@@ -16,6 +16,7 @@ interface Supplier {
   phone?: string | null; email?: string | null
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
   taxNumber?: string | null; notes?: string | null; isActive: boolean
+  creditLimit?: number; contactPerson?: string | null; supplierCategory?: string | null; rating?: number | null
 }
 
 interface LedgerEntry {
@@ -299,6 +300,24 @@ export function SupplierDetailScreen() {
             <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
               <span className="text-xs text-slate-400 font-medium w-14">{t('suppliers.taxNo')}</span>
               <span>{supplier.taxNumber}</span>
+            </div>
+          )}
+          {supplier.contactPerson && (
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <span className="text-xs text-slate-400 font-medium w-14">{t('suppliers.contactPerson')}</span>
+              <span>{supplier.contactPerson}</span>
+            </div>
+          )}
+          {(supplier.supplierCategory || supplier.rating) && (
+            <div className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-300">
+              <span className="text-xs text-slate-400 font-medium w-14">{t('suppliers.category')}</span>
+              <span>{supplier.supplierCategory ?? ''} {supplier.rating ? '★'.repeat(supplier.rating) : ''}</span>
+            </div>
+          )}
+          {canViewLedger && (supplier.creditLimit ?? 0) > 0 && (
+            <div className="flex items-center gap-2 text-sm">
+              <span className="text-slate-600 dark:text-slate-300">{t('suppliers.creditLimit')}</span>
+              <span className={`ms-auto font-semibold ${outstanding > (supplier.creditLimit ?? 0) ? 'text-danger' : 'text-slate-700 dark:text-slate-200'}`}>{formatCurrency(supplier.creditLimit ?? 0)}{outstanding > (supplier.creditLimit ?? 0) ? ` · ${t('suppliers.overLimit')}` : ''}</span>
             </div>
           )}
           {canViewLedger && (

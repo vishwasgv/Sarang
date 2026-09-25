@@ -1070,6 +1070,11 @@ model Supplier {
   msmeCategory      String? // MICRO | SMALL | MEDIUM
   // Agreed days to pay this supplier. Sets the due date of a bill when none is chosen.
   paymentTermsDays  Int?
+  // Credit the supplier allows us (0 = none set), a contact name, a free-text category and a 1-5 rating.
+  creditLimit       Float    @default(0)
+  contactPerson     String?
+  supplierCategory  String?
+  rating            Int?
   // Phase 63 — formal Price List assignment (vendor-specific pricing).
   priceListId       String?
   // Phase 66 — Custom Fields. See Expense.customFields for the storage convention.

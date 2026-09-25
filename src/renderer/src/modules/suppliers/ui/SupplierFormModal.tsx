@@ -28,12 +28,17 @@ const schema = z.object({
   // Onboarding-only — a one-time debit posted at creation, never editable
   // afterward (see supplier.service.ts's createSupplier). Coerced from the
   // text input's string value.
-  openingBalance: z.coerce.number().min(0, 'Cannot be negative').optional(),
+  // Negative means an advance already paid to this supplier.
+  openingBalance: z.coerce.number().optional(),
   // Phase 63 — Price List assignment (real gap found+fixed during live
   // verification: the backend field/validation/service already accepted
   // this, but no UI anywhere ever let a user actually set it).
   priceListId: z.string().optional(),
-  paymentTermsDays: z.union([z.literal(''), z.coerce.number().int().min(0).max(365)]).optional()
+  paymentTermsDays: z.union([z.literal(''), z.coerce.number().int().min(0).max(365)]).optional(),
+  creditLimit: z.coerce.number().min(0, 'Cannot be negative').optional(),
+  contactPerson: z.string().max(100).optional(),
+  supplierCategory: z.string().max(60).optional(),
+  rating: z.union([z.literal(''), z.coerce.number().int().min(1).max(5)]).optional()
 })
 
 type FormValues = z.infer<typeof schema>
@@ -46,6 +51,7 @@ interface Supplier {
   openingBalance?: number
   priceListId?: string | null
   paymentTermsDays?: number | null
+  creditLimit?: number; contactPerson?: string | null; supplierCategory?: string | null; rating?: number | null
   customFields?: string | null
 }
 
@@ -93,7 +99,11 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         panNumber: supplier?.panNumber ?? '',
         openingBalance: supplier?.openingBalance ?? 0,
         priceListId: supplier?.priceListId ?? '',
-        paymentTermsDays: supplier?.paymentTermsDays ?? ''
+        paymentTermsDays: supplier?.paymentTermsDays ?? '',
+        creditLimit: supplier?.creditLimit ?? 0,
+        contactPerson: supplier?.contactPerson ?? '',
+        supplierCategory: supplier?.supplierCategory ?? '',
+        rating: supplier?.rating ?? ''
       })
       setCustomFieldValues(parseCustomFields(supplier?.customFields))
     }
@@ -102,7 +112,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
   async function onSubmit(values: FormValues) {
     try {
       const { openingBalance, ...rest } = values
-      const payload = { ...rest, paymentTermsDays: values.paymentTermsDays === '' || values.paymentTermsDays === undefined ? null : Number(values.paymentTermsDays), email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
+      const payload = { ...rest, paymentTermsDays: values.paymentTermsDays === '' || values.paymentTermsDays === undefined ? null : Number(values.paymentTermsDays), rating: values.rating === '' || values.rating === undefined ? null : Number(values.rating), email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
       const response = isEdit
         ? await window.api.suppliers.update({ id: supplier!.id, ...payload })
         : await window.api.suppliers.create({ ...payload, openingBalance: openingBalance ?? 0 })
@@ -151,6 +161,15 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         </div>
         <Input label={taxField.label} placeholder={taxField.placeholder ?? t('common.taxNumberPlaceholder')} hint={taxField.hint} {...register('taxNumber')} />
         <Input label={t('suppliers.paymentTermsDays')} type="number" min="0" max="365" step="1" placeholder="30" {...register('paymentTermsDays')} />
+        <div className="grid grid-cols-2 gap-4">
+          <Input label={t('suppliers.creditLimit')} type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
+          <Input label={t('suppliers.contactPerson')} {...register('contactPerson')} />
+          <Input label={t('suppliers.category')} {...register('supplierCategory')} />
+          <Select label={t('suppliers.rating')} {...register('rating')}>
+            <option value="">{t('suppliers.noRating')}</option>
+            {[1, 2, 3, 4, 5].map((r) => <option key={r} value={r}>{'★'.repeat(r)}</option>)}
+          </Select>
+        </div>
         {priceLists.length > 0 && (
           <Select label={t('common.priceList')} {...register('priceListId')}>
             <option value="">{t('suppliers.priceListNonePurchase')}</option>
@@ -173,7 +192,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         {!isEdit && (
           <Input
             label={t('suppliers.openingBalanceLabel')}
-            type="number" min="0" step="0.01"
+            type="number" step="0.01"
             placeholder={t('suppliers.openingBalancePlaceholder')}
             {...register('openingBalance')}
             error={errors.openingBalance?.message}

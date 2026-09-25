@@ -69,7 +69,8 @@
     "src/renderer/src/modules/service-business/ui/VisitNoteScreen.tsx": 1795,
     "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3637,
     "src/renderer/src/modules/setup/ui/SetupWizard.tsx": 898,
-    "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 638
+    "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 638,
+    "src/renderer/src/modules/suppliers/ui/SupplierDetailScreen.tsx": 603
   },
   "rawMoneyMath": {
     "src/main/services/credit-interest.service.ts": 1

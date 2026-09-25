@@ -146,6 +146,10 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
           isMsmeRegistered: payload.isMsmeRegistered ?? false,
           msmeCategory: payload.msmeCategory ?? null,
           paymentTermsDays: payload.paymentTermsDays ?? null,
+          creditLimit: payload.creditLimit ?? 0,
+          contactPerson: payload.contactPerson?.trim() || null,
+          supplierCategory: payload.supplierCategory?.trim() || null,
+          rating: payload.rating ?? null,
           priceListId: payload.priceListId || null,
           customFields: serializeCustomFieldValues(payload.customFields)
         }
@@ -155,13 +159,13 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
       // opening-balance debit on the ledger so their outstanding balance is
       // correct from day one, same reasoning as receivePO's PO-received
       // debit (debitAmount = amount we owe).
-      if (payload.openingBalance && payload.openingBalance > 0) {
+      if (payload.openingBalance) {
         await supplierLedgerService.addEntry({
           supplierId: created.id,
           referenceType: 'OPENING_BALANCE',
-          debitAmount: payload.openingBalance,
-          creditAmount: 0,
-          remarks: 'Opening balance at onboarding'
+          debitAmount: payload.openingBalance > 0 ? payload.openingBalance : 0,
+          creditAmount: payload.openingBalance < 0 ? -payload.openingBalance : 0,
+          remarks: payload.openingBalance < 0 ? 'Opening advance paid to supplier' : 'Opening balance at onboarding'
         }, tx)
       }
 
@@ -218,6 +222,10 @@ export async function updateSupplier(payload: UpdateSupplierPayload): Promise<Ap
         isMsmeRegistered: payload.isMsmeRegistered ?? false,
         msmeCategory: payload.msmeCategory ?? null,
         paymentTermsDays: payload.paymentTermsDays === undefined ? existing.paymentTermsDays : payload.paymentTermsDays,
+        creditLimit: payload.creditLimit ?? existing.creditLimit,
+        contactPerson: payload.contactPerson === undefined ? existing.contactPerson : (payload.contactPerson?.trim() || null),
+        supplierCategory: payload.supplierCategory === undefined ? existing.supplierCategory : (payload.supplierCategory?.trim() || null),
+        rating: payload.rating === undefined ? existing.rating : payload.rating,
         priceListId: payload.priceListId ?? existing.priceListId,
         customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields
       }

@@ -17,6 +17,10 @@ const supplierMsmeFields = {
   isMsmeRegistered: z.boolean().default(false),
   msmeCategory: z.enum(['MICRO', 'SMALL', 'MEDIUM']).optional(),
   paymentTermsDays: z.number().int().min(0).max(365).nullable().optional(),
+  creditLimit: z.number().min(0, 'Credit limit cannot be negative').optional(),
+  contactPerson: z.string().trim().max(100).optional(),
+  supplierCategory: z.string().trim().max(60).optional(),
+  rating: z.number().int().min(1).max(5).nullable().optional(),
 }
 
 export const CreateSupplierSchema = z.object({
@@ -29,7 +33,8 @@ export const CreateSupplierSchema = z.object({
   country: z.string().max(100).optional(),
   taxNumber: z.string().max(50).optional(),
   notes: z.string().max(500).optional(),
-  openingBalance: z.number().min(0, 'Opening balance cannot be negative').default(0),
+  // Negative means the supplier holds an advance we paid (they owe us); positive is what we owe them.
+  openingBalance: z.number().default(0),
   // Phase 63 — formal Price List assignment (vendor-specific pricing).
   priceListId: z.string().min(1).optional(),
   customFields: CustomFieldValuesSchema,
