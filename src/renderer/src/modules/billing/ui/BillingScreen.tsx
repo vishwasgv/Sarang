@@ -1286,6 +1286,18 @@ export function BillingScreen() {
     }))
   }
 
+  // Marks a whole line as free of cost (a sample or gift): stock still goes out, price and tax become zero.
+  function giveLineFree(key: string) {
+    setCart(prev => {
+      const src = prev.find(i => (i.serialId ?? i.variantId ?? i.productId) === key && !i.isFreeOfCost)
+      if (!src) return prev
+      const rest = prev.filter(i => i !== src)
+      const existing = rest.find(i => i.isFreeOfCost && !i.schemeId && i.productId === src.productId && !i.variantId && !i.serialId)
+      if (existing && !src.variantId && !src.serialId) return rest.map(i => (i === existing ? { ...i, quantity: i.quantity + src.quantity } : i))
+      return [...rest, { ...src, productName: `${src.productName} (${t('billing.freeOfCost')})`, unitPrice: 0, discountAmount: 0, taxRate: 0, isFreeOfCost: true, schemeId: undefined }]
+    })
+  }
+
   function removeFromCart(key: string) {
     setCart(prev => prev.filter(i => (i.serialId ?? i.variantId ?? i.productId) !== key))
   }
@@ -1800,6 +1812,7 @@ export function BillingScreen() {
                     <div>
                       <p className="text-sm font-medium text-dark leading-none flex items-center gap-1.5"><DietMark foodType={item.foodType} />{item.productName}</p>
                       {item.variantInfo && <p className="text-xs text-brand/70 mt-0.5">{item.variantInfo}</p>}
+                      <button onClick={() => giveLineFree(ck)} className="text-xs text-slate-400 hover:text-success mt-0.5 inline-flex items-center gap-1"><Gift size={11} /> {t('billing.giveFree')}</button>
                       {item.serialInfo && <p className="text-xs text-brand/70 mt-0.5">{item.serialInfo}</p>}
                       {item.batchInfo && (
                         <p className={cn(

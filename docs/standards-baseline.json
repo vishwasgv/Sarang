@@ -27,7 +27,7 @@
     "src/main/services/restaurant.service.ts": 1011,
     "src/preload/index.ts": 1989,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
-    "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 3040,
+    "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 3053,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 963,
     "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 671,
     "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1358,
