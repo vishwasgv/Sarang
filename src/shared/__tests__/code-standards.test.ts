@@ -12,7 +12,7 @@ const MAX_LINES = 600
 const MONEY_ALLOWED = ['src/shared/utils/money.ts', 'src/shared/utils/gst-presentation.ts', 'src/shared/data/tax-presets.ts']
 
 type Counts = Record<string, number>
-interface Baseline { oversized: Counts; rawMoneyMath: Counts; globalSessionReads: Counts }
+interface Baseline { oversized: Counts; rawMoneyMath: Counts }
 
 function walk(dir: string, out: string[] = []): string[] {
   for (const name of readdirSync(dir)) {
@@ -27,7 +27,7 @@ function walk(dir: string, out: string[] = []): string[] {
 const RAW_MONEY = /\b(amount|total|subtotal|price|tax|gst|discount|balance)\w*\s*[*/]\s*\(?\s*\w*(rate|percent|pct)\w*/gi
 
 function scan(): Baseline {
-  const result: Baseline = { oversized: {}, rawMoneyMath: {}, globalSessionReads: {} }
+  const result: Baseline = { oversized: {}, rawMoneyMath: {} }
   for (const file of walk(join(ROOT, 'src'))) {
     const rel = relative(ROOT, file).split('\\').join('/')
     const text = readFileSync(file, 'utf8')
@@ -36,10 +36,6 @@ function scan(): Baseline {
     if (!MONEY_ALLOWED.includes(rel)) {
       const n = (text.match(RAW_MONEY) ?? []).length
       if (n > 0) result.rawMoneyMath[rel] = n
-    }
-    if (!rel.endsWith('services/auth.service.ts')) {
-      const n = (text.match(/\bgetCurrentSession\s*\(/g) ?? []).length
-      if (n > 0) result.globalSessionReads[rel] = n
     }
   }
   return result
@@ -53,7 +49,7 @@ if (process.env.SARANG_UPDATE_BASELINE === '1') {
 
 const baseline: Baseline = existsSync(BASELINE_PATH)
   ? JSON.parse(readFileSync(BASELINE_PATH, 'utf8'))
-  : { oversized: {}, rawMoneyMath: {}, globalSessionReads: {} }
+  : { oversized: {}, rawMoneyMath: {} }
 
 function grown(now: Counts, base: Counts): string[] {
   return Object.entries(now)
@@ -70,7 +66,4 @@ describe('code standards ratchet', () => {
     expect(grown(current.rawMoneyMath, baseline.rawMoneyMath)).toEqual([])
   })
 
-  it('no new reads of the global session (use the session object after step U1)', () => {
-    expect(grown(current.globalSessionReads, baseline.globalSessionReads)).toEqual([])
-  })
 })

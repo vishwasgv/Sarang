@@ -3,6 +3,7 @@ import { createHash, randomBytes } from 'crypto'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import type { ApiResponse } from '../ipc/channels'
+import { readSession, writeSession } from '../security/session-context'
 import { generateSessionToken, saveSession, loadSavedSession, clearSavedSession } from '../security/session-persistence'
 
 // Session token is stored as sha256(rawToken) — raw token lives only in electron-store
@@ -12,8 +13,7 @@ function hashToken(token: string): string {
 
 const SALT_ROUNDS = 12
 
-// In-memory session (single-user desktop app)
-let currentSession: { userId: string; username: string; roleId: string } | null = null
+// Session state lives in security/session-context.ts: the local window has one, and every remote client connection gets its own.
 
 // Brute-force guard: 5 attempts per 15 min window per key.
 // Shared factory so login (keyed by username) and changePassword (keyed by
@@ -142,7 +142,7 @@ export async function login(username: string, password: string, rememberMe = fal
       await db.user.update({ where: { id: user.id }, data: { lastLogin: new Date(), sessionToken: null, tokenExpiresAt: null } })
     }
 
-    currentSession = { userId: user.id, username: user.username, roleId: user.roleId }
+    writeSession({ userId: user.id, username: user.username, roleId: user.roleId })
 
     await logAction({ userId: user.id, action: 'USER_LOGIN', entityType: 'User', entityId: user.id })
 
@@ -185,7 +185,7 @@ export async function loginWithToken(): Promise<ApiResponse> {
       return { success: false, error: { code: 'AUTH-003', message: 'Saved session expired.' } }
     }
 
-    currentSession = { userId: user.id, username: user.username, roleId: user.roleId }
+    writeSession({ userId: user.id, username: user.username, roleId: user.roleId })
 
     // Rolling token — rotate on every auto-login so a captured token window is capped at one session
     try {
@@ -216,36 +216,38 @@ export async function loginWithToken(): Promise<ApiResponse> {
 }
 
 export async function logout(): Promise<ApiResponse> {
-  if (currentSession) {
+  const session = readSession()
+  if (session) {
     try {
       const db = getPrisma()
-      await db.user.update({ where: { id: currentSession.userId }, data: { sessionToken: null, tokenExpiresAt: null } })
-    } catch { /* best-effort: logout proceeds locally either way, see currentSession = null below */ }
-    await logAction({ userId: currentSession.userId, action: 'USER_LOGOUT', entityType: 'User', entityId: currentSession.userId })
-    currentSession = null
+      await db.user.update({ where: { id: session.userId }, data: { sessionToken: null, tokenExpiresAt: null } })
+    } catch { /* best-effort: logout proceeds locally either way, see writeSession(null) below */ }
+    await logAction({ userId: session.userId, action: 'USER_LOGOUT', entityType: 'User', entityId: session.userId })
+    writeSession(null)
   }
   await clearSavedSession()
   return { success: true }
 }
 
 export function getCurrentSession() {
-  return currentSession
+  return readSession()
 }
 
 export async function getCurrentUser(): Promise<ApiResponse> {
-  if (!currentSession) {
+  const session = readSession()
+  if (!session) {
     return { success: false, error: { code: 'AUTH-003', message: 'Your session has expired. Please sign in again.' } }
   }
 
   try {
     const db = getPrisma()
     const user = await db.user.findUnique({
-      where: { id: currentSession.userId },
+      where: { id: session.userId },
       include: { role: { include: { rolePermissions: { include: { permission: true } } } } }
     })
 
     if (!user || !user.isActive) {
-      currentSession = null
+      writeSession(null)
       return { success: false, error: { code: 'AUTH-003', message: 'Your session has expired. Please sign in again.' } }
     }
 
@@ -412,14 +414,15 @@ export async function regenerateRecoveryCode(userId: string, currentPassword: st
 }
 
 export async function getPermissions(): Promise<ApiResponse> {
-  if (!currentSession) {
+  const session = readSession()
+  if (!session) {
     return { success: false, error: { code: 'PERM-001', message: 'You do not have permission to perform this action.' } }
   }
 
   try {
     const db = getPrisma()
     const rolePermissions = await db.rolePermission.findMany({
-      where: { roleId: currentSession.roleId },
+      where: { roleId: session.roleId },
       include: { permission: true }
     })
     const permissions = rolePermissions.map((rp) => rp.permission.permissionKey)
