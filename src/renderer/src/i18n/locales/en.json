@@ -6248,6 +6248,8 @@
       "minLenInvalid": "Minimum length must be a number between 4 and 64.",
       "expiryInvalid": "Password expiry must be 0 (never) or a number of days up to 3650.",
       "historyInvalid": "Password history must be 0 (off) or a number between 1 and 24.",
+      "requireMix": "Require a mix of lowercase, uppercase and a number",
+      "requireMixHelp": "Also blocks very common passwords. Applies to passwords set from now on.",
       "saveFailed": "Failed to save."
     },
     "currencyLocale": {

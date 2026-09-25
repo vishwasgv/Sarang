@@ -1,3 +1,4 @@
+import { passwordStrengthProblem, passwordStrengthMessage } from './password-strength.util'
 import bcrypt from 'bcryptjs'
 import { createHash, randomBytes } from 'crypto'
 import { getPrisma } from '../database/db'
@@ -454,6 +455,11 @@ export async function checkPasswordLength(password: string): Promise<ApiResponse
   const minLen = await getPasswordMinLength()
   if (password.length < minLen) {
     return { success: false, error: { code: 'VAL-001', message: `Password must be at least ${minLen} characters.` } }
+  }
+  const mix = await getPrisma().setting.findUnique({ where: { settingKey: 'password_require_mix' } })
+  if (mix?.settingValue === 'true') {
+    const problem = passwordStrengthProblem(password)
+    if (problem) return { success: false, error: { code: 'VAL-001', message: passwordStrengthMessage(problem) } }
   }
   return null
 }

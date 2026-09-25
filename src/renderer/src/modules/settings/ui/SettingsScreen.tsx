@@ -1574,6 +1574,7 @@ function SecuritySection() {
   const minLen = parseInt(getSetting('password_min_length', '10'), 10) || 10
   const expiryDays = parseInt(getSetting('password_expiry_days', '0'), 10) || 0
   const historyCount = parseInt(getSetting('password_history_count', '0'), 10) || 0
+  const requireMix = getSetting('password_require_mix', 'false') === 'true'
 
   async function handleChangePassword() {
     setError(null); setSuccess(false)
@@ -1640,7 +1641,7 @@ function SecuritySection() {
 
       {hasPermission('settings.modify') && (
         <PasswordPolicyCard
-          minLen={minLen} expiryDays={expiryDays} historyCount={historyCount}
+          minLen={minLen} expiryDays={expiryDays} historyCount={historyCount} requireMix={requireMix}
           onSaved={(values) => setSettings({ ...settings, ...values })}
         />
       )}
@@ -1731,11 +1732,12 @@ function RecoveryCodeCard() {
   )
 }
 
-function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
-  minLen: number; expiryDays: number; historyCount: number
-  onSaved: (values: { password_min_length: string; password_expiry_days: string; password_history_count: string }) => void
+function PasswordPolicyCard({ minLen, expiryDays, historyCount, requireMix, onSaved }: {
+  minLen: number; expiryDays: number; historyCount: number; requireMix: boolean
+  onSaved: (values: { password_min_length: string; password_expiry_days: string; password_history_count: string; password_require_mix: string }) => void
 }) {
   const { t } = useTranslation()
+  const [mix, setMix] = useState(requireMix)
   const [value, setValue] = useState(String(minLen))
   const [expiryValue, setExpiryValue] = useState(String(expiryDays))
   const [historyValue, setHistoryValue] = useState(String(historyCount))
@@ -1762,15 +1764,16 @@ function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
     }
     setSaving(true)
     try {
-      const [r1, r2, r3] = await Promise.all([
+      const [r1, r2, r3, r4] = await Promise.all([
         window.api.settings.set({ key: 'password_min_length', value: String(parsed) }),
         window.api.settings.set({ key: 'password_expiry_days', value: String(parsedExpiry) }),
         window.api.settings.set({ key: 'password_history_count', value: String(parsedHistory) }),
+        window.api.settings.set({ key: 'password_require_mix', value: mix ? 'true' : 'false' }),
       ])
-      const failed = [r1, r2, r3].find((r) => !r.success)
+      const failed = [r1, r2, r3, r4].find((r) => !r.success)
       if (!failed) {
         setSuccess(true)
-        onSaved({ password_min_length: String(parsed), password_expiry_days: String(parsedExpiry), password_history_count: String(parsedHistory) })
+        onSaved({ password_min_length: String(parsed), password_expiry_days: String(parsedExpiry), password_history_count: String(parsedHistory), password_require_mix: mix ? 'true' : 'false' })
       } else {
         setError(failed.error?.message ?? t('settings.passwordPolicy.saveFailed'))
       }
@@ -1808,6 +1811,10 @@ function PasswordPolicyCard({ minLen, expiryDays, historyCount, onSaved }: {
           <p className="text-[11px] text-slate-400 mt-1">0 = off. Includes the current password.</p>
         </div>
       </div>
+      <label className="flex items-start gap-3 min-h-[44px]">
+        <input type="checkbox" checked={mix} onChange={e => setMix(e.target.checked)} className="mt-1 w-5 h-5" />
+        <span className="text-sm text-slate-700 dark:text-slate-300">{t('settings.passwordPolicy.requireMix')}<span className="block text-[11px] text-slate-400">{t('settings.passwordPolicy.requireMixHelp')}</span></span>
+      </label>
       <div className="flex justify-end pt-1">
         <Button size="sm" onClick={handleSave} disabled={saving}>{saving ? 'Saving…' : 'Save'}</Button>
       </div>
