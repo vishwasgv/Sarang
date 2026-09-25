@@ -29,10 +29,12 @@ const UNIVERSAL_STEPS: TourStep[] = [
   { id: 'dashboard', titleKey: 'tour.universal.dashboardTitle', bodyKey: 'tour.universal.dashboardBody', targetSelector: 'a[href="#/"]', route: '/' },
   { id: 'sidebar', titleKey: 'tour.universal.sidebarTitle', bodyKey: 'tour.universal.sidebarBody', targetSelector: 'nav', route: '/' },
   { id: 'search', titleKey: 'tour.universal.searchTitle', bodyKey: 'tour.universal.searchBody', targetSelector: '[aria-label^="Global search"]', route: '/' },
+  { id: 'askSarang', titleKey: 'tour.universal.askSarangTitle', bodyKey: 'tour.universal.askSarangBody', targetSelector: 'a[href="#/ai-assistant"]', route: '/ai-assistant' },
   { id: 'billing', titleKey: 'tour.universal.billingTitle', bodyKey: 'tour.universal.billingBody', targetSelector: 'a[href="#/billing"]', route: '/billing/new' },
   { id: 'customers', titleKey: 'tour.universal.customersTitle', bodyKey: 'tour.universal.customersBody', targetSelector: 'a[href="#/customers"]', route: '/customers' },
   { id: 'products', titleKey: 'tour.universal.productsTitle', bodyKey: 'tour.universal.productsBody', targetSelector: 'a[href="#/products"]', route: '/products' },
   { id: 'inventory', titleKey: 'tour.universal.inventoryTitle', bodyKey: 'tour.universal.inventoryBody', targetSelector: 'a[href="#/inventory"]', route: '/inventory' },
+  { id: 'bills', titleKey: 'tour.universal.billsTitle', bodyKey: 'tour.universal.billsBody', targetSelector: 'a[href="#/bills"]', route: '/bills' },
   { id: 'reports', titleKey: 'tour.universal.reportsTitle', bodyKey: 'tour.universal.reportsBody', targetSelector: 'a[href="#/reports"]', route: '/reports' },
   { id: 'settings', titleKey: 'tour.universal.settingsTitle', bodyKey: 'tour.universal.settingsBody', targetSelector: 'a[href="#/settings"]', route: '/settings' },
   { id: 'backup', titleKey: 'tour.universal.backupTitle', bodyKey: 'tour.universal.backupBody', targetSelector: 'a[href="#/backup"]', route: '/backup' }

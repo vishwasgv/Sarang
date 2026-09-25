@@ -6689,22 +6689,26 @@
     "couldNotStartTutorial": "Could not start the tutorial.",
     "genericExploreScreen": "This is where you manage {{label}}. Take a look around — nothing you do here is saved.",
     "universal": {
-      "dashboardTitle": "Your Dashboard",
-      "dashboardBody": "This is your home screen — today's sales, trends, and quick alerts at a glance, plus a spotlight card built specifically for your kind of business, every time you open Sarang.",
+      "askSarangTitle": "Ask Sarang",
+      "askSarangBody": "Ask a question about your business in plain English, or tap one of the examples: today's sales, who owes you money, the balance sheet, which supplier bills are overdue. The first time, press Turn on Ask Sarang. Everything is answered on this computer and nothing leaves it. It can also explain why something is not working, and point you to the right chapter of the Manual.",
+      "billsTitle": "Supplier Bills",
+      "billsBody": "Record what a supplier billed you and pay it here. Type the supplier's own invoice number so the same bill is never entered twice, and use the Overdue filter to see what is late. A bill can be edited while it is open and unpaid. Goods arriving? Post the GRN with every line linked to a product, because a bill alone never adds stock.",
+"dashboardTitle": "Your Dashboard",
+      "dashboardBody": "This is your home screen — today's sales, trends, and quick alerts at a glance, plus a spotlight card built specifically for your kind of business, every time you open Sarang. Click Customise to hide the parts you do not use, and Add your own tile to show a number of your choice. Click any alert on the bell and Sarang opens the screen it is about.",
       "sidebarTitle": "Navigation",
-      "sidebarBody": "Everything Sarang can do lives in this sidebar. It only shows what's relevant to your business — you won't see features you don't need.",
+      "sidebarBody": "Everything Sarang can do lives in this sidebar. It only shows what's relevant to your business — you won't see features you don't need. Screens are grouped into modules (Sales, Purchases, Inventory, Accounting and more): click a group's title to fold it away or open it, and Sarang remembers your choice.",
       "searchTitle": "Quick Search",
       "searchBody": "Press Ctrl+K anytime, from anywhere, to jump straight to any screen or action by typing its name.",
       "billingTitle": "Create a Real Invoice",
-      "billingBody": "Let's create one, start to finish. Add a customer, add a product, and submit — you'll see it appear immediately, exactly like a real sale. Try the grid icon next to the product search box too — it switches to Browse Products, a category-organized tile grid so you can click products straight into the cart without typing anything. Once the invoice is created, try the Print button (58mm/80mm thermal or A4 — try both) and look for the UPI QR code on the printed preview if you've set up a UPI ID. Look for the WhatsApp and Email icons next to Print too — they save the invoice as a PDF, open the folder so you can attach it, then open WhatsApp or your email app pre-filled and ready to send. Nothing here is saved once you exit the tutorial.",
+      "billingBody": "Let's create one, start to finish. Add a customer, add a product, and submit — you'll see it appear immediately, exactly like a real sale. Try the grid icon next to the product search box too — it switches to Browse Products, a category-organized tile grid so you can click products straight into the cart without typing anything. Once the invoice is created, try the Print button (58mm/80mm thermal or A4 — try both) and look for the UPI QR code on the printed preview if you've set up a UPI ID. Look for the WhatsApp and Email icons next to Print too — they save the invoice as a PDF, open the folder so you can attach it, then open WhatsApp or your email app pre-filled and ready to send. Nothing here is saved once you exit the tutorial. Look for Add Charge (tip, delivery, packing), Give free on a cart line, and Tax shown as, which chooses CGST + SGST, IGST or one GST line. Credit and debit notes have an Add tax to this note switch, and a Prices include tax switch handles tax-inclusive price tags.",
       "customersTitle": "Customers",
-      "customersBody": "Every customer you've ever billed lives here, with their full purchase and payment history.",
+      "customersBody": "Every customer you've ever billed lives here, with their full purchase and payment history. Each customer's page has a Statement button that opens their account to print or send, and Find duplicates on this screen lists records that look like the same person so you can merge them.",
       "productsTitle": "Products",
       "productsBody": "Add and manage everything you sell here — pricing, tax rate, and stock all live on one screen. Set a valuation method (Weighted Average, FIFO, or Standard Cost) and turn a product into a Kit made of other products, right from the same form.",
       "inventoryTitle": "Inventory",
-      "inventoryBody": "Track stock levels and see every stock movement — sales, purchases, and manual adjustments — in one place. When stock falls below its reorder level, generate a draft Purchase Order straight from here.",
+      "inventoryBody": "Track stock levels and see every stock movement — sales, purchases, and manual adjustments — in one place. When stock falls below its reorder level, generate a draft Purchase Order straight from here. Stock Counts (a physical count with a variance report) and Bin Locations live in the same group.",
       "reportsTitle": "Reports",
-      "reportsBody": "Sales, Inventory, Outstanding, Profit & Loss, GST/HSN summaries, and more — all generated instantly from your real data. Click through a few different report tiles to see how each one looks.",
+      "reportsBody": "Sales, Inventory, Outstanding, Profit & Loss, GST/HSN summaries, and more — all generated instantly from your real data. Click through a few different report tiles to see how each one looks. Reports also holds the Balance Sheet, Cash Flow Statement, Trial Balance, General Ledger and Day Book, and every report now has a chart beside its table.",
       "settingsTitle": "Settings",
       "settingsBody": "Everything about how Sarang is configured lives here: your Business Profile, Tax setup, Users & Roles, Language, which optional modules are turned on for your business, your Invoice Templates, your Backup location, and your License. Worth a full look around at least once.",
       "backupTitle": "Backup & Restore",
@@ -6713,6 +6717,54 @@
       "licenseBody": "Sarang is free for your first 100 days. This screen always shows exactly where you stand, and is where you'll renew when the time comes."
     },
     "items": {
+      "expenseClaims": {
+        "title": "Expense Claims",
+        "body": "Staff paid for something from their own pocket? Record the claim here, approve or reject it, then repay it. Repaying records a normal expense in your books."
+      },
+      "bankRules": {
+        "title": "Bank Rules",
+        "body": "Teach Sarang where recurring bank statement lines belong, for example every line that contains 'electricity' goes to your utilities account. It lists the imported lines a rule matches and posts them in one click."
+      },
+      "gstPayments": {
+        "title": "GST Payments",
+        "body": "Record the GST you pay to the government. It reduces the tax you owe and the input credit you used, and reduces your bank or cash. Check the amounts with your accountant before you pay."
+      },
+      "gstReturns": {
+        "title": "GST Return Files",
+        "body": "Prepare your GSTR-1 and GSTR-3B as files you can upload on the government portal, and match your purchases with the portal's GSTR-2B. These are drafts from your records: open each one in the government's own tool before you rely on it."
+      },
+      "branchSummaries": {
+        "title": "Branch Summaries",
+        "body": "Each shop keeps its own Sarang. Export a summary from every shop and import them here to see all your shops together. Nothing syncs by itself."
+      },
+      "stockCounts": {
+        "title": "Stock Counts",
+        "body": "Count your stock: Sarang lists what it thinks you have, you type what you counted, and it shows the difference and its value. Nothing changes until you press Post."
+      },
+      "stockJournal": {
+        "title": "Stock Journal",
+        "body": "Record goods that change form, for example breaking a carton into packs: choose what goes out and what comes in and save them together."
+      },
+      "binLocations": {
+        "title": "Bin Locations",
+        "body": "Note which shelf, rack or bin each item sits on, for example A-3-2, so anyone can find it."
+      },
+      "salesOverview": {
+        "title": "Sales Overview",
+        "body": "A one-page view of sales and invoices today, what customers owe you, what is overdue, and shortcuts to every sales screen."
+      },
+      "purchasesOverview": {
+        "title": "Purchases Overview",
+        "body": "What you owe suppliers, what is due in the next 7 days, open bills, and the list of bills to pay this week."
+      },
+      "accountingOverview": {
+        "title": "Accounting Overview",
+        "body": "Cash and bank balances, journal entries today, and shortcuts to your books, statements and returns."
+      },
+      "inventoryOverview": {
+        "title": "Inventory Overview",
+        "body": "Items in stock, low stock and out of stock at a glance, with shortcuts to counts, movements and locations."
+      },
       "restaurantTables": {
         "title": "Tables",
         "body": "See every table at a glance — open, occupied, or reserved. Tap a table to start an order, or merge two tables for a bigger group. If you turn on QR Table Ordering above, save your WiFi network once and every table's QR code prints as a WiFi-join code plus the order code together, so a customer can join your network and start ordering in two scans. The Waiter View card lets you print a personal QR code for each waiter — scanning it shows just their own assigned tables, live, on their own phone, with a button to take a new order directly. Try it: open a table and see it turn occupied instantly."

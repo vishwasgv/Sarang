@@ -183,7 +183,20 @@ export const VERTICAL_CONTENT: VerticalContentEntry[] = [
   { path: '/bakery/catering-events', key: 'cateringEvents' },
   { path: '/tours/fleet', key: 'toursFleet' },
   { path: '/tours/packages', key: 'tourPackages' },
-  { path: '/tours/bookings', key: 'tripBookings' }
+  { path: '/tours/bookings', key: 'tripBookings' },
+  // 2026-09 release 1.6: accounting, stock and overview screens.
+  { path: '/expenses/claims', key: 'expenseClaims' },
+  { path: '/accounting/bank-rules', key: 'bankRules' },
+  { path: '/accounting/gst-payments', key: 'gstPayments' },
+  { path: '/accounting/gst-returns', key: 'gstReturns' },
+  { path: '/accounting/branch-summaries', key: 'branchSummaries' },
+  { path: '/inventory/stock-takes', key: 'stockCounts' },
+  { path: '/inventory/journal', key: 'stockJournal' },
+  { path: '/inventory/bins', key: 'binLocations' },
+  { path: '/hub/sales', key: 'salesOverview' },
+  { path: '/hub/purchases', key: 'purchasesOverview' },
+  { path: '/hub/accounting', key: 'accountingOverview' },
+  { path: '/hub/inventory', key: 'inventoryOverview' }
 ]
 
 export const VERTICAL_CONTENT_BY_PATH: Record<string, string> = Object.fromEntries(
