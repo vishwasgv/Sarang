@@ -1865,6 +1865,7 @@ const api: IpcChannels = {
     update: (p: unknown) => invoke('logisticsGrn:update', p),
     post: (p: unknown) => invoke('logisticsGrn:post', p),
     reverse: (p: unknown) => invoke('logisticsGrn:reverse', p),
+    linkLine: (p: unknown) => invoke('logisticsGrn:linkLine', p),
     delete: (p: unknown) => invoke('logisticsGrn:delete', p),
   },
   logisticsChallan: {

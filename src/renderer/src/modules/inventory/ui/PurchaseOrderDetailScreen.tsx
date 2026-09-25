@@ -345,6 +345,7 @@ export function PurchaseOrderDetailScreen() {
         </div>
       </div>
 
+      {po.status === 'APPROVED' && canReceive && <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchaseOrders.receiveHint')}</p>}
       <ApprovalPanel documentType="PURCHASE_ORDER" documentId={po.id} refreshSignal={po.status} onActioned={loadPO} />
 
       {/* Supplier info */}

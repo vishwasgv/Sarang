@@ -1510,6 +1510,7 @@
     "submittedForApproval": "Submitted for Approval",
     "poApproved": "PO Approved",
     "receiveStock": "Receive Stock",
+    "receiveHint": "Receive Stock brings in everything on this order at once. If the goods arrive in parts, or you want to record the delivery note and vehicle, use a Goods Receipt Note (GRN) instead.",
     "cancelPO": "Cancel PO",
     "cancelPoTitle": "Cancel Purchase Order",
     "cancelPoMsg": "The order will be permanently cancelled and cannot be reversed.",
@@ -6542,6 +6543,11 @@
       },
       "logisticsGrn": {
         "title": "Goods Receipt Notes (GRN)",
+      "linkToItem": "Link to an item",
+      "findItem": "Find an item",
+      "linked": "Line linked; its stock has been added",
+      "linkFailed": "Could not link this line.",
+      "pathHint": "Use a GRN when goods arrive in parts or you want the delivery note and vehicle on record. To bring in a whole purchase order at once, open it under Purchase Orders and choose Receive Stock. Do not do both for the same goods.",
         "body": "Record what actually arrived against a purchase order — try creating one and see how it reconciles against what was ordered."
       },
       "logisticsChallan": {

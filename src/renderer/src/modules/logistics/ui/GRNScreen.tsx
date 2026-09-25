@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
+import { GrnLinkLine } from './GrnLinkLine'
 import { formatCurrency } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
@@ -370,7 +371,10 @@ export default function GRNScreen() {
   return (
     <div className="p-4 space-y-4">
       <div className="flex items-center justify-between flex-wrap gap-2">
+        <div>
         <h1 className="text-xl font-bold text-gray-800">{t('logistics.grn.title')}</h1>
+          <p className="text-xs text-gray-500">{t('logistics.grn.pathHint')}</p>
+        </div>
         <button onClick={() => { setError(null); setShowForm(true) }} className="px-4 py-2 bg-blue-600 text-white rounded-lg text-sm font-medium hover:bg-blue-700">{t('logistics.grn.newGRN')}</button>
       </div>
 
@@ -439,6 +443,7 @@ export default function GRNScreen() {
                           <td className="py-1">
                             {i.itemName}{i.batchNumber && <span className="text-gray-400 ms-1">({i.batchNumber})</span>}
                             {!i.productId && !i.rawMaterialId && <span className="text-amber-500 ms-1" title={t('logistics.grn.unlinkedWarning')}>⚠ {t('logistics.grn.unlinked')}</span>}
+                            {g.status === 'POSTED' && !i.productId && !i.rawMaterialId && <GrnLinkLine itemId={i.id} onLinked={load} />}
                           </td>
                           <td className="text-end">{i.receivedQty} {i.unit}</td>
                           <td className="text-end">{i.rejectedQty}</td>

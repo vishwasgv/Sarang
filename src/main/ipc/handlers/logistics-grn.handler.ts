@@ -1,6 +1,7 @@
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { listGRNs, getGRN, createGRN, updateGRN, postGRN, deleteGRN, reverseGRN } from '../../services/logistics-grn.service'
+import { linkPostedGrnLine } from '../../services/logistics-grn-link.service'
 import { CreateGRNSchema, UpdateGRNSchema } from '../../validation/logistics-grn.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -38,6 +39,13 @@ export function registerLogisticsGrnHandlers(handle: HandleFn): void {
   handle('logisticsGrn:reverse', async (raw) => {
     const deny = await requirePermission('logistics.manage'); if (deny) return deny
     return reverseGRN(raw as string, getCurrentSession()?.userId)
+  })
+
+  handle('logisticsGrn:linkLine', async (raw) => {
+    const deny = await requirePermission('logistics.manage'); if (deny) return deny
+    const p = raw as { itemId?: unknown; productId?: unknown } | null
+    if (typeof p?.itemId !== 'string' || typeof p?.productId !== 'string' || !p.itemId || !p.productId) return { success: false, error: { code: 'VAL-001', message: 'Choose a line and an item.' } }
+    return linkPostedGrnLine({ itemId: p.itemId, productId: p.productId }, getCurrentSession()?.userId)
   })
 
   handle('logisticsGrn:delete', async (raw) => {

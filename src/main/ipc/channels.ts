@@ -2162,6 +2162,7 @@ export interface IpcChannels {
     update: (payload: { id: string; status?: string; supplierName?: string; invoiceNumber?: string; invoiceDate?: string; receivedDate?: string; notes?: string; items?: Array<{ itemName: string; receivedQty: number; rejectedQty?: number; unit?: string; unitCost?: number; batchNumber?: string; notes?: string; purchaseUnitQty?: number }> }) => Promise<ApiResponse>
     post: (payload: string) => Promise<ApiResponse>
     reverse: (payload: string) => Promise<ApiResponse>
+    linkLine: (payload: { itemId: string; productId: string }) => Promise<ApiResponse>
     delete: (payload: string) => Promise<ApiResponse>
   }
   logisticsChallan: {
