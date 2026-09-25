@@ -7,7 +7,8 @@ This page is the map. Read it once and you will always know where to go for a jo
 - **Left sidebar** — every screen, grouped into modules (below). Click a group's title to fold it away or open it; Sarang remembers your choice. The group that holds the screen you are on always opens by itself, and only one item is highlighted at a time.
 - **Top bar** — **Search** (press **Ctrl + K** from anywhere to jump to a customer, product, invoice or screen), the **bell** (app alerts), and your name (language, theme, sign out).
 - **Bell alerts** — low stock, backup done, reminders due, and similar. Click an alert and Sarang opens the screen it is about (for example, a low-stock alert opens Inventory). An alert with a small "Open →" line is clickable.
-- **Ask Sarang** — the sparkle item at the top of the sidebar, and the box at the top of the Dashboard. Type a question in plain English. The first time, it asks you to press **Turn on Ask Sarang**; after that it answers from your own data, on this computer.
+- **Ask Sarang** — the sparkle item at the top of the sidebar, and the box at the top of the Dashboard. Type a question in plain English, or tap one of the example questions. The first time, it asks you to press **Turn on Ask Sarang**; after that it answers from your own data, on this computer. It can also explain why something is not working ("why is my stock not updating after a GRN?") and point you to the right Manual chapter ("how do I...").
+- **Dashboard** — **Customise** hides sections you do not use, and **Add your own tile** adds a number of your choice.
 
 ## The sidebar modules
 
@@ -16,16 +17,16 @@ What you see depends on your business type and on what your login is allowed to 
 | Group | What lives here |
 |---|---|
 | **Home** | Dashboard, Ask Sarang |
-| **Sales** | Billing (invoices and the sale screen), Quotations, Sales Orders, Sales Returns (if turned on), Credit Notes, Customers, Price Lists, Pricing Schemes, Price Markdowns, Loyalty Program |
-| **Purchases** | Suppliers, Purchase Orders, GRN (goods received note, if Logistics is on), Supplier Bills, Supplier Payments, Debit Notes |
-| **Inventory** | Products, Inventory (stock levels and movements), Stock Locations, Print Labels, Batch Tracking, Serial Tracking |
+| **Sales** | Sales Overview, Billing (invoices and the sale screen), Quotations (and proforma invoices), Sales Orders, Sales Returns (if turned on), Credit Notes, Customers, Price Lists, Pricing Schemes, Price Markdowns, Loyalty Program |
+| **Purchases** | Purchases Overview, Suppliers, Purchase Orders, GRN (goods received note, if Logistics is on), Supplier Bills, Supplier Payments, Debit Notes |
+| **Inventory** | Inventory Overview, Products, Inventory (stock levels and movements), Stock Counts, Stock Journal, Bin Locations, Stock Locations, Print Labels, Batch Tracking, Serial Tracking |
 | **Business Tools** | Everything specific to your kind of business: tables and kitchen for a restaurant, appointments for a clinic, metal rates for a jeweller, job cards for a repair shop, and so on. Your business-type chapter in this Manual describes each one. |
-| **Accounting** | Expenses, Cash Close, Chart of Accounts, Journal Entries, Bank Accounts, Post-Dated Cheques, Bank Deposits, Fixed Assets, Ledger Settings, Cost Centres, Budgets, Recurring Profiles, Approval Workflows |
+| **Accounting** | Accounting Overview, Expenses, Expense Claims, Cash Close, Chart of Accounts, Journal Entries, Bank Accounts, Bank Rules, Post-Dated Cheques, Bank Deposits, Fixed Assets, Ledger Settings, Cost Centres, Budgets, Branch Summaries, Recurring Profiles, Approval Workflows, and for India GST Payments and GST Return Files |
 | **People & Payroll** | Employees, Staff Attendance, Leave, Payroll, Staff Commission |
 | **Reminders & Messages** | WhatsApp Reminders, Message Templates |
 | **Logistics** | Fleet, Carriers, Shipments, Delivery Challan, Freight Ledger (only if Logistics is on) |
 | **Manufacturing** | Raw Materials, Bill of Materials, Production and related (only for manufacturers) |
-| **Reports & Data** | Reports, Documents, Import Data, Backup, Audit Log |
+| **Reports & Data** | Reports, Documents, Import Data, Backup, Audit Log. **Find duplicates** on Customers and Suppliers lists records that look like the same person or business and lets you merge them. |
 | **Settings & Help** | Settings, Manual, About |
 
 If you cannot find a screen, it is one of three things: your business type does not use it, your login does not have permission (ask the owner — see *Users & Permissions*), or the feature is switched off (**Settings → Additional Business Features**).

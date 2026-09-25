@@ -18,6 +18,10 @@ For anything auto-match doesn't resolve, open the line and reconcile it manually
 
 The **Reconciliation Summary** at the top of the screen shows your book balance next to the statement's own net movement, plus how many lines are reconciled versus still outstanding — the same "does my book agree with the bank" check an accountant would do by hand, done for you.
 
+## Bank Rules
+
+Open **Bank Rules** (Accounting group) to teach Sarang where recurring statement lines belong. A rule says: for statement lines that contain certain words (and optionally are a debit or a credit, or lie within an amount range), the account is, say, *Operating Expenses*. The screen lists the imported, unreconciled statement lines that a rule matches; press **Post** on one (or all) and Sarang records a journal entry against the cash and bank account, tagged with that bank account, and marks the line reconciled. Undoing it from the reconciliation screen reverses the entry. Rules pick the account only: they cannot split a line across accounts or split out tax, and nothing runs by itself.
+
 ## Attaching the actual statement file
 
 The original statement file itself — the PDF or CSV your bank sent you — can be attached directly to the account under the **Documents** panel on the Reconciliation screen, so the source document sits right alongside the parsed lines for as long as you need it, the same attach/open/delete behaviour every other document in Sarang already has.

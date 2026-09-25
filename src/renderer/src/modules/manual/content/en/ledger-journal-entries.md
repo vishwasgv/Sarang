@@ -8,7 +8,7 @@ Cancelling, voiding, or reversing any of those same actions posts a real mirrore
 
 ## Chart of Accounts
 
-Open **Chart of Accounts** from the sidebar to see the accounts your books are built from — Cash & Bank, Accounts Receivable, Inventory, Fixed Assets, Accounts Payable, Tax Payable, Owner's Capital, Sales Revenue, Cost of Goods Sold, Operating Expenses, and a few more — already set up for you the first time you use anything in this phase. Each has a type (Asset, Liability, Equity, Income, or Expense), which determines which side of the ledger it normally sits on.
+Open **Chart of Accounts** from the sidebar to see the accounts your books are built from — Cash & Bank, Accounts Receivable, Inventory, Input Tax Credit, TDS Receivable, Fixed Assets, Accounts Payable, Tax Payable, TDS Payable, Owner's Capital, Sales Revenue, Cost of Goods Sold, Operating Expenses, and a few more — already set up for you the first time you use anything in this phase. Each has a type (Asset, Liability, Equity, Income, or Expense), which determines which side of the ledger it normally sits on.
 
 Click **New Account** to add your own — useful if you want a more specific expense or income category than the defaults provide (e.g. splitting "Operating Expenses" into "Rent" and "Utilities" for your own tracking). Your own accounts behave exactly like the built-in ones everywhere else in the ledger.
 
@@ -20,19 +20,23 @@ Add two or more lines, each against an account, as a debit or a credit — never
 
 Already-posted entries can be reversed (with a required reason) if one was entered in error — this posts a real mirrored entry rather than deleting the original, so the correction itself is part of the permanent record.
 
+Three helpers on the form save typing. **Templates** save which accounts and sides an entry uses under a name (for example *Monthly rent*) so next time you only type the amounts; saving under an existing name replaces it. **Reverse automatically on** is for an accrual: pick the date the entry should undo itself, and Sarang posts the reversal (dated the day it runs) the next time it is open on or after that date, unless the period is locked. **Memorandum notes** (a fold-out under the list) hold notes about things that are not accounting entries yet, such as goods sent on approval; they never touch the books. For speed, press Enter on the last amount to add a balancing line and Ctrl + Enter to post.
+
 ## Transaction Locking
 
 Open **Ledger Settings** to set a **Lock Date** — once set, no dated financial transaction (an Invoice, Bill, Payment, Supplier Payment, Expense, Journal Entry, or Purchase Order) can be created, edited, or voided on or before that date, across every part of the app. This is what keeps a closed accounting period closed: once you and your accountant have agreed a month or year is final, the lock date stops anyone (including you) from quietly changing it afterward.
 
 ## Credit Interest on overdue customers
 
-If you charge interest on overdue customer balances, turn on **Credit Interest** in Settings with a rate and Simple-or-Compound type. From a customer's own record, you can then see the actual interest currently accrued on their overdue invoices — calculated per invoice from the date it actually went overdue, not a flat guess on the whole balance — and post it as a real charge to their account when you're ready to bill for it.
+If you charge interest on overdue customer balances, turn on **Interest on overdue balances** in **Settings → Business Features** with a yearly rate and Simple-or-Compound type. From a customer's own record, you can then see the actual interest currently accrued on their overdue invoices — calculated per invoice from the date it actually went overdue, not a flat guess on the whole balance — and post it as a real charge to their account when you're ready to bill for it.
 
 ## Reverse Charge, Composition Scheme, and TDS
 
 - **Reverse Charge (RCM)** — mark a Bill or Expense as reverse-charge when the supplier hasn't charged you GST and you're self-assessing it instead. Sarang keeps what you actually owe the supplier separate from the tax you owe the government, and surfaces the reverse-charge tax total in the GSTR-3B preview report.
 - **Composition Scheme** — if your business is registered under the Composition Scheme (set in Settings), every Invoice you raise automatically carries no GST at all, and prints as a **Bill of Supply** instead of a tax invoice — matching what the law requires, without you needing to remember to zero out tax by hand on every sale.
-- **TDS on vendor payments** — when recording a payment to a supplier, tick **Deduct TDS** and Sarang suggests an amount based on your configured threshold and rate, always yours to review and adjust before confirming. The withheld amount is tracked as its own liability, separate from what was actually paid out.
+- **TDS on vendor payments** — when recording a payment to a supplier, tick **Deduct TDS** and Sarang suggests an amount based on your configured threshold and rate, always yours to review and adjust before confirming. The withheld amount is tracked as its own liability, separate from what was actually paid out. **Reports → TDS Deducted** lists it by section.
+- **TDS kept back by a customer** — on the invoice's payment window choose **TDS deducted**. The invoice is settled, the amount is debited to **TDS Receivable** (an asset: tax you will get credit for) instead of cash, and **Reports → TDS Receivable** lists it.
+- **Input Tax Credit** — for GST businesses, the tax on supplier bills, received purchase orders and debit notes is posted to the **Input Tax Credit** account. **Accounting → GST Payments** records the payment to the government: it reduces Tax Payable and the credit you used, and reduces Cash & Bank.
 
 ## Trial Balance
 

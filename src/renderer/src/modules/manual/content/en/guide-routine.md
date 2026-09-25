@@ -5,7 +5,7 @@ A checklist you can follow without thinking. Tick what applies to your business.
 ## Every day (10 minutes)
 
 **Morning**
-- Open the **Dashboard**. Look at the alerts (low stock, dues, reminders due) and yesterday's sales.
+- Open the **Dashboard**. Look at the alerts (low stock, dues, reminders due) and yesterday's sales. **Customise** (top right) hides the parts you do not use, and **Add your own tile** shows a number you care about, such as this week's expenses; both are remembered for your login on this computer.
 - Click the **bell**. Each alert opens the screen it is about.
 - **WhatsApp Reminders**: send what is due today (see *Guide: Reminders and Alerts*).
 - Ask Sarang: "What needs my attention?"
@@ -22,7 +22,7 @@ A checklist you can follow without thinking. Tick what applies to your business.
 ## Every week
 
 - **Reports → Outstanding**: who owes you and for how long. Send reminders to the oldest.
-- **Purchases → Supplier Bills**: use the **Overdue** filter; plan payments. Record supplier payments made this week.
+- **Purchases → Purchases Overview**: the bills due in the next 7 days. **Supplier Bills → Overdue** filter; plan payments. Record supplier payments made this week.
 - **Inventory → Low Stock**: raise Purchase Orders (or use **Generate Reorder POs** on the Inventory screen).
 - **Quotations → Expired** filter: follow up or close the ones that lapsed.
 - Look at **Reports → Purchase Register** for what you bought.
@@ -31,12 +31,14 @@ A checklist you can follow without thinking. Tick what applies to your business.
 ## Every month
 
 - **Reports → Profit and Loss** and **Trial Balance** for the month.
-- **Reports → Tax Report / GSTR-1 / GSTR-3B Preview** and send them to your accountant, or use them to prepare your return.
+- **Reports → Tax Report / GSTR-1 / GSTR-3B Preview / GST Net Payable & Input Credit** (or **VAT / Sales Tax Return** outside India) and send them to your accountant, or use them to prepare your return. GST businesses can prepare the GSTR-1 and GSTR-3B files in **Accounting → GST Return Files**, and match purchases with the portal's GSTR-2B.
 - Reconcile the **Bank Account** with the bank statement (open the bank account under **Accounting → Bank Accounts**, then **Reconciliation**).
 - Check **Supplier Payments** against what suppliers say you owe (open each big supplier's page).
 - Run payroll (**People & Payroll → Payroll**) and record staff attendance and leave.
 - Review **Expenses** for the month and match them to receipts.
-- Count a few fast-moving items and correct any difference with **Adjust stock** (reason: physical stock count).
+- Count a few fast-moving items and correct any difference with **Adjust stock**, or run a full **Stock Counts** session if you want a variance report.
+- Enter any **expense claims** staff submitted, approve them and repay them.
+- Check the **Balance Sheet** balances and ask Ask Sarang "Are my books balanced?".
 - **Backup** and keep a copy on a second drive or pen drive.
 
 ## Every year

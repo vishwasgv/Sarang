@@ -16,6 +16,9 @@ You do not have to make accounting entries for normal work. Sarang posts them fo
 | Record an Expense | The expense goes up, cash or bank goes down (or what you owe goes up) |
 | Issue a Credit Note or Debit Note | The sale or purchase is reduced, and so is the balance |
 | Post depreciation on a Fixed Asset | Depreciation expense goes up, the asset's value goes down |
+| A customer keeps back TDS when paying | The invoice is settled; "TDS Receivable" (tax you will get credit for) goes up instead of cash |
+| Pay GST to the government (Accounting, GST Payments) | The tax you owe and the input credit you used go down, cash or bank goes down |
+| Approve and repay a staff expense claim | A normal expense is recorded and cash or bank goes down |
 
 Every posting has two sides that are always equal (debits equal credits). That is why the books balance.
 
@@ -29,13 +32,22 @@ Click **Ledger** on any account to see every posting in it (see section 5).
 
 **Accounting → Journal Entries → New.** Use a journal for things that are not ordinary sales or purchases: an opening balance, a write-off, an owner putting money in or taking it out, correcting an earlier posting. Add lines, each with an account and either a debit or a credit. **Total debits must equal total credits** or Sarang will not save it. Posted entries can be reversed (with a reason), not deleted, so there is always a trail.
 
+Helpers on the journal form:
+
+- **Templates (patterns)**: after you fill in the accounts and which side each is on, save the layout under a name (for example *Monthly rent*). Next time pick it and only type the amounts. Saving under an existing name replaces it.
+- **Reverse automatically on**: for an accrual (an expense you record now that belongs to next month), choose the date the entry should undo itself. Sarang does it the next time it is open on or after that date, dated the day it runs. If the period is locked the reversal waits.
+- **Memorandum notes** (fold-out at the bottom of Journal Entries): notes about things that are not accounting entries yet, such as goods sent on approval. They never change your books.
+- **Keyboard**: press **Enter** on the last amount to add a balancing line and **Ctrl + Enter** to post.
+
 ## 4. Money in the bank
 
 - **Bank Accounts**: add each bank account, then **Reconcile**: import or enter the bank statement lines and match them to what Sarang has recorded, so your books agree with the bank.
 - **Post-Dated Cheques**: keep track of cheques you have given or received for a later date.
 - **Bank Deposits**: record a deposit of cash and cheques to the bank.
 - **Cash Close** (daily): count the cash in the drawer and record any difference.
+- **Bank Rules** (Accounting → Bank Rules): tell Sarang that a statement line containing certain words (for example "electricity") belongs to a certain account. The screen lists imported statement lines the rules match; one click posts them to that account and marks them reconciled. Rules never run by themselves and a posted line can be undone from the reconciliation screen.
 - **Expenses**: record every business cost with a category, vendor, and whether the tax is payable by you (reverse charge).
+- **Expense Claims** (Accounting → Expense Claims): when staff pay for something from their own pocket, record the claim, then **Approve** (or **Reject**) it and **Repay** it. Repaying records a normal expense with the payment method you choose.
 
 ## 5. The statements, and how to read each
 
@@ -55,6 +67,18 @@ Open **Reports** and choose the **Financial** group. Choose a date range and run
 
 **Cash Book.** A day-by-day register of every payment received and every payment or expense made, with a running balance.
 
+**More reports for your accountant and for you** (all in the Reports list, each with a chart):
+
+- **Ratio Analysis** (liquidity, debt, margins, days customers, suppliers and stock take) and **Fund Flow** (sources and uses of funds).
+- **Bank Book** and **Bank Reconciliation Summary**.
+- **Receivables Summary** and **Payables Summary** (who owes what and what falls due in the next 7 days), **Profit by Item** and **Profit by Customer**, **Year over Year**.
+- **Profit by Cost Category** (revenue, expenses and profit added up by the category you gave each cost centre) and **Budget vs. Actual**.
+- **Expenses by Category** and **Expenses by Vendor**, **Fixed Asset Register**.
+- **Credit Note, Debit Note and Sales Return Registers**.
+- **TDS Deducted**, **TDS Receivable** and (for GST businesses) **GST Net Payable & Input Credit**.
+
+Some reports can also be saved to a folder automatically on a schedule (Settings → Business Features → Reports saved automatically); this only runs while Sarang is open.
+
 ## 6. Checks worth doing every month
 
 1. **Trial Balance**: debits equal credits.
@@ -64,6 +88,16 @@ Open **Reports** and choose the **Financial** group. Choose a date range and run
 5. **Stock value**: the Inventory total is sensible against your last count.
 6. Send the month's **Profit and Loss**, **Balance Sheet** and **Tax Report** to your accountant.
 
+## Budgets, cost centres and several shops
+
+- **Cost Centres** tag income and expenses by department or project. Give each cost centre a **category** (for example Department or Project) and **Profit by Cost Category** adds them up.
+- **Budgets** set a planned amount per month. Beside your real plan (the **Base plan**) you can make **what-if plans**: choose **New what-if plan**, name it and raise or lower every figure by a percentage. **Budget vs. Actual** follows the plan you choose.
+- **Several shops or branches?** Each shop keeps its own Sarang. **Accounting → Branch Summaries** exports a summary file from each shop and imports them into one place so the owner can see all shops together. Nothing syncs by itself.
+
+## Foreign currency
+
+Keep a table of exchange rates in **Settings → Business Features → Exchange rates** (add rates by hand or import a CSV). When you make a sale in a foreign currency the latest rate is filled in. Payments received in that currency record the exchange gain or loss.
+
 ## 7. Locking a finished period
 
 **Accounting → Ledger Settings** lets you set a **lock date**. Nothing dated on or before it can be added, changed or reversed, which protects figures your accountant has already used for a return or audit. Set it only after your accountant confirms the period.
@@ -71,6 +105,10 @@ Open **Reports** and choose the **Financial** group. Choose a date range and run
 ## 8. Year end
 
 **Fixed Assets and Year-End Close** (its own chapter) covers posting depreciation and closing the year. After a close, the opening balances of the new year are carried forward automatically. Reports that show a balance on a date start from the latest opening entry.
+
+## Sharing your books with your accountant
+
+Create a login for your accountant with the **Accountant** role: it can look at reports, ledgers and statements and export them, and cannot change anything. Add it in **Settings → Users**. Send the month's Profit and Loss, Balance Sheet and Tax Report, or export the Trial Balance for them.
 
 ## Common questions
 

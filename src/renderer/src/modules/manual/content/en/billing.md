@@ -9,8 +9,9 @@ Open **Billing** from the sidebar (`/billing`) to reach the point-of-sale screen
 3. **Pick the customer**, on the right side. Type a name or phone number to search existing customers; if they're new, click **+ Add Customer** to quick-add just a name and phone without leaving the invoice. Leaving the customer field empty bills a walk-in customer.
 4. **Choose a payment method**: Cash, UPI, Card, Wallet, Credit (Pay Later), or Split. **Credit** requires a customer to be selected — the invoice is created UNPAID and the amount is added to that customer's ledger. **Split** lets you enter separate Cash and UPI amounts that must add up to the invoice total.
 5. **Apply a global discount** (in addition to any per-line discounts) if needed, using the discount box in the summary panel.
-6. If your tax model is GST, tick **Inter-State Sale (IGST)** when the sale crosses state lines — this switches the printed tax lines from CGST+SGST to a single IGST line.
-7. Click **Confirm Sale** (or press **F10** / **Ctrl+Enter**) to create the invoice. You're taken straight to the new invoice's detail screen.
+6. If your tax model is GST, **Tax shown as** chooses CGST + SGST, IGST or a single GST line. Sarang picks it by comparing your state with the customer's state and you can change it. The amount of tax is the same in all three.
+7. Extras on the bill: **Add Charge** adds a tip, shipping or delivery, packing, handling, installation or other charge as its own line, with its own tax rate (a tip carries none). **Give free** under a cart line makes that whole line a free sample or gift: stock goes out, price and tax become zero. When the customer's country is different from yours, an **Export sale?** box appears; ticking it zero-rates the whole sale and notes "Export supply, zero-rated" on the invoice.
+8. Click **Confirm Sale** (or press **F10** / **Ctrl+Enter**) to create the invoice. You're taken straight to the new invoice's detail screen.
 
 The cart shows a running subtotal, discount, tax, rounding adjustment, and total as you build it. **Clear Cart** at the bottom resets everything without saving.
 
@@ -28,7 +29,7 @@ If a product or category in the cart qualifies for an active **Pricing Scheme** 
 
 Opening an invoice shows its full line items, tax breakdown, and payment history. From here you can:
 
-- **Record Payment** — enter an amount (full or partial), pick a method (Cash, UPI, Card, or Wallet — Credit is not offered here since recording a payment means real money was received), and an optional reference number and remarks. Recording a payment updates the balance and payment status immediately; recording less than the full balance leaves the invoice PARTIAL.
+- **Record Payment** — enter an amount (full or partial), pick a method (Cash, UPI, Card, or Wallet — Credit is not offered here since recording a payment means real money was received), and an optional reference number and remarks. **TDS deducted** is a fifth choice for when the customer kept back income tax: it settles that part of the invoice with no money arriving and records the amount as tax you will get credit for (see **Reports → TDS Receivable**). **Ctrl + Enter** saves the payment. Recording a payment updates the balance and payment status immediately; recording less than the full balance leaves the invoice PARTIAL.
 - **Reverse a payment** — if a payment was recorded in error, reverse it with a reason. The reversed payment stays visible (struck through) for the audit trail.
 - **Print** or **Print Receipt** — preview the A4 invoice or thermal receipt layout before sending it to the printer.
 - **Cancel Invoice** — requires a reason and cannot be undone.
@@ -40,13 +41,15 @@ Opening an invoice shows its full line items, tax breakdown, and payment history
 
 **Quotations** (`/billing/quotations`) are non-binding price estimates you can hand to a customer before they commit. Create one with **New Quotation**: pick or type a customer name, add line items (searched the same way as Billing), an optional validity date, and notes.
 
+Choose **Proforma invoice** as the document type when you want to ask for payment before delivering: it is numbered PF-, prints "PROFORMA INVOICE, Not a tax invoice" and converts to an invoice like any quotation.
+
 A quotation starts as **Draft** and can be **Sent**, **Accepted**, or **Expired**. It becomes **Expired** on its own the day after its **Valid until** date if it was never accepted; an expired quotation cannot be converted until you change its status back to **Sent** (which clears the old expiry date). Once a customer agrees to it, click **Convert to Invoice** — this creates a real invoice from the quotation's items and marks the quotation Accepted. A quotation that has already been converted shows a link to its resulting invoice instead of the convert button. Quotations can be printed at A4 or receipt width, and deleted as long as they haven't been converted.
 
 If a quotation is for an ongoing retainer engagement rather than a one-time sale, set its **Retainer Engagement** field (Fixed Fee, Hourly Bucket, or Deliverable-Based) when creating it. A quotation marked this way shows a **Convert to Retainer** button instead of (or alongside) Convert to Invoice — accepting it creates a recurring Retainer Agreement (the same kind you'd otherwise set up directly from Retainers, if your business type has that screen) rather than a single invoice.
 
 ## Credit Notes and Debit Notes
 
-**Credit Notes** (`/billing/credit-notes`) record money owed *back to* a customer — typically for a return, an overcharge, or a goodwill adjustment. Create one with a reason and amount, optionally linked to a customer and/or the original invoice. Linking it to a customer automatically credits their ledger, reducing what they owe you.
+**Credit Notes** (`/billing/credit-notes`) record money owed *back to* a customer — typically for a return, an overcharge, or a goodwill adjustment. Create one with a reason and amount, optionally linked to a customer and/or the original invoice. Linking it to a customer automatically credits their ledger, reducing what they owe you. Each note has **Add tax to this note**: it starts on when the linked invoice carried tax, and you can turn it off for a plain amount.
 
 **Debit Notes** (`/billing/debit-notes`) are the supplier-side equivalent — money a supplier owes you back, for example a return of purchased stock or a billing correction. Linking a debit note to a supplier debits their ledger, reducing what you owe them. Both credit and debit notes can optionally reference the invoice or purchase order they relate to, can be edited or deleted, and print at A4 or receipt width.
 
@@ -58,7 +61,7 @@ When creating either one, tick **Itemize this credit/debit note** to build the a
 
 ## Delivery Notes
 
-Open any invoice and click **Create Delivery Note** to generate a dispatch document for that sale — the items, quantities, and customer are carried over automatically. This works for any business, independent of whether the Logistics module is turned on; if Logistics *is* enabled, the delivery note also appears alongside your regular Delivery Challans.
+Open any invoice and click **Create Delivery Note** to generate a dispatch document for that sale — the items, quantities, customer, GSTIN and place of supply are carried over automatically, and you can add the reason for the movement, the transporter and the LR number. For an Indian GST sale of 50,000 or more, the Billing screen reminds you that an e-way bill is needed, and the invoice can keep its number. This works for any business, independent of whether the Logistics module is turned on; if Logistics *is* enabled, the delivery note also appears alongside your regular Delivery Challans.
 
 ## Sharing documents via WhatsApp and Email
 
@@ -76,7 +79,7 @@ Opening WhatsApp this way launches WhatsApp Desktop if it's installed, or WhatsA
 
 ## Foreign-currency invoicing and settlement
 
-If you sell to customers who pay in a foreign currency — an export sale, an overseas client — tick **Bill in foreign currency** while creating the invoice. Enter the three-letter currency code (e.g. `USD`) and the exchange rate at the time of billing (e.g. `83.25`); a live preview shows the invoice total converted at that rate. The invoice itself still totals and prints in your home currency as normal — the foreign-currency figure is an added reference line, both on screen and on the printed document (`≈ USD 1,200.00 @ 83.25`), not a second set of books.
+If you sell to customers who pay in a foreign currency — an export sale, an overseas client — tick **Bill in foreign currency** while creating the invoice. Enter the three-letter currency code (e.g. `USD`) and the exchange rate at the time of billing (e.g. `83.25`). If you keep a table of rates in **Settings → Business Features → Exchange rates**, the latest one is filled in for you; a live preview shows the invoice total converted at that rate. The invoice itself still totals and prints in your home currency as normal — the foreign-currency figure is an added reference line, both on screen and on the printed document (`≈ USD 1,200.00 @ 83.25`), not a second set of books.
 
 Exchange rates move between the day you raise the invoice and the day you're actually paid, so **settling** a foreign-currency invoice is its own step. Open the invoice and click **Record Payment**: since it carries a foreign currency, a **Settle in {code} (records the actual amount received and any exchange-rate gain/loss)** toggle appears. Switch it on, enter the amount you actually received in the foreign currency and the exchange rate on the day of settlement (which can differ from the rate the invoice was raised at), and confirm. Sarang converts that to your home currency, settles the invoice in full, and automatically posts the difference between what the invoice was worth at the original rate and what it was worth at the settlement rate as a **Realized FX Gain** or **Realized FX Loss** journal entry (see the Ledger & Journal Entries chapter) — you never calculate or post that adjustment by hand.
 
@@ -84,4 +87,4 @@ The same foreign-currency billing and settlement flow is available on the purcha
 
 ## Notes on tax and rounding
 
-For businesses using the Indian rupee, every invoice total is rounded to the nearest whole rupee, with the rounding difference shown as its own line so the math always adds up visibly. For every other currency the total keeps its exact amount (for example cents), and no rounding line is added. Under the GST tax model, tax prints as CGST+SGST for an intra-state sale or a single IGST line for an inter-state one, based on the checkbox set when the invoice was created.
+The payable total is rounded by the rule in **Settings → Currency & Locale → Invoice rounding** (none, nearest 0.05, 0.10, 0.50 or 1); Indian rupee businesses start on nearest 1, other currencies on none. The rounding difference is shown as its own line so the maths always adds up visibly. By default prices are before tax and tax is added on top; turn on **Prices include tax** if your prices already contain it. Under the GST tax model, tax prints as CGST + SGST, IGST or a single GST line according to **Tax shown as**. The full rules are in *Guide: Tax and GST*.

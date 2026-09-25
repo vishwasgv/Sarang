@@ -31,7 +31,9 @@ For each pending reminder you see who it is for, the message, and when it was du
 2. Press **Send** in WhatsApp. This step is always yours.
 3. Back in Sarang, click the tick (**Mark as sent**) so it moves to *Sent*. Use the cross (**Dismiss**) for one you decide not to send.
 
-A reminder with **no phone number** shows "No phone number, so this can't be sent". Add the number to the customer or supplier, or dismiss it. Only reminders that can actually be sent can be marked sent.
+A reminder with **no phone number** shows "No phone number, so this can't be sent". Add the number to the customer or supplier, or dismiss it. Only reminders that can actually be sent can be marked sent. A reminder whose phone number is too short to be real is marked **Failed** and is not counted as ready to send: fix the number on the customer and the next reminder will work.
+
+**A customer who asked not to be messaged.** Tick **Do not send this customer messages** on the customer's form. Their waiting reminders are removed, they no longer appear as ready to send, and the one-off **Send WhatsApp Message** button refuses them.
 
 ### What creates reminders
 
@@ -47,9 +49,20 @@ Reminders come due through the day. Sarang checks every hour while it is open an
 
 ### Message Templates
 
-**Reminders & Messages → Message Templates** lets you change the wording of each reminder, see a live preview, and choose the **reminder language**. Keep placeholders such as `{{name}}` and `{{date}}` exactly as written; Sarang fills them in. A wrongly spelt placeholder is sent as written, so check the preview. Changing a template affects **new** reminders; ones already waiting keep the old wording (dismiss and recreate them if needed). Each reminder begins with your business name in bold, added automatically.
+**Reminders & Messages → Message Templates** lets you change the wording of each reminder, see a live preview, and choose the **reminder language**.
+
+- Keep placeholders such as `{{name}}` and `{{date}}` exactly as written; Sarang fills them in. If you type a placeholder that message cannot fill (a spelling slip such as `{{nmae}}`) or brackets that do not pair up, Sarang warns you while you type and will not save it.
+- **Wording is kept for the reminder language you have chosen.** Choose Hindi at the top and write your Hindi wording; choose English and write your English wording. Wording saved while English is chosen also applies to any language where you have not written your own. **Reset** removes the wording that is in effect right now and brings back the built-in text.
+- **Reminders already waiting are updated** when you save a template, change the reminder language or switch the signature: Sarang re-words them to match, and tells you how many it updated. A reminder you edited by hand, or one that no longer fits its template, is left as it is.
+- **Signature.** Built-in messages end with "Powered by Sarang | www.aszurex.com". Untick **End messages with Powered by Sarang** at the top of the screen to remove it from every message.
+- Each reminder begins with your business name in bold, added automatically.
+
+## Alerts you set yourself
+
+**Settings → Business Features → Alert rules** sends you a bell notification when a sale, a supplier bill or an expense of at least an amount you choose is saved (for example "Invoice saved, at least 50,000"). You can turn a rule off or delete it. Rules only tell you; they never stop or change a document, and they fire for documents made on the main screens.
 
 ## Good habits
 
 - Check **WhatsApp Reminders** once in the morning and once in the afternoon.
-- Keep phone numbers in international or local format consistently; Sarang adds your country code to local numbers.
+- Keep phone numbers in international or local format consistently; Sarang adds your country code to local numbers (it knows the dial codes of about 100 countries). If your country is not recognised, type numbers with the country code and a plus sign.
+- Ask Sarang: "How many reminders are pending?" tells you how many are ready, how many are scheduled for later and how many failed.

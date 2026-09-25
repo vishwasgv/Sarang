@@ -29,11 +29,13 @@ Sarang stops you from creating the same supplier twice. It will not save a suppl
 - the same **email**,
 - the same **name in the same city** (leave the city blank and any same name counts).
 
-If the match is an archived supplier, Sarang tells you to restore that supplier instead. GSTIN, PAN and IFSC are checked for format (for example a GSTIN is 15 characters like *29ABCDE1234F1Z5*) and stored in capital letters. If two real suppliers share a name, add each one's city to tell them apart.
+If the match is an archived supplier, Sarang tells you to restore that supplier instead. GSTIN, PAN and IFSC are checked for format (for example a GSTIN is 15 characters like *29ABCDE1234F1Z5*) and stored in capital letters. If two real suppliers share a name, add each one's city to tell them apart. **Find duplicates** on the Suppliers screen lists records that look like the same supplier and lets you **merge** them (a merge moves every bill and payment to the record you keep and cannot be undone).
+
+Also useful on the supplier: a **contact person**, a **category** and **rating** for your own use, **payment terms** in days (a new bill then gets its due date automatically), and a **credit limit** (a reminder of how much you are willing to owe them; it is shown, it does not block a bill). An **opening balance** can be negative when you paid the supplier in advance. Like customers, a supplier can have **other addresses** on their page.
 
 ## 2. Make sure the product exists
 
-Every item you buy for resale must be a **Product** first (**Inventory → Products**), with its **cost price** and **tax rate**. If it is a new item, create it now. You can also create it from the goods-received screen (step 4).
+Every item you buy for resale must be a **Product** first (**Inventory → Products**), with its **cost price** and **tax rate**. If it is a new item, create it now. You can also create it from the goods-received screen (step 4). Tax on a purchase never becomes part of your stock cost: the cost of stock is always the before-tax price.
 
 Buying something that is not resale stock (rent, repairs, professional fees, equipment)? Skip products: enter it as a **Service** line on a Supplier Bill or as an **Expense**.
 
@@ -61,17 +63,21 @@ Two ways. Use whichever matches your business.
 
 A GRN is saved as Draft, then Verified, then **Posted** (stock changes only at Posted).
 
+**A line was posted unlinked and you cannot reverse the GRN?** On the posted GRN, an unlinked line has **Link to an item**. Choose the product and its quantity is added to stock. This links the receipt only; it does not change the purchase order's received quantity or any batch details, so check those yourself.
+
+**Which of the two should I use?** The Purchase Order and GRN screens show a short hint that says which way you are receiving. Use one way for one delivery, never both: receiving on the PO and then posting a GRN for the same goods adds the stock twice.
+
 ## 5. Record what the supplier billed: Supplier Bill
 
 **Purchases → Supplier Bills → Record Bill.**
 
 1. Pick the supplier (or add one).
-2. Set the **bill date** and the **due date**. The due date drives the Overdue list.
+2. Set the **bill date** and the **due date**. The due date drives the Overdue list. If the supplier has payment terms, the due date fills in for you. Type the **supplier's own invoice number and date** as printed on their paper bill: Sarang warns you when the same supplier invoice number is entered twice, and GST businesses need it to match purchases against the government portal.
 3. Add lines. A line is a **Product** (cost and tax fill in from the product) or a **Service** (free text, with a category, for things that are not stock).
 4. Enter the bill's **discount** and **tax rate** per line so the totals match the supplier's paper bill. Check the total against the paper.
 5. Tick **Reverse Charge** only if your accountant tells you the tax on this purchase is paid by you and not the supplier.
 6. Optionally add **landed costs** (freight, duty, handling); they are spread over the items and raise their true cost.
-7. **Save.** The bill gets a number (for example BILL-00012) and status **Open**. What you owe that supplier goes up.
+7. **Save.** The bill gets a number (for example BILL-00012) and status **Open**. What you owe that supplier goes up. For a GST business the tax on the bill is recorded as **input tax credit** (unless you are on the Composition scheme), and a debit note reduces it again.
 
 **Made a mistake?** While the bill is **Open** and has **no payment** recorded, open it and click **Edit bill**. Change what you need and save. Sarang replaces the bill under the same number, reverses the old entries and posts the corrected ones in one step, and keeps the old copy as *BILL-00012-R1 (Void)* so the history is complete. If a payment has been recorded, reverse the payment first. To cancel a bill altogether, use **Void** (reason required).
 
@@ -81,7 +87,7 @@ A GRN is saved as Draft, then Verified, then **Posted** (stock changes only at P
 
 Open the bill and click **Record Payment**: amount (part or full), method (Cash, UPI, Card, Bank Transfer, Cheque), reference. The bill becomes **Partially Paid** or **Paid** and your balance payable falls. **Purchases → Supplier Payments** lists every payment you have made and lets you reverse a wrong one. Paying several bills to one supplier at once? Use the bulk payment option there.
 
-If you deduct **TDS** when paying a professional or contractor, Sarang suggests the amount; confirm it with your accountant.
+If you deduct **TDS** when paying a professional or contractor, Sarang suggests an amount for the section you choose. Treat it as a suggestion only: confirm the section and rate with your accountant, because the rules changed in 2026. **Reports → TDS Deducted** lists what you deducted, by section, and how much is still to be deposited. On the payment form, **Ctrl + Enter** saves.
 
 ## 7. Send goods back, or correct a bill: Debit Note
 
@@ -89,10 +95,12 @@ If you deduct **TDS** when paying a professional or contractor, Sarang suggests 
 
 ## 8. See where you stand
 
-- **Suppliers**: each supplier's page shows balance payable and every bill and payment.
+- **Purchases → Purchases Overview**: what you owe, what is due in the next 7 days, open bills, and a list of the bills to pay this week.
+- **Suppliers**: each supplier's page shows balance payable and every bill and payment; the **Statement** button opens their account to print or send.
 - **Reports → Purchase Register, Purchases by Vendor, Purchases by Item, AP Aging Summary**: what you bought and what you owe, by how overdue it is.
 - **Reports → Payables / Supplier Ledger**: a supplier's full account.
-- Ask Sarang: "Who do I owe money to?"
+- **Reports → Purchase GST Register, Purchase HSN Summary, GST Net Payable & Input Credit** (GST businesses): purchases with their tax, purchases by HSN code, and the tax you can claim against the tax you charged. See *Guide: Tax and GST*.
+- Ask Sarang: "Who do I owe money to?", "Which supplier bills are overdue?", "Bills due this week".
 
 ## A worked example
 

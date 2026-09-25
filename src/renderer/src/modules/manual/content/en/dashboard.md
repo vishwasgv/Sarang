@@ -4,7 +4,9 @@
 
 The **Dashboard** is Sarang's home screen. Across the top is your business name, today's date, and a **Refresh** button that forces a fresh read of every number on the page (the numbers are otherwise cached briefly for speed).
 
-If **Ask Sarang** (the AI Assistant) has been turned on in **Settings → Additional Business Features**, a quick-ask box appears right under the header — type a plain-English question about your sales, stock, customers, or profit and it opens the **Ask Sarang** screen with the answer.
+**Customise** (beside Refresh) lets you hide the parts of the Dashboard you do not use: the Ask Sarang box, the key numbers, revenue and top products, outstanding and stock health, recent activity and quick actions. Your choice is remembered for your login on this computer. Under the key numbers, **Add your own tile** creates a number of your choice: sales, number of invoices, expenses, supplier bills or new customers, for today, this week, this month or this year (up to eight tiles; the cross removes one).
+
+The **Ask Sarang** box appears right under the header for everyone who may use it — type a plain-English question about your sales, stock, customers, or profit and it opens the **Ask Sarang** screen with the answer.
 
 New businesses see a short **Getting Started** checklist here (add your first product, add a customer, create your first invoice) until all three are done or you dismiss it.
 
@@ -15,7 +17,8 @@ Above the KPI tiles, Sarang surfaces a small number of actionable alerts when th
 - **Low stock** — one or more products at or below their reorder level.
 - **No backup / backup overdue** — no backup has ever been taken, or it's been longer than your reminder interval since the last one.
 - **Large outstanding balance** — total customer outstanding has crossed a threshold.
-- **Pending reminders** — service/appointment reminders queued but not yet sent (with a one-click link to review them).
+- **Pending reminders** — reminders that are ready to send now (Sarang never sends them by itself; the link opens WhatsApp Reminders).
+- **Your own alert rules** — a rule set in **Settings → Business Features → Alert rules** (for example "tell me when an invoice is 50,000 or more") sends a bell notification when it fires.
 - **Audit log failure** — a recent action couldn't be written to the audit log, worth checking disk space/permissions.
 - **Rental overdue** — one or more rented-out items are overdue for return (Rental businesses).
 

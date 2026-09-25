@@ -28,11 +28,13 @@ Open **Settings → Message Templates**. Templates are grouped by business area 
 - A **Customized** badge once you've saved your own wording, and a **Reset to Default** button to go back to Sarang's own wording at any time.
 - An **Internal note** badge on the one template (retainer invoice generation reminders) that's a to-do note for your own staff, not something ever sent to a customer.
 
-Click **Preview** on any template to see what it would actually look like, filled in with realistic example details — a quick way to check your wording reads naturally before saving.
+Click **Preview** on any template to see what it would actually look like, filled in with realistic example details — a quick way to check your wording reads naturally before saving. If you type a placeholder that the message can never fill in, or brackets that do not pair up, a red note appears while you type and Sarang refuses to save it.
+
+When you save (or reset) a template, reminders that are **already waiting** in WhatsApp Reminders are re-worded to match, and Sarang tells you how many it updated. A reminder you edited by hand, or one that no longer fits its template, is left as it is. At the top of the screen you can also untick **End messages with Powered by Sarang** to remove that closing line from every message.
 
 ### Reminder Message Language
 
-At the top of the Message Templates screen, an **admin/manager** can set the **Reminder Message Language** — the language any template that hasn't been individually customized will use when a reminder is generated. This is separate from your own personal display language (the one you pick under Settings → Language): your own screen can be in English while your shop's WhatsApp reminders go out in Hindi, or any other supported language, because what matters is what your *customers* understand, not what any one staff member's own screen shows. A template you've customized yourself always uses your own saved wording regardless of this setting.
+At the top of the Message Templates screen, an **admin/manager** can set the **Reminder Message Language** — the language any template that hasn't been individually customized will use when a reminder is generated. This is separate from your own personal display language (the one you pick under Settings → Language): your own screen can be in English while your shop's WhatsApp reminders go out in Hindi, or any other supported language, because what matters is what your *customers* understand, not what any one staff member's own screen shows. Wording you save is kept **for the reminder language currently chosen**: with Hindi chosen you write and see the Hindi wording, and switching back to English shows your English wording. Wording saved while English is chosen also applies to any language where you have not written your own. Changing the reminder language re-words the reminders already waiting.
 
 ## Sending a one-off WhatsApp message from a Customer's page
 
@@ -41,7 +43,7 @@ Not every message fits a scheduled reminder — sometimes you just want to send 
 1. Choose a template from the dropdown — the same catalog as Message Templates above, limited to the ones meant for customers (the internal-only note isn't offered here).
 2. The customer's own name is filled in automatically wherever the template expects it. Fill in anything else the template needs (an amount, a date, a case number...) in the boxes provided.
 3. A live preview updates as you type, showing exactly what will be sent.
-4. Click **WhatsApp** to open it pre-filled, same as everywhere else — review and send from there.
+4. Click **WhatsApp** to open it pre-filled, same as everywhere else — review and send from there. If the customer's form says **Do not send this customer messages**, Sarang refuses to build the message.
 
 ## A note on how WhatsApp actually opens
 

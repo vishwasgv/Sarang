@@ -78,11 +78,14 @@ If you skip tax on a note linked to a document that charged tax, Sarang warns yo
 
 | Situation | What to do |
 |---|---|
-| Customer is exempt from tax | Mark the customer as tax exempt on their page; their invoices carry no tax |
+| Customer is exempt from tax | Mark the customer as tax exempt on their page and enter the exemption certificate number and the date it is valid until. Their invoices carry no tax while the certificate is valid; after the date Sarang charges tax again and the customer form shows a warning |
+| Sale to a customer in another country (export) | On the Billing screen tick **Export sale?** (it appears when the customer's country differs from yours). The sale is then zero-rated. Sarang never does this by itself; check the export rules and keep proof of export |
 | Your business is under the Composition Scheme | **Settings → Business Profile → GST Scheme → Composition Scheme.** Sales are then issued as a Bill of Supply with no separate tax |
 | A purchase where **you** pay the tax (reverse charge) | Tick **Reverse Charge** on the supplier bill or expense. The tax is recorded as your own liability instead of part of what you owe the supplier |
 | Overseas customer or supplier | Use the foreign-currency option on the document; amounts keep your currency's own decimals |
-| A free sample or scheme item | Add it as a line; a pricing scheme can add "buy 2 get 1 free" lines |
+| A free sample or scheme item | Use **Give free** on the line, or let a pricing scheme add "buy 2 get 1 free" lines. Stock goes out; price and tax are zero |
+| Delivery, packing or other charges | **Add Charge** on the Billing screen, with the tax rate that applies to that charge |
+| The customer kept back income tax (TDS) when paying | Record it on the invoice payment window as **TDS deducted**. It is not money received; it is tax you will claim credit for (**Reports → TDS Receivable**) |
 
 ## Where you see tax totals
 
@@ -90,11 +93,24 @@ If you skip tax on a note linked to a document that charged tax, Sarang warns yo
 - **Reports → GSTR-1:** sales for the return, business-to-business per invoice and rate, business-to-consumer by rate and state, nil-rated, exempt and non-GST rows, and credit and debit note rows.
 - **Reports → GSTR-3B Preview:** outward supplies (including zero-rated) and reverse-charge purchases for the month. It is a preview to compare with what the portal shows; filing is done on the government portal.
 - **Reports → HSN Summary:** sales by HSN code (quotation lines carry the HSN code through to the invoice).
+- **Reports → Purchase GST Register** and **Purchase HSN Summary:** the same for purchases (bills, received purchase orders and debit notes).
+- **Reports → GST Net Payable & Input Credit:** the tax you charged, the input tax credit from your purchases, and what is left to pay or carry forward, by CGST, SGST and IGST.
+- **Reports → GSTR-9 Annual Data:** a working paper of the year's figures for your annual return.
+- **Reports → TDS Deducted:** tax you deducted from suppliers, by section, and how much is still to deposit.
+- **Reports → TDS Receivable:** tax your customers kept back.
 - On every printed invoice: the tax lines for the chosen presentation and, if it applies, the note "Prices include tax".
 
-## Tax on purchases
+## Tax on purchases and input tax credit
 
-Supplier bills, purchase orders and debit notes calculate tax the same way. Stock cost never includes purchase tax: for a bill or purchase order priced including tax, Sarang uses the before-tax cost for inventory value and average cost. A separate input-tax-credit report and a GST payment entry are being added; until they arrive, ask your accountant to work out the credit from your **Purchase Register** and the supplier bills.
+Supplier bills, purchase orders and debit notes calculate tax the same way. Stock cost never includes purchase tax: for a bill or purchase order priced including tax, Sarang uses the before-tax cost for inventory value and average cost.
+
+For a GST business on the regular scheme, the tax on each supplier bill, received purchase order and debit note is recorded as **input tax credit** in its own account. **GST Net Payable & Input Credit** shows what you charged, the credit you have, and the difference. Credit is only recorded for documents made from now on; earlier purchases are not counted, and the report says so. It also does not decide the order in which credit is set off against each head: your accountant decides that.
+
+**Accounting → GST Payments** (India) records the payment you make to the government: it reduces what you owe in tax and the credit you used, and reduces your bank or cash. Check the amounts with your accountant before you pay.
+
+**Accounting → GST Return Files** (India) prepares **GSTR-1** and **GSTR-3B** as JSON files you can upload yourself on the government portal or open in its offline tool: choose the month, prepare the file and save it. On an invoice's own page, the **e-invoice** and **e-way bill** cards prepare the request file for that invoice, and after you upload it by hand you type the IRN it returns so it prints with its QR code (**Reports → E-invoice IRN Register** lists them). All of these are drafts from your records. The layout of these files follows the portal's offline format as we understand it, so open each one in the government's own tool and correct anything it complains about before you rely on it. Nothing is sent to the government from Sarang.
+
+**Matching your purchases with the portal:** download your GSTR-2B (or 2A) JSON from the portal and choose it in **GST Return Files**. Sarang matches it with your supplier bills by supplier GSTIN, invoice number and date, and lists what matches, what is different, what is missing in your books and what is missing on the portal. Type each supplier's own invoice number and date on the bill so the match works.
 
 ## Common mistakes
 

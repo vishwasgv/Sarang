@@ -8,9 +8,11 @@ Open **Customers** or **Suppliers** from the sidebar to see the full list. Click
 
 Sarang keeps one record per real customer and supplier:
 
-- A **customer** cannot share a phone number with another active customer.
+- A **customer** cannot share a phone number with another active customer. GSTIN and email are checked too, and **Find duplicates** (on both the Customers and Suppliers screens) lists records that look like the same party so you can **merge** them; a merge moves every invoice, bill and payment to the record you keep and cannot be undone. Importing customers or suppliers from a file applies the same checks.
 - A **supplier** cannot be saved if the **phone**, **GSTIN**, **email**, or **name in the same city** already belongs to another supplier (active or archived). If the match is archived, restore that supplier instead. Two real suppliers with the same name need different cities.
 - Supplier **GSTIN** (15 characters, for example 29ABCDE1234F1Z5), **PAN** (10 characters) and **IFSC** (11 characters) are checked for format and saved in capital letters.
+
+More on the customer form: **payment terms** in days (new invoices get their due date automatically), **Tax exempt** with an exemption certificate number and an expiry date (tax is charged again after it), and **Do not send this customer messages** (stops reminders to them). More on the supplier form: contact person, category, rating, payment terms, a credit limit that is shown as a reminder and does not block bills, and an opening balance that can be negative (an advance you paid). Both have an **Other addresses** card for ship-to, warehouse or branch addresses, and a **Statement** button that opens their account to print or send.
 
 Either can be **archived** instead of deleted, which hides it from day-to-day lists (billing, purchase order creation, and so on) without losing its transaction history.
 
@@ -21,7 +23,7 @@ Clicking into a customer or supplier opens their detail screen, which shows cont
 - A **customer's** detail screen shows their credit limit and their **outstanding balance** — how much they currently owe you — plus a transaction ledger of every debit (a credit-sale invoice) and credit (a payment or credit note) affecting that balance, each with a running total.
 - A **supplier's** detail screen shows the **balance payable** — how much you currently owe them — with the same kind of ledger (a purchase increases what you owe; a payment or debit note reduces it). If you owe a supplier money, a **Record Payment** button lets you log a payment against them directly (Cash, Bank Transfer, Cheque, UPI, Card, or Other), with an optional reference number and notes.
 
-Both ledgers show the last 100 entries. The balance shown is always computed from the full transaction history, not a cached running number, so it can't drift out of sync with what actually happened.
+If interest on overdue balances is switched on (**Settings → Business Features**), a customer's page also shows the interest each overdue invoice has earned, and a button to charge it. Both ledgers show the last 100 entries. The balance shown is always computed from the full transaction history, not a cached running number, so it can't drift out of sync with what actually happened.
 
 ## The phone-search quick-add pattern
 

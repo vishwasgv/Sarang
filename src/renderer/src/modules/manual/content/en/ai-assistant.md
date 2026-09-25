@@ -21,6 +21,10 @@ Ask Sarang answers from your real, current database — it restates the actual n
 - "Who owes me money?" / "What's my total receivable?"
 - "What's our profit?" / "Show me the P&L"
 - "Who do we buy the most from?" (top suppliers)
+- "Show me the balance sheet" / "Are my books balanced?" / "What is my cash flow this month?" / "Day book for yesterday" / "What is the balance of the cash account?"
+- "Net GST payable this month" / "What is my input tax credit?" (a VAT or sales-tax business gets the answer in its own tax's words) / "How much TDS have customers kept back?"
+- "Which supplier bills are overdue?" / "Bills due this week" / "Open bills by supplier"
+- "How many reminders are pending?" / "Which quotations expire this week?" / "Credit notes with and without tax" / "Who is my top salesperson?"
 
 Several business types get their own extra questions once that business type is active, for example:
 
@@ -34,6 +38,12 @@ Several business types get their own extra questions once that business type is 
 - Electronics: "Which items are still under warranty?"
 - Coaching Institute: "How are students scoring on tests?"
 - Driving School / Service businesses: "How are appointments this week?" / "What's our client retention?"
+
+## Asking "why is this happening?"
+
+Some questions are not about a number but about something not working as you expect. For these, Sarang gives a fixed, written answer (never made up by the model) with the usual causes and the Manual chapter to read next. Examples: "Why is my stock not updating after a GRN?", "Why is tax not added to my invoice?", "Why can't I edit this bill?", "How does rounding off work on invoices?", "Why does it show IGST?", "Is the price with or without tax?", "Why are reminders not sending?", "How do I reverse a payment?", and "Can Ask Sarang speak Hindi?".
+
+On the Ask Sarang screen, tap any of the example questions to ask it.
 
 ## Asking "how do I...?" questions about Sarang itself
 

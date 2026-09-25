@@ -10,11 +10,11 @@ If your business type is **Specialist Clinic**, an extra **Specialty** field app
 
 ## Tax Configuration
 
-**Settings → Tax Configuration** manages the GST/VAT/sales-tax rates available at billing. Add a tax with a name (e.g. "GST 18%"), a type (GST, VAT, Sales Tax, Custom, or None), a rate between 0–100%, and optionally a country and a "default for this tax type" flag. Existing invoices are never affected when you edit or delete a tax rate — deleting only deactivates it going forward.
+**Settings → Tax Configuration** manages the GST/VAT/sales-tax rates available at billing. Add a tax with a name (e.g. "GST 18%"), a type (GST, VAT, Sales Tax, Custom, or None), a rate between 0–100%, and optionally a country and a "default for this tax type" flag. Use **Add part** to split a rate into named parts that add up to it (for example GST 5% and PST 7% for a 12% rate): documents show each part and **Reports → Tax by Part** adds them up, while the amount charged stays the combined rate. A button loads your country's rates, and a card offers to switch off old rates that no longer apply to your country. Existing invoices are never affected when you edit or delete a tax rate — deleting only deactivates it going forward.
 
 ## Currency & Locale
 
-**Settings → Currency & Locale** sets your currency (Sarang supports roughly 150 world currencies), your number format (Indian grouping like 1,00,000.00, US/International, European, British, Arabic, or Indonesian), and decimal places (0, 2, or 3). A live preview shows exactly how an amount will be formatted before you save.
+**Settings → Currency & Locale** sets your currency (Sarang supports roughly 150 world currencies), your number format (Indian grouping like 1,00,000.00, US/International, European, British, Arabic, or Indonesian), and decimal places (0, 2, or 3). A live preview shows exactly how an amount will be formatted before you save. The same section holds **Prices include tax** (whether the prices you type already contain tax) and **Invoice rounding** (none, nearest 0.05, 0.10, 0.50 or 1).
 
 ## Switch Business / Industry Template
 
@@ -34,6 +34,14 @@ One real consequence worth knowing: most professional/service business types (La
 - **Bulk Order Workflow** — a separate bulk-order screen with volume-based discount tiers for wholesale/dealer customers.
 - **Outstanding Analytics** — extra reporting on customer outstanding balances and aging.
 - **Logistics & Supply Chain** — a bundle covering fleet, carriers, shipments, goods receipt (GRN), delivery challans, and freight tracking, for any business that moves goods via its own vehicles or wants to formally track supplier deliveries.
+
+Beside these switches, **Additional Business Features** also holds these cards:
+
+- **Stock rules** — allow selling more than the stock on hand (stock can then go below zero until the purchase is entered).
+- **Alert rules** — a bell notification when an invoice, supplier bill or expense reaches an amount you choose.
+- **Interest on overdue balances** — turn it on and set a yearly rate, simple or compound monthly.
+- **Exchange rates** — a table of rates you type or import from a CSV (columns: currency, rate, date), used to fill in the rate on foreign-currency invoices.
+- **Reports saved automatically** — a chosen report saved to a folder every day, week or month while Sarang is open.
 
 Two more cross-cutting features get their own dedicated Settings sections rather than living in this list: **Barcode & Loose Billing** and **AI Assistant** (see below, and their own manual chapters). Turning any of these features off does not delete existing data — it only hides the related screens and workflows.
 
@@ -80,3 +88,5 @@ Once created, the field appears automatically on every create/edit form for that
 **Deactivating** a field (rather than deleting it) hides it from new forms but keeps every value already recorded against it fully readable on the records that have it — nothing is lost. **Activating** it again brings it back on new forms.
 
 Custom field values are entered per record, right on that record's own form, and saved along with everything else on that record.
+
+**Rules for a field.** When you add or edit a field you can make it **required** (it must be filled in when a record is created), give a **number** field a smallest and largest allowed value, or give a **text** field a **format** (a pattern, for example five letters, four digits and a letter for a PAN) with a message shown when the value does not match. Dropdown values must be one of the listed choices and dates must be real dates. The rules are checked when a customer, supplier, product, expense or invoice is saved from its screen; when you edit an older record they are checked only for fields you send.

@@ -20,7 +20,7 @@ For each field Sarang expects, pick which column from your file supplies it, usi
 
 ## Step 4 — Preview
 
-Sarang validates the first 20 rows of your file and shows each one as **Valid**, **Duplicate** (will be skipped — a matching record already exists), or **Error** (will be skipped, with the specific reason shown, like a missing required field or a badly-formatted value). This is a sample, not a full validation — the summary explicitly says only the first 20 rows were checked, and the remaining rows are validated as they're actually processed on import, so final counts can differ slightly from what the preview showed.
+Sarang validates the first 20 rows of your file and shows each one as **Valid**, **Duplicate** (will be skipped — a matching record already exists; for customers that means the same phone, GSTIN or email, for suppliers the same name, phone, GSTIN or email, and the preview and the real import use the same checks), or **Error** (will be skipped, with the specific reason shown, like a missing required field or a badly-formatted value). This is a sample, not a full validation — the summary explicitly says only the first 20 rows were checked, and the remaining rows are validated as they're actually processed on import, so final counts can differ slightly from what the preview showed.
 
 ## Step 5 — Confirm and run
 

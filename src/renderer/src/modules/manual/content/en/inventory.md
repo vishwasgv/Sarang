@@ -20,7 +20,9 @@ Some product types are opt-in and only shown when the matching feature is turned
 
 **Inventory** (`/inventory`) lists every product's current stock, reorder level, average cost, and stock value, with a running count of low-stock and out-of-stock items shown as alert badges at the top. Switch between **All** and **Low Stock** using the tabs.
 
-To manually correct a stock count — after a physical count, damage, or an opening balance — click the adjust-stock icon on a row. Enter the new quantity (not the difference); the screen shows you how much will be added or removed before you save, and requires a reason. If you're increasing stock, you can optionally record the cost per unit for that addition, which feeds into the product's average cost used for valuation.
+For a full physical count use **Stock Counts** (Inventory group): Sarang lists what it thinks you have, you type what you counted, it shows the differences and their value, and **Post** turns each difference into a stock adjustment. **Reports → Stock Count Variances** lists them. To correct one product — after damage or an opening balance — click the adjust-stock icon on a row. Enter the new quantity (not the difference); the screen shows you how much will be added or removed before you save, and requires a reason. If you're increasing stock, you can optionally record the cost per unit for that addition, which feeds into the product's average cost used for valuation.
+
+Next to each product, the list also shows how much is **promised on open Sales Orders**; it is a reminder only and never blocks a sale. **Bin Locations** records the shelf, rack or bin of each item within a location, and **Stock Journal** records goods that change form (a carton broken into packs).
 
 Every change to stock — a sale, a manual adjustment, a purchase order received, a return, or a production run — is recorded as an immutable **movement**. **Inventory Movements** (`/inventory/movements`, reached via the **Movements** button) is a read-only ledger of every one of these, filterable by type (Stock Added, Sale, PO Received, Adjustment, Sale Return, Return Received, Dispatched, Produced) and searchable, so you can always trace exactly why a product's stock is what it is.
 
@@ -39,7 +41,7 @@ A purchase order can be **printed** or exported/shared as a PDF at any stage, la
 
 ## Goods Received Notes (GRN)
 
-**GRN** (Purchases group, when Logistics is on) records a delivery. Every line has a **product** dropdown. A line linked to a product adds to that product's stock when the GRN is **Posted**. A line left as *Not in catalog* is only a paper record and shows an *unlinked* tag; it never changes stock. Use **+ Create product "..." and link** on the line to add a new item and link it in one step, then set its selling price in Products. Posting a GRN that has unlinked lines shows a warning first. A posted GRN cannot be edited; reverse it and enter it again. *Guide: Buying From Suppliers* explains the whole flow.
+**GRN** (Purchases group, when Logistics is on) records a delivery. Every line has a **product** dropdown. A line linked to a product adds to that product's stock when the GRN is **Posted**. A line left as *Not in catalog* is only a paper record and shows an *unlinked* tag; it never changes stock. Use **+ Create product "..." and link** on the line to add a new item and link it in one step, then set its selling price in Products. Posting a GRN that has unlinked lines shows a warning first. A posted GRN cannot be edited; reverse it and enter it again, or use **Link to an item** on an unlinked line of the posted GRN to bring that quantity into stock now (the purchase order's received quantity and any batch details are not updated by this). *Guide: Buying From Suppliers* explains the whole flow.
 
 ## Low-stock visibility
 

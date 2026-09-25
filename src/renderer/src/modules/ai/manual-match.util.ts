@@ -1,5 +1,6 @@
 import { MANUAL_CHAPTERS } from '@modules/manual/manifest'
 import { getChapterTitle, getChapterContentWithFallback } from '@modules/manual/content-loader'
+import { hintedSlugs } from './manual-hints.util'
 
 // Navigation-help interception — answered entirely client-side, never sent
 // through the ~20-30s AI model pipeline, since the model has no knowledge of
@@ -112,6 +113,15 @@ export function scoreManualChapters(question: string, locale: string): ScoredMan
     const score = occurrenceScore + (titleHit ? 20 : 0)
     scored.push({ slug: chapter.slug, title, score, confident: matchedDistinct.length >= 2 || strongMatch })
   }
+  // The owner's own words for a job ("purchase invoice", "day book") name chapters directly: put those first, best home first.
+  const hinted = hintedSlugs(question)
+  hinted.forEach((slug, i) => {
+    const existing = scored.find((c) => c.slug === slug)
+    const boost = 100000 - i * 1000
+    if (existing) { existing.score += boost; existing.confident = true; return }
+    const chapter = MANUAL_CHAPTERS.find((c) => c.slug === slug)
+    if (chapter) scored.push({ slug, title: getChapterTitle(locale, slug, chapter.title), score: boost, confident: true })
+  })
   scored.sort((a, b) => b.score - a.score)
   return scored
 }

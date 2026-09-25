@@ -23,6 +23,7 @@ Every user is assigned one role, and every role comes with a fixed set of permis
 - **Cashier** — billing-focused: creating invoices, recording payments, and the day-to-day counter operations relevant to your business type.
 - **Staff** — general operational support with narrower access than Cashier/Manager.
 - **Kitchen Staff** — scoped to restaurant kitchen operations (KOT view/update), for businesses using the Restaurant template.
+- **Accountant** — read-only access to the books: it can look at reports, ledgers, statements and documents and export them, and cannot create or change anything, and cannot see users, roles, settings, backups or the licence. Give your accountant a login with this role. It is enforced by the permissions the role holds; a role is not assigned to anyone automatically.
 
 Each screen and action in Sarang checks the current user's role permissions before allowing it — for example, the Users & Roles section itself is only visible to a user whose role includes the `users.view` permission, and creating, editing, or deactivating other users each require their own separate permission. If your role doesn't have access to something, the option is either hidden or shown disabled.
 
@@ -53,6 +54,8 @@ Go to **Settings → Security**, enter your current password, then your new pass
 ## Password policy
 
 Also under **Settings → Security**, an admin can set the **minimum password length** required for every account going forward (between 4 and 64 characters). This only applies the next time a password is created or changed — existing passwords are not retroactively affected.
+
+An admin can also switch on **Require a mix of lowercase, uppercase and a number**: a new password must then mix upper and lower case letters and include a digit, and very common passwords (such as "password" or "123456") are refused. It is off by default and is checked only when a password is created or changed, never at login, so existing passwords keep working.
 
 ## Session timeout
 

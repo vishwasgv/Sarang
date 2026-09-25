@@ -2,7 +2,7 @@
 
 ## Cost Centres
 
-A **Cost Centre** (`/cost-centres`) is a tag — a department, branch, or project — that you can attach to an invoice, a bill, an expense, or an employee to see profit and spend broken down by that tag instead of just company-wide. Every business starts with zero cost centres, so nothing here appears anywhere else until you create your first one with **New Cost Centre** (a name and an optional short code).
+A **Cost Centre** (`/cost-centres`) is a tag — a department, branch, or project — that you can attach to an invoice, a bill, an expense, or an employee to see profit and spend broken down by that tag instead of just company-wide. Every business starts with zero cost centres, so nothing here appears anywhere else until you create your first one with **New Cost Centre** (a name, an optional short code and an optional **category** such as Department or Project). **Reports → Profit by Cost Category** adds revenue, expenses and profit up by category; entries with no cost centre, or a centre with no category, show as Not assigned.
 
 Once at least one cost centre exists, an optional **Cost Centre** picker appears on the invoice checkout screen, the Bill form, the Expense form, and the Employee form — leave it blank and nothing changes; pick one and every accounting entry that transaction creates carries that same tag. An employee's own cost centre also tags their salary expense automatically when payroll marks them paid, so staffing cost rolls up by department without re-tagging every payslip by hand.
 
@@ -11,6 +11,8 @@ Once at least one cost centre exists, an optional **Cost Centre** picker appears
 **Budgets** (`/budgets`) let you plan a monthly figure — for a specific cost centre, a specific account, or the whole company — and then see how real spend compared once the month is under way. Pick the month with the arrows at the top, then **New Budget** to set an amount against a scope: leave both Cost Centre and Account blank for a company-wide figure, set only a Cost Centre for a whole-department budget, or set both for a tightly-scoped one. The list shows Budgeted, Actual, and Variance side by side for the month you're viewing — Actual is always real transaction data, never estimated, so a budget against a cost centre that hasn't had any spend yet honestly shows zero rather than a gap.
 
 You can't create two budgets for the exact same scope and period — edit the existing one instead, so "how much did we budget for Marketing this month" always has one answer.
+
+**What-if plans.** The figures you enter belong to the **Base plan**. Use **New what-if plan** to copy the plan you are looking at into a new named plan with every figure raised or lowered by a percentage (for example *Optimistic*, plus 10). Choose the plan at the top of the screen; **Budget vs. Actual** follows the plan you choose. A plan can only be created once per name, and there is no rename or delete for plans yet.
 
 ## Cost Centre P&L Report
 

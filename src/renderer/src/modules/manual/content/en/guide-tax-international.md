@@ -10,7 +10,7 @@ Sarang loads tax rates and labels **only for the country you choose as your busi
 
 ## Step 1: choose your country
 
-At setup, type your country. Sarang recognises about 50 countries and, for each, suggests the tax model, the currency, the tax number label, the standard rates, whether shelf prices usually include tax, and the cash rounding customary there. You confirm each suggestion; nothing is applied silently.
+At setup, choose your country from the list (you can still type one that is not listed). Sarang recognises about 50 countries and, for each, suggests the tax model, the currency, the tax number label, the standard rates, whether shelf prices usually include tax, and the cash rounding customary there. You confirm each suggestion; nothing is applied silently.
 
 Countries with built-in rates (as of 25 September 2026): India, the United Kingdom, Ireland, Germany, France, Italy, Spain, the Netherlands, Portugal, Belgium, Austria, Poland, Sweden, Denmark, Switzerland, the United Arab Emirates, Saudi Arabia, Oman, Bahrain, Qatar, Kuwait, Egypt, Turkey, Israel, Australia, New Zealand, Singapore, Malaysia, Thailand, Indonesia, the Philippines, Vietnam, Japan, South Korea, China, Hong Kong, Pakistan, Bangladesh, Sri Lanka, Nepal, South Africa, Kenya, Nigeria, Ghana, Canada, the United States, Mexico, Argentina, Chile and Colombia. Qatar, Kuwait and Hong Kong have no VAT or sales tax, so they start with no tax. The United States has no national sales tax and its state rates vary, so you add your own. Brazil has several taxes on one sale and is not included: add your rates by hand. **Rates change**, and the list shows the date it was last checked; always confirm with your tax authority.
 
@@ -28,7 +28,11 @@ If your country is not in the list, the tax rate list starts with a single "No t
 
 Open **Settings → Tax Configuration**. It lists the rates you charge. If your business country has built-in rates, a button **Load tax rates for {your country}** adds any that are missing (it never deletes or changes the ones you have, and never changes past documents). The screen shows the date the rates were last checked and any notes, for example where a country has provincial or state rates on top. Mark your usual rate as the default, and add any rate that is missing. Then set the right rate on each product (Products → Tax Rate %) or pick it from your saved rates. Sarang warns you gently if a rate you type is not one of your saved rates.
 
-Choose each product's **Tax category**: standard, reduced, zero-rated, exempt, nil-rated or out of scope. A **zero-rated** item (charged at 0 percent but still reportable) is different from an **exempt** one. An exempt customer can be marked tax exempt on the customer's page; their invoices then carry no tax.
+Choose each product's **Tax category**: standard, reduced, zero-rated, exempt, nil-rated or out of scope. A **zero-rated** item (charged at 0 percent but still reportable) is different from an **exempt** one. An exempt customer can be marked tax exempt on the customer's page, with the exemption or resale certificate number and the date it is valid until; their invoices carry no tax while the certificate is valid, and tax is charged again after that date (the customer form warns you).
+
+### Splitting a rate into parts
+
+Where one sale carries two taxes (Canada's federal GST plus provincial PST, or US state plus county sales tax), enter the **combined rate** as one rate, then in the rate's form use **Add part** to name its parts, for example GST 5 and PST 7 for a 12 percent rate. The parts must add up to the rate. The amount charged does not change; invoices, quotations, bills and purchase orders then show each part on its own line, and **Reports → Tax by Part** adds up the tax on sales and on purchases for each part, so each one can be filed with its own authority. A tax charged on top of another tax (tax on tax) is not modelled: enter the effective combined rate instead.
 
 ## Step 3: prices with tax or without
 
@@ -58,8 +62,8 @@ Enter your **tax number** in **Settings → Business Profile**; it prints on inv
 
 ## Selling to other countries
 
-- **Foreign currency:** on a sales document tick the foreign-currency option, enter the currency code and today's exchange rate. Sarang shows the converted amount and keeps your books in your own currency. When the customer pays, **Settle in {currency}** records any exchange gain or loss.
-- **Tax on exports:** many countries zero-rate exports. Use a 0 percent rate with the **Zero-rated** category for those sales and keep your evidence. Ask your accountant which sales qualify.
+- **Foreign currency:** on a sales document tick the foreign-currency option and enter the currency code. If you keep a table of rates in **Settings → Business Features → Exchange rates** (type them or import a CSV with the columns currency, rate, date), the latest rate is filled in for you; you can always change it. Sarang shows the converted amount and keeps your books in your own currency. When the customer pays, **Settle in {currency}** records any exchange gain or loss.
+- **Tax on exports:** many countries zero-rate exports. When the customer's country is different from yours, the Billing screen shows **Export sale?**: tick it and the sale is zero-rated, with the note "Export supply, zero-rated" on the invoice. Sarang never does this by itself. Ask your accountant which sales qualify and keep your evidence of export.
 - **Overseas suppliers:** record a **Supplier Bill** in foreign currency the same way. If you must account for the tax yourself on an import or a service from abroad (reverse charge), tick **Reverse Charge** on the bill.
 
 ## Credit notes and debit notes
@@ -68,13 +72,16 @@ Each has **Add tax to this note**: skip it and the note total is the amount only
 
 ## Reports you can use for your return
 
+- **Reports → VAT / Sales Tax Return:** a working paper laid out under the boxes of your country's return for the United Kingdom, Australia, New Zealand, Canada, Singapore, the United Arab Emirates, Saudi Arabia and South Africa, and a generic summary (sales and purchases by tax treatment) for every other country. Boxes Sarang cannot fill from your records are left at zero and labelled in English. Check every box against your tax authority's form before you file.
 - **Reports → Tax Report:** tax charged on sales, by rate and by tax category, for any date range. Works for every tax model.
+- **Reports → Tax by Part:** tax on sales and purchases for each named part of a rate.
 - **Reports → Purchase Register:** what you bought, with the tax on each bill, so your accountant can work out the tax you can reclaim.
+- **Reports → TDS Deducted** and **TDS Receivable:** tax you kept back from suppliers, and tax your customers kept back from you. The screens call it TDS; use it for withholding tax in your country too, and confirm the rules with your tax adviser.
 - **Reports → Profit and Loss**, **Balance Sheet**, **Trial Balance** and **Cash Book** for the period.
-- Country-specific return layouts (for example the UK VAT return boxes, the UAE VAT return or Australia's BAS) are not built in yet. Send the Tax Report and the Purchase Register to your accountant or use them to fill your return by hand.
 
 ## Limits to know about today
 
-- One tax rate per line. If your country charges two taxes on one sale (for example Canada's federal plus provincial tax, or US state plus county tax), enter the combined rate as one rate for now.
-- The GST-specific items (PF and ESI statutory rates, e-way bill and HSN fields) still appear in some screens for non-India businesses; you can ignore them.
-- Country return layouts and government e-invoicing submissions are not included.
+- One tax rate per line. Two taxes on one sale are handled by splitting the combined rate into parts (above); the amount charged is always the combined rate.
+- Sarang does not choose a rate by the customer's state, county or city. Add the combined rates you need (for example one per state you sell into) and pick the right one on the product or the line.
+- India-only items (GST return files, e-way bill, HSN, PF and ESI) are hidden for other countries.
+- Government e-invoicing submissions and online filing are not included; Sarang works offline and never sends anything to a tax authority.
