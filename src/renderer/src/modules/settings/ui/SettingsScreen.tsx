@@ -3,6 +3,7 @@ import { StockRulesCard } from './StockRulesCard'
 import { CustomFieldRulesEditor, EMPTY_RULES, rulesPayload, type FieldRulesForm } from './CustomFieldRulesEditor'
 import { WorkflowRulesCard } from './WorkflowRulesCard'
 import { ExchangeRatesCard } from './ExchangeRatesCard'
+import { LateInterestCard } from './LateInterestCard'
 import { StaleRatesCard } from './StaleRatesCard'
 import React, { useState, useEffect, useCallback } from 'react'
 import {
@@ -494,7 +495,7 @@ export function SettingsScreen() {
         {activeSection === 'industry' && <IndustrySettingsScreen />}
         {activeSection === 'language' && <LanguageSection />}
         {activeSection === 'appearance' && <AppearanceSection />}
-        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><WorkflowRulesCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
+        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><WorkflowRulesCard /><LateInterestCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
         {activeSection === 'barcode' && <BarcodeSection />}
         {activeSection === 'invoiceTemplates' && <InvoiceTemplatesSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}

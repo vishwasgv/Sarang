@@ -6238,6 +6238,14 @@
     "couldNotVerifyChain": "Could not verify the audit chain."
   },
   "settings": {
+    "lateInterest": {
+      "title": "Interest on overdue balances",
+      "hint": "Charge interest on customer invoices that are past their due date. Interest is worked out for each overdue invoice from its own due date, and is only charged when you press the button on the customer page.",
+      "enable": "Turn on interest on overdue balances",
+      "ratePlaceholder": "Yearly rate in percent",
+      "simple": "Simple interest",
+      "compound": "Compound monthly"
+    },
     "workflowRules": {
       "title": "Alert rules",
       "hint": "Get a notification when a sale, supplier bill or expense of at least an amount you choose is saved.",
