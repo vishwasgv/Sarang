@@ -157,6 +157,20 @@ export const billService = {
     // Table 3.1(d) reporting.
     const totalAmount = billTotals.totalAmount
 
+    const supplierInvoiceNumber = payload.supplierInvoiceNumber?.trim() || null
+    if (supplierInvoiceNumber) {
+      const duplicate = await db.bill.findFirst({
+        where: {
+          supplierId: payload.supplierId,
+          supplierInvoiceNumber: { equals: supplierInvoiceNumber },
+          status: { not: 'VOID' },
+          ...(opts?.replaceBillId ? { id: { not: opts.replaceBillId } } : {})
+        },
+        select: { billNumber: true }
+      })
+      if (duplicate) return { success: false, error: { code: 'BILL-006', message: `This supplier invoice is already entered as ${duplicate.billNumber}.` } }
+    }
+
     // Phase 62 — Transaction Locking.
     const resolvedBillDate = payload.billDate ? parseLocalDateStart(payload.billDate) : new Date()
     const lockError = await assertNotLocked(resolvedBillDate)
@@ -194,6 +208,8 @@ export const billService = {
             supplierId: payload.supplierId,
             purchaseOrderId: payload.purchaseOrderId || null,
             billDate: resolvedBillDate,
+            supplierInvoiceNumber,
+            supplierInvoiceDate: payload.supplierInvoiceDate ? parseLocalDateStart(payload.supplierInvoiceDate) : null,
             dueDate: resolvedDueDate,
             status: 'OPEN',
             subtotal,

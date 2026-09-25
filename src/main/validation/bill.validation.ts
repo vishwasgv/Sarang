@@ -32,6 +32,8 @@ export const CreateBillSchema = z.object({
   supplierId: z.string().min(1, 'Supplier is required'),
   purchaseOrderId: z.string().optional(),
   billDate: z.string().optional(),
+  supplierInvoiceNumber: z.string().trim().max(60).optional(),
+  supplierInvoiceDate: z.string().optional(),
   dueDate: z.string().optional(),
   notes: z.string().max(500).optional(),
   items: z.array(BillItemSchema).min(1, 'At least one item is required'),

@@ -1858,6 +1858,8 @@
     "recordBill": "Record Bill",
     "billNumber": "Bill #",
     "billDate": "Bill Date",
+    "supplierInvoiceNumber": "Supplier invoice number",
+    "supplierInvoiceDate": "Supplier invoice date",
     "dueDate": "Due Date",
     "balanceDue": "Balance Due",
     "billDetails": "Bill Details",

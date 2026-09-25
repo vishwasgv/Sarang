@@ -42,6 +42,8 @@ const itemSchema = z.object({
 const schema = z.object({
   supplierId: z.string().min(1, 'Select a supplier'),
   billDate: z.string().optional(),
+  supplierInvoiceNumber: z.string().max(60).optional(),
+  supplierInvoiceDate: z.string().optional(),
   dueDate: z.string().optional(),
   notes: z.string().max(500).optional(),
   isReverseCharge: z.boolean().default(false),
@@ -62,6 +64,7 @@ export interface EditableBill {
   id: string; billNumber: string; purchaseOrderId?: string | null
   supplier: { id: string }
   billDate: string; dueDate?: string | null; notes?: string | null
+  supplierInvoiceNumber?: string | null; supplierInvoiceDate?: string | null
   isReverseCharge?: boolean; pricesIncludeTax?: boolean; gstType?: string | null; costCentreId?: string | null
   foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null
   landedCosts?: { costType: string; amount: number; allocationMethod: string }[]
@@ -114,7 +117,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
   const moneyCtx = useMoneyContext()
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, costCentreId: '', items: [emptyItem] }
+    defaultValues: { supplierId: defaultSupplierId ?? '', billDate: '', supplierInvoiceNumber: '', supplierInvoiceDate: '', dueDate: '', notes: '', isReverseCharge: false, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, costCentreId: '', items: [emptyItem] }
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
@@ -143,6 +146,8 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
       reset({
         supplierId: editBill.supplier.id,
         billDate: toLocalDateInput(editBill.billDate),
+        supplierInvoiceNumber: editBill.supplierInvoiceNumber ?? '',
+        supplierInvoiceDate: toLocalDateInput(editBill.supplierInvoiceDate),
         dueDate: toLocalDateInput(editBill.dueDate),
         notes: editBill.notes ?? '',
         isReverseCharge: !!editBill.isReverseCharge,
@@ -162,7 +167,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
       setForeignCurrencyCode(hasForeign ? editBill.foreignCurrencyCode ?? '' : '')
       setForeignExchangeRate(hasForeign ? String(editBill.foreignExchangeRate) : '')
     } else {
-      reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, costCentreId: '', items: [emptyItem] })
+      reset({ supplierId: defaultSupplierId ?? '', billDate: '', supplierInvoiceNumber: '', supplierInvoiceDate: '', dueDate: '', notes: '', isReverseCharge: false, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, costCentreId: '', items: [emptyItem] })
       setLandedCostRows([])
       setForeignCurrencyEnabled(false); setForeignCurrencyCode(''); setForeignExchangeRate('')
     }
@@ -241,6 +246,8 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
         ...(editBill?.purchaseOrderId ? { purchaseOrderId: editBill.purchaseOrderId } : {}),
         supplierId: values.supplierId,
         billDate: values.billDate || undefined,
+        supplierInvoiceNumber: values.supplierInvoiceNumber?.trim() || undefined,
+        supplierInvoiceDate: values.supplierInvoiceDate || undefined,
         dueDate: values.dueDate || undefined,
         notes: values.notes || undefined,
         isReverseCharge: values.isReverseCharge,
@@ -314,6 +321,8 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editB
                 )
               })()}
             </div>
+            <Input label={t('bills.supplierInvoiceNumber')} {...register('supplierInvoiceNumber')} />
+            <Input label={t('bills.supplierInvoiceDate')} type="date" {...register('supplierInvoiceDate')} />
             <Input label={t('bills.billDate')} type="date" {...register('billDate')} />
             <Input label={t('bills.dueDate')} type="date" {...register('dueDate')} />
           </div>

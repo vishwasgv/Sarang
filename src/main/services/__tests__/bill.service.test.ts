@@ -192,6 +192,20 @@ describe('billService.createBill', () => {
     )
   })
 
+  it('refuses a second bill carrying the same supplier invoice number and stores it on a new one', async () => {
+    const db = makeDb()
+    db.bill.findFirst = vi.fn().mockResolvedValueOnce({ billNumber: 'BILL-00007' }).mockResolvedValue(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const dup = await billService.createBill({ supplierId: 'sup-1', supplierInvoiceNumber: ' INV/22 ', items: [productItem], isReverseCharge: false })
+    expect(dup).toMatchObject({ success: false, error: { code: 'BILL-006' } })
+    expect(db.bill.findFirst.mock.calls[0][0].where).toMatchObject({ supplierId: 'sup-1', supplierInvoiceNumber: { equals: 'INV/22' }, status: { not: 'VOID' } })
+
+    db.bill.create = vi.fn().mockResolvedValue({ ...makeBill(), supplier: makeSupplier(), items: [] })
+    await billService.createBill({ supplierId: 'sup-1', supplierInvoiceNumber: 'INV/23', supplierInvoiceDate: '2026-09-01', items: [productItem], isReverseCharge: false })
+    expect(db.bill.create.mock.calls[0][0].data).toMatchObject({ supplierInvoiceNumber: 'INV/23' })
+    expect(db.bill.create.mock.calls[0][0].data.supplierInvoiceDate).toBeInstanceOf(Date)
+  })
+
   it('under RCM, posts a 4-line balanced JournalEntry: Debit Operating Expenses for the net amount, Debit Input Tax Credit for the self-assessed tax, Credit AP for the net (tax-exclusive) amount, Credit Tax Payable for the self-assessed tax', async () => {
     const db = makeDb({
       chartOfAccounts: {

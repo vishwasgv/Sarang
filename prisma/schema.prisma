@@ -1202,6 +1202,9 @@ model Bill {
   paidAmount          Float     @default(0)
   balanceAmount       Float     @default(0)
   notes               String?
+  // The supplier's own invoice number and date, as printed on their invoice (used to match the GST portal's purchase data).
+  supplierInvoiceNumber String?
+  supplierInvoiceDate   DateTime?
   createdById         String?
   createdAt           DateTime  @default(now())
   updatedAt           DateTime  @updatedAt
