@@ -1,3 +1,4 @@
+import { useSubmitShortcut } from '@shared/hooks/useSubmitShortcut'
 import { TDS_SECTIONS } from '@tds'
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
@@ -137,6 +138,8 @@ export function BillDetailScreen() {
       setTdsAmount(String(tdsSuggestion.suggestedAmount))
     }
   }
+
+  useSubmitShortcut(showPaymentModal && !recordingPayment, () => { handleRecordPayment() })
 
   async function handleRecordPayment() {
     if (!bill) return

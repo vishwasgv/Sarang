@@ -2594,6 +2594,9 @@
     "none": "No items with stock in this location.",
     "couldNot": "Could not save the bin."
   },
+  "keyboardHints": {
+    "journal": "Keyboard: Enter on the last amount adds a balancing line, Ctrl+Enter posts."
+  },
   "journalTemplates": {
     "use": "Start from a saved pattern",
     "saveAs": "Save these accounts as a pattern",

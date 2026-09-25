@@ -1,3 +1,4 @@
+import { useSubmitShortcut } from '@shared/hooks/useSubmitShortcut'
 import { showIndiaFeatures } from '@taxpresets'
 import { EInvoiceCard } from './EInvoiceCard'
 import { EwayBillCard } from './EwayBillCard'
@@ -171,6 +172,8 @@ export function InvoiceDetailScreen() {
   }
 
   useEffect(() => { loadInvoice() }, [id])
+
+  useSubmitShortcut(showPaymentModal && !recordingPayment, () => { handleRecordPayment() })
 
   async function handleRecordPayment() {
     if (!invoice) return

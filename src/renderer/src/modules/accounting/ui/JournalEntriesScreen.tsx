@@ -167,6 +167,7 @@ export function JournalEntriesScreen() {
 }
 
 import { JournalTemplateBar } from './JournalTemplateBar'
+import { useSubmitShortcut } from '@shared/hooks/useSubmitShortcut'
 
 interface DraftLine { accountId: string; debitAmount: string; creditAmount: string; remarks: string; side?: 'DEBIT' | 'CREDIT' }
 
@@ -199,12 +200,22 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
     if (text) setNarration(text)
     setLines(tpl.map((l) => ({ accountId: l.accountId, debitAmount: '', creditAmount: '', remarks: l.remarks ?? '', side: l.side })))
   }
+  // Enter on the last amount adds a line already filled with what is needed to balance, and moves to its account.
+  function addBalancingLine() {
+    const diff = Math.round((totalDebit - totalCredit) * 1000) / 1000
+    const next: DraftLine = { accountId: '', debitAmount: diff < 0 ? String(-diff) : '', creditAmount: diff > 0 ? String(diff) : '', remarks: '' }
+    const at = lines.length
+    setLines((prev) => [...prev, next])
+    setTimeout(() => document.querySelector<HTMLElement>(`[data-je-account="${at}"]`)?.focus(), 0)
+  }
   function addLine() {
     setLines((prev) => [...prev, { accountId: '', debitAmount: '', creditAmount: '', remarks: '' }])
   }
   function removeLine(idx: number) {
     setLines((prev) => prev.filter((_, i) => i !== idx))
   }
+
+  useSubmitShortcut(balanced && !saving, () => { handleSave() })
 
   async function handleSave() {
     if (!balanced) { toastError(t('accounting.journalEntries.notBalanced'), t('accounting.journalEntries.debitMustEqualCredit')); return }
@@ -263,15 +274,15 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
           <div className="space-y-2">
             {lines.map((line, idx) => (
               <div key={idx} className="flex items-center gap-2">
-                <select value={line.accountId} onChange={(e) => updateLine(idx, { accountId: e.target.value })}
+                <select data-je-account={idx} value={line.accountId} onChange={(e) => updateLine(idx, { accountId: e.target.value })}
                   className="flex-1 h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-xs focus:outline-none focus:ring-2 focus:ring-brand">
                   <option value="">{t('accounting.journalEntries.selectAccount')}</option>
                   {accounts.map((a) => <option key={a.id} value={a.id}>{a.accountCode} — {a.accountName}</option>)}
                 </select>
-                <input type="number" min="0" step="0.01" value={line.debitAmount} placeholder={t('common.debit')}
+                <input type="number" min="0" step="0.01" value={line.debitAmount} placeholder={t('common.debit')} onKeyDown={(e) => { if (e.key === 'Enter' && !e.ctrlKey && idx === lines.length - 1 && !balanced) { e.preventDefault(); addBalancingLine() } }}
                   onChange={(e) => updateLine(idx, { debitAmount: e.target.value, creditAmount: e.target.value ? '' : line.creditAmount })}
                   className="w-24 h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-xs text-end focus:outline-none focus:ring-2 focus:ring-brand" />
-                <input type="number" min="0" step="0.01" value={line.creditAmount} placeholder={t('common.credit')}
+                <input type="number" min="0" step="0.01" value={line.creditAmount} placeholder={t('common.credit')} onKeyDown={(e) => { if (e.key === 'Enter' && !e.ctrlKey && idx === lines.length - 1 && !balanced) { e.preventDefault(); addBalancingLine() } }}
                   onChange={(e) => updateLine(idx, { creditAmount: e.target.value, debitAmount: e.target.value ? '' : line.debitAmount })}
                   className="w-24 h-9 px-2 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-xs text-end focus:outline-none focus:ring-2 focus:ring-brand" />
                 <button onClick={() => removeLine(idx)} disabled={lines.length <= 2}
@@ -281,6 +292,7 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
               </div>
             ))}
             <button onClick={addLine} className="text-xs text-brand hover:underline font-semibold">{t('accounting.journalEntries.addLine')}</button>
+            <p className="text-xs text-slate-400">{t('keyboardHints.journal')}</p>
           </div>
 
           <div className="flex items-center justify-between px-3 py-2 rounded-xl bg-slate-50 dark:bg-slate-800/50 text-xs">

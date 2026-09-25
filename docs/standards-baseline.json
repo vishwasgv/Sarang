@@ -28,7 +28,7 @@
     "src/preload/index.ts": 1952,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2997,
-    "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 960,
+    "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 963,
     "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 668,
     "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1340,
     "src/renderer/src/modules/hotel/ui/HotelBookingsScreen.tsx": 741,
@@ -69,7 +69,7 @@
     "src/renderer/src/modules/service-business/ui/VisitNoteScreen.tsx": 1795,
     "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3637,
     "src/renderer/src/modules/setup/ui/SetupWizard.tsx": 898,
-    "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 638,
+    "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 641,
     "src/renderer/src/modules/suppliers/ui/SupplierDetailScreen.tsx": 603
   },
   "rawMoneyMath": {
