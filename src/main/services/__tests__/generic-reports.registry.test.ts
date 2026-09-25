@@ -54,9 +54,11 @@ describe('generic report registry', () => {
       ]
       for (const k of keys) expect(typeof at(k), `${id}: reports.gen.${k}`).toBe('string')
       for (const row of r.rows) for (const c of r.columns) expect(c.key in row, `${id}.${c.key}`).toBe(true)
-      const chartKeys = new Set([...r.columns.map((c) => c.key), ...(r.chartRows ?? []).flatMap((row) => Object.keys(row))])
-      expect(chartKeys.has(r.chart.xKey)).toBe(true)
-      for (const s of r.chart.series) expect(r.columns.some((c) => c.key === s.key) || r.chartRows !== undefined, `${id}.${s.key}`).toBe(true)
+      // A chart that reads its own rows (chartRows) is checked by the data tests; otherwise its keys must be columns.
+      if (r.chartRows === undefined) {
+        expect(r.columns.some((c) => c.key === r.chart.xKey), `${id}.${r.chart.xKey}`).toBe(true)
+        for (const s of r.chart.series) expect(r.columns.some((c) => c.key === s.key), `${id}.${s.key}`).toBe(true)
+      }
     })
   }
 })

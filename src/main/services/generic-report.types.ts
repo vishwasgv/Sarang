@@ -1,7 +1,7 @@
 // A report described as data: the screen draws the summary cards, the chart and the table from this, so a new
 // report is one function that returns a GenericReport plus its name in the language files.
 
-export type ColumnType = 'text' | 'money' | 'number' | 'percent' | 'date'
+export type ColumnType = 'text' | 'money' | 'number' | 'percent' | 'date' | 'label'
 
 export interface GenericColumn {
   key: string
@@ -18,6 +18,8 @@ export interface GenericChart {
   series: Array<{ key: string; labelKey: string; money?: boolean }>
   /** Bars and slices: show only the largest N rows. */
   limit?: number
+  /** The x values are language keys under reports.gen (for example ratio names). */
+  xIsLabelKey?: boolean
 }
 
 export type CellValue = string | number | null

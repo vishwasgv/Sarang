@@ -2615,6 +2615,37 @@
         },
         "ageing": {
           "method": "The stock on hand is taken to be the most recent receipts (first in, first out); stock with no receipt on record counts as the oldest."
+        },
+        "fundFlow": {
+          "method": "Shows the change in every account other than cash, and the profit of the period. Sources minus applications equals the change in cash."
+        },
+        "bankBook": {
+          "fromLedger": "Taken from the entries posted against each bank account. Opening is the balance before the first date."
+        },
+        "recon": {
+          "statementOnly": "Counts statement lines imported for reconciliation. Bank accounts with no imported statement are not listed."
+        },
+        "ratios": {
+          "method": "Balances are as at the end date; margins and days use the period. A ratio shows blank when there is nothing to divide by."
+        },
+        "yoy": {
+          "method": "The earlier year is the same dates one year back. Sales are before tax; purchases are bill amounts before tax."
+        },
+        "count": "Documents",
+        "tax": "Tax",
+        "amount": "Amount",
+        "date": "Date",
+        "reason": "Reason",
+        "original": "Original invoice",
+        "chart": "Documents by month",
+        "number": {
+          "credit": "Credit note",
+          "debit": "Debit note",
+          "return": "Return"
+        },
+        "party": {
+          "credit": "Customer",
+          "debit": "Supplier"
         }
       },
       "salesBy": {
@@ -2725,20 +2756,55 @@
         }
       },
       "stock": {
-        "totalValue": "Stock value", "items": "Items", "low": "Low stock", "out": "Out of stock", "item": "Item", "sku": "SKU", "category": "Category",
-        "quantity": "Quantity", "unitCost": "Unit cost", "value": "Value", "status": "Status",
-        "chart": {"value": "Items holding the most stock value"}
+        "totalValue": "Stock value",
+        "items": "Items",
+        "low": "Low stock",
+        "out": "Out of stock",
+        "item": "Item",
+        "sku": "SKU",
+        "category": "Category",
+        "quantity": "Quantity",
+        "unitCost": "Unit cost",
+        "value": "Value",
+        "status": "Status",
+        "chart": {
+          "value": "Items holding the most stock value"
+        }
       },
       "ledger": {
-        "movements": "Movements", "in": "In", "out": "Out", "items": "Items", "date": "Date", "type": "Type", "balance": "Balance", "location": "Location",
-        "reference": "Reference", "quantity": "Quantity", "chart": "Quantity moved by type"
+        "movements": "Movements",
+        "in": "In",
+        "out": "Out",
+        "items": "Items",
+        "date": "Date",
+        "type": "Type",
+        "balance": "Balance",
+        "location": "Location",
+        "reference": "Reference",
+        "quantity": "Quantity",
+        "chart": "Quantity moved by type"
       },
       "ageing": {
-        "total": "Stock value", "b0": "0-30 days", "b31": "31-60 days", "b61": "61-90 days", "b90": "Over 90 days", "olderShare": "Share held over 90 days",
+        "total": "Stock value",
+        "b0": "0-30 days",
+        "b31": "31-60 days",
+        "b61": "61-90 days",
+        "b90": "Over 90 days",
+        "olderShare": "Share held over 90 days",
         "chart": "Stock value by age, oldest stock first"
       },
-      "location": {"count": "Locations", "name": "Location", "products": "Items", "chart": "Stock value by location"},
-      "transfers": {"count": "Transfers", "quantity": "Quantity moved", "direction": "Direction", "chart": "Quantity transferred by day"},
+      "location": {
+        "count": "Locations",
+        "name": "Location",
+        "products": "Items",
+        "chart": "Stock value by location"
+      },
+      "transfers": {
+        "count": "Transfers",
+        "quantity": "Quantity moved",
+        "direction": "Direction",
+        "chart": "Quantity transferred by day"
+      },
       "assets": {
         "count": "Assets",
         "cost": "Cost",
@@ -2750,6 +2816,74 @@
         "purchaseDate": "Bought on",
         "status": "Status",
         "chart": "Cost and book value of each asset"
+      },
+      "fundFlow": {
+        "item": "Item",
+        "sources": "Sources of funds",
+        "applications": "Applications of funds",
+        "cashChange": "Change in cash",
+        "netProfit": "Net profit for the period",
+        "chart": "Largest sources and applications"
+      },
+      "bankBook": {
+        "deposits": "Deposits",
+        "withdrawals": "Withdrawals",
+        "closing": "Closing balance",
+        "bank": "Bank account",
+        "date": "Date",
+        "particulars": "Particulars",
+        "balance": "Balance",
+        "opening": "Opening balance",
+        "chart": "Closing balance by account"
+      },
+      "recon": {
+        "matched": "Matched",
+        "unmatched": "Not matched",
+        "unmatchedAmount": "Amount not matched",
+        "lines": "Statement lines",
+        "last": "Last reconciled",
+        "chart": "Statement lines matched and not matched"
+      },
+      "ratios": {
+        "ratio": "Ratio",
+        "value": "Value",
+        "unitLabel": "Unit",
+        "meaningLabel": "What it tells you",
+        "chart": "Margins",
+        "name": {
+          "current": "Current ratio",
+          "quick": "Quick ratio",
+          "debtToEquity": "Debt to equity",
+          "grossMargin": "Gross margin",
+          "netMargin": "Net margin",
+          "debtorDays": "Days customers take to pay",
+          "creditorDays": "Days you take to pay suppliers",
+          "stockDays": "Days of stock held"
+        },
+        "unit": {
+          "times": "times",
+          "percent": "%",
+          "days": "days"
+        },
+        "meaning": {
+          "current": "Current assets for every 1 of current liabilities. Above 1 means short-term bills can be met.",
+          "quick": "The same without stock, which may take time to sell.",
+          "debtToEquity": "How much is owed compared with what the owner has put in.",
+          "grossMargin": "Share of sales left after the cost of what was sold.",
+          "netMargin": "Share of sales left as profit after all expenses.",
+          "debtorDays": "Receivables divided by sales, in days of the period.",
+          "creditorDays": "Payables divided by purchases, in days of the period.",
+          "stockDays": "Stock divided by the cost of sales, in days of the period."
+        }
+      },
+      "yoy": {
+        "month": "Month",
+        "salesThis": "Sales this year",
+        "salesLast": "Sales last year",
+        "salesChange": "Change",
+        "purchasesThis": "Purchases this year",
+        "purchasesLast": "Purchases last year",
+        "chart": "Sales, this year and last year"
       }
     },
     "gst": {
@@ -3032,6 +3166,38 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "fundFlow": {
+        "label": "Fund Flow",
+        "description": "Where funds came from and where they went between two dates, apart from the movement of cash itself"
+      },
+      "bankBook": {
+        "label": "Bank Book",
+        "description": "Every deposit and withdrawal of each bank or cash account with opening, running and closing balance"
+      },
+      "bankReconciliationSummary": {
+        "label": "Bank Reconciliation Summary",
+        "description": "For each bank account, how many statement lines are matched with your books and how many are still open"
+      },
+      "ratioAnalysis": {
+        "label": "Ratio Analysis",
+        "description": "Health check of the business: liquidity, debt, margins and how many days customers, suppliers and stock take"
+      },
+      "yearOverYear": {
+        "label": "Year over Year",
+        "description": "Sales and purchases month by month against the same months a year earlier"
+      },
+      "creditNoteRegister": {
+        "label": "Credit Note Register",
+        "description": "Every credit note issued in the period with customer, reason, tax and amount"
+      },
+      "debitNoteRegister": {
+        "label": "Debit Note Register",
+        "description": "Every debit note (vendor credit) raised in the period with supplier, reason, tax and amount"
+      },
+      "salesReturnRegister": {
+        "label": "Sales Return Register",
+        "description": "Every sales return in the period with the invoice it came from"
       },
       "stockSummary": {
         "label": "Stock Summary & Valuation",

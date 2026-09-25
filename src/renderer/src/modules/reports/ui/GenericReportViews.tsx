@@ -8,10 +8,10 @@ import { Card } from '@shared/ui/molecules/Card'
 
 // Draws any report that the main process describes as data (generic-report.types.ts).
 
-export type ColumnType = 'text' | 'money' | 'number' | 'percent' | 'date'
+export type ColumnType = 'text' | 'money' | 'number' | 'percent' | 'date' | 'label'
 export type CellValue = string | number | null
 export interface GenericColumn { key: string; labelKey: string; type: ColumnType }
-export interface GenericChart { type: 'bar' | 'line' | 'pie'; titleKey: string; xKey: string; series: { key: string; labelKey: string; money?: boolean }[]; limit?: number }
+export interface GenericChart { type: 'bar' | 'line' | 'pie'; titleKey: string; xKey: string; series: { key: string; labelKey: string; money?: boolean }[]; limit?: number; xIsLabelKey?: boolean }
 export interface GenericReport {
   id: string; dateFrom?: string; dateTo?: string; decimals: number
   summary: { labelKey: string; type: ColumnType; value: CellValue }[]
@@ -41,7 +41,15 @@ export const GENERIC_REPORT_IDS = [
   'stockLedger',
   'inventoryAgeing',
   'stockByLocation',
-  'transfersRegister'
+  'transfersRegister',
+  'fundFlow',
+  'bankBook',
+  'bankReconciliationSummary',
+  'ratioAnalysis',
+  'yearOverYear',
+  'creditNoteRegister',
+  'debitNoteRegister',
+  'salesReturnRegister'
 ] as const
 export type GenericReportId = typeof GENERIC_REPORT_IDS[number]
 
@@ -63,6 +71,7 @@ function show(t: TFunction, v: CellValue, type: ColumnType, fmt: Fmt, isNameColu
   if (type === 'percent') return `${v}%`
   if (type === 'number') return Number(v).toLocaleString(undefined, { maximumFractionDigits: 3 })
   if (type === 'date') return formatDate(String(v))
+  if (type === 'label') return v === '' ? '' : t(`reports.gen.${v}`)
   return v === '' && isNameColumn ? t('reports.gen.unassigned') : String(v)
 }
 
@@ -70,7 +79,8 @@ function chartRows(d: GenericReport, t: TFunction) {
   const source = d.chartRows ?? d.rows
   const limit = d.chart.limit ?? source.length
   return source.slice(0, limit).map((r) => {
-    const out: Record<string, CellValue> = { name: r[d.chart.xKey] === '' ? t('reports.gen.unassigned') : (r[d.chart.xKey] as CellValue) }
+    const x = r[d.chart.xKey]
+    const out: Record<string, CellValue> = { name: x === '' ? t('reports.gen.unassigned') : d.chart.xIsLabelKey ? t(`reports.gen.${x}`) : (x as CellValue) }
     for (const s of d.chart.series) out[label(t, s.labelKey)] = r[s.key] as CellValue
     return out
   })
@@ -135,7 +145,7 @@ export function GenericReportView({ data, fmt }: { data: GenericReport; fmt: Fmt
             <thead>
               <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400">
                 {data.columns.map((c) => (
-                  <th key={c.key} className={cn('px-4 py-3', c.type === 'text' || c.type === 'date' ? 'text-start' : 'text-end')}>{label(t, c.labelKey)}</th>
+                  <th key={c.key} className={cn('px-4 py-3', c.type === 'text' || c.type === 'date' || c.type === 'label' ? 'text-start' : 'text-end')}>{label(t, c.labelKey)}</th>
                 ))}
               </tr>
             </thead>
@@ -143,7 +153,7 @@ export function GenericReportView({ data, fmt }: { data: GenericReport; fmt: Fmt
               {data.rows.map((r, i) => (
                 <tr key={i} className="border-b border-slate-50 dark:border-slate-800">
                   {data.columns.map((c) => (
-                    <td key={c.key} className={cn('px-4 py-2.5', c.type === 'text' || c.type === 'date' ? 'text-start' : 'text-end')}>{show(t, r[c.key], c.type, fmt, c.key === nameCol)}</td>
+                    <td key={c.key} className={cn('px-4 py-2.5', c.type === 'text' || c.type === 'date' || c.type === 'label' ? 'text-start' : 'text-end')}>{show(t, r[c.key], c.type, fmt, c.key === nameCol)}</td>
                   ))}
                 </tr>
               ))}
@@ -198,7 +208,7 @@ export function genericReportCharts(data: unknown, t: TFunction): PdfChart[] {
   const limit = d.chart.limit ?? source.length
   const s = d.chart.series[0]
   const points = source.slice(0, limit).map((r, i) => ({
-    label: r[d.chart.xKey] === '' ? t('reports.gen.unassigned') : String(r[d.chart.xKey] ?? ''),
+    label: r[d.chart.xKey] === '' ? t('reports.gen.unassigned') : d.chart.xIsLabelKey ? t(`reports.gen.${r[d.chart.xKey]}`) : String(r[d.chart.xKey] ?? ''),
     value: Number(r[s.key] ?? 0),
     color: PALETTE[i % PALETTE.length]
   }))
