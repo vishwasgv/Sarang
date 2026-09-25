@@ -431,6 +431,8 @@
     "amountLabel": "Amount ({{symbol}})",
     "invalidAmount": "Please enter a valid amount.",
     "referenceNumber": "Reference Number (optional)",
+    "salesperson": "Salesperson",
+    "noSalesperson": "No salesperson",
     "ewayBillNumber": "E-way Bill Number (optional)",
     "foreignCurrency": {
       "toggle": "Bill in foreign currency",

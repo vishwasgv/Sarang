@@ -280,6 +280,16 @@ export function BillingScreen() {
   // keypress to land between remove/add. The ref sidesteps it entirely.
   const locationIdRef = useRef('')
   useEffect(() => { locationIdRef.current = locationId }, [locationId])
+  // Optional "salesperson" picker: only when the user may see the employee list.
+  useEffect(() => {
+    if (!hasPermission('hr.view')) return
+    window.api.hr.listEmployees({ isActive: true }).then((res) => {
+      if (!res.success) return
+      const d = res.data as { employees?: { id: string; fullName: string }[] } | { id: string; fullName: string }[]
+      setSalespeople(Array.isArray(d) ? d : (d.employees ?? []))
+    }).catch(() => { /* the picker simply stays hidden */ })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
   // 2026-09-04 — order-channel tagging for a table-less restaurant sale.
   // Only meaningful/sent when !tableId. A sale made THROUGH the Tables
   // feature is DINE_IN by construction (tableId already implies it, never a
@@ -292,6 +302,8 @@ export function BillingScreen() {
   // Phase 61 — lives on Invoice directly, independent of the opt-in
   // Logistics module (which only tracks it at shipment level).
   const [ewayBillNumber, setEwayBillNumber] = useState('')
+  const [salespersonId, setSalespersonId] = useState('')
+  const [salespeople, setSalespeople] = useState<{ id: string; fullName: string }[]>([])
   // Phase 69 — Electrical/Plumbing job-site account tag + Plumbing scheduled delivery.
   const [jobSiteAccountId, setJobSiteAccountId] = useState('')
   const [jobSiteAccounts, setJobSiteAccounts] = useState<Array<{ id: string; accountName: string }>>([])
@@ -1365,6 +1377,7 @@ export function BillingScreen() {
         notes: notes.trim() || undefined,
         referenceNumber: referenceNumber.trim() || undefined,
         ewayBillNumber: ewayBillNumber.trim() || undefined,
+        salespersonId: salespersonId || undefined,
         costCentreId: costCentreId || undefined,
         customFields: customFieldValues,
         gstType: taxModel === 'GST' ? gstChoice.gstType : 'CGST_SGST',
@@ -1435,7 +1448,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, moneyCtx, customerTaxExempt, pricesIncludeTax, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, gstChoice.gstType, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
+  }, [cart, customer, moneyCtx, customerTaxExempt, pricesIncludeTax, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, salespersonId, splitCash, splitUpi, taxModel, gstChoice.gstType, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -2380,6 +2393,17 @@ export function BillingScreen() {
             />
           </div>
 
+          {salespeople.length > 0 && (
+            <div>
+              <p className="text-xs font-semibold text-slate-500 uppercase mb-2">{t('billing.salesperson')}</p>
+              <select value={salespersonId} onChange={e => setSalespersonId(e.target.value)}
+                className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700">
+                <option value="">{t('billing.noSalesperson')}</option>
+                {salespeople.map(e => <option key={e.id} value={e.id}>{e.fullName}</option>)}
+              </select>
+            </div>
+          )}
+
           {/* Phase 65 — Cost Centre tag. Self-hidden until at least one
               cost centre exists, matching the Price List picker's own
               precedent, so this never appears as confusing empty-dropdown
@@ -2532,7 +2556,7 @@ export function BillingScreen() {
           </Button>
 
           <button
-            onClick={() => { setCart([]); setInclTaxChoice(null); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setTrialMode(false); setTriedVariantIds([]); gstChoice.reset(); setBuyerState('') }}
+            onClick={() => { setCart([]); setInclTaxChoice(null); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setSalespersonId(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setTrialMode(false); setTriedVariantIds([]); gstChoice.reset(); setBuyerState('') }}
             className="w-full text-xs text-slate-400 hover:text-danger transition-colors py-1"
           >
             {t('billing.clearCart')}

@@ -1669,6 +1669,8 @@ model Invoice {
   paymentStatus         String    @default("UNPAID")
   gstType               String    @default("CGST_SGST")
   buyerState            String?
+  // The employee credited with the sale (optional; the cashier who rang it up is createdById).
+  salespersonId         String?
   // E-invoice: the IRN and acknowledgement the e-invoice portal returned, pasted in by the owner.
   irn                   String?
   irnAckNo              String?
@@ -1767,6 +1769,7 @@ model Invoice {
   quotation            Quotation?           @relation("QuotationToInvoice", fields: [quotationId], references: [id])
   challans             DeliveryChallan[]    @relation("ChallanInvoice")
   originalInvoice      Invoice?             @relation("InvoiceReturns", fields: [originalInvoiceId], references: [id])
+  salesperson          Employee?            @relation("InvoiceSalesperson", fields: [salespersonId], references: [id], onDelete: SetNull)
   returns              Invoice[]            @relation("InvoiceReturns")
   table                RestaurantTable?     @relation("InvoiceTable", fields: [tableId], references: [id], onDelete: SetNull)
   occupiedTables       RestaurantTable[]    @relation("TableCurrentInvoice")
@@ -1790,6 +1793,7 @@ model Invoice {
   @@index([originalInvoiceId])
   @@index([tableId])
   @@index([irn])
+  @@index([salespersonId])
   @@index([splitFromInvoiceId])
   @@index([exchangeReturnId])
   @@index([costCentreId])
@@ -3226,6 +3230,7 @@ model Employee {
   @@index([isActive])
   @@index([department])
   @@index([costCentreId])
+  salesInvoices  Invoice[] @relation("InvoiceSalesperson")
 }
 
 model Attendance {

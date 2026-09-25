@@ -59,6 +59,7 @@ interface Invoice {
   notes?: string | null
   ewayBillNumber?: string | null
   irn?: string | null; irnAckNo?: string | null; irnAckDate?: string | null
+  salesperson?: { id: string; fullName: string } | null
   gstType?: string | null
   pricesIncludeTax?: boolean
   // Phase 58 §2 — the dine-in table this invoice was opened for (restaurant
@@ -704,6 +705,13 @@ export function InvoiceDetailScreen() {
         <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4">
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('billing.ewayBillNumber')}</p>
           <p className="text-sm text-slate-600 dark:text-slate-300">{invoice.ewayBillNumber}</p>
+        </div>
+      )}
+
+      {invoice.salesperson && (
+        <div className="bg-slate-50 dark:bg-slate-800/50 border border-slate-200 dark:border-slate-700 rounded-2xl px-5 py-4">
+          <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('billing.salesperson')}</p>
+          <p className="text-sm text-slate-600 dark:text-slate-300">{invoice.salesperson.fullName}</p>
         </div>
       )}
 

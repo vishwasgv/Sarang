@@ -381,6 +381,7 @@ interface Invoice {
   irnAckNo?: string | null
   irnAckDate?: Date | string | null
   irnQr?: string | null
+  salesperson?: { fullName: string } | null
   gstType?: string | null
   // Unit prices/discounts on this document are tax-inclusive; the tax lines below are the tax contained in them.
   pricesIncludeTax?: boolean | null
@@ -676,6 +677,8 @@ export const printService = {
   ${invoice.notes ? `<div class="notes-box">Note: ${escHtml(invoice.notes)}</div>` : ''}
 
   ${irnBlock}
+
+  ${invoice.salesperson ? `<div style="font-size:10px;color:#64748b;margin-bottom:8px">Salesperson: ${escHtml(invoice.salesperson.fullName)}</div>` : ''}
 
   <div class="totals">
     <div class="totals-table">

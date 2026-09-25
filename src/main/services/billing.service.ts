@@ -578,6 +578,11 @@ export const billingService = {
     // Agreed payment terms give the due date when the sale did not choose one.
     if (startsUnpaid && !effectiveDueDate && customerTermsDays && customerTermsDays > 0) effectiveDueDate = addLocalDays(new Date(), customerTermsDays)
 
+    if (payload.salespersonId) {
+      const salesperson = await db.employee.findUnique({ where: { id: payload.salespersonId }, select: { id: true } })
+      if (!salesperson) return { success: false, error: { code: 'HR-001', message: 'Salesperson not found.' } }
+    }
+
     // Validate customer exists for credit sales
     if (isCredit && !payload.customerId) {
       return { success: false, error: { code: 'INVOC-009', message: 'A customer must be selected for credit sales.' } }
@@ -656,6 +661,7 @@ export const billingService = {
             dueDate: effectiveDueDate,
             cropSeasonId: payload.cropSeasonId ?? null,
             ewayBillNumber: payload.ewayBillNumber?.trim() || null,
+            salespersonId: payload.salespersonId || null,
             tableId: payload.tableIds?.[0] ?? null,
             // 2026-09-04 — meaningless once a table is attached (that
             // already implies DINE_IN for reporting purposes), so only
@@ -974,8 +980,9 @@ export const billingService = {
       include: {
         // email added for the Share feature (Section 4/5.1 of
         // FEATURE_SHARE_BILL_REPORT_WHATSAPP_EMAIL.md).
-        customer: { select: { id: true, customerName: true, phone: true, customerCode: true, email: true } },
+        customer: { select: { id: true, customerName: true, phone: true, customerCode: true, email: true, taxNumber: true } },
         createdBy: { select: { id: true, fullName: true } },
+        salesperson: { select: { id: true, fullName: true } },
         items: {
           include: { product: { select: { id: true, unit: true } } }
         },

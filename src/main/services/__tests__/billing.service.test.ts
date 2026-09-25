@@ -480,6 +480,22 @@ describe('billingService.createInvoice', () => {
     expect((res as { error: { code: string } }).error.code).toBe('CUST-003')
   })
 
+  it('stores the chosen salesperson and refuses one that does not exist', async () => {
+    const line = [{ productId: 'prod-1', quantity: 1, unitPrice: 200, discountAmount: 0, taxRate: 0 }]
+    const good = makeMockDb()
+    ;(good as Record<string, unknown>).employee = { findUnique: vi.fn().mockResolvedValue({ id: 'emp-1' }) }
+    vi.mocked(getPrisma).mockReturnValue(good as never)
+    await billingService.createInvoice({ ...basePayload, salespersonId: 'emp-1', items: line })
+    expect(good.invoice.create.mock.calls[0][0].data.salespersonId).toBe('emp-1')
+
+    const bad = makeMockDb()
+    ;(bad as Record<string, unknown>).employee = { findUnique: vi.fn().mockResolvedValue(null) }
+    vi.mocked(getPrisma).mockReturnValue(bad as never)
+    const res = await billingService.createInvoice({ ...basePayload, salespersonId: 'nope', items: line })
+    expect(res).toMatchObject({ success: false, error: { code: 'HR-001' } })
+    expect(bad.invoice.create).not.toHaveBeenCalled()
+  })
+
   it('a credit sale with no chosen due date gets one from the customer payment terms, and a chosen date wins', async () => {
     vi.mocked(isModuleEnabled).mockResolvedValue(true)
     const run = async (dueDate?: string) => {
