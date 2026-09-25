@@ -1,3 +1,4 @@
+import { useScheduledReportRunner } from '@modules/reports/scheduled/scheduled-reports.runner'
 import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -43,6 +44,7 @@ export function AppLayout() {
   const [tutorialActive, setTutorialActive] = useState(false)
   const [tourAutoStarted, setTourAutoStarted] = useState(false)
   const { startTour, isLoaded } = useStartTour()
+  useScheduledReportRunner()
 
   // Phase 60 — checked once per app session; whether tutorial mode is
   // active never changes mid-session (entering/exiting both go through a

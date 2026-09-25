@@ -280,6 +280,10 @@ const api: IpcChannels = {
     get: (p) => invoke('bankDeposits:get', p),
     listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
   },
+  reportFiles: {
+    chooseFolder: () => invoke('reportFiles:chooseFolder'),
+    save: (p) => invoke('reportFiles:save', p)
+  },
   einvoice: {
     exportJson: (p) => invoke('einvoice:exportJson', p),
     saveIrn: (p) => invoke('einvoice:saveIrn', p),

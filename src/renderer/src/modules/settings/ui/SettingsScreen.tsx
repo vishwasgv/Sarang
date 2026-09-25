@@ -1,3 +1,4 @@
+import { ScheduledReportsCard } from '@modules/reports/scheduled/ScheduledReportsCard'
 import { StockRulesCard } from './StockRulesCard'
 import { StaleRatesCard } from './StaleRatesCard'
 import React, { useState, useEffect, useCallback } from 'react'
@@ -485,7 +486,7 @@ export function SettingsScreen() {
         {activeSection === 'industry' && <IndustrySettingsScreen />}
         {activeSection === 'language' && <LanguageSection />}
         {activeSection === 'appearance' && <AppearanceSection />}
-        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /></>)}
+        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><ScheduledReportsCard /></>)}
         {activeSection === 'barcode' && <BarcodeSection />}
         {activeSection === 'invoiceTemplates' && <InvoiceTemplatesSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}

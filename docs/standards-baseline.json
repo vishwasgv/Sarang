@@ -1,7 +1,7 @@
 {
   "oversized": {
     "src/main/database/seed.ts": 925,
-    "src/main/ipc/channels.ts": 2183,
+    "src/main/ipc/channels.ts": 2187,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,
     "src/main/services/ai-query.service.ts": 2783,
@@ -25,7 +25,7 @@
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10982,
     "src/main/services/restaurant.service.ts": 1011,
-    "src/preload/index.ts": 1904,
+    "src/preload/index.ts": 1908,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2997,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 960,
@@ -67,7 +67,7 @@
     "src/renderer/src/modules/service-business/ui/TailoringScreen.tsx": 1043,
     "src/renderer/src/modules/service-business/ui/TokenQueueScreen.tsx": 693,
     "src/renderer/src/modules/service-business/ui/VisitNoteScreen.tsx": 1795,
-    "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3636,
+    "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3637,
     "src/renderer/src/modules/setup/ui/SetupWizard.tsx": 898,
     "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 638
   },

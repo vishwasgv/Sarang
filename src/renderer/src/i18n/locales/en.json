@@ -2583,6 +2583,25 @@
         "genericLayout": "Your country's own box layout is not built in yet, so the figures are shown as a plain summary you can copy onto the form."
       }
     },
+    "scheduled": {
+      "title": "Reports saved automatically",
+      "help": "Choose a report, how often, and a folder. While Sarang is open it saves the last complete day, week or month to that folder as a file you can open in Excel.",
+      "report": "Report",
+      "frequency": "How often",
+      "format": "File type",
+      "folder": "Folder",
+      "chooseFolder": "Choose folder",
+      "add": "Add",
+      "added": "Schedule added",
+      "saveNow": "Save now",
+      "pause": "Pause",
+      "resume": "Resume",
+      "savedTo": "Report saved",
+      "folderRequired": "Choose a folder first.",
+      "couldNotSave": "Could not save the schedule.",
+      "freq": { "DAILY": "Every day (yesterday)", "WEEKLY": "Every week (last Monday to Sunday)", "MONTHLY": "Every month (last month)" },
+      "note": "Saving happens only while Sarang is open. If it was closed, the last complete period is saved the next time it opens."
+    },
     "gen": {
       "unassigned": "Not assigned",
       "noRows": "Nothing to show for this period.",

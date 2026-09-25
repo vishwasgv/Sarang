@@ -357,6 +357,10 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  reportFiles: {
+    chooseFolder: () => Promise<ApiResponse>
+    save: (payload: { folder: string; fileName: string; format: 'CSV' | 'XLSX'; sheetName?: string; headers: string[]; rows: (string | number | null | undefined)[][] }) => Promise<ApiResponse>
+  }
   einvoice: {
     exportJson: (payload: { invoiceId: string }) => Promise<ApiResponse>
     saveIrn: (payload: { invoiceId: string; irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) => Promise<ApiResponse>
