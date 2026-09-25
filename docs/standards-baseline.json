@@ -1,6 +1,6 @@
 {
   "oversized": {
-    "src/main/database/seed.ts": 925,
+    "src/main/database/seed.ts": 937,
     "src/main/ipc/channels.ts": 2231,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,

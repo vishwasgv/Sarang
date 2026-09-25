@@ -11,10 +11,11 @@ const ROLES = [
   { roleName: 'Manager', description: 'Operational control' },
   { roleName: 'Cashier', description: 'Billing focused' },
   { roleName: 'Staff', description: 'Operational support' },
-  { roleName: 'Kitchen Staff', description: 'Restaurant kitchen operations' }
+  { roleName: 'Kitchen Staff', description: 'Restaurant kitchen operations' },
+  { roleName: 'Accountant', description: 'Read-only access to the books, reports and documents' }
 ]
 
-const PERMISSIONS = [
+export const PERMISSIONS = [
   // Auth
   { permissionKey: 'auth.login', permissionName: 'Login' },
   { permissionKey: 'auth.changeOwnPassword', permissionName: 'Change Own Password' },
@@ -615,7 +616,7 @@ const PERMISSIONS = [
 ]
 
 // Role → permission assignments from PERMISSIONS_MATRIX.md
-const ROLE_PERMISSIONS: Record<string, string[]> = {
+export const ROLE_PERMISSIONS: Record<string, string[]> = {
   Admin: PERMISSIONS.map((p) => p.permissionKey),
   Manager: [
     'auth.login', 'auth.changeOwnPassword',
@@ -825,6 +826,17 @@ const ROLE_PERMISSIONS: Record<string, string[]> = {
     'repairTickets.view',
     'jobSiteAccount.view', 'bulkListOrder.view', 'furnitureBooking.view', 'furnitureTradeIn.view', 'customOrderBooking.view', 'cateringEvent.view',
     'vehicle.view', 'tourPackage.view', 'tripBooking.view', 'driverDutyLog.view'
+  ],
+  // Look and export only: no permission that creates, changes, deletes, approves or posts anything.
+  Accountant: [
+    'auth.login', 'auth.changeOwnPassword',
+    'customers.view', 'customers.viewLedger', 'suppliers.view', 'suppliers.viewLedger', 'products.view', 'inventory.view', 'inventory.viewMovements', 'locations.view',
+    'costCentres.view', 'budgets.view', 'billing.view', 'payments.view', 'expenses.view', 'purchaseOrders.view', 'bills.view', 'salesOrders.view', 'supplierPayments.view',
+    'sales.view', 'priceLists.view', 'recurringProfiles.view', 'documents.view',
+    'chartOfAccounts.view', 'journalEntries.view', 'bankAccounts.view', 'bankReconciliation.view', 'creditInterest.view', 'postDatedCheques.view', 'fixedAssets.view', 'hr.view',
+    'reports.view', 'reports.sales', 'reports.invoices', 'reports.financial', 'reports.tax', 'reports.inventory', 'reports.outstanding', 'reports.export', 'reports.print',
+    'analytics.viewDashboard', 'analytics.viewRevenue', 'analytics.viewExpenses', 'analytics.viewProfit', 'analytics.viewInventory',
+    'audit.view'
   ],
   'Kitchen Staff': [
     'auth.login', 'auth.changeOwnPassword',
