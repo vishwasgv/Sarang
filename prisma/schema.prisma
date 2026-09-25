@@ -938,6 +938,16 @@ model ExpenseClaim {
   @@index([status])
 }
 
+// A note about something that is not an accounting entry (yet). Never posted to the books.
+model JournalMemo {
+  id          String   @id @default(cuid())
+  memoDate    DateTime @default(now())
+  title       String
+  notes       String?
+  createdById String?
+  createdAt   DateTime @default(now())
+}
+
 // A saved pattern for a journal entry (accounts and sides, no amounts). Lines are kept as JSON text.
 model VoucherClass {
   id        String   @id @default(cuid())
@@ -1556,6 +1566,8 @@ model JournalEntry {
   sourceId       String?
   isReversed     Boolean  @default(false)
   reversalReason String?
+  // Set on an accrual-style entry that should undo itself on this date (see journal-extras.service.ts).
+  autoReverseOn  DateTime?
   createdById    String?
   createdAt      DateTime @default(now())
 

@@ -1605,7 +1605,15 @@
       "parentAccountLabel": "Parent Account (optional)",
       "noneTopLevel": "None — top level"
     },
+    "memo": {
+      "title": "Memorandum notes",
+      "hint": "Notes about things that are not accounting entries yet, such as goods sent on approval. They never change your books.",
+      "titlePlaceholder": "Title",
+      "notesPlaceholder": "Details (optional)"
+    },
     "journalEntries": {
+      "autoReverseOn": "Reverse automatically on (optional)",
+      "autoReverseHint": "For accruals: the entry undoes itself on this date, next time the app is open.",
       "title": "Journal Entries",
       "entriesCount": "{{count}} entries",
       "newEntry": "New Entry",

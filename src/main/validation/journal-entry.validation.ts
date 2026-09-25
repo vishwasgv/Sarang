@@ -21,6 +21,7 @@ const JournalEntryLineSchema = z.object({
 export const CreateJournalEntrySchema = z.object({
   entryDate: z.string().optional(),
   narration: z.string().max(500).optional(),
+  autoReverseOn: z.string().optional(),
   lines: z.array(JournalEntryLineSchema).min(2, 'A journal entry needs at least two lines (one debit, one credit).'),
 })
 

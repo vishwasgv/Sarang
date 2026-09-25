@@ -49,7 +49,7 @@ export function JournalEntriesScreen() {
     } finally { setLoading(false) }
   }, [sourceType, toastError, t])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { window.api.journalExtras.processReversals().finally(() => load()) }, [load])
 
   async function handleReverse() {
     if (!reversingId || !reverseReason.trim()) { toastError(t('accounting.journalEntries.reasonRequired'), t('accounting.journalEntries.enterReversalReason')); return }
@@ -142,6 +142,11 @@ export function JournalEntriesScreen() {
         )}
       </div>
 
+      <details className="px-6 py-3 border-t border-slate-100 dark:border-slate-800">
+        <summary className="cursor-pointer text-sm font-medium text-slate-600 dark:text-slate-300">{t('accounting.memo.title')}</summary>
+        <div className="mt-3"><JournalMemoCard /></div>
+      </details>
+
       {showCreate && (
         <CreateJournalEntryModal onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load() }} />
       )}
@@ -167,6 +172,7 @@ export function JournalEntriesScreen() {
 }
 
 import { JournalTemplateBar } from './JournalTemplateBar'
+import { JournalMemoCard } from './JournalMemoCard'
 import { useSubmitShortcut } from '@shared/hooks/useSubmitShortcut'
 
 interface DraftLine { accountId: string; debitAmount: string; creditAmount: string; remarks: string; side?: 'DEBIT' | 'CREDIT' }
@@ -177,6 +183,7 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
   const [accounts, setAccounts] = useState<Account[]>([])
   const [entryDate, setEntryDate] = useState(() => toLocalISODate(new Date()))
   const [narration, setNarration] = useState('')
+  const [autoReverseOn, setAutoReverseOn] = useState('')
   const [lines, setLines] = useState<DraftLine[]>([
     { accountId: '', debitAmount: '', creditAmount: '', remarks: '' },
     { accountId: '', debitAmount: '', creditAmount: '', remarks: '' }
@@ -227,6 +234,7 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
       const res = await window.api.journalEntries.create({
         entryDate,
         narration: narration.trim() || undefined,
+        autoReverseOn: autoReverseOn || undefined,
         lines: validLines.map((l) => ({
           accountId: l.accountId,
           debitAmount: parseFloat(l.debitAmount) || 0,
@@ -263,6 +271,13 @@ function CreateJournalEntryModal({ onClose, onSaved }: { onClose: () => void; on
               <input value={narration} onChange={(e) => setNarration(e.target.value)} placeholder={t('accounting.journalEntries.narrationPlaceholder')}
                 className="w-full h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('accounting.journalEntries.autoReverseOn')}</label>
+            <input type="date" value={autoReverseOn} min={entryDate} onChange={(e) => setAutoReverseOn(e.target.value)}
+              className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+            <p className="text-xs text-slate-400 mt-1">{t('accounting.journalEntries.autoReverseHint')}</p>
           </div>
 
           <JournalTemplateBar

@@ -133,6 +133,9 @@ export const journalEntryService = {
 
       assertBalanced(payload.lines)
 
+      const autoReverseOn = payload.autoReverseOn ? parseLocalDateStart(payload.autoReverseOn) : null
+      if (autoReverseOn && autoReverseOn <= entryDate) return { success: false, error: { code: 'JE-010', message: 'The reversal date must be after the entry date.' } }
+
       const accountIds = [...new Set(payload.lines.map((l) => l.accountId))]
       const accounts = await db.chartOfAccounts.findMany({ where: { id: { in: accountIds } } })
       if (accounts.length !== accountIds.length) return { success: false, error: { code: 'COA-001', message: 'One or more accounts were not found.' } }
@@ -147,6 +150,7 @@ export const journalEntryService = {
             entryDate,
             narration: payload.narration || null,
             sourceType: 'MANUAL',
+            autoReverseOn,
             createdById: userId ?? null,
             lines: {
               create: payload.lines.map((l) => ({

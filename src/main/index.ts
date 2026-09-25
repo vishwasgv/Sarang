@@ -1,4 +1,5 @@
 import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electron'
+import { processDueReversals } from './services/journal-extras.service'
 import { join } from 'path'
 import { existsSync } from 'fs'
 import { registerAllIpcHandlers } from './ipc'
@@ -371,6 +372,7 @@ app.whenReady().then(async () => {
   // Phase 67 §9.1 — Retail time-boxed markdown auto-revert, same shape.
   priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
   quotationService.expireOverdue().catch(() => {})
+  processDueReversals().catch(() => {})
   cleanupLegacyReferenceTokens().catch(() => {})
   setInterval(() => {
     checkAutoBackupReminder().catch(() => {})
@@ -380,6 +382,7 @@ app.whenReady().then(async () => {
     recurringProfileService.generateDueRecurringDocuments().catch(() => {})
     priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
     quotationService.expireOverdue().catch(() => {})
+    processDueReversals().catch(() => {})
   }, 60 * 60 * 1000)
 
   // Usage-metrics tick — shorter cadence than the hour-ly evaluators above

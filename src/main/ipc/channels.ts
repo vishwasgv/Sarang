@@ -374,6 +374,12 @@ export interface IpcChannels {
     decide: (payload: { id: string; to: 'APPROVED' | 'REJECTED'; note?: string }) => Promise<ApiResponse>
     pay: (payload: { id: string; paymentMethod: string }) => Promise<ApiResponse>
   }
+  journalExtras: {
+    processReversals: () => Promise<ApiResponse>
+    listMemos: () => Promise<ApiResponse>
+    addMemo: (payload: { title: string; notes?: string; memoDate?: string }) => Promise<ApiResponse>
+    removeMemo: (payload: { id: string }) => Promise<ApiResponse>
+  }
   customKpis: {
     list: () => Promise<ApiResponse>
     add: (payload: { name: string; metric: string; period: string }) => Promise<ApiResponse>

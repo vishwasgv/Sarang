@@ -297,6 +297,12 @@ const api: IpcChannels = {
     decide: (p) => invoke('expenseClaims:decide', p),
     pay: (p) => invoke('expenseClaims:pay', p)
   },
+  journalExtras: {
+    processReversals: () => invoke('journalExtras:processReversals'),
+    listMemos: () => invoke('journalExtras:listMemos'),
+    addMemo: (p) => invoke('journalExtras:addMemo', p),
+    removeMemo: (p) => invoke('journalExtras:removeMemo', p)
+  },
   customKpis: {
     list: () => invoke('customKpis:list'),
     add: (p) => invoke('customKpis:add', p),
