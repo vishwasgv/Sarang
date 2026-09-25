@@ -142,7 +142,8 @@ interface PaymentPerformanceRow { customerId: string; customerName: string; paid
 interface PaymentPerformanceReport { dateFrom: string; dateTo: string; rows: PaymentPerformanceRow[]; overallAvgDaysToPay: number | null }
 
 interface TrialBalanceRow { account: string; accountId?: string; accountType?: string; debit: number; credit: number }
-interface TrialBalanceReport { dateFrom: string; dateTo: string; asOf: string; rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number; balanced: boolean }
+interface TrialBalanceNode { account: string; accountId?: string; accountType: string; depth: number; debit: number; credit: number; isGroup: boolean; isTypeHeader: boolean }
+interface TrialBalanceReport { dateFrom: string; dateTo: string; asOf: string; rows: TrialBalanceRow[]; hierarchy?: TrialBalanceNode[]; totalDebit: number; totalCredit: number; balanced: boolean }
 
 interface AuditReportRow { date: string; user: string; action: string; entityType: string; entityId: string; details: string | null }
 interface AuditReport { dateFrom?: string; dateTo?: string; totalRecords: number; rows: AuditReportRow[]; page: number; limit: number }
@@ -6443,10 +6444,10 @@ function TrialBalanceView({ data, fmt, onOpenLedger }: { data: TrialBalanceRepor
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
-            {data.rows.map((r) => (
-              <tr key={r.account}>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
-                  {r.accountId ? (
+            {(data.hierarchy ?? data.rows.map((r): TrialBalanceNode => ({ ...r, accountType: r.accountType ?? 'OTHER', depth: 1, isGroup: false, isTypeHeader: false }))).map((r, idx) => (
+              <tr key={`${r.account}-${idx}`} className={r.isTypeHeader ? 'bg-slate-50 dark:bg-slate-800/50 font-bold' : r.isGroup ? 'font-semibold' : undefined}>
+                <td className="px-5 py-3 text-slate-600 dark:text-slate-300" style={{ paddingInlineStart: `${1.25 + Math.max(0, r.depth - 1) * 1.25}rem` }}>
+                  {r.isTypeHeader ? t(`reports.chart.accountTypes.${r.accountType}`) : r.accountId ? (
                     <button onClick={() => onOpenLedger(r.accountId as string)} className="min-h-[44px] text-start text-brand font-medium hover:underline">{r.account}</button>
                   ) : r.account}
                 </td>

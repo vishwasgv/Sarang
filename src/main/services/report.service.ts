@@ -1296,9 +1296,14 @@ async function generateCashBookReport(params: { dateFrom: string; dateTo: string
 // ─────────────────────────────────────────────────────────────────────────────
 
 export interface TrialBalanceRow { account: string; accountId?: string; accountType?: string; debit: number; credit: number }
+/** One line of the grouped trial balance: an account-type header, a parent account with its children rolled up, or an account. */
+export interface TrialBalanceNode { account: string; accountId?: string; accountType: string; depth: number; debit: number; credit: number; isGroup: boolean; isTypeHeader: boolean }
+
 export interface TrialBalanceReport {
   dateFrom: string; dateTo: string; asOf: string
   rows: TrialBalanceRow[]
+  /** The same balances laid out by account type and parent account; totals are the same as `rows`. */
+  hierarchy?: TrialBalanceNode[]
   totalDebit: number
   totalCredit: number
   balanced: boolean
@@ -1358,12 +1363,14 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
   }
 
   const rows: TrialBalanceRow[] = []
+  const netById = new Map<string, number>()
   for (const acct of accounts) {
     const debitTotal = sumCurrency(debitLinesByAccount.get(acct.id) ?? [])
     const creditTotal = sumCurrency(creditLinesByAccount.get(acct.id) ?? [])
     if (debitTotal === 0 && creditTotal === 0) continue // never posted to — omit rather than pad with all-zero rows
     const net = roundCurrency(debitTotal - creditTotal)
     if (Math.abs(net) < moneyEpsilon() / 2) continue // posted both ways but nets to zero — nothing to show
+    netById.set(acct.id, net)
     const account = `${acct.accountCode} — ${acct.accountName}`
     rows.push(net > 0 ? { account, accountId: acct.id, accountType: acct.accountType, debit: net, credit: 0 } : { account, accountId: acct.id, accountType: acct.accountType, debit: 0, credit: -net })
   }
@@ -1374,8 +1381,45 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, asOf: params.dateTo,
     rows, totalDebit, totalCredit,
+    hierarchy: buildTrialBalanceHierarchy(accounts, netById),
     balanced: Math.abs(totalDebit - totalCredit) < moneyEpsilon()
   }
+}
+
+const TB_TYPE_ORDER = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE']
+
+/** Account types as headers, parents with their children rolled up beneath them. Only accounts that carry a balance appear. */
+export function buildTrialBalanceHierarchy(
+  accounts: Array<{ id: string; accountCode: string; accountName: string; accountType: string; parentId: string | null }>,
+  netById: Map<string, number>
+): TrialBalanceNode[] {
+  const children = new Map<string, typeof accounts>()
+  const byId = new Map(accounts.map((a) => [a.id, a]))
+  for (const a of accounts) {
+    const parent = a.parentId ? byId.get(a.parentId) : undefined
+    if (parent && parent.accountType === a.accountType) children.set(parent.id, [...(children.get(parent.id) ?? []), a])
+  }
+  const isChild = (a: typeof accounts[number]) => { const parent = a.parentId ? byId.get(a.parentId) : undefined; return !!parent && parent.accountType === a.accountType }
+  const rollup = (a: typeof accounts[number]): number => roundCurrency((netById.get(a.id) ?? 0) + sumCurrency((children.get(a.id) ?? []).map(rollup)))
+  const side = (net: number) => (net > 0 ? { debit: net, credit: 0 } : { debit: 0, credit: -net })
+  const out: TrialBalanceNode[] = []
+  const emit = (a: typeof accounts[number], depth: number) => {
+    const total = rollup(a)
+    const kids = (children.get(a.id) ?? []).slice().sort((x, y) => x.accountCode.localeCompare(y.accountCode))
+    const visibleKids = kids.filter((k) => Math.abs(rollup(k)) >= moneyEpsilon() / 2 || netById.has(k.id))
+    if (Math.abs(total) < moneyEpsilon() / 2 && !netById.has(a.id) && visibleKids.length === 0) return
+    out.push({ account: `${a.accountCode} — ${a.accountName}`, accountId: a.id, accountType: a.accountType, depth, ...side(total), isGroup: visibleKids.length > 0, isTypeHeader: false })
+    for (const k of visibleKids) emit(k, depth + 1)
+  }
+  for (const type of TB_TYPE_ORDER) {
+    const roots = accounts.filter((a) => a.accountType === type && !isChild(a)).sort((x, y) => x.accountCode.localeCompare(y.accountCode))
+    const start = out.length
+    out.push({ account: type, accountType: type, depth: 0, debit: 0, credit: 0, isGroup: true, isTypeHeader: true })
+    for (const r of roots) emit(r, 1)
+    if (out.length === start + 1) { out.pop(); continue }
+    out[start] = { ...out[start], ...side(roundCurrency(sumCurrency(roots.map(rollup)))) }
+  }
+  return out
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
