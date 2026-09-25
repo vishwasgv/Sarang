@@ -2550,6 +2550,32 @@
     "confirmTitle": "Merge these records?",
     "confirmText": "Everything recorded against the other records (bills, payments, history) moves to {{name}}, and the others are archived. This cannot be undone."
   },
+  "hub": {
+    "sales": "Sales overview",
+    "purchases": "Purchases overview",
+    "accounting": "Accounting overview",
+    "inventory": "Inventory overview",
+    "goTo": "Go to",
+    "dueBills": "Bills to pay in the next 7 days",
+    "noDueBills": "No bills due in the next 7 days.",
+    "overdue": "Overdue",
+    "stat": {
+      "salesToday": "Sales today",
+      "invoicesToday": "Invoices today",
+      "receivable": "Owed to you",
+      "overdue": "Overdue",
+      "openQuotations": "Open quotations",
+      "payable": "You owe",
+      "dueThisWeek": "Due in 7 days",
+      "openBills": "Open bills",
+      "cashAndBank": "Cash and bank",
+      "bankAccounts": "Bank accounts",
+      "entriesToday": "Journal entries today",
+      "items": "Items stocked",
+      "lowStock": "Low stock",
+      "outOfStock": "Out of stock"
+    }
+  },
   "reports": {
     "title": "Reports",
     "selectReport": "Select a report",

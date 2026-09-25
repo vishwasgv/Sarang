@@ -273,6 +273,10 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'GST Return Files', path: '/accounting/gst-returns', icon: Receipt, permissionKey: 'reports.tax', indiaOnly: true },
   { label: 'Fixed Assets', path: '/accounting/fixed-assets', icon: Boxes, permissionKey: 'fixedAssets.view' },
   { label: 'Ledger Settings', path: '/accounting/ledger-settings', icon: Lock, permissionKey: 'bankAccounts.view' },
+  { label: 'Sales Overview', path: '/hub/sales', icon: LayoutDashboard, permissionKey: 'reports.sales' },
+  { label: 'Purchases Overview', path: '/hub/purchases', icon: LayoutDashboard, permissionKey: 'reports.financial' },
+  { label: 'Accounting Overview', path: '/hub/accounting', icon: LayoutDashboard, permissionKey: 'reports.financial' },
+  { label: 'Inventory Overview', path: '/hub/inventory', icon: LayoutDashboard, permissionKey: 'reports.inventory' },
   { label: 'Customers', i18nKey: 'nav.customers', path: '/customers', icon: Users, permissionKey: 'customers.view' },
   { label: 'Suppliers', i18nKey: 'nav.suppliers', path: '/suppliers', icon: Truck, permissionKey: 'suppliers.view' },
   { label: 'Cash Close', i18nKey: 'nav.cashClose', path: '/cash-close', icon: Landmark, permissionKey: 'billing.createInvoice' },
@@ -295,13 +299,13 @@ export const NAV_ITEMS: NavItem[] = [
 // screens under Purchases, all selling screens under Sales, and so on.
 // NAV_ITEMS itself stays a flat list (the tour generator reads it); the
 // grouping is applied here at render time from each item's path.
-type NavGroupId =
+export type NavGroupId =
   | 'home' | 'sales' | 'purchases' | 'inventory' | 'accounting' | 'people'
   | 'messages' | 'logistics' | 'manufacturing' | 'tools' | 'data' | 'settings'
 
-interface NavGroupDef { id: NavGroupId; label: string; icon: LucideIcon; defaultOpen: boolean }
+export interface NavGroupDef { id: NavGroupId; label: string; icon: LucideIcon; defaultOpen: boolean }
 
-const NAV_GROUPS: NavGroupDef[] = [
+export const NAV_GROUPS: NavGroupDef[] = [
   { id: 'home', label: 'Home', icon: LayoutDashboard, defaultOpen: true },
   { id: 'sales', label: 'Sales', icon: ShoppingCart, defaultOpen: true },
   { id: 'purchases', label: 'Purchases', icon: PackagePlus, defaultOpen: true },
@@ -318,6 +322,7 @@ const NAV_GROUPS: NavGroupDef[] = [
 
 const PATH_GROUP: Record<string, NavGroupId> = {
   '/': 'home', '/ai-assistant': 'home',
+  '/hub/sales': 'sales', '/hub/purchases': 'purchases', '/hub/accounting': 'accounting', '/hub/inventory': 'inventory',
   '/billing': 'sales', '/billing/quotations': 'sales', '/sales-orders': 'sales', '/returns': 'sales',
   '/billing/credit-notes': 'sales', '/customers': 'sales', '/pricing/price-lists': 'sales',
   '/pricing/schemes': 'sales', '/pricing/markdowns': 'sales', '/pricing/loyalty': 'sales',
@@ -338,7 +343,7 @@ const PATH_GROUP: Record<string, NavGroupId> = {
   '/settings': 'settings', '/manual': 'settings', '/about': 'settings'
 }
 
-function groupOf(item: NavItem): NavGroupId {
+export function groupOf(item: NavItem): NavGroupId {
   const mapped = PATH_GROUP[item.path]
   if (mapped) return mapped
   if (item.path.startsWith('/logistics/')) return 'logistics'
@@ -357,6 +362,19 @@ function loadOpenGroups(): Record<string, boolean> {
   }
 }
 
+/** The menu entries this user may see: module switched on, permission held, and India-only ones only for India. */
+export function useVisibleNavItems(): NavItem[] {
+  const profile = useBusinessStore((s) => s.profile)
+  const { isModuleEnabled } = useIndustryStore()
+  const { hasPermission } = useAuthStore()
+  return NAV_ITEMS.filter((item) => {
+    if (item.requiredModule && !isModuleEnabled(item.requiredModule as Parameters<typeof isModuleEnabled>[0])) return false
+    if (item.permissionKey && !hasPermission(item.permissionKey)) return false
+    if (item.indiaOnly && !showIndiaFeatures(profile?.country)) return false
+    return true
+  })
+}
+
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore()
   const profile = useBusinessStore((s) => s.profile)
@@ -365,12 +383,7 @@ export function Sidebar() {
   const location = useLocation()
   const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(loadOpenGroups)
 
-  const visibleItems = NAV_ITEMS.filter((item) => {
-    if (item.requiredModule && !isModuleEnabled(item.requiredModule as Parameters<typeof isModuleEnabled>[0])) return false
-    if (item.permissionKey && !hasPermission(item.permissionKey)) return false
-    if (item.indiaOnly && !showIndiaFeatures(profile?.country)) return false
-    return true
-  })
+  const visibleItems = useVisibleNavItems()
 
   // The single highlighted item is the visible one with the longest path that
   // prefixes the current URL, so Billing no longer lights up alongside

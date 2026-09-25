@@ -280,6 +280,9 @@ const api: IpcChannels = {
     get: (p) => invoke('bankDeposits:get', p),
     listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
   },
+  hubs: {
+    summary: (p) => invoke('hubs:summary', p)
+  },
   duplicates: {
     find: (p) => invoke('duplicates:find', p),
     merge: (p) => invoke('duplicates:merge', p)
