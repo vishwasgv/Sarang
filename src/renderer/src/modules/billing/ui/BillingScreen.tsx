@@ -140,6 +140,17 @@ function computeTotals(items: CartItem[], globalDiscount: number, ctx: MoneyCont
   return computeCartTotals(items, globalDiscount, ctx, customerTaxExempt, pricesIncludeTax)
 }
 
+// Extra lines a seller adds at the end of a bill. The product names are fixed English text used to find or create the service item.
+type ChargeKind = 'TIP' | 'SHIPPING' | 'PACKING' | 'HANDLING' | 'INSTALLATION' | 'OTHER'
+const CHARGE_PRODUCT_NAMES: Record<ChargeKind, string> = {
+  TIP: 'Tip / Service Charge',
+  SHIPPING: 'Shipping / Delivery Charges',
+  PACKING: 'Packing Charges',
+  HANDLING: 'Handling Charges',
+  INSTALLATION: 'Installation Charges',
+  OTHER: 'Other Charges'
+}
+
 export function BillingScreen() {
   const { t } = useTranslation()
   const navigate = useNavigate()
@@ -215,6 +226,8 @@ export function BillingScreen() {
   // any other line item, see billingService.getOrCreateTipProduct).
   const [showTipModal, setShowTipModal] = useState(false)
   const [tipAmount, setTipAmount] = useState('')
+  const [chargeKind, setChargeKind] = useState<ChargeKind>('TIP')
+  const [chargeTaxRate, setChargeTaxRate] = useState('')
   const [addingTip, setAddingTip] = useState(false)
   // Phase 69 — Stationery print/photocopy/binding quick-add.
   const printServiceBillingEnabled = isModuleEnabled('print_service_billing')
@@ -856,7 +869,9 @@ export function BillingScreen() {
     if (!amount || amount <= 0) { toastError(t('common.error'), t('billing.tipAmountInvalid')); return }
     setAddingTip(true)
     try {
-      const res = await window.api.billing.getOrCreateTipProduct()
+      const res = chargeKind === 'TIP'
+        ? await window.api.billing.getOrCreateTipProduct()
+        : await window.api.billing.getOrCreateServiceProduct({ name: CHARGE_PRODUCT_NAMES[chargeKind] })
       if (!res.success) {
         toastError(t('common.error'), t('billing.addTipFailedMessage'))
         return
@@ -873,11 +888,13 @@ export function BillingScreen() {
         quantity: 1,
         unitPrice: amount,
         discountAmount: 0,
-        taxRate: tipProduct.taxRate ?? 0,
+        taxRate: chargeKind === 'TIP' ? (tipProduct.taxRate ?? 0) : (Number(chargeTaxRate) || 0),
         availableQty: 0,
       }])
       setShowTipModal(false)
       setTipAmount('')
+      setChargeKind('TIP')
+      setChargeTaxRate('')
     } catch {
       toastError(t('common.error'), t('billing.addTipFailedMessage'))
     } finally {
@@ -1571,7 +1588,7 @@ export function BillingScreen() {
             onClick={() => setShowTipModal(true)}
             className="mt-2 flex items-center gap-1.5 text-xs text-slate-500 dark:text-slate-400 hover:text-brand transition-colors"
           >
-            <HandCoins size={13} /> {t('billing.addTipOrServiceCharge')}
+            <HandCoins size={13} /> {t('billing.addCharge')}
           </button>
 
           {printServiceBillingEnabled && (
@@ -2780,7 +2797,14 @@ export function BillingScreen() {
       {showTipModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40">
           <div className="bg-white dark:bg-slate-900 rounded-2xl shadow-xl w-full max-w-sm p-6 space-y-4">
-            <h2 className="text-base font-bold text-dark dark:text-slate-100 flex items-center gap-2"><HandCoins size={18} /> {t('billing.addTipOrServiceCharge')}</h2>
+            <h2 className="text-base font-bold text-dark dark:text-slate-100 flex items-center gap-2"><HandCoins size={18} /> {t('billing.addCharge')}</h2>
+            <div>
+              <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t('billing.chargeKindLabel')}</label>
+              <select value={chargeKind} onChange={e => setChargeKind(e.target.value as ChargeKind)}
+                className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand">
+                {(Object.keys(CHARGE_PRODUCT_NAMES) as ChargeKind[]).map(k => <option key={k} value={k}>{t(`billing.chargeKinds.${k}`)}</option>)}
+              </select>
+            </div>
             <div>
               <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t('billing.tipAmountLabel')}</label>
               <input
@@ -2792,8 +2816,20 @@ export function BillingScreen() {
                 onKeyDown={e => { if (e.key === 'Enter') handleConfirmTip() }}
               />
             </div>
+            {chargeKind !== 'TIP' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 uppercase mb-1.5">{t('billing.chargeTaxRateLabel')}</label>
+                <input
+                  type="number" min="0" max="100" step="0.01" value={chargeTaxRate}
+                  onChange={e => setChargeTaxRate(e.target.value)}
+                  placeholder="0"
+                  className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
+                />
+                <p className="text-xs text-slate-400 mt-1">{t('billing.chargeTaxHint')}</p>
+              </div>
+            )}
             <div className="flex gap-3 pt-1">
-              <Button variant="outline" className="flex-1" onClick={() => { setShowTipModal(false); setTipAmount('') }}>{t('common.cancel')}</Button>
+              <Button variant="outline" className="flex-1" onClick={() => { setShowTipModal(false); setTipAmount(''); setChargeKind('TIP'); setChargeTaxRate('') }}>{t('common.cancel')}</Button>
               <Button className="flex-1" onClick={handleConfirmTip} loading={addingTip}>{t('billing.confirmAddToCart')}</Button>
             </div>
           </div>

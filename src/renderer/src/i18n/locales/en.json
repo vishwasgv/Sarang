@@ -512,6 +512,18 @@
     "batchExpiresToday": "expires today",
     "batchExpiresIn": "expires in {{days}}d",
     "addTipOrServiceCharge": "Add Tip / Service Charge",
+    "addCharge": "Add Charge",
+    "chargeKindLabel": "Type of charge",
+    "chargeTaxRateLabel": "Tax rate on this charge (%)",
+    "chargeTaxHint": "Charges such as delivery or packing are usually taxed at the same rate as the goods. Ask your accountant if unsure.",
+    "chargeKinds": {
+      "TIP": "Tip / Service charge",
+      "SHIPPING": "Shipping / Delivery",
+      "PACKING": "Packing",
+      "HANDLING": "Handling",
+      "INSTALLATION": "Installation",
+      "OTHER": "Other charge"
+    },
     "tipAmountLabel": "Amount",
     "tipAmountInvalid": "Enter an amount greater than zero.",
     "confirmAddToCart": "Add to Cart",
