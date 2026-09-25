@@ -25,8 +25,27 @@ export interface GstNetPayableReport {
   notes: { code: 'earlierPurchases' | 'setOffLater' | 'composition' | 'stateUnknown'; count?: number }[]
 }
 
-export type GstReportId = 'gstNetPayable'
-export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable']
+export interface PurchaseRegisterRow {
+  kind: 'BILL' | 'DEBIT_NOTE'; date: string; number: string; supplier: string; supplierGstin: string; state: string
+  reverseCharge: boolean; taxable: number; cgst: number; sgst: number; igst: number; tax: number; total: number
+}
+export interface PurchaseRegisterReport {
+  dateFrom: string; dateTo: string; decimals: number
+  rows: PurchaseRegisterRow[]
+  totals: { taxable: number; cgst: number; sgst: number; igst: number; tax: number; total: number }
+  byMonth: { month: string; taxable: number; tax: number }[]
+  stateUnknownCount: number
+}
+export interface PurchaseHsnRow { hsnCode: string; description: string; taxRate: number; quantity: number; taxable: number; cgst: number; sgst: number; igst: number; tax: number }
+export interface PurchaseHsnReport {
+  dateFrom: string; dateTo: string; decimals: number
+  rows: PurchaseHsnRow[]
+  totals: { taxable: number; tax: number }
+  missingHsnCount: number
+}
+
+export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary'
+export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary']
 
 type Fmt = (n: number) => string
 type Cell = string | number | null
@@ -175,7 +194,7 @@ export function GstNetPayableView({ data, fmt }: { data: GstNetPayableReport; fm
   )
 }
 
-export function gstReportExport(_id: GstReportId, data: unknown, t: TFunction, cur: string): { headers: string[]; rows: Cell[][] } {
+function netPayableExport(data: unknown, t: TFunction, cur: string): { headers: string[]; rows: Cell[][] } {
   const d = data as GstNetPayableReport
   const amt = (label: string) => `${label} (${cur})`
   const headers = [t('reports.gst.head'), amt(t('reports.gst.taxOnSales')), amt(t('reports.gst.reverseCharge')), amt(t('reports.gst.inputCredit')), amt(t('reports.gst.netPayable'))]
@@ -189,7 +208,7 @@ export function gstReportExport(_id: GstReportId, data: unknown, t: TFunction, c
   return { headers, rows }
 }
 
-export function gstReportSummary(_id: GstReportId, data: unknown, t: TFunction, fmt: Fmt): { label: string; value: string }[] {
+function netPayableSummary(data: unknown, t: TFunction, fmt: Fmt): { label: string; value: string }[] {
   const d = data as GstNetPayableReport
   return [
     { label: t('reports.gst.taxOnSales'), value: fmt(d.output.total) },
@@ -201,7 +220,7 @@ export function gstReportSummary(_id: GstReportId, data: unknown, t: TFunction, 
 
 type PdfChart = { type: 'bar'; title: string; data: { label: string; value: number; color?: string }[]; valueIsCurrency?: boolean }
 
-export function gstReportCharts(_id: GstReportId, data: unknown, t: TFunction): PdfChart[] {
+function netPayableCharts(data: unknown, t: TFunction): PdfChart[] {
   const d = data as GstNetPayableReport
   return [{
     type: 'bar', title: t('reports.gst.chartTitle'), valueIsCurrency: true,
@@ -212,4 +231,210 @@ export function gstReportCharts(_id: GstReportId, data: unknown, t: TFunction): 
       { label: t('reports.gst.netPayable'), value: d.netPayable.total, color: COLORS.brand }
     ]
   }]
+}
+
+export function PurchaseGstRegisterView({ data, fmt }: { data: PurchaseRegisterReport; fmt: Fmt }) {
+  const { t } = useTranslation()
+  const cards = [
+    { label: t('reports.gst.register.taxable'), value: fmt(data.totals.taxable) },
+    { label: t('reports.gst.register.tax'), value: fmt(data.totals.tax) },
+    { label: t('reports.gst.register.total'), value: fmt(data.totals.total) },
+    { label: t('reports.gst.documents'), value: String(data.rows.length) }
+  ]
+  const chart = data.byMonth.map((m) => ({ name: m.month, [t('reports.gst.register.taxable')]: m.taxable, [t('reports.gst.register.tax')]: m.tax }))
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {cards.map((c) => (
+          <Card key={c.label} padding="md">
+            <div className="text-xs font-semibold text-slate-400 uppercase mb-1">{c.label}</div>
+            <div className="text-xl font-bold text-dark dark:text-slate-100">{c.value}</div>
+          </Card>
+        ))}
+      </div>
+      <div className={cn(PANEL, 'p-5')}>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.gst.register.chartTitle')}</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chart}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Legend />
+            <Bar dataKey={t('reports.gst.register.taxable')} fill={COLORS.brand} />
+            <Bar dataKey={t('reports.gst.register.tax')} fill={COLORS.warning} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={cn(PANEL, 'overflow-x-auto')}>
+        {data.rows.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">{t('reports.gst.register.noRows')}</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400">
+                <th className="px-4 py-3 text-start">{t('common.date')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.document')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.party')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.register.supplierGstin')}</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.register.taxable')}</th>
+                <th className="px-4 py-3 text-end">CGST</th>
+                <th className="px-4 py-3 text-end">SGST</th>
+                <th className="px-4 py-3 text-end">IGST</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.register.total')}</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r, i) => (
+                <tr key={`${r.kind}-${r.number}-${i}`} className="border-b border-slate-50 dark:border-slate-800">
+                  <td className="px-4 py-2.5">{formatDate(r.date)}</td>
+                  <td className="px-4 py-2.5">{t(`reports.gst.register.kind.${r.kind}`)} {r.number}{r.reverseCharge && <Badge variant="warning" className="ms-2">{t('reports.gst.register.rcm')}</Badge>}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{r.supplier}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs">{r.supplierGstin}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.taxable)}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.cgst)}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.sgst)}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.igst)}</td>
+                  <td className="px-4 py-2.5 text-end font-semibold">{fmt(r.total)}</td>
+                </tr>
+              ))}
+              <tr className="font-bold">
+                <td className="px-4 py-3" colSpan={4}>{t('common.total')}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.taxable)}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.cgst)}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.sgst)}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.igst)}</td>
+                <td className="px-4 py-3 text-end">{fmt(data.totals.total)}</td>
+              </tr>
+            </tbody>
+          </table>
+        )}
+      </div>
+      {data.stateUnknownCount > 0 && <p className="text-xs text-slate-500">{t('reports.gst.register.unknownState', { count: data.stateUnknownCount })}</p>}
+    </div>
+  )
+}
+
+export function PurchaseHsnSummaryView({ data, fmt }: { data: PurchaseHsnReport; fmt: Fmt }) {
+  const { t } = useTranslation()
+  const chart = data.rows.slice(0, 12).map((r) => ({ name: r.hsnCode, [t('reports.gst.register.taxable')]: r.taxable }))
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <Card padding="md">
+          <div className="text-xs font-semibold text-slate-400 uppercase mb-1">{t('reports.gst.register.taxable')}</div>
+          <div className="text-xl font-bold text-dark dark:text-slate-100">{fmt(data.totals.taxable)}</div>
+        </Card>
+        <Card padding="md">
+          <div className="text-xs font-semibold text-slate-400 uppercase mb-1">{t('reports.gst.register.tax')}</div>
+          <div className="text-xl font-bold text-dark dark:text-slate-100">{fmt(data.totals.tax)}</div>
+        </Card>
+      </div>
+      <div className={cn(PANEL, 'p-5')}>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.gst.hsn.chartTitle')}</h3>
+        <ResponsiveContainer width="100%" height={280}>
+          <BarChart data={chart}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={false} />
+            <YAxis tick={TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Bar dataKey={t('reports.gst.register.taxable')} fill={COLORS.brand} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={cn(PANEL, 'overflow-x-auto')}>
+        {data.rows.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">{t('reports.gst.hsn.noRows')}</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400">
+                <th className="px-4 py-3 text-start">{t('reports.gst.hsn.code')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.hsn.description')}</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.hsn.rate')}</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.hsn.quantity')}</th>
+                <th className="px-4 py-3 text-end">{t('reports.gst.register.taxable')}</th>
+                <th className="px-4 py-3 text-end">CGST</th>
+                <th className="px-4 py-3 text-end">SGST</th>
+                <th className="px-4 py-3 text-end">IGST</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r) => (
+                <tr key={`${r.hsnCode}-${r.taxRate}`} className="border-b border-slate-50 dark:border-slate-800">
+                  <td className="px-4 py-2.5 font-mono text-xs">{r.hsnCode}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{r.description}</td>
+                  <td className="px-4 py-2.5 text-end">{r.taxRate}</td>
+                  <td className="px-4 py-2.5 text-end">{r.quantity}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.taxable)}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.cgst)}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.sgst)}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.igst)}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+      {data.missingHsnCount > 0 && <p className="text-xs text-slate-500">{t('reports.gst.hsn.missing', { count: data.missingHsnCount })}</p>}
+    </div>
+  )
+}
+
+export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cur: string): { headers: string[]; rows: Cell[][] } {
+  if (id === 'purchaseGstRegister') {
+    const d = data as PurchaseRegisterReport
+    const amt = (l: string) => `${l} (${cur})`
+    return {
+      headers: [t('common.date'), t('reports.gst.document'), t('reports.gst.party'), t('reports.gst.register.supplierGstin'), amt(t('reports.gst.register.taxable')), 'CGST', 'SGST', 'IGST', amt(t('reports.gst.register.total'))],
+      rows: [
+        ...d.rows.map((r): Cell[] => [r.date, `${t(`reports.gst.register.kind.${r.kind}`)} ${r.number}${r.reverseCharge ? ` (${t('reports.gst.register.rcm')})` : ''}`, r.supplier, r.supplierGstin, r.taxable, r.cgst, r.sgst, r.igst, r.total]),
+        [t('common.total'), '', '', '', d.totals.taxable, d.totals.cgst, d.totals.sgst, d.totals.igst, d.totals.total]
+      ]
+    }
+  }
+  if (id === 'purchaseHsnSummary') {
+    const d = data as PurchaseHsnReport
+    return {
+      headers: [t('reports.gst.hsn.code'), t('reports.gst.hsn.description'), t('reports.gst.hsn.rate'), t('reports.gst.hsn.quantity'), `${t('reports.gst.register.taxable')} (${cur})`, 'CGST', 'SGST', 'IGST'],
+      rows: [
+        ...d.rows.map((r): Cell[] => [r.hsnCode, r.description, r.taxRate, r.quantity, r.taxable, r.cgst, r.sgst, r.igst]),
+        [t('common.total'), '', '', '', d.totals.taxable, '', '', '']
+      ]
+    }
+  }
+  return netPayableExport(data, t, cur)
+}
+
+export function gstReportSummary(id: GstReportId, data: unknown, t: TFunction, fmt: Fmt): { label: string; value: string }[] {
+  if (id === 'purchaseGstRegister') {
+    const d = data as PurchaseRegisterReport
+    return [
+      { label: t('reports.gst.register.taxable'), value: fmt(d.totals.taxable) },
+      { label: t('reports.gst.register.tax'), value: fmt(d.totals.tax) },
+      { label: t('reports.gst.register.total'), value: fmt(d.totals.total) }
+    ]
+  }
+  if (id === 'purchaseHsnSummary') {
+    const d = data as PurchaseHsnReport
+    return [
+      { label: t('reports.gst.register.taxable'), value: fmt(d.totals.taxable) },
+      { label: t('reports.gst.register.tax'), value: fmt(d.totals.tax) }
+    ]
+  }
+  return netPayableSummary(data, t, fmt)
+}
+
+export function gstReportCharts(id: GstReportId, data: unknown, t: TFunction): PdfChart[] {
+  if (id === 'purchaseGstRegister') {
+    const d = data as PurchaseRegisterReport
+    if (d.byMonth.length === 0) return []
+    return [{ type: 'bar', title: t('reports.gst.register.chartTitle'), valueIsCurrency: true, data: d.byMonth.map((m) => ({ label: m.month, value: m.taxable, color: COLORS.brand })) }]
+  }
+  if (id === 'purchaseHsnSummary') {
+    const d = data as PurchaseHsnReport
+    if (d.rows.length === 0) return []
+    return [{ type: 'bar', title: t('reports.gst.hsn.chartTitle'), valueIsCurrency: true, data: d.rows.slice(0, 12).map((r) => ({ label: r.hsnCode, value: r.taxable, color: COLORS.brand })) }]
+  }
+  return netPayableCharts(data, t)
 }

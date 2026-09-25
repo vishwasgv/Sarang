@@ -2504,6 +2504,28 @@
       "document": "Document",
       "party": "Supplier",
       "noRows": "No purchases with input credit in this period.",
+      "register": {
+        "type": "Type",
+        "supplierGstin": "Supplier GSTIN",
+        "state": "State",
+        "taxable": "Taxable value",
+        "tax": "Tax",
+        "total": "Total",
+        "rcm": "Reverse charge",
+        "kind": { "BILL": "Bill", "DEBIT_NOTE": "Debit note" },
+        "chartTitle": "Taxable value and tax by month",
+        "noRows": "No purchases in this period.",
+        "unknownState": "{{count}} document(s) have no known supplier state; their tax is shown as CGST + SGST."
+      },
+      "hsn": {
+        "code": "HSN / SAC",
+        "description": "Description",
+        "rate": "Rate %",
+        "quantity": "Quantity",
+        "chartTitle": "Taxable value by HSN code",
+        "noRows": "No purchases in this period.",
+        "missing": "{{count}} taxed line(s) have no HSN code on the product. Add the code on the product to include it here."
+      },
       "source": {
         "BILL": "Supplier bill",
         "PURCHASE_ORDER": "Purchase order",
@@ -2696,6 +2718,14 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "purchaseGstRegister": {
+        "label": "Purchase GST Register",
+        "description": "Every supplier bill and debit note with taxable value and CGST, SGST and IGST, by month"
+      },
+      "purchaseHsnSummary": {
+        "label": "Purchase HSN Summary",
+        "description": "Purchases by HSN code and tax rate with quantity, taxable value and tax, for your return and your accountant"
       },
       "gstNetPayable": {
         "label": "GST Net Payable & Input Credit",

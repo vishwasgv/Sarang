@@ -53,6 +53,8 @@ export const CashFlowStatementReportSchema = DateRangeSchema
 
 export const GstNetPayableReportSchema = DateRangeSchema
 
+export const GstPurchaseReportSchema = DateRangeSchema
+
 // Phase 65 — Reporting Tags / Cost & Profit Centres.
 export const CostCentreTreemapReportSchema = DateRangeSchema
 

@@ -1,6 +1,7 @@
 import { reportService } from '../../services/report.service'
 import { financialStatementsService } from '../../services/financial-statements.service'
 import { gstInputCreditService } from '../../services/gst-input-credit.service'
+import { gstPurchaseReportsService } from '../../services/gst-purchase-reports.service'
 import { requirePermission } from '../permission-guard'
 import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
@@ -8,7 +9,7 @@ import {
   OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema, DiscountReportSchema,
   CashBookReportSchema, TrialBalanceReportSchema, CostCentreTreemapReportSchema, BudgetVsActualReportSchema, StatutoryComplianceSummaryReportSchema, CashFlowProjectionReportSchema, PaymentPerformanceReportSchema,
   ReferralLeaderboardReportSchema, SingleDateSchema,
-  BalanceSheetReportSchema, GeneralLedgerReportSchema, DayBookReportSchema, CashFlowStatementReportSchema, GstNetPayableReportSchema
+  BalanceSheetReportSchema, GeneralLedgerReportSchema, DayBookReportSchema, CashFlowStatementReportSchema, GstNetPayableReportSchema, GstPurchaseReportSchema
 } from '../../validation/report.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -150,6 +151,22 @@ export function register(handle: HandleFn): void {
     const parsed = GstNetPayableReportSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await gstInputCreditService.generateGstNetPayable(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:purchaseGstRegister', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = GstPurchaseReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await gstPurchaseReportsService.generatePurchaseRegister(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:purchaseHsnSummary', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = GstPurchaseReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await gstPurchaseReportsService.generatePurchaseHsnSummary(parsed.data)
     return { success: true, data }
   })
 

@@ -51,7 +51,7 @@ import {
   FINANCIAL_STATEMENT_IDS, financialStatementExport, financialStatementSummary, financialStatementCharts,
   type FinancialStatementId
 } from './FinancialStatementViews'
-import { GstNetPayableView, GST_REPORT_IDS, gstReportExport, gstReportSummary, gstReportCharts, type GstReportId } from './GstReportViews'
+import { GstNetPayableView, PurchaseGstRegisterView, PurchaseHsnSummaryView, GST_REPORT_IDS, gstReportExport, gstReportSummary, gstReportCharts, type GstReportId } from './GstReportViews'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (local duplicates — avoids cross-boundary imports from main process)
@@ -963,7 +963,7 @@ type ReportChart =
 
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
-  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'gstNetPayable' | 'audit' | 'backup'
+  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'audit' | 'backup'
   | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'orderChannelBreakdown' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'donationToIssueCycleTime' | 'jewellery'
@@ -1098,6 +1098,8 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'dayBook', icon: <CalendarDays size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'cashFlowStatement', icon: <ArrowRightLeft size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'gstNetPayable', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'purchaseGstRegister', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'purchaseHsnSummary', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -1653,6 +1655,12 @@ export function ReportsScreen() {
           break
         case 'gstNetPayable':
           res = await window.api.reports.gstNetPayable({ dateFrom, dateTo })
+          break
+        case 'purchaseGstRegister':
+          res = await window.api.reports.purchaseGstRegister({ dateFrom, dateTo })
+          break
+        case 'purchaseHsnSummary':
+          res = await window.api.reports.purchaseHsnSummary({ dateFrom, dateTo })
           break
         case 'audit':
           res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: 1, limit: AUDIT_PAGE_SIZE })
@@ -5771,6 +5779,8 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange, onOpenLedger 
     case 'dayBook': return <DayBookView data={data as React.ComponentProps<typeof DayBookView>['data']} fmt={fmt} />
     case 'cashFlowStatement': return <CashFlowStatementView data={data as React.ComponentProps<typeof CashFlowStatementView>['data']} fmt={fmt} />
     case 'gstNetPayable': return <GstNetPayableView data={data as React.ComponentProps<typeof GstNetPayableView>['data']} fmt={fmt} />
+    case 'purchaseGstRegister': return <PurchaseGstRegisterView data={data as React.ComponentProps<typeof PurchaseGstRegisterView>['data']} fmt={fmt} />
+    case 'purchaseHsnSummary': return <PurchaseHsnSummaryView data={data as React.ComponentProps<typeof PurchaseHsnSummaryView>['data']} fmt={fmt} />
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />
