@@ -37,7 +37,7 @@ describe('budgetService.create', () => {
     const result = await budgetService.create({ costCentreId: 'cc-1', periodYear: 2026, periodMonth: 8, amount: 50000 }, 'user-1')
     expect(result.success).toBe(true)
     expect(db.budget.create).toHaveBeenCalledWith({
-      data: { costCentreId: 'cc-1', accountId: null, periodYear: 2026, periodMonth: 8, amount: 50000, notes: null, createdById: 'user-1' }
+      data: { costCentreId: 'cc-1', accountId: null, periodYear: 2026, periodMonth: 8, amount: 50000, notes: null, scenario: 'Base', createdById: 'user-1' }
     })
   })
 
@@ -116,7 +116,7 @@ describe('budgetService.list', () => {
     const result = await budgetService.list({ periodYear: 2026, periodMonth: 8, costCentreId: 'cc-1' })
     expect(result.success).toBe(true)
     expect(db.budget.findMany).toHaveBeenCalledWith(expect.objectContaining({
-      where: { periodYear: 2026, periodMonth: 8, costCentreId: 'cc-1' }
+      where: { scenario: 'Base', periodYear: 2026, periodMonth: 8, costCentreId: 'cc-1' }
     }))
   })
 })

@@ -2395,6 +2395,14 @@
     }
   },
   "budgets": {
+    "scenario": {
+      "label": "Plan",
+      "base": "Base plan",
+      "copy": "New what-if plan",
+      "namePlaceholder": "Plan name",
+      "percent": "Change in percent",
+      "created": "What-if plan created"
+    },
     "title": "Budgets",
     "subtitle": "Plan a monthly figure per cost centre or account, then compare it against real spend",
     "newBudget": "New Budget",

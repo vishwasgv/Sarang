@@ -166,8 +166,10 @@ export interface IpcChannels {
   }
   // Phase 65 — Budget vs. Actual.
   budgets: {
-    list: (payload?: { periodYear?: number; periodMonth?: number; costCentreId?: string }) => Promise<ApiResponse>
-    create: (payload: { costCentreId?: string; accountId?: string; periodYear: number; periodMonth: number; amount: number; notes?: string }) => Promise<ApiResponse>
+    scenarios: () => Promise<ApiResponse>
+    copyScenario: (payload: { from: string; to: string; percent: number }) => Promise<ApiResponse>
+    list: (payload?: { periodYear?: number; periodMonth?: number; costCentreId?: string; scenario?: string }) => Promise<ApiResponse>
+    create: (payload: { costCentreId?: string; accountId?: string; periodYear: number; periodMonth: number; amount: number; notes?: string; scenario?: string }) => Promise<ApiResponse>
     update: (payload: { id: string; amount?: number; notes?: string }) => Promise<ApiResponse>
     delete: (payload: { id: string }) => Promise<ApiResponse>
   }
@@ -534,7 +536,7 @@ export interface IpcChannels {
     vatReturn: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     generic: (payload: { id: string; dateFrom?: string; dateTo?: string; asOf?: string }) => Promise<ApiResponse>
     costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
-    budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
+    budgetVsActual: (payload: { periodYear: number; periodMonth: number; scenario?: string }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     cashFlowProjection: (payload?: { daysBack?: number; daysForward?: number }) => Promise<ApiResponse>
     cashPositionTrend: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>

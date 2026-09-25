@@ -99,6 +99,8 @@ const api: IpcChannels = {
     update: (p) => invoke('customFields:update', p)
   },
   budgets: {
+    scenarios: () => invoke('budgets:scenarios'),
+    copyScenario: (p) => invoke('budgets:copyScenario', p),
     list: (p) => invoke('budgets:list', p),
     create: (p) => invoke('budgets:create', p),
     update: (p) => invoke('budgets:update', p),

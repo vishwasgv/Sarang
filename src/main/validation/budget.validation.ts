@@ -11,6 +11,7 @@ export const CreateBudgetSchema = z.object({
   periodMonth: z.number().int().min(1).max(12),
   amount: z.number().finite().positive('Budget amount must be greater than zero'),
   notes: z.string().max(500).optional(),
+  scenario: z.string().min(1).max(40).optional(),
 })
 
 export const UpdateBudgetSchema = z.object({
@@ -27,7 +28,14 @@ export const ListBudgetsSchema = z.object({
   periodYear: z.number().int().optional(),
   periodMonth: z.number().int().optional(),
   costCentreId: z.string().optional(),
+  scenario: z.string().optional(),
 }).optional()
+
+export const CopyBudgetScenarioSchema = z.object({
+  from: z.string().min(1).max(40),
+  to: z.string().min(1).max(40),
+  percent: z.number().finite()
+})
 
 export type CreateBudgetPayload = z.infer<typeof CreateBudgetSchema>
 export type UpdateBudgetPayload = z.infer<typeof UpdateBudgetSchema>

@@ -62,7 +62,8 @@ export const CostCentreTreemapReportSchema = DateRangeSchema
 // monthly granularity), not a date range.
 export const BudgetVsActualReportSchema = z.object({
   periodYear: z.number().int().min(2000).max(2100),
-  periodMonth: z.number().int().min(1).max(12)
+  periodMonth: z.number().int().min(1).max(12),
+  scenario: z.string().max(40).optional()
 })
 
 // Phase 65 — Statutory (PF/ESI/PT) Summary Report, same monthly granularity

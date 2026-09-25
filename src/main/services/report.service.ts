@@ -1515,13 +1515,13 @@ export interface BudgetVsActualReport { periodYear: number; periodMonth: number;
 // by account — see Budget's own schema comment), actual sums every
 // EXPENSE-type line in scope, matching this report's real-world use
 // ("budget vs. real spend"), not revenue.
-async function generateBudgetVsActualReport(params: { periodYear: number; periodMonth: number }): Promise<BudgetVsActualReport> {
+async function generateBudgetVsActualReport(params: { periodYear: number; periodMonth: number; scenario?: string }): Promise<BudgetVsActualReport> {
   const db = getPrisma()
   const from = new Date(params.periodYear, params.periodMonth - 1, 1)
   const to = new Date(params.periodYear, params.periodMonth, 0, 23, 59, 59, 999)
 
   const budgets = await db.budget.findMany({
-    where: { periodYear: params.periodYear, periodMonth: params.periodMonth },
+    where: { periodYear: params.periodYear, periodMonth: params.periodMonth, scenario: params.scenario ?? 'Base' },
     include: { costCentre: { select: { id: true, name: true } }, account: { select: { id: true, accountName: true, accountType: true } } }
   })
   if (budgets.length === 0) return { periodYear: params.periodYear, periodMonth: params.periodMonth, rows: [] }

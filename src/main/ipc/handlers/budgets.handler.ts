@@ -1,7 +1,7 @@
 import { budgetService } from '../../services/budget.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
-import { CreateBudgetSchema, UpdateBudgetSchema, DeleteBudgetSchema, ListBudgetsSchema } from '../../validation/budget.validation'
+import { CreateBudgetSchema, UpdateBudgetSchema, DeleteBudgetSchema, ListBudgetsSchema, CopyBudgetScenarioSchema } from '../../validation/budget.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -15,6 +15,18 @@ export function register(handle: HandleFn): void {
     const parsed = ListBudgetsSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return budgetService.list(parsed.data)
+  })
+
+  handle('budgets:scenarios', async () => {
+    const deny = await requirePermission('budgets.view'); if (deny) return deny
+    return budgetService.scenarios()
+  })
+
+  handle('budgets:copyScenario', async (payload) => {
+    const deny = await requirePermission('budgets.manage'); if (deny) return deny
+    const parsed = CopyBudgetScenarioSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    return budgetService.copyScenario(parsed.data, getCurrentSession()?.userId)
   })
 
   handle('budgets:create', async (payload) => {

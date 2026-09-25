@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react'
+import { BudgetScenarioBar } from './BudgetScenarioBar'
 import { useTranslation } from 'react-i18next'
 import { PiggyBank, Plus, RefreshCw, ChevronLeft, ChevronRight, Trash2 } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer } from 'recharts'
@@ -43,13 +44,21 @@ export function BudgetsScreen() {
   const [loading, setLoading] = useState(true)
   const [showCreate, setShowCreate] = useState(false)
   const [editTarget, setEditTarget] = useState<Budget | null>(null)
+  const [scenario, setScenario] = useState('Base')
+  const [scenarios, setScenarios] = useState<string[]>(['Base'])
+
+  const loadScenarios = useCallback(async () => {
+    const res = await window.api.budgets.scenarios()
+    if (res.success && res.data) setScenarios(res.data as string[])
+  }, [])
+  useEffect(() => { void loadScenarios() }, [loadScenarios])
 
   const load = useCallback(async () => {
     setLoading(true)
     try {
       const [budgetRes, actualRes] = await Promise.all([
-        window.api.budgets.list({ periodYear: period.year, periodMonth: period.month }),
-        window.api.reports.budgetVsActual({ periodYear: period.year, periodMonth: period.month })
+        window.api.budgets.list({ periodYear: period.year, periodMonth: period.month, scenario }),
+        window.api.reports.budgetVsActual({ periodYear: period.year, periodMonth: period.month, scenario })
       ])
       if (budgetRes.success && budgetRes.data) setBudgets(budgetRes.data as Budget[])
       else toastError(t('common.error'), t('budgets.couldNotLoad'))
@@ -59,7 +68,7 @@ export function BudgetsScreen() {
     } finally {
       setLoading(false)
     }
-  }, [period, toastError, t])
+  }, [period, scenario, toastError, t])
 
   useEffect(() => { load() }, [load])
 
@@ -108,6 +117,11 @@ export function BudgetsScreen() {
             )}
           </div>
         </div>
+      </div>
+
+      <div className="px-6 py-3 border-b border-slate-100 dark:border-slate-800 bg-white dark:bg-slate-900">
+        <BudgetScenarioBar scenarios={scenarios} scenario={scenario} canManage={canManage} onChange={setScenario}
+          onCreated={(name) => { void loadScenarios(); setScenario(name) }} />
       </div>
 
       <div className="flex-1 overflow-auto dark:bg-slate-950 p-6">
@@ -184,7 +198,7 @@ export function BudgetsScreen() {
       </div>
 
       {showCreate && (
-        <BudgetFormModal period={period} costCentres={costCentres} accounts={accounts} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load() }} />
+        <BudgetFormModal scenario={scenario} period={period} costCentres={costCentres} accounts={accounts} onClose={() => setShowCreate(false)} onSaved={() => { setShowCreate(false); load() }} />
       )}
       {editTarget && (
         <BudgetFormModal budget={editTarget} period={period} costCentres={costCentres} accounts={accounts} onClose={() => setEditTarget(null)} onSaved={() => { setEditTarget(null); load() }} />
@@ -193,8 +207,8 @@ export function BudgetsScreen() {
   )
 }
 
-function BudgetFormModal({ budget, period, costCentres, accounts, onClose, onSaved }: {
-  budget?: Budget; period: { year: number; month: number }
+function BudgetFormModal({ budget, scenario, period, costCentres, accounts, onClose, onSaved }: {
+  budget?: Budget; scenario?: string; period: { year: number; month: number }
   costCentres: CostCentre[]; accounts: Account[]
   onClose: () => void; onSaved: () => void
 }) {
@@ -214,7 +228,7 @@ function BudgetFormModal({ budget, period, costCentres, accounts, onClose, onSav
         ? await window.api.budgets.update({ id: budget.id, amount, notes: notes.trim() || undefined })
         : await window.api.budgets.create({
             costCentreId: costCentreId || undefined, accountId: accountId || undefined,
-            periodYear: period.year, periodMonth: period.month, amount, notes: notes.trim() || undefined
+            periodYear: period.year, periodMonth: period.month, amount, notes: notes.trim() || undefined, scenario
           })
       if (!res.success) { toastError(t('common.error'), t('budgets.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
