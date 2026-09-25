@@ -285,6 +285,11 @@ const api: IpcChannels = {
     get: (p) => invoke('stockJournals:get', p),
     create: (p) => invoke('stockJournals:create', p)
   },
+  customKpis: {
+    list: () => invoke('customKpis:list'),
+    add: (p) => invoke('customKpis:add', p),
+    remove: (p) => invoke('customKpis:remove', p)
+  },
   voucherClasses: {
     list: () => invoke('voucherClasses:list'),
     save: (p) => invoke('voucherClasses:save', p),

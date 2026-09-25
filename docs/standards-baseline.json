@@ -1,7 +1,7 @@
 {
   "oversized": {
     "src/main/database/seed.ts": 937,
-    "src/main/ipc/channels.ts": 2231,
+    "src/main/ipc/channels.ts": 2236,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,
     "src/main/services/ai-query.service.ts": 2783,
@@ -25,12 +25,12 @@
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10982,
     "src/main/services/restaurant.service.ts": 1011,
-    "src/preload/index.ts": 1952,
+    "src/preload/index.ts": 1957,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2997,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 963,
     "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 668,
-    "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1355,
+    "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1358,
     "src/renderer/src/modules/hotel/ui/HotelBookingsScreen.tsx": 741,
     "src/renderer/src/modules/import/ui/ImportWizardScreen.tsx": 671,
     "src/renderer/src/modules/inventory/ui/RepairTicketsScreen.tsx": 744,

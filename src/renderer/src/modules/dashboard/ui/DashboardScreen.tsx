@@ -18,6 +18,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { DashboardCustomize } from './DashboardCustomize'
+import { CustomKpiRow } from './CustomKpiRow'
 import { DASHBOARD_SECTIONS, dashboardHiddenKey, parseHiddenSections, toggleSection, type DashboardSection } from '../dashboard-sections.util'
 import { useIndustryStore } from '@app/store/industry.store'
 import { usePatientNoun } from '@shared/hooks/usePatientNoun'
@@ -576,6 +577,8 @@ export function DashboardScreen() {
           ))}
         </div>
       )}
+
+      {canViewRevenue && showSection('kpis') && <CustomKpiRow />}
 
       {/* ─── Revenue Chart + Top Products ────────────────────────────── */}
       {canViewRevenue && showSection('revenue') && (

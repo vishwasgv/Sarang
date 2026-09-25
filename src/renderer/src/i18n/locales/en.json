@@ -209,6 +209,23 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "customKpi": {
+      "add": "Add your own tile",
+      "namePlaceholder": "Tile name",
+      "metrics": {
+        "SALES_TOTAL": "Sales",
+        "INVOICE_COUNT": "Number of invoices",
+        "EXPENSE_TOTAL": "Expenses",
+        "PURCHASES_TOTAL": "Supplier bills",
+        "NEW_CUSTOMERS": "New customers"
+      },
+      "periods": {
+        "TODAY": "Today",
+        "WEEK": "This week",
+        "MONTH": "This month",
+        "YEAR": "This year"
+      }
+    },
     "customize": {
       "button": "Customise",
       "hint": "Choose what to show on your dashboard.",

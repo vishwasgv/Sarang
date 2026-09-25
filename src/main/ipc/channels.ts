@@ -362,6 +362,11 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     create: (payload: { notes?: string; lines: Array<{ kind: 'OUT' | 'IN'; productId: string; quantity: number }> }) => Promise<ApiResponse>
   }
+  customKpis: {
+    list: () => Promise<ApiResponse>
+    add: (payload: { name: string; metric: string; period: string }) => Promise<ApiResponse>
+    remove: (payload: { id: string }) => Promise<ApiResponse>
+  }
   voucherClasses: {
     list: () => Promise<ApiResponse>
     save: (payload: { name: string; narration?: string; lines: Array<{ accountId: string; side: 'DEBIT' | 'CREDIT'; remarks?: string }> }) => Promise<ApiResponse>
