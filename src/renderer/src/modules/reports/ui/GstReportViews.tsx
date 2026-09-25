@@ -54,8 +54,20 @@ export interface TdsReport {
   missingPanCount: number
 }
 
-export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted'
-export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary', 'tdsDeducted']
+export interface Gstr9Amounts { taxable: number; igst: number; cgst: number; sgst: number }
+export interface Gstr9Report {
+  dateFrom: string; dateTo: string; decimals: number
+  table4: { b2b: Gstr9Amounts; b2c: Gstr9Amounts; creditNotes: Gstr9Amounts; total: Gstr9Amounts }
+  table5: { nilRated: number; exempt: number; nonGst: number }
+  table6: { inputs: TaxHeads; reverseCharge: TaxHeads; total: TaxHeads }
+  table9: { payable: TaxHeads; paidFromCredit: number; paidInCash: number }
+  table17: { hsnCode: string; description: string; uqc: string; quantity: number; taxable: number; tax: number }[]
+  table18: PurchaseHsnRow[]
+  notes: ('financialYearDates' | 'accountantCheck')[]
+}
+
+export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted' | 'gstr9Data'
+export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary', 'tdsDeducted', 'gstr9Data']
 
 type Fmt = (n: number) => string
 type Cell = string | number | null
@@ -470,6 +482,104 @@ export function TdsDeductedView({ data, fmt }: { data: TdsReport; fmt: Fmt }) {
   )
 }
 
+
+function gstr9Rows(d: Gstr9Report, t: TFunction): { section: string; label: string; taxable: number | null; igst: number | null; cgst: number | null; sgst: number | null }[] {
+  const a = (section: string, label: string, x: Gstr9Amounts) => ({ section, label, taxable: x.taxable, igst: x.igst, cgst: x.cgst, sgst: x.sgst })
+  const h = (section: string, label: string, x: TaxHeads) => ({ section, label, taxable: null, igst: x.igst, cgst: x.cgst, sgst: x.sgst })
+  const only = (section: string, label: string, v: number) => ({ section, label, taxable: v, igst: null, cgst: null, sgst: null })
+  return [
+    a(t('reports.gst.gstr9.t4'), t('reports.gst.gstr9.b2b'), d.table4.b2b),
+    a(t('reports.gst.gstr9.t4'), t('reports.gst.gstr9.b2c'), d.table4.b2c),
+    a(t('reports.gst.gstr9.t4'), t('reports.gst.gstr9.creditNotes'), d.table4.creditNotes),
+    a(t('reports.gst.gstr9.t4'), t('common.total'), d.table4.total),
+    only(t('reports.gst.gstr9.t5'), t('reports.gst.gstr9.nilRated'), d.table5.nilRated),
+    only(t('reports.gst.gstr9.t5'), t('reports.gst.gstr9.exempt'), d.table5.exempt),
+    only(t('reports.gst.gstr9.t5'), t('reports.gst.gstr9.nonGst'), d.table5.nonGst),
+    h(t('reports.gst.gstr9.t6'), t('reports.gst.gstr9.inputs'), d.table6.inputs),
+    h(t('reports.gst.gstr9.t6'), t('reports.gst.reverseCharge'), d.table6.reverseCharge),
+    h(t('reports.gst.gstr9.t6'), t('common.total'), d.table6.total),
+    h(t('reports.gst.gstr9.t9'), t('reports.gst.gstr9.payable'), d.table9.payable)
+  ]
+}
+
+export function Gstr9View({ data, fmt }: { data: Gstr9Report; fmt: Fmt }) {
+  const { t } = useTranslation()
+  const tax4 = data.table4.total.igst + data.table4.total.cgst + data.table4.total.sgst
+  const cards = [
+    { label: t('reports.gst.gstr9.outwardTaxable'), value: fmt(data.table4.total.taxable) },
+    { label: t('reports.gst.gstr9.taxPayable'), value: fmt(data.table9.payable.total) },
+    { label: t('reports.gst.gstr9.itcAvailed'), value: fmt(data.table6.total.total) },
+    { label: t('reports.gst.gstr9.paid'), value: fmt(data.table9.paidFromCredit + data.table9.paidInCash) }
+  ]
+  const chart = [
+    { name: t('reports.gst.gstr9.b2b'), v: data.table4.b2b.taxable },
+    { name: t('reports.gst.gstr9.b2c'), v: data.table4.b2c.taxable },
+    { name: t('reports.gst.gstr9.nilRated'), v: data.table5.nilRated },
+    { name: t('reports.gst.gstr9.exempt'), v: data.table5.exempt },
+    { name: t('reports.gst.gstr9.nonGst'), v: data.table5.nonGst }
+  ].map((x) => ({ name: x.name, [t('reports.gst.register.taxable')]: x.v }))
+  const rows = gstr9Rows(data, t)
+  const cell = (v: number | null) => (v === null ? '' : fmt(v))
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+        {cards.map((c) => (
+          <Card key={c.label} padding="md">
+            <div className="text-xs font-semibold text-slate-400 uppercase mb-1">{c.label}</div>
+            <div className="text-xl font-bold text-dark dark:text-slate-100">{c.value}</div>
+          </Card>
+        ))}
+      </div>
+      <div className={cn(PANEL, 'p-5')}>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.gst.gstr9.chartTitle')}</h3>
+        <ResponsiveContainer width="100%" height={260}>
+          <BarChart data={chart}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={false} interval={0} />
+            <YAxis tick={TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(v: number) => fmt(v)} />
+            <Bar dataKey={t('reports.gst.register.taxable')} fill={COLORS.brand} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={cn(PANEL, 'overflow-x-auto')}>
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400">
+              <th className="px-4 py-3 text-start">{t('reports.gst.gstr9.table')}</th>
+              <th className="px-4 py-3 text-start">{t('reports.gst.gstr9.item')}</th>
+              <th className="px-4 py-3 text-end">{t('reports.gst.register.taxable')}</th>
+              <th className="px-4 py-3 text-end">IGST</th>
+              <th className="px-4 py-3 text-end">CGST</th>
+              <th className="px-4 py-3 text-end">SGST</th>
+            </tr>
+          </thead>
+          <tbody>
+            {rows.map((r, i) => (
+              <tr key={i} className="border-b border-slate-50 dark:border-slate-800">
+                <td className="px-4 py-2.5 text-slate-500">{r.section}</td>
+                <td className="px-4 py-2.5">{r.label}</td>
+                <td className="px-4 py-2.5 text-end">{cell(r.taxable)}</td>
+                <td className="px-4 py-2.5 text-end">{cell(r.igst)}</td>
+                <td className="px-4 py-2.5 text-end">{cell(r.cgst)}</td>
+                <td className="px-4 py-2.5 text-end">{cell(r.sgst)}</td>
+              </tr>
+            ))}
+            <tr>
+              <td className="px-4 py-2.5 text-slate-500">{t('reports.gst.gstr9.t9')}</td>
+              <td className="px-4 py-2.5" colSpan={5}>{t('reports.gst.gstr9.paidLine', { credit: fmt(data.table9.paidFromCredit), cash: fmt(data.table9.paidInCash) })}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+      <p className="text-xs text-slate-500">{t('reports.gst.gstr9.tableHsn', { outward: data.table17.length, inward: data.table18.length, tax: fmt(tax4) })}</p>
+      <ul className="text-xs text-slate-500 dark:text-slate-400 space-y-1 list-disc ps-5">
+        {data.notes.map((c) => <li key={c}>{t(`reports.gst.gstr9.note.${c}`)}</li>)}
+      </ul>
+    </div>
+  )
+}
+
 export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cur: string): { headers: string[]; rows: Cell[][] } {
   if (id === 'purchaseGstRegister') {
     const d = data as PurchaseRegisterReport
@@ -479,6 +589,20 @@ export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cu
       rows: [
         ...d.rows.map((r): Cell[] => [r.date, `${t(`reports.gst.register.kind.${r.kind}`)} ${r.number}${r.reverseCharge ? ` (${t('reports.gst.register.rcm')})` : ''}`, r.supplier, r.supplierGstin, r.taxable, r.cgst, r.sgst, r.igst, r.total]),
         [t('common.total'), '', '', '', d.totals.taxable, d.totals.cgst, d.totals.sgst, d.totals.igst, d.totals.total]
+      ]
+    }
+  }
+  if (id === 'gstr9Data') {
+    const d = data as Gstr9Report
+    const num = (v: number | null): Cell => (v === null ? '' : v)
+    return {
+      headers: [t('reports.gst.gstr9.table'), t('reports.gst.gstr9.item'), `${t('reports.gst.register.taxable')} (${cur})`, 'IGST', 'CGST', 'SGST'],
+      rows: [
+        ...gstr9Rows(d, t).map((r): Cell[] => [r.section, r.label, num(r.taxable), num(r.igst), num(r.cgst), num(r.sgst)]),
+        [t('reports.gst.gstr9.t9'), t('reports.gst.gstr9.paidFromCredit'), d.table9.paidFromCredit, '', '', ''],
+        [t('reports.gst.gstr9.t9'), t('reports.gst.gstr9.paidInCash'), d.table9.paidInCash, '', '', ''],
+        ...d.table17.map((r): Cell[] => [t('reports.gst.gstr9.t17'), `${r.hsnCode} ${r.description}`, r.taxable, '', '', '']),
+        ...d.table18.map((r): Cell[] => [t('reports.gst.gstr9.t18'), `${r.hsnCode} ${r.description}`, r.taxable, r.igst, r.cgst, r.sgst])
       ]
     }
   }
@@ -515,6 +639,14 @@ export function gstReportSummary(id: GstReportId, data: unknown, t: TFunction, f
       { label: t('reports.gst.register.total'), value: fmt(d.totals.total) }
     ]
   }
+  if (id === 'gstr9Data') {
+    const d = data as Gstr9Report
+    return [
+      { label: t('reports.gst.gstr9.outwardTaxable'), value: fmt(d.table4.total.taxable) },
+      { label: t('reports.gst.gstr9.taxPayable'), value: fmt(d.table9.payable.total) },
+      { label: t('reports.gst.gstr9.itcAvailed'), value: fmt(d.table6.total.total) }
+    ]
+  }
   if (id === 'tdsDeducted') {
     const d = data as TdsReport
     return [
@@ -538,6 +670,16 @@ export function gstReportCharts(id: GstReportId, data: unknown, t: TFunction): P
     const d = data as PurchaseRegisterReport
     if (d.byMonth.length === 0) return []
     return [{ type: 'bar', title: t('reports.gst.register.chartTitle'), valueIsCurrency: true, data: d.byMonth.map((m) => ({ label: m.month, value: m.taxable, color: COLORS.brand })) }]
+  }
+  if (id === 'gstr9Data') {
+    const d = data as Gstr9Report
+    return [{ type: 'bar', title: t('reports.gst.gstr9.chartTitle'), valueIsCurrency: true, data: [
+      { label: t('reports.gst.gstr9.b2b'), value: d.table4.b2b.taxable, color: COLORS.brand },
+      { label: t('reports.gst.gstr9.b2c'), value: d.table4.b2c.taxable, color: COLORS.brand },
+      { label: t('reports.gst.gstr9.nilRated'), value: d.table5.nilRated, color: COLORS.warning },
+      { label: t('reports.gst.gstr9.exempt'), value: d.table5.exempt, color: COLORS.warning },
+      { label: t('reports.gst.gstr9.nonGst'), value: d.table5.nonGst, color: COLORS.warning }
+    ] }]
   }
   if (id === 'tdsDeducted') {
     const d = data as TdsReport

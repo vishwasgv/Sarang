@@ -2555,6 +2555,37 @@
         "noRows": "No purchases in this period.",
         "unknownState": "{{count}} document(s) have no known supplier state; their tax is shown as CGST + SGST."
       },
+      "gstr9": {
+        "table": "Table",
+        "item": "Item",
+        "t4": "4 Outward supplies (taxable)",
+        "t5": "5 Outward supplies (no tax)",
+        "t6": "6 Input tax credit",
+        "t9": "9 Tax payable and paid",
+        "t17": "17 Outward HSN",
+        "t18": "18 Inward HSN",
+        "b2b": "To registered buyers",
+        "b2c": "To other buyers",
+        "creditNotes": "Credit notes to registered buyers",
+        "nilRated": "Nil rated",
+        "exempt": "Exempt",
+        "nonGst": "Not GST",
+        "inputs": "Inputs and services",
+        "payable": "Tax payable",
+        "paidFromCredit": "Paid from input credit",
+        "paidInCash": "Paid in cash or bank",
+        "paidLine": "Paid: {{credit}} from input credit, {{cash}} in cash or bank",
+        "outwardTaxable": "Outward taxable value",
+        "taxPayable": "Tax payable",
+        "itcAvailed": "Input credit availed",
+        "paid": "Tax paid",
+        "chartTitle": "Outward supplies by kind",
+        "tableHsn": "HSN summary rows: {{outward}} outward, {{inward}} inward (see the export). Tax on outward supplies: {{tax}}.",
+        "note": {
+          "financialYearDates": "Figures come from your books for the dates chosen. Use 1 April to 31 March for a financial year.",
+          "accountantCheck": "Amendments, differences with GSTR-1 and GSTR-3B, and items from other years must be checked by your accountant before filing."
+        }
+      },
       "tds": {
         "deducted": "Tax deducted",
         "amountPaid": "Amount paid",
@@ -2769,6 +2800,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "gstr9Data": {
+        "label": "GSTR-9 Annual Data",
+        "description": "A financial year laid out under the annual return's tables: outward supplies, nil and exempt, input credit, tax payable and paid, and HSN summaries"
       },
       "tdsDeducted": {
         "label": "TDS Deducted",

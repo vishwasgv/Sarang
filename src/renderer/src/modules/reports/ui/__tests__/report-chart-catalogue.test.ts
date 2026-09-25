@@ -50,7 +50,7 @@ describe('report chart catalogue', () => {
   const catalogue = reportCatalogue()
 
   it('finds the full report catalogue in ReportContent', () => {
-    expect(catalogue.length).toBeGreaterThanOrEqual(181)
+    expect(catalogue.length).toBeGreaterThanOrEqual(182)
     expect(new Set(catalogue.map(c => c.id)).size).toBe(catalogue.length)
   })
 
