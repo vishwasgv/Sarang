@@ -7861,6 +7861,10 @@
       "deleteFailedMessage": "Could not delete carrier."
     },
     "shipments": {
+      "printLabels": "Print labels",
+      "trackButton": "Track",
+      "label": { "from": "From", "to": "TO", "tracking": "Tracking", "carrier": "Carrier", "weight": "Weight", "package": "Package", "of": "of", "eway": "e-way bill" },
+      "track": { "PENDING": "Created", "READY": "Ready", "IN_TRANSIT": "In transit", "OUT_FOR_DELIVERY": "Out for delivery", "DELIVERED": "Delivered", "RETURNED": "This shipment was returned.", "CANCELLED": "This shipment was cancelled.", "expected": "Expected by {{date}}" },
       "title": "Shipments",
       "newShipment": "+ New Shipment",
       "searchPlaceholder": "Shipment / customer / tracking...",

@@ -10,6 +10,8 @@ import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 
+import { printShippingLabels, ShipmentTracking } from './ShipmentExtras'
+
 interface ShipmentListItem {
   id: string; shipmentNumber: string; shipmentType: string; referenceType: string | null; referenceNumber: string | null
   originAddress: string | null; destinationAddress: string; customerName: string | null; supplierName: string | null
@@ -17,6 +19,7 @@ interface ShipmentListItem {
   status: string; scheduledDate: string | null; expectedDelivery: string | null; deliveredAt: string | null
   challanNumber: string | null; ewayBillNumber: string | null; vehicleNumber: string | null; notes: string | null
   createdAt: string; updatedAt: string
+  readyAt?: string | null; inTransitAt?: string | null; outForDeliveryAt?: string | null
 }
 
 interface Vehicle { id: string; vehicleNumber: string; driverName: string | null; status: string }
@@ -66,6 +69,7 @@ export default function ShipmentsScreen() {
   const [shipments, setShipments] = useState<ShipmentListItem[]>([])
   const [deleteTarget, setDeleteTarget] = useState<ShipmentListItem | null>(null)
   const [deleting, setDeleting] = useState(false)
+  const [trackingId, setTrackingId] = useState<string | null>(null)
   const [statusChangingId, setStatusChangingId] = useState<string | null>(null)
   const [cancelTarget, setCancelTarget] = useState<ShipmentListItem | null>(null)
   const [cancelling, setCancelling] = useState(false)
@@ -94,6 +98,7 @@ export default function ShipmentsScreen() {
   const [appliedFrom, setAppliedFrom] = useState('')
   const [appliedTo, setAppliedTo] = useState('')
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
+  const businessName = useBusinessStore(s => s.profile?.businessName ?? '')
   const PAGE_SIZE = 100
   const [limit, setLimit] = useState(PAGE_SIZE)
   const [total, setTotal] = useState(0)
@@ -391,7 +396,10 @@ export default function ShipmentsScreen() {
                   <button onClick={() => setDeleteTarget(s)} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>
                 )}
                 <button onClick={() => printShipment(s)} className="text-xs text-gray-500 hover:underline">{t('common.print')}</button>
+                <button onClick={() => printShippingLabels(s, { from: t('logistics.shipments.label.from'), to: t('logistics.shipments.label.to'), tracking: t('logistics.shipments.label.tracking'), carrier: t('logistics.shipments.label.carrier'), weight: t('logistics.shipments.label.weight'), package: t('logistics.shipments.label.package'), of: t('logistics.shipments.label.of'), eway: t('logistics.shipments.label.eway') }, businessName)} className="text-xs text-gray-500 hover:underline">{t('logistics.shipments.printLabels')}</button>
+                <button onClick={() => setTrackingId(trackingId === s.id ? null : s.id)} className="text-xs text-gray-500 hover:underline">{t('logistics.shipments.trackButton')}</button>
               </div>
+              {trackingId === s.id && <ShipmentTracking shipment={s} />}
             </Card>
           ))}
         </div>
