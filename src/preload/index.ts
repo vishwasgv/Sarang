@@ -282,7 +282,8 @@ const api: IpcChannels = {
   },
   gstReturns: {
     exportGstr1: (p) => invoke('gstReturns:exportGstr1', p),
-    exportGstr3b: (p) => invoke('gstReturns:exportGstr3b', p)
+    exportGstr3b: (p) => invoke('gstReturns:exportGstr3b', p),
+    reconcile: () => invoke('gstReturns:reconcile')
   },
   gstPayments: {
     record: (p) => invoke('gstPayments:record', p),

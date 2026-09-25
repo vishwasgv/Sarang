@@ -1723,6 +1723,29 @@
       "gstr3bTitle": "GSTR-3B (summary)",
       "gstr3bHelp": "Tax on sales, reverse-charge tax, inter-state supplies to unregistered buyers and your input tax credit.",
       "download": "Download file",
+      "reconTitle": "Match with the GST portal (GSTR-2B / 2A)",
+      "reconHelp": "Choose the purchase file you downloaded from the GST portal. Sarang matches it with your supplier bills by supplier GSTIN and invoice number, and shows what is missing on either side.",
+      "reconChoose": "Choose the file",
+      "claimable": "Credit the portal allows on matched bills",
+      "atRisk": "Credit on bills the supplier has not reported",
+      "colStatus": "Result",
+      "colSupplier": "Supplier",
+      "colInvoice": "Invoice",
+      "colPortalTax": "Portal tax",
+      "colBooksTax": "Your tax",
+      "colBill": "Your bill",
+      "status": {
+        "MATCHED": "Matched",
+        "MISMATCH": "Amounts differ",
+        "MISSING_IN_BOOKS": "Not in your books",
+        "MISSING_IN_PORTAL": "Not on the portal",
+        "REVIEW": "Credit note, check"
+      },
+      "note": {
+        "notClaimable": "portal marks the credit as not claimable",
+        "creditNote": "supplier credit note",
+        "noInvoiceNumber": "add the supplier invoice number on the bill"
+      },
       "saved": "File saved",
       "couldNotPrepare": "Could not prepare the file.",
       "disclaimer": "These files are drafts made from your books. Open them in the GST portal's offline tool, check every figure with your accountant, and file from the portal. Sarang does not send anything to the government."

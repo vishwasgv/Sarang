@@ -360,6 +360,7 @@ export interface IpcChannels {
   gstReturns: {
     exportGstr1: (payload: { month: string }) => Promise<ApiResponse>
     exportGstr3b: (payload: { month: string }) => Promise<ApiResponse>
+    reconcile: () => Promise<ApiResponse>
   }
   gstPayments: {
     record: (payload: unknown) => Promise<ApiResponse>
