@@ -433,6 +433,7 @@
     "referenceNumber": "Reference Number (optional)",
     "salesperson": "Salesperson",
     "noSalesperson": "No salesperson",
+    "ewayThresholdAlert": "This sale is above {{amount}}. If you are sending goods, an e-way bill may be needed. Confirm with your accountant.",
     "ewayBillNumber": "E-way Bill Number (optional)",
     "foreignCurrency": {
       "toggle": "Bill in foreign currency",

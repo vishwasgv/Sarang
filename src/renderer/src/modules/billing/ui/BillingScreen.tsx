@@ -1,3 +1,4 @@
+import { showIndiaFeatures } from '@taxpresets'
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -132,6 +133,9 @@ const ORDER_CHANNELS = [
   { value: 'OTHER', label: 'Other App' }
 ] as const
 
+// Goods moved worth more than this usually need an e-way bill (rule for India; states can differ inside the state).
+const EWAY_BILL_THRESHOLD = 50000
+
 function computeTotals(items: CartItem[], globalDiscount: number, ctx: MoneyContext, customerTaxExempt = false, pricesIncludeTax = false) {
   return computeCartTotals(items, globalDiscount, ctx, customerTaxExempt, pricesIncludeTax)
 }
@@ -190,6 +194,7 @@ export function BillingScreen() {
   const furnitureTradeInEnabled = isModuleEnabled('trade_in_exchange')
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const businessCountry = useBusinessStore(s => s.profile?.country)
 
   // Area pricing state: productId → { l, w, open }
   const [areaCalc, setAreaCalc] = useState<Record<string, { l: string; w: string; open: boolean }>>({})
@@ -2391,6 +2396,9 @@ export function BillingScreen() {
               placeholder={t('billing.ewayBillNumber')}
               className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
             />
+            {showIndiaFeatures(businessCountry) && taxModel === 'GST' && totals.totalAmount >= EWAY_BILL_THRESHOLD && !ewayBillNumber.trim() && (
+              <p className="text-xs text-amber-700 mt-1">{t('billing.ewayThresholdAlert', { amount: formatCurrency(EWAY_BILL_THRESHOLD) })}</p>
+            )}
           </div>
 
           {salespeople.length > 0 && (
