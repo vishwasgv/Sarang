@@ -7435,6 +7435,12 @@ model CustomFieldDefinition {
   fieldName     String
   fieldType     String // TEXT | NUMBER | DATE | SELECT
   selectOptions String? // JSON-string array, only meaningful when fieldType == SELECT
+  // Rules the owner can set on the field (see custom-field-rules.util.ts).
+  isRequired    Boolean  @default(false)
+  minValue      Float? // NUMBER only
+  maxValue      Float? // NUMBER only
+  pattern       String? // TEXT only: regular expression the value must match
+  patternHint   String? // message shown when the pattern does not match
   isActive      Boolean  @default(true)
   displayOrder  Int      @default(0)
   createdAt     DateTime @default(now())

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../../../services/custom-field.service', () => ({ customFieldService: { checkValues: vi.fn().mockResolvedValue(null) } }))
 vi.mock('../../permission-guard', () => ({ requirePermission: vi.fn() }))
 vi.mock('../../../services/customer.service', () => ({
   listCustomers: vi.fn(),

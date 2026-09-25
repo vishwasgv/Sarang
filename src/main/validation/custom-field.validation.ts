@@ -21,6 +21,11 @@ export const CreateCustomFieldDefinitionSchema = z.object({
   fieldType: z.enum(CUSTOM_FIELD_TYPES),
   selectOptions: z.array(z.string().min(1)).max(50).optional(),
   displayOrder: z.number().int().optional(),
+  isRequired: z.boolean().optional(),
+  minValue: z.number().finite().nullable().optional(),
+  maxValue: z.number().finite().nullable().optional(),
+  pattern: z.string().max(200).nullable().optional(),
+  patternHint: z.string().max(120).nullable().optional(),
 }).refine((v) => v.fieldType !== 'SELECT' || (v.selectOptions && v.selectOptions.length > 0), {
   message: 'A SELECT field needs at least one option', path: ['selectOptions']
 })
@@ -31,6 +36,11 @@ export const UpdateCustomFieldDefinitionSchema = z.object({
   selectOptions: z.array(z.string().min(1)).max(50).optional(),
   isActive: z.boolean().optional(),
   displayOrder: z.number().int().optional(),
+  isRequired: z.boolean().optional(),
+  minValue: z.number().finite().nullable().optional(),
+  maxValue: z.number().finite().nullable().optional(),
+  pattern: z.string().max(200).nullable().optional(),
+  patternHint: z.string().max(120).nullable().optional(),
 })
 
 export const ListCustomFieldDefinitionsSchema = z.object({

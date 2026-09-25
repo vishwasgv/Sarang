@@ -1,4 +1,5 @@
 import * as supplierService from '../../services/supplier.service'
+import { customFieldService } from '../../services/custom-field.service'
 import { supplierLedgerService } from '../../services/supplier-ledger.service'
 import { requirePermission } from '../permission-guard'
 import { CreateSupplierSchema, UpdateSupplierSchema } from '../../validation/supplier.validation'
@@ -30,6 +31,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('suppliers.create'); if (deny) return deny
     const parsed = CreateSupplierSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    const cfBad = await customFieldService.checkValues('SUPPLIER', parsed.data.customFields, true); if (cfBad) return cfBad
     return supplierService.createSupplier(parsed.data)
   })
 
@@ -37,6 +39,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('suppliers.update'); if (deny) return deny
     const parsed = UpdateSupplierSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    const cfBad = await customFieldService.checkValues('SUPPLIER', parsed.data.customFields, false); if (cfBad) return cfBad
     return supplierService.updateSupplier(parsed.data)
   })
 

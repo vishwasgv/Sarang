@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { validateCustomFieldValues, type FieldRuleDefinition } from './custom-field-rules.util'
 import { logAction } from './audit.service'
 import type { CreateCustomFieldDefinitionPayload, UpdateCustomFieldDefinitionPayload } from '../validation/custom-field.validation'
 
@@ -28,6 +29,11 @@ export const customFieldService = {
         fieldType: payload.fieldType,
         selectOptions: payload.selectOptions ? JSON.stringify(payload.selectOptions) : null,
         displayOrder: payload.displayOrder ?? 0,
+        isRequired: payload.isRequired ?? false,
+        minValue: payload.minValue ?? null,
+        maxValue: payload.maxValue ?? null,
+        pattern: payload.pattern?.trim() || null,
+        patternHint: payload.patternHint?.trim() || null
       }
     })
     await logAction({ userId, action: 'CUSTOM_FIELD_DEFINITION_CREATE', entityType: 'CustomFieldDefinition', entityId: created.id, newValue: created })
@@ -43,9 +49,25 @@ export const customFieldService = {
     if (payload.selectOptions !== undefined) data.selectOptions = JSON.stringify(payload.selectOptions)
     if (payload.isActive !== undefined) data.isActive = payload.isActive
     if (payload.displayOrder !== undefined) data.displayOrder = payload.displayOrder
+    if (payload.isRequired !== undefined) data.isRequired = payload.isRequired
+    if (payload.minValue !== undefined) data.minValue = payload.minValue
+    if (payload.maxValue !== undefined) data.maxValue = payload.maxValue
+    if (payload.pattern !== undefined) data.pattern = payload.pattern?.trim() || null
+    if (payload.patternHint !== undefined) data.patternHint = payload.patternHint?.trim() || null
     const updated = await db.customFieldDefinition.update({ where: { id: payload.id }, data })
     await logAction({ userId, action: 'CUSTOM_FIELD_DEFINITION_UPDATE', entityType: 'CustomFieldDefinition', entityId: payload.id, oldValue: existing, newValue: updated })
     return { success: true, data: serializeDefinition(updated) }
+  },
+
+  /**
+   * Checks custom field values against the owner's rules. Returns an error response to hand straight back,
+   * or null when everything is fine. Used by the create/update handlers of the five entities.
+   */
+  async checkValues(entityType: string, values: Record<string, string | number> | undefined, mustBeComplete: boolean) {
+    const rows = await getPrisma().customFieldDefinition.findMany({ where: { entityType, isActive: true } })
+    if (rows.length === 0) return null
+    const message = validateCustomFieldValues(rows.map(serializeDefinition) as unknown as FieldRuleDefinition[], values, mustBeComplete)
+    return message ? { success: false, error: { code: 'CF-010', message } } : null
   }
 }
 

@@ -2437,6 +2437,14 @@
     }
   },
   "customFields": {
+    "rules": {
+      "required": "This field must be filled in",
+      "min": "Smallest allowed number",
+      "max": "Largest allowed number",
+      "pattern": "Format the value must match (optional)",
+      "patternHint": "Message to show when it does not match",
+      "patternPlaceholder": "For example ^[A-Z]{5}[0-9]{4}[A-Z]$"
+    },
     "title": "Custom Fields",
     "subtitle": "Add your own fields to invoices, customers, suppliers, products, or expenses",
     "entity": {

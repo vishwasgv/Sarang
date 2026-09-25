@@ -1,4 +1,5 @@
 import * as productService from '../../services/product.service'
+import { customFieldService } from '../../services/custom-field.service'
 import * as categoryService from '../../services/category.service'
 import * as barcodeService from '../../services/barcode.service'
 import { kitService } from '../../services/kit.service'
@@ -40,6 +41,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('products.create'); if (deny) return deny
     const parsed = CreateProductSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    const cfBad = await customFieldService.checkValues('PRODUCT', parsed.data.customFields, true); if (cfBad) return cfBad
     return productService.createProduct(parsed.data)
   })
 
@@ -47,6 +49,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('products.update'); if (deny) return deny
     const parsed = UpdateProductSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    const cfBad = await customFieldService.checkValues('PRODUCT', parsed.data.customFields, false); if (cfBad) return cfBad
     return productService.updateProduct(parsed.data)
   })
 

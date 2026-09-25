@@ -1,4 +1,5 @@
 import { app, BrowserWindow } from 'electron'
+import { customFieldService } from '../../services/custom-field.service'
 import { afterCreate } from '../../services/workflow-rule.service'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
@@ -83,6 +84,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('billing.createInvoice'); if (deny) return deny
     const parsed = CreateInvoiceSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const cfBad = await customFieldService.checkValues('INVOICE', parsed.data.customFields, true); if (cfBad) return cfBad
     return afterCreate('INVOICE_CREATED', await billingService.createInvoice(parsed.data, getCurrentSession()?.userId))
   })
 

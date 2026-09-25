@@ -1,4 +1,5 @@
 import * as customerService from '../../services/customer.service'
+import { customFieldService } from '../../services/custom-field.service'
 import { requirePermission } from '../permission-guard'
 import { CreateCustomerSchema, UpdateCustomerSchema } from '../../validation/customer.validation'
 
@@ -33,6 +34,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('customers.create'); if (deny) return deny
     const parsed = CreateCustomerSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid data.' } }
+    const cfBad = await customFieldService.checkValues('CUSTOMER', parsed.data.customFields, true); if (cfBad) return cfBad
     return customerService.createCustomer(parsed.data)
   })
 
@@ -55,6 +57,7 @@ export function register(handle: HandleFn): void {
       if (creditDeny) return creditDeny
     }
 
+    const cfBad = await customFieldService.checkValues('CUSTOMER', parsed.data.customFields, false); if (cfBad) return cfBad
     return customerService.updateCustomer(parsed.data)
   })
 

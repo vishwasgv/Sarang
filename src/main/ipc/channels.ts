@@ -161,8 +161,8 @@ export interface IpcChannels {
   // Phase 66 — Custom Fields.
   customFields: {
     list: (payload?: { entityType?: string; activeOnly?: boolean }) => Promise<ApiResponse>
-    create: (payload: { entityType: string; fieldName: string; fieldType: string; selectOptions?: string[]; displayOrder?: number }) => Promise<ApiResponse>
-    update: (payload: { id: string; fieldName?: string; selectOptions?: string[]; isActive?: boolean; displayOrder?: number }) => Promise<ApiResponse>
+    create: (payload: { entityType: string; fieldName: string; fieldType: string; selectOptions?: string[]; displayOrder?: number; isRequired?: boolean; minValue?: number | null; maxValue?: number | null; pattern?: string | null; patternHint?: string | null }) => Promise<ApiResponse>
+    update: (payload: { id: string; fieldName?: string; selectOptions?: string[]; isActive?: boolean; displayOrder?: number; isRequired?: boolean; minValue?: number | null; maxValue?: number | null; pattern?: string | null; patternHint?: string | null }) => Promise<ApiResponse>
   }
   // Phase 65 — Budget vs. Actual.
   budgets: {

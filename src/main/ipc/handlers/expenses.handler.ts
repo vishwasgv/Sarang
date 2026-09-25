@@ -1,4 +1,5 @@
 import * as expenseService from '../../services/expense.service'
+import { customFieldService } from '../../services/custom-field.service'
 import { afterCreate } from '../../services/workflow-rule.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
@@ -25,6 +26,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('expenses.create'); if (deny) return deny
     const parsed = CreateExpenseSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const cfBad = await customFieldService.checkValues('EXPENSE', parsed.data.customFields, true); if (cfBad) return cfBad
     return afterCreate('EXPENSE_CREATED', await expenseService.createExpense(parsed.data, getCurrentSession()?.userId))
   })
 
@@ -32,6 +34,7 @@ export function register(handle: HandleFn): void {
     const deny = await requirePermission('expenses.modify'); if (deny) return deny
     const parsed = UpdateExpenseSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const cfBad = await customFieldService.checkValues('EXPENSE', parsed.data.customFields, false); if (cfBad) return cfBad
     return expenseService.updateExpense(parsed.data, getCurrentSession()?.userId)
   })
 

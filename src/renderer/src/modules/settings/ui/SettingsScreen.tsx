@@ -1,5 +1,6 @@
 import { ScheduledReportsCard } from '@modules/reports/scheduled/ScheduledReportsCard'
 import { StockRulesCard } from './StockRulesCard'
+import { CustomFieldRulesEditor, EMPTY_RULES, rulesPayload, type FieldRulesForm } from './CustomFieldRulesEditor'
 import { WorkflowRulesCard } from './WorkflowRulesCard'
 import { StaleRatesCard } from './StaleRatesCard'
 import React, { useState, useEffect, useCallback } from 'react'
@@ -237,6 +238,7 @@ function TutorialSection() {
 interface CustomFieldDefinition {
   id: string; entityType: string; fieldName: string; fieldType: string
   selectOptions: string[] | null; isActive: boolean; displayOrder: number
+  isRequired?: boolean; minValue?: number | null; maxValue?: number | null; pattern?: string | null; patternHint?: string | null
 }
 
 const CUSTOM_FIELD_ENTITY_TYPES = ['INVOICE', 'CUSTOMER', 'SUPPLIER', 'PRODUCT', 'EXPENSE'] as const
@@ -251,6 +253,7 @@ function CustomFieldsSection() {
   const [showModal, setShowModal] = useState(false)
   const [editTarget, setEditTarget] = useState<CustomFieldDefinition | null>(null)
   const [form, setForm] = useState({ fieldName: '', fieldType: 'TEXT' as typeof CUSTOM_FIELD_TYPES[number], selectOptions: [''] })
+  const [rules, setRules] = useState<FieldRulesForm>(EMPTY_RULES)
   const [saving, setSaving] = useState(false)
 
   const load = useCallback(async () => {
@@ -271,12 +274,14 @@ function CustomFieldsSection() {
   function openCreate() {
     setEditTarget(null)
     setForm({ fieldName: '', fieldType: 'TEXT', selectOptions: [''] })
+    setRules(EMPTY_RULES)
     setShowModal(true)
   }
 
   function openEdit(field: CustomFieldDefinition) {
     setEditTarget(field)
     setForm({ fieldName: field.fieldName, fieldType: field.fieldType as typeof CUSTOM_FIELD_TYPES[number], selectOptions: field.selectOptions?.length ? field.selectOptions : [''] })
+    setRules({ isRequired: !!field.isRequired, minValue: field.minValue == null ? '' : String(field.minValue), maxValue: field.maxValue == null ? '' : String(field.maxValue), pattern: field.pattern ?? '', patternHint: field.patternHint ?? '' })
     setShowModal(true)
   }
 
@@ -287,8 +292,8 @@ function CustomFieldsSection() {
     setSaving(true)
     try {
       const res = editTarget
-        ? await api.customFields.update({ id: editTarget.id, fieldName: form.fieldName.trim(), selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined })
-        : await api.customFields.create({ entityType, fieldName: form.fieldName.trim(), fieldType: form.fieldType, selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined })
+        ? await api.customFields.update({ id: editTarget.id, fieldName: form.fieldName.trim(), selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined, ...rulesPayload(editTarget.fieldType, rules) })
+        : await api.customFields.create({ entityType, fieldName: form.fieldName.trim(), fieldType: form.fieldType, selectOptions: form.fieldType === 'SELECT' ? cleanOptions : undefined, ...rulesPayload(form.fieldType, rules) })
       if (!res.success) { toastError(t('common.error'), t('customFields.couldNotSave')); return }
       toastSuccess(t('common.saveChanges'), '')
       setShowModal(false)
@@ -401,6 +406,7 @@ function CustomFieldsSection() {
                   </div>
                 </div>
               )}
+              <CustomFieldRulesEditor fieldType={editTarget ? editTarget.fieldType : form.fieldType} value={rules} onChange={setRules} />
             </div>
             <div className="flex justify-end gap-3 pt-2">
               <Button variant="ghost" size="sm" onClick={() => setShowModal(false)} disabled={saving}>{t('common.cancel')}</Button>
