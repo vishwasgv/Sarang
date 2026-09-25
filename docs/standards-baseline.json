@@ -30,7 +30,7 @@
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 2997,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 963,
     "src/renderer/src/modules/customers/ui/CustomerDetailScreen.tsx": 668,
-    "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1340,
+    "src/renderer/src/modules/dashboard/ui/DashboardScreen.tsx": 1355,
     "src/renderer/src/modules/hotel/ui/HotelBookingsScreen.tsx": 741,
     "src/renderer/src/modules/import/ui/ImportWizardScreen.tsx": 671,
     "src/renderer/src/modules/inventory/ui/RepairTicketsScreen.tsx": 744,

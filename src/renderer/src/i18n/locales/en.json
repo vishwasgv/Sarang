@@ -209,6 +209,18 @@
   },
   "dashboard": {
     "title": "Dashboard",
+    "customize": {
+      "button": "Customise",
+      "hint": "Choose what to show on your dashboard.",
+      "sections": {
+        "ask": "Ask Sarang box",
+        "kpis": "Key numbers",
+        "revenue": "Revenue and top products",
+        "outstanding": "Outstanding and stock health",
+        "activity": "Recent activity",
+        "quick": "Quick actions"
+      }
+    },
     "loadFailedMessage": "Failed to load dashboard data.",
     "trendLoadFailedMessage": "Failed to load revenue trend.",
     "spotlight": {

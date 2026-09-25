@@ -17,6 +17,8 @@ import {
 import { motion, AnimatePresence } from 'framer-motion'
 import { useBusinessStore } from '@app/store/business.store'
 import { useAuthStore } from '@app/store/auth.store'
+import { DashboardCustomize } from './DashboardCustomize'
+import { DASHBOARD_SECTIONS, dashboardHiddenKey, parseHiddenSections, toggleSection, type DashboardSection } from '../dashboard-sections.util'
 import { useIndustryStore } from '@app/store/industry.store'
 import { usePatientNoun } from '@shared/hooks/usePatientNoun'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -139,6 +141,16 @@ export function DashboardScreen() {
     () => localStorage.getItem('sarang-onboarding-dismissed') === '1'
   )
   const [aiQuestion, setAiQuestion] = useState('')
+  const userId = useAuthStore((s) => s.user?.id)
+  const [hiddenSections, setHiddenSections] = useState<DashboardSection[]>(() => {
+    try { return parseHiddenSections(localStorage.getItem(dashboardHiddenKey(userId))) } catch { return [] }
+  })
+  const toggleDashSection = (section: DashboardSection) => {
+    const next = toggleSection(hiddenSections, section)
+    setHiddenSections(next)
+    try { localStorage.setItem(dashboardHiddenKey(userId), JSON.stringify(next)) } catch { /* not persisted */ }
+  }
+  const showSection = (section: DashboardSection) => !hiddenSections.includes(section)
 
   // Permissions
   const canViewRevenue = hasPermission('analytics.viewRevenue')
@@ -340,11 +352,14 @@ export function DashboardScreen() {
             <p className="text-sm text-slate-400">{t('dashboard.title')} — {new Date().toLocaleDateString(undefined, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' })}</p>
           </div>
         </div>
+        <div className="flex items-center gap-2">
+        <DashboardCustomize hidden={hiddenSections} onToggle={toggleDashSection} />
         <button onClick={() => loadAll(true)} disabled={loading}
           className="flex items-center gap-2 px-3 py-1.5 rounded-xl border border-slate-200 dark:border-slate-700 text-sm text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors disabled:opacity-50">
           <RefreshCw size={13} className={cn(loading && 'animate-spin')} />
           {t('common.refresh')}
         </button>
+        </div>
       </div>
 
       {/* ─── Ask Sarang (AI Assistant entry point) ───────────────────────
@@ -354,7 +369,7 @@ export function DashboardScreen() {
           question right here; the answer renders on the dedicated AI
           Assistant screen (handleAskFromDashboard hands the question over
           via router state). */}
-      {canUseAi && (
+      {canUseAi && showSection('ask') && (
         <form onSubmit={handleAskFromDashboard}
           className="w-full flex items-center gap-3 bg-gradient-to-r from-brand/10 to-brand/5 border border-brand/20 rounded-xl p-3 focus-within:border-brand/40 transition-colors">
           <div className="w-10 h-10 rounded-xl bg-brand/20 flex items-center justify-center shrink-0">
@@ -548,7 +563,7 @@ export function DashboardScreen() {
       )}
 
       {/* ─── KPI Grid ────────────────────────────────────────────────── */}
-      {loading ? (
+      {!showSection('kpis') ? null : loading ? (
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
           {Array.from({ length: 10 }).map((_, i) => (
             <SkeletonCard key={i} />
@@ -563,7 +578,7 @@ export function DashboardScreen() {
       )}
 
       {/* ─── Revenue Chart + Top Products ────────────────────────────── */}
-      {canViewRevenue && (
+      {canViewRevenue && showSection('revenue') && (
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Revenue trend with global date filter */}
           <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
@@ -667,7 +682,7 @@ export function DashboardScreen() {
       )}
 
       {/* ─── Analytics Row: Outstanding + Inventory Health ───────────── */}
-      {(canViewRevenue || canViewInventory) && kpis && (
+      {(canViewRevenue || canViewInventory) && kpis && showSection('outstanding') && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
 
           {/* Outstanding Analytics */}
@@ -760,7 +775,7 @@ export function DashboardScreen() {
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
 
         {/* Recent Activity */}
-        <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+        {showSection('activity') && <div className="lg:col-span-2 bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
           <div className="flex items-center gap-2 mb-4">
             <Activity size={14} className="text-brand" />
             <h3 className="text-sm font-semibold text-dark dark:text-slate-100">{t('audit.title')}</h3>
@@ -783,10 +798,10 @@ export function DashboardScreen() {
               ))}
             </div>
           )}
-        </div>
+        </div>}
 
         {/* Quick Actions + Industry Spotlight */}
-        <div className="space-y-4">
+        {showSection('quick') && <div className="space-y-4">
           <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
             <div className="flex items-center gap-2 mb-4">
               <Zap size={14} className="text-brand" />
@@ -811,7 +826,7 @@ export function DashboardScreen() {
           </div>
 
           <IndustrySpotlight bizType={bizType} kpis={kpis} fmt={fmt} topCategories={topCategories} canViewRevenue={canViewRevenue} canViewInventory={canViewInventory} spotlight={verticalSpotlight} />
-        </div>
+        </div>}
       </div>
 
       {/* ─── Aszurex footer ──────────────────────────────────────────── */}
