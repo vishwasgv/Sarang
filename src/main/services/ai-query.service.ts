@@ -42,6 +42,7 @@ import { landedCostService } from './landed-cost.service'
 import { formatAmountForSpeech, refreshAiNumberFormat } from './ai-format.util'
 import type { AIProvider, AIIntentResult } from './ai-provider'
 import { NodeLlamaProvider } from './ai-llama-provider'
+import { BOOKS_TEMPLATES, BOOKS_FAST_PATHS, type BooksFastPath } from './ai-books-templates'
 
 const FALLBACK_MESSAGE = 'I could not find enough information in your local database to answer that question.'
 const REFUSAL_MESSAGE = "I can only answer questions about your own business's sales, inventory, customers, suppliers, credit, and profit data — I can't help with legal, tax, medical, investment, or compliance advice, or anything outside your business records."
@@ -109,7 +110,9 @@ function formatDeterministicAnswer(result: TemplateResult): string {
 // (now itself faster after the grammar-simplification fix earlier the same
 // day). This is the same "deterministic first, model as fallback" shape
 // already proven for the out-of-scope safety net above.
-const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
+const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[]; capture?: BooksFastPath['capture'] }> = [
+  // Books, tax, supplier bills and fixed help answers live in ai-books-templates.ts; they are checked first so the narrower question wins.
+  ...BOOKS_FAST_PATHS,
   { template: 'sales.totalToday', patterns: [/\btoday'?s?\s+sales?\b/i, /how much.*(sold|sell|sale).*today/i, /today.*(sold|sell)/i] },
   { template: 'sales.totalThisWeek', patterns: [/\bthis week'?s?\s+sales?\b/i, /(sold|sell|sale).*this week/i] },
   // Checked BEFORE sales.totalThisMonth below — "walk-in versus registered
@@ -543,17 +546,20 @@ const FAST_PATH_PATTERNS: Array<{ template: string; patterns: RegExp[] }> = [
   { template: 'inventory.productByNameOrSku', patterns: [/\bhow (?:many|much)\s+(?!customers?\b|suppliers?\b|vendors?\b|employees?\b|staff\b|products?\b|invoices?\b|orders?\b|users?\b|quotations?\b|bills?\b).+?\s+(?:do i have|i have|is left|are left|in stock|remaining|do we have|we have)\b/i] }
 ]
 
-function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
+export function tryFastPathClassify(question: string, availableTemplates: readonly string[]): AIIntentResult | null {
   for (const entry of FAST_PATH_PATTERNS) {
     if (!availableTemplates.includes(entry.template)) continue
     if (entry.patterns.some((p) => p.test(question))) {
-      return { template: entry.template, category: categoryOf(entry.template), params: {} }
+      const params: Record<string, unknown> = {}
+      const captured = entry.capture ? question.match(entry.capture.pattern) : null
+      if (entry.capture && captured?.[1]) params[entry.capture.param] = captured[1].trim()
+      return { template: entry.template, category: categoryOf(entry.template), params }
     }
   }
   return null
 }
 
-const STATIC_CATEGORY_PREFIXES = new Set(['sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals', 'purchasing', 'kits', 'locations', 'costCentres', 'budgets', 'cashFlow', 'payments', 'payroll'])
+const STATIC_CATEGORY_PREFIXES = new Set(['help', 'sales', 'inventory', 'customers', 'suppliers', 'credit', 'finance', 'staff', 'documents', 'meta', 'ledger', 'salesOrders', 'pricing', 'invoiceTemplate', 'approvals', 'purchasing', 'kits', 'locations', 'costCentres', 'budgets', 'cashFlow', 'payments', 'payroll'])
 function categoryOf(template: string): string {
   const prefix = template.split('.')[0]
   return STATIC_CATEGORY_PREFIXES.has(prefix) ? prefix : 'vertical'
@@ -1135,6 +1141,9 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
           // a real, pre-existing gap across 4 phases, closed here.
           'I can also cover bank balances and reconciliation, sales orders and price lists, cost centres and budgets, cash-flow projections, and who\'s slow to pay — e.g. "how is Downtown doing this month?" or "which customers are slowest to pay?"',
           'I can also look up one specific invoice, customer, supplier, or product by name or number — e.g. "Look up invoice INV-2026-000123"',
+          'I can also answer questions about your books and tax — the balance sheet, cash flow, day book, the balance of any account, whether your books balance, net tax payable and input tax credit (worded for your own tax type), and TDS kept back by customers',
+          'I can list supplier bills that are overdue, due this week, or open by supplier; pending WhatsApp reminders; quotations about to expire; credit and debit notes with and without tax; and your top salesperson',
+          'If something is not working as you expect, ask me why — for example "why is my stock not updating after a GRN?" or "why is tax not added?" — and I will explain the usual causes',
           // Phase 66 — Custom Fields is a Settings-level, opt-in mechanism
           // (add your own fields to invoices/customers/suppliers/products/
           // expenses) rather than a business-record query with a natural
@@ -2590,6 +2599,9 @@ const TEMPLATE_CATALOG: Record<string, TemplateDef> = {
       }
     }
   }
+,
+  // Books, tax, supplier bills, reminders and fixed help answers (ai-books-templates.ts). Same names replace the older versions above.
+  ...BOOKS_TEMPLATES
 }
 
 let provider: AIProvider | null = null

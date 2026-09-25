@@ -4,7 +4,7 @@
     "src/main/ipc/channels.ts": 2269,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,
-    "src/main/services/ai-query.service.ts": 2783,
+    "src/main/services/ai-query.service.ts": 2795,
     "src/main/services/ai-vertical-templates.service.ts": 2171,
     "src/main/services/analytics.service.ts": 819,
     "src/main/services/appointment.service.ts": 800,

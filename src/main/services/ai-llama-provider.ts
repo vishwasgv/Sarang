@@ -25,6 +25,7 @@ function getModelPath(): string {
 // here so the full static catalog is visible in one place; update alongside
 // ai-query.service.ts's TEMPLATE_CATALOG if templates are added/removed.
 export const INTENT_TEMPLATE_NAMES = [
+  // Books, tax, supplier bills and fixed help answers are listed in ai-books-templates.ts (BOOKS_TEMPLATES).
   'sales.totalToday', 'sales.totalThisWeek', 'sales.totalThisMonth',
   'sales.averageInvoiceValue', 'sales.compareToPreviousPeriod',
   'inventory.lowStock', 'inventory.deadStock', 'inventory.topRevenueProducts', 'inventory.bottomRevenueProducts',

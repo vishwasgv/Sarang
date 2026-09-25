@@ -32,6 +32,24 @@ interface ChatMessage {
   manualSuggestions?: ManualChapterRef[]
 }
 
+// Tap-to-ask examples, one from each area Ask Sarang can answer. English only, like Ask Sarang itself.
+const EXAMPLE_QUESTIONS = [
+  'How much did I sell today?',
+  "What's low on stock?",
+  'Who owes me money?',
+  'What needs my attention?',
+  'Show me the balance sheet',
+  'Are my books balanced?',
+  'How much GST do I have to pay this month?',
+  'Which supplier bills are overdue?',
+  'Bills due this week',
+  'Who is my top salesperson this month?',
+  'How many reminders are pending?',
+  'Why is my stock not updating after a GRN?',
+  'How do I reverse a payment?',
+  'What can you do?'
+]
+
 export function AiAssistantScreen() {
   const [messages, setMessages] = useState<ChatMessage[]>([])
   const [question, setQuestion] = useState('')
@@ -202,10 +220,16 @@ export function AiAssistantScreen() {
               <Sparkles size={36} className="mb-3 text-slate-300" />
               <p className="font-medium text-slate-500 dark:text-slate-400">Ask Your Business.</p>
               <p className="text-sm mt-1 max-w-sm">
-                Try "How much did I sell today?", "What's low on stock?", "Who owes me money?",
-                "What needs my attention?", "How do I create an invoice?", or "What can you do?" —
-                answered entirely on this device, never sent anywhere.
+                Tap a question to ask it. Everything is answered on this device and never sent anywhere.
               </p>
+              <div className="mt-4 flex flex-wrap justify-center gap-2 max-w-xl">
+                {EXAMPLE_QUESTIONS.map((q) => (
+                  <button key={q} onClick={() => handleAsk(q)} disabled={asking}
+                    className="px-3 py-1.5 rounded-full border border-slate-200 dark:border-slate-700 text-xs text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand disabled:opacity-50">
+                    {q}
+                  </button>
+                ))}
+              </div>
             </div>
           )}
           {messages.map((m, i) => (
