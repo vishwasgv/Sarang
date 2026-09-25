@@ -12,7 +12,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { api } from '@renderer/services/ipc-client'
 import { CURRENCIES } from '@shared/utils/currency.util'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
-import { getTaxPreset, resolveCountryCode } from '@taxpresets'
+import { getTaxPreset, resolveCountryCode, TAX_COUNTRY_NAMES } from '@taxpresets'
 import { useTaxNumberField } from '@shared/hooks/useTaxNumberField'
 
 const BUSINESS_TYPES = [
@@ -557,9 +557,11 @@ function RegionStep() {
         label="Country"
         placeholder="e.g. India"
         required
+        list="country-options"
         error={errors.country?.message}
         {...register('country', { onBlur: handleCountryBlur })}
       />
+      <datalist id="country-options">{TAX_COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}</datalist>
       {autoSuggested && (
         <motion.div
           initial={{ opacity: 0, y: -4 }}

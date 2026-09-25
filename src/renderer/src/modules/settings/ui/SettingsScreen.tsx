@@ -26,7 +26,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
 import { TutorialStartModal } from '@shared/ui/organisms/TutorialStartModal'
 import { useTaxNumberField } from '@shared/hooks/useTaxNumberField'
-import { isIndiaCountry, resolveCountryCode } from '@taxpresets'
+import { isIndiaCountry, resolveCountryCode, showIndiaFeatures, TAX_COUNTRY_NAMES } from '@taxpresets'
 
 interface SettingsSection {
   id: string
@@ -522,7 +522,7 @@ interface BPProfile {
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
   const { t } = useTranslation()
   // India-only fields (GST scheme, UPI) are hidden when the business country is another recognised country.
-  const showIndiaFields = !profile?.country || isIndiaCountry(profile.country) || !resolveCountryCode(profile.country)
+  const showIndiaFields = showIndiaFeatures(profile?.country)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -765,6 +765,8 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
                 statutory head is never suggested. Not businessType-gated —
                 unlike Manufacturing overhead, any business with employees
                 can use Payroll. */}
+            {showIndiaFields && (
+              <>
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">PF Rate (% of Basic Salary)</label>
               <input type="number" min="0" max="100" step="0.01" value={form.statutoryPfPercent}
@@ -785,6 +787,8 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
               <input type="number" min="0" step="0.01" value={form.statutoryProfessionalTax}
                 onChange={e => setForm(f => ({ ...f, statutoryProfessionalTax: e.target.value }))} placeholder="e.g. 200" className={inputCls} />
             </div>
+              </>
+            )}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Phone</label>
               <input type="tel" value={form.phone} onChange={e => setForm(f => ({ ...f, phone: e.target.value }))} className={inputCls} />
@@ -1139,8 +1143,9 @@ function TaxConfigurationSection() {
             </div>
             <div>
               <label className="block text-sm font-semibold text-slate-600 mb-1.5">Country</label>
-              <input value={form.country} onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))}
+              <input list="tax-country-options" value={form.country} onChange={(e) => setForm(f => ({ ...f, country: e.target.value }))}
                 placeholder="e.g. India" className="w-full h-11 px-4 rounded-lg border border-slate-200 text-base bg-white focus:outline-none focus:ring-2 focus:ring-brand" />
+              <datalist id="tax-country-options">{TAX_COUNTRY_NAMES.map((c) => <option key={c} value={c} />)}</datalist>
             </div>
           </div>
           <label className="flex items-center gap-2 text-base text-slate-700 cursor-pointer select-none">

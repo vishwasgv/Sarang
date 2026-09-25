@@ -36,7 +36,7 @@ export async function loadEInvoiceSource(invoiceId: string): Promise<EInvoiceSou
     buyerState: invoice.buyerState ?? invoice.customer?.state ?? null,
     seller: {
       gstin: (profile?.taxNumber ?? '').trim().toUpperCase(), name: profile?.businessName ?? '',
-      address: profile?.address ?? '', city: profile?.city ?? '', state: profile?.state ?? ''
+      address: [profile?.address ?? '', profile?.postalCode ?? ''].filter((x) => x.trim() !== '').join(' '), city: profile?.city ?? '', state: profile?.state ?? ''
     },
     buyer: {
       gstin: (invoice.customer?.taxNumber ?? '').trim().toUpperCase(), name: invoice.customer?.customerName ?? '',

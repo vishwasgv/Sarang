@@ -1,3 +1,4 @@
+import { showIndiaFeatures } from '@taxpresets'
 import React from 'react'
 import { NavLink, useLocation } from 'react-router-dom'
 import { motion, AnimatePresence } from 'framer-motion'
@@ -36,6 +37,8 @@ export interface NavItem {
   icon: LucideIcon
   permissionKey?: string
   requiredModule?: string
+  /** Shown only for India (or when the business country is not set or recognised). */
+  indiaOnly?: boolean
 }
 
 // Exported so Phase 60's tour-step generator can derive "which screens does
@@ -265,8 +268,8 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Post-Dated Cheques', path: '/accounting/post-dated-cheques', icon: Receipt, permissionKey: 'postDatedCheques.view' },
   // 2026-09-02 — Bank Deposit Slips.
   { label: 'Bank Deposits', path: '/accounting/bank-deposits', icon: PiggyBank, permissionKey: 'bankAccounts.view' },
-  { label: 'GST Payments', path: '/accounting/gst-payments', icon: Receipt, permissionKey: 'journalEntries.view' },
-  { label: 'GST Return Files', path: '/accounting/gst-returns', icon: Receipt, permissionKey: 'reports.tax' },
+  { label: 'GST Payments', path: '/accounting/gst-payments', icon: Receipt, permissionKey: 'journalEntries.view', indiaOnly: true },
+  { label: 'GST Return Files', path: '/accounting/gst-returns', icon: Receipt, permissionKey: 'reports.tax', indiaOnly: true },
   { label: 'Fixed Assets', path: '/accounting/fixed-assets', icon: Boxes, permissionKey: 'fixedAssets.view' },
   { label: 'Ledger Settings', path: '/accounting/ledger-settings', icon: Lock, permissionKey: 'bankAccounts.view' },
   { label: 'Customers', i18nKey: 'nav.customers', path: '/customers', icon: Users, permissionKey: 'customers.view' },
@@ -364,6 +367,7 @@ export function Sidebar() {
   const visibleItems = NAV_ITEMS.filter((item) => {
     if (item.requiredModule && !isModuleEnabled(item.requiredModule as Parameters<typeof isModuleEnabled>[0])) return false
     if (item.permissionKey && !hasPermission(item.permissionKey)) return false
+    if (item.indiaOnly && !showIndiaFeatures(profile?.country)) return false
     return true
   })
 

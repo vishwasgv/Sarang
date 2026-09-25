@@ -1,3 +1,4 @@
+import { showIndiaFeatures } from '@taxpresets'
 import { EInvoiceCard } from './EInvoiceCard'
 import { EwayBillCard } from './EwayBillCard'
 import React, { useState, useEffect } from 'react'
@@ -85,6 +86,7 @@ export function InvoiceDetailScreen() {
   const { t } = useTranslation()
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const businessCountry = useBusinessStore(s => s.profile?.country)
   const currencyCode = useBusinessStore(s => s.profile?.currencyCode)
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
   const { id } = useParams<{ id: string }>()
@@ -705,11 +707,11 @@ export function InvoiceDetailScreen() {
         </div>
       )}
 
-      {invoice.customer?.taxNumber && invoice.status !== 'CANCELLED' && (
+      {showIndiaFeatures(businessCountry) && invoice.customer?.taxNumber && invoice.status !== 'CANCELLED' && (
         <EInvoiceCard invoice={invoice} onChanged={loadInvoice} />
       )}
 
-      {invoice.status !== 'CANCELLED' && invoice.invoiceType !== 'RETURN' && <EwayBillCard invoiceId={invoice.id} />}
+      {showIndiaFeatures(businessCountry) && invoice.status !== 'CANCELLED' && invoice.invoiceType !== 'RETURN' && <EwayBillCard invoiceId={invoice.id} />}
 
       {/* Attached documents */}
       <div className="bg-white dark:bg-slate-900 rounded-2xl border border-slate-100 dark:border-slate-700 p-5">

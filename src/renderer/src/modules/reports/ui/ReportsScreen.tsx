@@ -1,3 +1,4 @@
+import { showIndiaFeatures } from '@taxpresets'
 import React, { useState, useCallback, useEffect } from 'react'
 import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
@@ -1097,12 +1098,12 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'generalLedger', icon: <BookOpen size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'dayBook', icon: <CalendarDays size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'cashFlowStatement', icon: <ArrowRightLeft size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
-  { id: 'gstNetPayable', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
-  { id: 'purchaseGstRegister', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
-  { id: 'purchaseHsnSummary', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
-  { id: 'tdsDeducted', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
-  { id: 'gstr9Data', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax' },
-  { id: 'irnRegister', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.tax' },
+  { id: 'gstNetPayable', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'purchaseGstRegister', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'purchaseHsnSummary', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'tdsDeducted', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'gstr9Data', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
+  { id: 'irnRegister', icon: <Receipt size={18} />, category: 'gst', requiresDateRange: true, permission: 'reports.tax' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -1466,6 +1467,7 @@ export function ReportsScreen() {
   const { error: toastError } = useNotificationStore()
   const { isModuleEnabled, businessType } = useIndustryStore()
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const country = useBusinessStore(s => s.profile?.country)
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
   const hasPermission = useAuthStore(s => s.hasPermission)
 
@@ -5444,7 +5446,7 @@ export function ReportsScreen() {
         <div className="flex-1 overflow-y-auto py-2">
           {CATEGORY_IDS.map(cat => {
             const defs = REPORT_DEFS.filter(r => {
-              if (r.category === 'gst' && taxModel !== 'GST') return false
+              if (r.category === 'gst' && (taxModel !== 'GST' || !showIndiaFeatures(country))) return false
               if (r.requiredModule && !isModuleEnabled(r.requiredModule)) return false
               if (r.requiredBusinessType) {
                 const allowed = Array.isArray(r.requiredBusinessType) ? r.requiredBusinessType : [r.requiredBusinessType]

@@ -446,6 +446,9 @@ for (const p of PRESET_LIST) {
   p.notes = [...(p.notes ?? []), RATES_CHANGE_NOTE]
 }
 
+/** Country names for a picker, sorted; typing any other country still works. */
+export const TAX_COUNTRY_NAMES: readonly string[] = PRESET_LIST.map((p) => p.name).sort((a, b) => a.localeCompare(b))
+
 export const TAX_PRESETS: Readonly<Record<string, TaxPreset>> = Object.fromEntries(PRESET_LIST.map((p) => [p.code, p]))
 
 /** Countries that were checked and left out on purpose, with the reason (kept next to the data so it is not lost). */
@@ -490,6 +493,11 @@ export function resolveCountryCode(input: unknown): string | null {
 
 export function isIndiaCountry(input: unknown): boolean {
   return resolveCountryCode(input) === 'IN'
+}
+
+/** India-only screens and fields (GST returns, PF/ESI, UPI) show for India and when the country is not recognised or not set. */
+export function showIndiaFeatures(country: unknown): boolean {
+  return !country || isIndiaCountry(country) || !resolveCountryCode(country)
 }
 
 /** The preset for the business's country (an ISO code or the free text typed at setup). Null when there is none. */
