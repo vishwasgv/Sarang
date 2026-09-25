@@ -7,6 +7,7 @@ import { api } from '@renderer/services/ipc-client'
 import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
 import { scoreManualChapters } from '@modules/ai/manual-match.util'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface SearchProduct { id: string; productName: string; sku?: string | null; sellingPrice: number }
 interface SearchCustomer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
@@ -127,7 +128,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
     })),
     ...(results ? [
     ...results.products.map(p => ({
-      id: p.id, label: p.productName, sub: `${sym}${p.sellingPrice.toFixed(2)}${p.sku ? ` · ${p.sku}` : ''}`,
+      id: p.id, label: p.productName, sub: `${sym}${moneyFixed(p.sellingPrice)}${p.sku ? ` · ${p.sku}` : ''}`,
       path: '/products', state: { openProductId: p.id }, category: 'Products',
       icon: <Package size={14} className="text-brand" />
     })),
@@ -142,7 +143,7 @@ export function CommandPalette({ open, onClose }: CommandPaletteProps) {
       icon: <Truck size={14} className="text-warning" />
     })),
     ...results.invoices.map(inv => ({
-      id: inv.id, label: inv.invoiceNumber, sub: `${sym}${inv.totalAmount.toFixed(2)} · ${inv.status}`,
+      id: inv.id, label: inv.invoiceNumber, sub: `${sym}${moneyFixed(inv.totalAmount)} · ${inv.status}`,
       path: `/billing/${inv.id}`, category: 'Invoices',
       icon: <Receipt size={14} className="text-slate-500" />
     })),

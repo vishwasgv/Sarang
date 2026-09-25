@@ -159,7 +159,6 @@ export async function generateInvoiceFromTreatmentPlan(payload: { treatmentPlanI
     const result = await billingService.createInvoice({
       customerId: plan.patientId,
       paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
       items: billableItems.map((i) => ({
         productId: product.id,
         quantity: 1,

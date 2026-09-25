@@ -1,5 +1,6 @@
 import { create } from 'zustand'
 import type { BusinessProfile } from '@shared/types/api.types'
+import { setActiveTaxCountry } from '@shared/utils/tax.util'
 
 interface BusinessState {
   profile: BusinessProfile | null
@@ -13,7 +14,7 @@ export const useBusinessStore = create<BusinessState>((set, get) => ({
   profile: null,
   settings: {},
 
-  setProfile: (profile) => set({ profile }),
+  setProfile: (profile) => { setActiveTaxCountry(profile?.country); set({ profile }) },
   setSettings: (settings) => set({ settings }),
 
   getSetting: (key, defaultValue = '') => {

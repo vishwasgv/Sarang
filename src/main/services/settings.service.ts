@@ -1,6 +1,8 @@
 import { getPrisma } from '../database/db'
 import type { ApiResponse } from '../ipc/channels'
 import { LICENSE_INTERNAL_SETTING_KEYS } from './license.service'
+import { setActiveCurrencyDecimals } from './currency.service'
+import { PRICES_INCLUDE_TAX_SETTING_KEY, ROUNDING_RULE_SETTING_KEY, getCurrencyDecimals, isRoundingRule, resolvePricesIncludeTax, resolveRoundingRule, type RoundingRule } from '../../shared/utils/money'
 
 // Security-critical Setting rows with their own dedicated, re-authenticated
 // write path — same threat class as LICENSE_INTERNAL_SETTING_KEYS above, just
@@ -49,6 +51,12 @@ export async function setSetting(key: string, value: string): Promise<ApiRespons
   if (OTHER_INTERNAL_SETTING_KEYS.has(key) || INTERNAL_SETTING_KEY_PREFIXES.some(prefix => key.startsWith(prefix))) {
     return { success: false, error: { code: 'LIC-003', message: 'This setting is managed internally and cannot be changed directly.' } }
   }
+  if (key === ROUNDING_RULE_SETTING_KEY && !isRoundingRule(value)) {
+    return { success: false, error: { code: 'SET-001', message: 'Rounding must be one of: none, 0.05, 0.10, 0.50 or 1.' } }
+  }
+  if (key === PRICES_INCLUDE_TAX_SETTING_KEY && value !== 'true' && value !== 'false') {
+    return { success: false, error: { code: 'SET-002', message: 'Prices include tax must be true or false.' } }
+  }
   try {
     const db = getPrisma()
     await db.setting.upsert({
@@ -62,6 +70,29 @@ export async function setSetting(key: string, value: string): Promise<ApiRespons
   }
 }
 
+// Invoice total rounding step (Settings → Currency & Locale). Unset or unreadable falls back to the
+// currency default: nearest 1.00 for INR (the app's historical behaviour), exact for everything else.
+export async function getInvoiceRoundingRule(currencyCode?: string | null): Promise<RoundingRule> {
+  try {
+    const db = getPrisma()
+    const row = await db.setting.findUnique({ where: { settingKey: ROUNDING_RULE_SETTING_KEY } })
+    return resolveRoundingRule(row?.settingValue, currencyCode)
+  } catch {
+    return resolveRoundingRule(null, currencyCode)
+  }
+}
+
+// Business default for the per-document "Prices include tax" toggle (Settings → Currency & Locale).
+export async function getPricesIncludeTaxDefault(): Promise<boolean> {
+  try {
+    const db = getPrisma()
+    const row = await db.setting.findUnique({ where: { settingKey: PRICES_INCLUDE_TAX_SETTING_KEY } })
+    return resolvePricesIncludeTax(row?.settingValue)
+  } catch {
+    return false
+  }
+}
+
 export async function getAllSettings(): Promise<ApiResponse> {
   try {
     const db = getPrisma()
@@ -71,5 +102,19 @@ export async function getAllSettings(): Promise<ApiResponse> {
     return { success: true, data: map }
   } catch {
     return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
+  }
+}
+
+// Decimal places of the business's own currency (0 JPY, 3 KWD, else 2), so document totals
+// computed in the main process round exactly like the screens that display them.
+export async function getBusinessCurrencyDecimals(): Promise<number> {
+  try {
+    const db = getPrisma()
+    const bp = await db.businessProfile.findFirst({ select: { currencyCode: true } })
+    const decimals = getCurrencyDecimals(bp?.currencyCode)
+    setActiveCurrencyDecimals(decimals)
+    return decimals
+  } catch {
+    return 2
   }
 }

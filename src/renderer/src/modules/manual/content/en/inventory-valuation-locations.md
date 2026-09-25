@@ -8,7 +8,7 @@ Changing a product's valuation method doesn't rewrite its purchase history — i
 
 ## Locations & Stock Transfer
 
-**Locations** (`/locations`) is for businesses that store stock in more than one place — a warehouse plus a retail counter, or two branches. Every business starts with a single default "Main" location that all existing stock already belongs to, so nothing changes until you actually add a second one. Add a location with **New Location** (name and an optional address); the first location created is always the default, and a default location can't be deactivated since every stock movement that doesn't name a specific location goes there.
+**Stock Locations** (`/locations`) is for businesses that store stock in more than one place — a warehouse plus a retail counter, or two branches. Every business starts with a single default "Main" location that all existing stock already belongs to, so nothing changes until you actually add a second one. Add a location with **New Location** (name and an optional address); the first location created is always the default, and a default location can't be deactivated since every stock movement that doesn't name a specific location goes there.
 
 Once a second location exists, a **Transfer Stock** action appears: pick a product, a quantity, a source and destination location, and an optional reason. A transfer only moves stock between locations — it never changes how much you have in total, so it doesn't create a new inventory movement of the "stock added" or "stock removed" kind, just a location-to-location shift.
 

@@ -1,4 +1,6 @@
 import React, { useState, useEffect } from 'react'
+import { useMoneyContext } from '@shared/utils/money-context'
+import { computeDocumentTotals, roundMoney } from '@money'
 import { useTranslation } from 'react-i18next'
 import { useNavigate } from 'react-router-dom'
 import { PackagePlus, Search, X, Plus, Minus, RefreshCw, CheckCircle2, User, UserPlus } from 'lucide-react'
@@ -8,6 +10,7 @@ import { useBusinessStore } from '@app/store/business.store'
 import { cn } from '@shared/utils/cn'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface Product {
   id: string; productName: string; sku?: string | null; unit: string
@@ -15,7 +18,7 @@ interface Product {
   inventory?: { quantity: number } | null
 }
 
-interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null }
+interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; taxExempt?: boolean | null }
 
 interface BulkItem {
   productId: string; productName: string; sku?: string | null; unit: string
@@ -145,14 +148,18 @@ export function BulkOrderScreen() {
     setItems(prev => prev.map(i => i.productId === productId ? { ...i, quantity: qty } : i))
   }
 
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
-  const bulkDiscount = items.reduce((s, i) => s + i.quantity * i.unitPrice * volumeDiscountPct(i.quantity) / 100, 0)
-  const tax = items.reduce((s, i) => {
-    const lineGross = i.quantity * i.unitPrice
-    const lineDiscount = lineGross * volumeDiscountPct(i.quantity) / 100
-    return s + (lineGross - lineDiscount) * i.taxRate / 100
-  }, 0)
-  const total = subtotal - bulkDiscount + tax
+  // The order is saved through billing.createInvoice, so the total shown here runs the same shared
+  // money module (rounding rule included) on the exact discount amounts that are sent.
+  const moneyCtx = useMoneyContext()
+  const bulkLineDiscount = (i: { quantity: number; unitPrice: number }) => roundMoney(i.quantity * i.unitPrice * volumeDiscountPct(i.quantity) / 100, moneyCtx.decimals)
+  const computed = computeDocumentTotals(
+    items.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountAmount: bulkLineDiscount(i), taxRate: (moneyCtx.compositionScheme || customer?.taxExempt === true) ? 0 : i.taxRate })),
+    { decimals: moneyCtx.decimals, roundingRule: moneyCtx.roundingRule, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault }
+  )
+  const subtotal = computed.subtotal
+  const bulkDiscount = computed.discountAmount
+  const tax = computed.taxAmount
+  const total = computed.totalAmount
 
   async function handleSubmit() {
     if (!items.length) { toastError(t('distributor.bulkOrder.emptyOrderTitle'), t('distributor.bulkOrder.emptyOrderMessage')); return }
@@ -164,10 +171,11 @@ export function BulkOrderScreen() {
         paymentMethod,
         items: items.map(i => ({
           productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice,
-          discountAmount: i.quantity * i.unitPrice * volumeDiscountPct(i.quantity) / 100,
+          discountAmount: bulkLineDiscount(i),
           taxRate: i.taxRate
         })),
         globalDiscount: 0,
+        pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault,
         notes: `Bulk Order${orderRef ? ` — Ref: ${orderRef}` : ''}${notes ? `. ${notes}` : ''}`
       })
       if (res.success && res.data) {
@@ -237,7 +245,7 @@ export function BulkOrderScreen() {
                       <p className="text-xs text-slate-400">{p.sku ?? ''} · {p.unit}</p>
                     </div>
                     <div className="text-end">
-                      <p className="text-sm font-semibold text-dark">{sym}{p.sellingPrice.toFixed(2)}</p>
+                      <p className="text-sm font-semibold text-dark">{sym}{moneyFixed(p.sellingPrice)}</p>
                       <p className={cn('text-xs', (p.inventory?.quantity ?? 0) <= 0 ? 'text-danger' : 'text-slate-400')}>
                         {t('distributor.bulkOrder.stockLabel', { qty: p.inventory?.quantity ?? 0 })}
                       </p>
@@ -294,15 +302,15 @@ export function BulkOrderScreen() {
                         )}
                       </div>
                       <div className="col-span-2 text-end text-xs text-slate-500">
-                        {sym}{item.unitPrice.toFixed(2)}
+                        {sym}{moneyFixed(item.unitPrice)}
                       </div>
                       <div className="col-span-2 flex items-center justify-end gap-2">
                         <div className="text-end">
                           {pct > 0 && (
-                            <p className="text-xs text-slate-400 line-through">{sym}{lineGross.toFixed(2)}</p>
+                            <p className="text-xs text-slate-400 line-through">{sym}{moneyFixed(lineGross)}</p>
                           )}
                           <span className="text-sm font-semibold text-dark">
-                            {sym}{lineTotal.toFixed(2)}
+                            {sym}{moneyFixed(lineTotal)}
                           </span>
                         </div>
                         <button onClick={() => updateQty(item.productId, 0)}
@@ -389,18 +397,23 @@ export function BulkOrderScreen() {
 
           <Card padding="lg" className="space-y-3">
             <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <span>{t('common.subtotal')}</span><span>{sym}{subtotal.toFixed(2)}</span>
+              <span>{t('common.subtotal')}</span><span>{sym}{subtotal.toFixed(moneyCtx.decimals)}</span>
             </div>
             {bulkDiscount > 0 && (
               <div className="flex justify-between text-sm text-success">
-                <span>{t('distributor.bulkOrder.bulkDiscountLabel')}</span><span>−{sym}{bulkDiscount.toFixed(2)}</span>
+                <span>{t('distributor.bulkOrder.bulkDiscountLabel')}</span><span>−{sym}{bulkDiscount.toFixed(moneyCtx.decimals)}</span>
               </div>
             )}
             <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
-              <span>{t('common.tax')}</span><span>{sym}{tax.toFixed(2)}</span>
+              <span>{t('common.tax')}</span><span>{sym}{tax.toFixed(moneyCtx.decimals)}</span>
             </div>
+            {computed.roundingAmount !== 0 && (
+              <div className="flex justify-between text-sm text-slate-500 dark:text-slate-400">
+                <span>{t('billing.rounding')}</span><span>{computed.roundingAmount > 0 ? '+' : '−'}{sym}{Math.abs(computed.roundingAmount).toFixed(moneyCtx.decimals)}</span>
+              </div>
+            )}
             <div className="flex justify-between text-base font-bold text-dark dark:text-slate-100 border-t border-slate-100 dark:border-slate-800 pt-3">
-              <span>{t('common.total')}</span><span>{sym}{total.toFixed(2)}</span>
+              <span>{t('common.total')}</span><span>{sym}{total.toFixed(moneyCtx.decimals)}</span>
             </div>
             <p className="text-xs text-slate-400">{t('distributor.bulkOrder.productCount', { count: items.length })} · {t('distributor.bulkOrder.unitsCount', { count: items.reduce((s, i) => s + i.quantity, 0) })}</p>
 

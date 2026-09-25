@@ -276,7 +276,6 @@ export async function generateSessionPackInvoice(packId: string) {
       const result = await billingService.createInvoice({
         customerId: pack.customerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{
           productId: product.id,
           quantity: 1,

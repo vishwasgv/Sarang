@@ -1,4 +1,8 @@
-# Bills & Payments Made
+# Supplier Bills & Supplier Payments
+
+## What a Supplier Bill is (and is not)
+
+A **Supplier Bill** is the invoice a supplier sends **you**. It records money you owe. It is the buying-side twin of the invoice you make in Billing. **A Supplier Bill never changes your stock**: stock goes up only when you receive the goods (Receive Stock on the Purchase Order, or a posted GRN). For the whole buying cycle, read *Guide: Buying From Suppliers*.
 
 ## What a Bill is, and how it differs from a Purchase Order
 
@@ -8,7 +12,7 @@ Every Bill increases what you owe that supplier. A Bill's status moves through *
 
 ## Recording a Bill
 
-Open **Bills** from the sidebar and click **Record Bill**. Pick the supplier (or add a new one inline without leaving the form — the same **+ Add New Supplier** shortcut is available on the Purchase Order form too), then add one or more line items.
+Open **Supplier Bills** (Purchases group) from the sidebar and click **Record Bill**. Pick the supplier (or add a new one inline without leaving the form — the same **+ Add New Supplier** shortcut is available on the Purchase Order form too), then add one or more line items.
 
 Each line is either:
 
@@ -16,6 +20,18 @@ Each line is either:
 - **Service** — free-text (e.g. "AMC — quarterly", "Legal consultation fee"), optionally tagged with a category. This is what closes the long-standing gap where every non-resale business purchase — office equipment, consumables, professional fees — had no structured home at all. Mix product and service lines freely on the same Bill.
 
 Each line also carries its own discount amount and tax rate, so the Bill's totals are computed correctly per line before summing — the same discount-then-tax ordering every other document in Sarang already follows.
+
+## Tax on a bill
+
+When you pick a product on a bill line, its **cost price and tax rate** fill in together. Change either on the line if this supplier billed differently. Tax is worked out on the discounted amount and added on top, exactly as on sales documents.
+
+## Editing a bill
+
+While a bill is **Open** and has **no payment** recorded, open it and click **Edit bill**. Change the supplier, dates, lines, tax, notes or landed costs and save. Sarang replaces the bill under the **same number**: it reverses everything the old copy posted (supplier balance, accounting entries, cost history) and posts the corrected bill in one step. The old copy stays in the list as *BILL-00012-R1* with status **Void**, so the record is complete. A bill with a payment recorded cannot be edited: reverse the payment first, or Void the bill.
+
+## Overdue bills
+
+Give every bill a **due date**. The Supplier Bills list has an **Overdue** filter, and any Open or Partially Paid bill past its due date carries an **OVERDUE** badge. A supplier who is registered as an MSME gets the legal 45-day due date by default if you leave the date empty.
 
 ## Foreign-currency Bills
 
@@ -25,7 +41,7 @@ A Bill from an overseas supplier can be recorded the same way an invoice can —
 
 Open a Bill and click **Record Payment**. Supplier payments accept Cash, UPI, Card, Bank Transfer, or Cheque — a wider set than customer-facing payments, since B2B payments routinely go by bank transfer or cheque. A payment can be partial; the Bill's balance and status update immediately, and the amount is deducted from what you owe that supplier.
 
-Every payment you've made across all Bills also shows up in one place under **Payments Made** in the sidebar — searchable by bill number, supplier, or reference number, with the same reversal support (with a required reason) that Payments Received already has, in case one was entered by mistake.
+Every payment you've made across all Bills also shows up in one place under **Supplier Payments** in the sidebar — searchable by bill number, supplier, or reference number, with the same reversal support (with a required reason) that Payments Received already has, in case one was entered by mistake.
 
 ## Purchase-side reports
 

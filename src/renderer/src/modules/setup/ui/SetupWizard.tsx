@@ -12,6 +12,8 @@ import { Select } from '@shared/ui/atoms/Select'
 import { api } from '@renderer/services/ipc-client'
 import { CURRENCIES } from '@shared/utils/currency.util'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
+import { getTaxPreset, resolveCountryCode } from '@taxpresets'
+import { useTaxNumberField } from '@shared/hooks/useTaxNumberField'
 
 const BUSINESS_TYPES = [
   { value: 'RESTAURANT', label: 'Restaurant / Cafe / Bakery', icon: '🍽️' },
@@ -133,6 +135,9 @@ const schema = z.object({
   taxNumber: z.string().optional(),
   upiId: z.string().optional(),
   logoPath: z.string().optional(),
+  // Suggested by the country preset; the owner confirms them on the tax step.
+  pricesIncludeTax: z.boolean().optional(),
+  invoiceRoundingRule: z.enum(['NONE', '0.05', '0.10', '0.50', '1']).optional(),
   adminFullName: z.string().min(1, 'Full name is required'),
   adminUsername: z.string().min(3, 'Username must be at least 3 characters').regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, and underscores allowed'),
   // Matches the server's default password policy minimum (setup.service.ts's
@@ -210,6 +215,8 @@ export function SetupWizard({ onComplete }: SetupWizardProps) {
         taxNumber: values.taxNumber || undefined,
         upiId: values.upiId || undefined,
         logoPath: values.logoPath || undefined,
+        pricesIncludeTax: values.pricesIncludeTax,
+        invoiceRoundingRule: values.invoiceRoundingRule,
         adminFullName: values.adminFullName,
         adminUsername: values.adminUsername,
         adminPassword: values.adminPassword
@@ -512,9 +519,25 @@ function BusinessInfoStep() {
 function RegionStep() {
   const { register, setValue, watch, formState: { errors } } = useFormContext<FormValues>()
   const [autoSuggested, setAutoSuggested] = useState(false)
+  const typedCountry = watch('country')
+  const taxField = useTaxNumberField(typedCountry, watch('taxNumber'), 'Tax / GST / VAT Number (Optional)')
+  const showUpi = !typedCountry || isIndiaCountry(typedCountry) || !resolveCountryCode(typedCountry)
 
   function handleCountryBlur(e: React.FocusEvent<HTMLInputElement>) {
     const key = e.target.value.trim().toLowerCase()
+    const preset = getTaxPreset(e.target.value)
+    if (preset) {
+      // Only this country's model, currency and rates are loaded; the owner confirms the suggestions on the tax step.
+      setValue('currencyCode', preset.currency, { shouldValidate: true })
+      setValue('currencySymbol', CURRENCIES.find((c) => c.code === preset.currency)?.symbol ?? preset.currency)
+      setValue('taxModel', preset.taxModel, { shouldValidate: true })
+      setValue('pricesIncludeTax', preset.pricesUsuallyIncludeTax)
+      setValue('invoiceRoundingRule', preset.suggestedRounding)
+      setAutoSuggested(true)
+      return
+    }
+    setValue('pricesIncludeTax', undefined)
+    setValue('invoiceRoundingRule', undefined)
     const defaults = COUNTRY_DEFAULTS[key]
     if (defaults) {
       setValue('currencyCode', defaults.currencyCode, { shouldValidate: true })
@@ -562,8 +585,8 @@ function RegionStep() {
           <option key={c.code} value={c.code}>{c.symbol} {c.name} ({c.code})</option>
         ))}
       </Select>
-      <Input label="Tax / GST / VAT Number (Optional)" placeholder="e.g. 27AABCU9603R1ZX" {...register('taxNumber')} />
-      <Input label="UPI ID (Optional)" placeholder="e.g. mybusiness@upi" {...register('upiId')} hint="Used to generate payment QR codes on invoices." />
+      <Input label={taxField.label === 'Tax / GST / VAT Number (Optional)' ? taxField.label : `${taxField.label} (Optional)`} placeholder={taxField.placeholder ?? "e.g. 27AABCU9603R1ZX"} hint={taxField.hint} {...register('taxNumber')} />
+      {showUpi && <Input label="UPI ID (Optional)" placeholder="e.g. mybusiness@upi" {...register('upiId')} hint="Used to generate payment QR codes on invoices." />}
     </div>
   )
 }
@@ -571,6 +594,9 @@ function RegionStep() {
 function TaxStep() {
   const { setValue, watch } = useFormContext<FormValues>()
   const selected = watch('taxModel')
+  const preset = getTaxPreset(watch('country'))
+  const includeTax = watch('pricesIncludeTax')
+  const rounding = watch('invoiceRoundingRule')
 
   return (
     <div>
@@ -596,6 +622,31 @@ function TaxStep() {
           </button>
         ))}
       </div>
+      {preset && (
+        <div className="mt-4 rounded-lg border border-brand/20 bg-brand/5 p-3 space-y-2">
+          <p className="text-sm font-semibold text-brand">Suggestions for {preset.name}</p>
+          {preset.rates.length > 0 ? (
+            <p className="text-xs text-slate-600 dark:text-slate-300">
+              {preset.taxLabel} rates that will be added: {preset.rates.map((r) => `${r.rate}%`).join(', ')}. Checked on {preset.asOf}; rates change, so confirm them with your accountant.
+            </p>
+          ) : (
+            <p className="text-xs text-slate-600 dark:text-slate-300">{preset.name} has no sales tax or VAT at present. You can add a rate later in Settings.</p>
+          )}
+          {preset.taxModel !== 'NONE' && preset.code !== 'IN' && (
+            <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input type="checkbox" className="mt-1 w-4 h-4" checked={includeTax === true} onChange={(e) => setValue('pricesIncludeTax', e.target.checked)} />
+              <span>Prices I enter already include tax (usual in {preset.name}). You can change this later in Settings.</span>
+            </label>
+          )}
+          {preset.suggestedRounding && (
+            <label className="flex items-start gap-2 text-sm text-slate-700 dark:text-slate-300 cursor-pointer">
+              <input type="checkbox" className="mt-1 w-4 h-4" checked={rounding === preset.suggestedRounding}
+                onChange={(e) => setValue('invoiceRoundingRule', e.target.checked ? preset.suggestedRounding : undefined)} />
+              <span>Round invoice totals to the nearest {preset.suggestedRounding === '1' ? '1' : preset.suggestedRounding} (customary for cash in {preset.name}).</span>
+            </label>
+          )}
+        </div>
+      )}
     </div>
   )
 }

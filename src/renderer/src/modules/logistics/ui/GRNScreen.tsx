@@ -9,6 +9,7 @@ import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
+import { sumMoney, unitAmount } from '@money'
 
 interface GRNItem {
   id: string; productId: string | null; rawMaterialId: string | null; itemName: string
@@ -35,7 +36,7 @@ interface ProductOption {
 }
 interface SupplierOption { id: string; supplierName: string; supplierCode?: string }
 interface POOption { id: string; poNumber: string; status: string; supplier: { id: string; supplierName: string } }
-interface POItemDetail { productId: string; quantity: number; receivedQty: number; unitCost: number; product: { productName: string; unit: string } }
+interface POItemDetail { productId: string; quantity: number; receivedQty: number; unitCost: number; total: number; taxAmount: number; product: { productName: string; unit: string } }
 
 const STATUS_VARIANT: Record<string, 'neutral' | 'info' | 'success' | 'danger'> = {
   DRAFT: 'neutral',
@@ -48,9 +49,9 @@ const EMPTY_ITEM = { productId: '', itemName: '', receivedQty: '', rejectedQty: 
 
 export default function GRNScreen() {
   const { t } = useTranslation()
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, info: toastInfo } = useNotificationStore()
   const [grns, setGrns] = useState<GRN[]>([])
-  const [confirmAction, setConfirmAction] = useState<{ type: 'post' | 'reverse' | 'delete'; id: string; grnNumber: string } | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ type: 'post' | 'reverse' | 'delete'; id: string; grnNumber: string; unlinked?: number } | null>(null)
   const [confirmLoading, setConfirmLoading] = useState(false)
   const [verifyingId, setVerifyingId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -169,6 +170,25 @@ export default function GRNScreen() {
     }))
   }
 
+  // A received item that is not in the catalogue yet: create it right here and
+  // link the line, so stock actually updates when the GRN is posted.
+  const createAndLinkProduct = async (idx: number, edit: boolean) => {
+    const item = (edit ? editItems : items)[idx]
+    const name = item?.itemName.trim()
+    if (!name) return
+    const cost = parseFloat(item.unitCost) || 0
+    const res = await window.api.products.create({
+      productName: name, productType: 'STANDARD', unit: item.unit || 'PCS',
+      costPrice: cost, sellingPrice: cost, taxRate: 0, reorderLevel: 0, reorderQuantity: 0, openingQuantity: 0,
+    })
+    if (!res.success) { toastError(t('common.error'), res.error?.message ?? t('common.error')); return }
+    const created = res.data as { id: string; productName: string; sku?: string | null; unit: string; costPrice: number }
+    setProducts(prev => [...prev, { id: created.id, productName: created.productName, sku: created.sku ?? null, unit: created.unit, costPrice: created.costPrice, productType: 'STANDARD' }])
+    if (edit) setEditItems(prev => prev.map((it, i) => i === idx ? { ...it, productId: created.id } : it))
+    else setItems(prev => prev.map((it, i) => i === idx ? { ...it, productId: created.id } : it))
+    toastInfo(t('logistics.grn.createdProductTitle'), t('logistics.grn.createdProductNotice', { name }))
+  }
+
   const handleSupplierSelect = (supplierId: string) => {
     const supplier = suppliers.find(s => s.id === supplierId)
     setForm(f => ({ ...f, supplierId, supplierName: supplier ? supplier.supplierName : f.supplierName }))
@@ -180,14 +200,15 @@ export default function GRNScreen() {
     try {
       const res = await window.api.purchaseOrders.get(poId)
       if (!res.success) { setError(res.error?.message ?? t('common.error')); return }
-      const po = res.data as { supplier: { id: string; supplierName: string }; items: POItemDetail[] }
+      const po = res.data as { supplier: { id: string; supplierName: string }; pricesIncludeTax?: boolean; items: POItemDetail[] }
       setForm(f => ({ ...f, supplierId: po.supplier.id, supplierName: po.supplier.supplierName }))
       setItems(po.items.map(i => ({
         ...EMPTY_ITEM,
         productId: i.productId,
         itemName: i.product.productName,
         unit: i.product.unit,
-        unitCost: i.unitCost.toString(),
+        // Stock cost never includes purchase tax: an inclusive PO's cost is its stored taxable value per unit.
+        unitCost: (po.pricesIncludeTax && i.quantity > 0 ? unitAmount(sumMoney([i.total, -i.taxAmount], 3), i.quantity) : i.unitCost).toString(),
         orderedHint: t('logistics.grn.orderedHint', { qty: i.quantity, unit: i.product.unit, received: i.receivedQty }),
       })))
     } catch {
@@ -401,7 +422,7 @@ export default function GRNScreen() {
                   <div className="flex gap-2 mt-1">
                     {!['POSTED', 'REVERSED'].includes(g.status) && <button onClick={e => { e.stopPropagation(); openEditGRN(g) }} className="text-xs text-blue-600 hover:underline">{t('common.edit')}</button>}
                     {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); verify(g.id) }} disabled={verifyingId === g.id} className="text-xs text-purple-600 hover:underline disabled:opacity-50">{t('logistics.grn.verify')}</button>}
-                    {g.status === 'VERIFIED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'post', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-green-600 hover:underline">{t('logistics.grn.post')}</button>}
+                    {g.status === 'VERIFIED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'post', id: g.id, grnNumber: g.grnNumber, unlinked: g.items.filter(i => !i.productId && !i.rawMaterialId).length }) }} className="text-xs text-green-600 hover:underline">{t('logistics.grn.post')}</button>}
                     {g.status === 'POSTED' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'reverse', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-orange-600 hover:underline">{t('logistics.grn.reverse')}</button>}
                     {g.status === 'DRAFT' && <button onClick={e => { e.stopPropagation(); setConfirmAction({ type: 'delete', id: g.id, grnNumber: g.grnNumber }) }} className="text-xs text-red-500 hover:underline">{t('common.delete')}</button>}
                     <button onClick={e => { e.stopPropagation(); printGRN(g) }} className="text-xs text-gray-500 hover:underline">{t('common.print')}</button>
@@ -485,6 +506,11 @@ export default function GRNScreen() {
                       {products.map(p => <option key={p.id} value={p.id}>{p.productName}{p.sku ? ` (${p.sku})` : ''}</option>)}
                     </select>
                     {item.orderedHint && <span className="text-xs text-gray-400 whitespace-nowrap">{item.orderedHint}</span>}
+                    {!item.productId && item.itemName.trim() && (
+                      <button type="button" onClick={() => createAndLinkProduct(idx, true)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                        {t('logistics.grn.createAndLink', { name: item.itemName.trim() })}
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-12 gap-2 items-center">
                     <input value={item.itemName} onChange={e => updateEditItem(idx, 'itemName', e.target.value)} placeholder={t('logistics.shipments.itemNamePlaceholder')} className="col-span-3 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
@@ -571,6 +597,11 @@ export default function GRNScreen() {
                       {products.map(p => <option key={p.id} value={p.id}>{p.productName}{p.sku ? ` (${p.sku})` : ''}</option>)}
                     </select>
                     {item.orderedHint && <span className="text-xs text-gray-400 whitespace-nowrap">{item.orderedHint}</span>}
+                    {!item.productId && item.itemName.trim() && (
+                      <button type="button" onClick={() => createAndLinkProduct(idx, false)} className="text-xs text-blue-600 hover:underline whitespace-nowrap">
+                        {t('logistics.grn.createAndLink', { name: item.itemName.trim() })}
+                      </button>
+                    )}
                   </div>
                   <div className="grid grid-cols-12 gap-2 items-center">
                     <input value={item.itemName} onChange={e => updateItem(idx, 'itemName', e.target.value)} placeholder={t('logistics.shipments.itemNamePlaceholder')} className="col-span-3 border border-gray-300 rounded-lg px-2 py-1.5 text-xs" />
@@ -612,7 +643,8 @@ export default function GRNScreen() {
         loading={confirmLoading}
         title={confirmAction?.type === 'post' ? t('logistics.grn.post') : confirmAction?.type === 'reverse' ? t('logistics.grn.reverse') : t('common.delete')}
         message={
-          confirmAction?.type === 'post' ? t('logistics.grn.postConfirm')
+          confirmAction?.type === 'post'
+            ? t('logistics.grn.postConfirm') + ((confirmAction.unlinked ?? 0) > 0 ? ' ' + t('logistics.grn.postUnlinkedWarning', { count: confirmAction.unlinked }) : '')
             : confirmAction?.type === 'reverse' ? t('logistics.grn.reverseConfirm', { number: confirmAction.grnNumber })
               : confirmAction ? t('logistics.grn.deleteConfirm', { number: confirmAction.grnNumber }) : ''
         }

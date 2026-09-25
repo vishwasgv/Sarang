@@ -221,7 +221,6 @@ export async function updateFeeRecord(payload: {
         const result = await billingService.createInvoice({
           customerId: record.enrollment.student.id,
           paymentMethod: 'CASH',
-          gstType: 'CGST_SGST',
           items: [{
             productId: product.id,
             quantity: 1,

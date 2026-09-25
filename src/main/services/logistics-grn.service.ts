@@ -6,6 +6,7 @@ import { supplierLedgerService } from './supplier-ledger.service'
 import { ServiceError } from '../errors/service-error'
 import { logAction } from './audit.service'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { roundMoney } from '../../shared/utils/money'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 
 const GRN_EDITABLE_STATUSES = ['DRAFT', 'VERIFIED']
@@ -40,7 +41,7 @@ function toRecord(r: any) {
       // conversion factor is receivedQty ÷ purchaseUnitQty, computed at
       // display time (not stored) since it's a pure derived value.
       purchaseUnitQty: i.purchaseUnitQty ?? null,
-      effectiveConversionFactor: i.purchaseUnitQty ? roundCurrency(i.receivedQty / i.purchaseUnitQty) : null,
+      effectiveConversionFactor: i.purchaseUnitQty ? roundMoney(i.receivedQty / i.purchaseUnitQty, 2) : null,
     })),
   }
 }

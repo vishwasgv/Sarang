@@ -152,7 +152,6 @@ export async function generateServiceContractInvoice(contractId: string, period?
       const result = await billingService.createInvoice({
         customerId: contract.customerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{ productId: product.id, quantity: 1, unitPrice: contract.contractValue }],
         notes: `Service contract: ${contract.contractNumber} — ${targetPeriod}`,
         referenceNumber: contract.contractNumber,

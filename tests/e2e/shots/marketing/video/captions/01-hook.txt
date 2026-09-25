@@ -1,0 +1,2 @@
+Running a business shouldn't need
+5 different apps that don't talk to each other.

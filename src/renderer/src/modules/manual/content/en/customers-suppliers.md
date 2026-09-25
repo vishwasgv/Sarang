@@ -6,6 +6,12 @@
 
 Open **Customers** or **Suppliers** from the sidebar to see the full list. Click **Add Customer** / **Add Supplier** to create one. A customer record holds name, phone, email, address (city/state/country), tax number, credit limit, and notes; a supplier record holds the equivalent business-side details (name, phone, email, address, tax number, notes).
 
+Sarang keeps one record per real customer and supplier:
+
+- A **customer** cannot share a phone number with another active customer.
+- A **supplier** cannot be saved if the **phone**, **GSTIN**, **email**, or **name in the same city** already belongs to another supplier (active or archived). If the match is archived, restore that supplier instead. Two real suppliers with the same name need different cities.
+- Supplier **GSTIN** (15 characters, for example 29ABCDE1234F1Z5), **PAN** (10 characters) and **IFSC** (11 characters) are checked for format and saved in capital letters.
+
 Either can be **archived** instead of deleted, which hides it from day-to-day lists (billing, purchase order creation, and so on) without losing its transaction history.
 
 ## Ledger and outstanding balance

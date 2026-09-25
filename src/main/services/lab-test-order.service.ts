@@ -597,7 +597,6 @@ export async function generateLabTestOrderInvoice(id: string) {
       const result = await billingService.createInvoice({
         customerId: order.customerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items,
         notes: `Lab Order ${order.orderNumber} — ${order.patientName}`,
         referenceNumber: id.slice(0, 12),

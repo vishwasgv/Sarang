@@ -217,6 +217,7 @@ export interface IpcChannels {
     list: (payload?: { supplierId?: string; status?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
     create: (payload: unknown) => Promise<ApiResponse>
+    update: (payload: unknown) => Promise<ApiResponse>
     void: (payload: { id: string; reason: string }) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
   }
@@ -412,6 +413,8 @@ export interface IpcChannels {
   }
   tax: {
     list: () => Promise<ApiResponse>
+    presetStatus: () => Promise<ApiResponse>
+    loadPreset: () => Promise<ApiResponse>
     create: (payload: unknown) => Promise<ApiResponse>
     update: (payload: unknown) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
@@ -430,6 +433,10 @@ export interface IpcChannels {
     profitAndLoss: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     cashBook: (payload: { dateFrom: string; dateTo: string; paymentMethod?: string }) => Promise<ApiResponse>
     trialBalance: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    balanceSheet: (payload: { asOf: string; compareAsOf?: string }) => Promise<ApiResponse>
+    generalLedger: (payload: { accountId: string; dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    dayBook: (payload: { dateFrom: string; dateTo: string; voucherType?: string }) => Promise<ApiResponse>
+    cashFlowStatement: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
@@ -1339,7 +1346,7 @@ export interface IpcChannels {
   quotations: {
     list: (payload?: { status?: string; customerId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { customerId?: string; customerName?: string; validUntil?: string; retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; customerName?: string; validUntil?: string; retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'; pricesIncludeTax?: boolean; gstType?: 'CGST_SGST' | 'IGST' | 'GST'; notes?: string; items: Array<{ productId?: string; productName: string; sku?: string; quantity: number; unitPrice: number; discount?: number; taxRate?: number }> }) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
     // Share feature (Section 4/5.3): same HTML as `print`, saved to a chosen
@@ -1356,8 +1363,8 @@ export interface IpcChannels {
   creditNotes: {
     list: (payload?: { customerId?: string; invoiceId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { customerId?: string; invoiceId?: string; reason: string; amount?: number; items?: Array<{ productId?: string; serviceDescription?: string; serviceCategoryId?: string; quantity?: number; unitPrice: number; taxRate?: number }>; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; customerId?: string | null; invoiceId?: string | null; reason?: string; amount?: number; notes?: string | null }) => Promise<ApiResponse>
+    create: (payload: { customerId?: string; invoiceId?: string; reason: string; amount?: number; pricesIncludeTax?: boolean; taxApplied?: boolean; taxRate?: number; gstType?: 'CGST_SGST' | 'IGST' | 'GST'; items?: Array<{ productId?: string; serviceDescription?: string; serviceCategoryId?: string; quantity?: number; unitPrice: number; taxRate?: number }>; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; customerId?: string | null; invoiceId?: string | null; reason?: string; amount?: number; taxApplied?: boolean; taxRate?: number | null; pricesIncludeTax?: boolean; notes?: string | null }) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
@@ -1366,8 +1373,8 @@ export interface IpcChannels {
   debitNotes: {
     list: (payload?: { supplierId?: string; purchaseOrderId?: string; page?: number; limit?: number }) => Promise<ApiResponse>
     get: (id: string) => Promise<ApiResponse>
-    create: (payload: { supplierId?: string; purchaseOrderId?: string; reason: string; amount?: number; items?: Array<{ productId?: string; serviceDescription?: string; serviceCategoryId?: string; quantity?: number; unitPrice: number; taxRate?: number }>; notes?: string }) => Promise<ApiResponse>
-    update: (payload: { id: string; supplierId?: string | null; purchaseOrderId?: string | null; reason?: string; amount?: number; notes?: string | null }) => Promise<ApiResponse>
+    create: (payload: { supplierId?: string; purchaseOrderId?: string; reason: string; amount?: number; pricesIncludeTax?: boolean; taxApplied?: boolean; taxRate?: number; gstType?: 'CGST_SGST' | 'IGST' | 'GST'; items?: Array<{ productId?: string; serviceDescription?: string; serviceCategoryId?: string; quantity?: number; unitPrice: number; taxRate?: number }>; notes?: string }) => Promise<ApiResponse>
+    update: (payload: { id: string; supplierId?: string | null; purchaseOrderId?: string | null; reason?: string; amount?: number; taxApplied?: boolean; taxRate?: number | null; pricesIncludeTax?: boolean; notes?: string | null }) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>
     print: (id: string) => Promise<ApiResponse>
     printReceipt: (payload: { id: string; paperWidth?: '80mm' | '58mm' }) => Promise<ApiResponse>
@@ -2140,6 +2147,9 @@ export interface SetupPayload {
   taxNumber?: string
   upiId?: string
   logoPath?: string
+  /** Suggested by the country preset and confirmed by the owner in setup; absent means the app default. */
+  pricesIncludeTax?: boolean
+  invoiceRoundingRule?: 'NONE' | '0.05' | '0.10' | '0.50' | '1'
   adminUsername: string
   adminPassword: string
   adminFullName: string

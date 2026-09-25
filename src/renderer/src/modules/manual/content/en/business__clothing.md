@@ -32,7 +32,7 @@ Assign a **Vendor/Supplier** to your products (Products screen — the same fiel
 
 ## Returns
 
-Clothing also gets the standard **Returns** screen — search a past invoice by number, select which items and quantities to return (capped at what's actually still returnable, accounting for anything already returned earlier), give a reason, and submit. See the *Returns* section of the Retail chapter for the full behavior — it works identically here.
+Clothing also gets the standard **Sales Returns** screen — search a past invoice by number, select which items and quantities to return (capped at what's actually still returnable, accounting for anything already returned earlier), give a reason, and submit. See the *Returns* section of the Retail chapter for the full behavior — it works identically here.
 
 For a variant-tracked line (any product sold with a size/colour), the Returns screen also offers an **Exchange** button next to the return quantity stepper — for when a customer wants a different size or colour, not a refund. Pick a quantity, choose the replacement size/colour from what's currently in stock, give a reason, and confirm. Behind the scenes this creates two linked, fully real transactions in one step: a return invoice for the surrendered item (restocking it and crediting the customer exactly as an ordinary return would) and a new sale invoice for the replacement, priced at the replacement's own current price — not the old item's price, so a since-changed price is reflected honestly. Sarang shows you the exact difference immediately: if the replacement costs more, it tells you how much more to collect; if less, how much to refund; if the prices match exactly, no balance is due at all.
 

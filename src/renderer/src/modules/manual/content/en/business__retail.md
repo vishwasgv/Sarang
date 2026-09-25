@@ -4,7 +4,7 @@ Choosing **Retail** as your business type turns on **Returns** plus the shared *
 
 ## Returns
 
-Open **Returns** from the sidebar to process a customer return or exchange against a past sale. Search for the original invoice by its invoice number, and Sarang loads its items with a **Max Return** quantity for each one — this is the original quantity minus anything already returned against that same invoice on an earlier visit, so you can never accidentally return more of an item than the customer actually bought (Sarang checks and blocks this on save too, not just in the quantity stepper).
+Open **Sales Returns** from the sidebar to process a customer return or exchange against a past sale. Search for the original invoice by its invoice number, and Sarang loads its items with a **Max Return** quantity for each one — this is the original quantity minus anything already returned against that same invoice on an earlier visit, so you can never accidentally return more of an item than the customer actually bought (Sarang checks and blocks this on save too, not just in the quantity stepper).
 
 Pick the quantity to return for each item using the +/− steppers, enter a reason (required), and submit. This creates a proper **return invoice** (its own invoice number, prefixed `RET-`) that reverses the original sale's revenue, discount, and tax proportionally — it isn't a silent inventory adjustment, it's a real linked transaction you can find later from either invoice.
 

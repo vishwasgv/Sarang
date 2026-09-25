@@ -2,7 +2,8 @@ import { getPrisma } from '../database/db'
 import { randomUUID } from 'crypto'
 import { logAction } from './audit.service'
 import { parseLocalDateStart } from '../utils/date.util'
-import { roundCurrency } from './currency.service'
+import { roundCurrency, moneyEpsilon } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import type { ImportStatementLinesPayload, ReconcileLinePayload } from '../validation/bank-statement.validation'
 
 // Bank reconciliation, Section 4.1 item 2 — no live feed, a manually
@@ -12,13 +13,12 @@ import type { ImportStatementLinesPayload, ReconcileLinePayload } from '../valid
 // a nearby date — an ambiguous multi-match or a zero-match is always left
 // for a human to resolve via reconcileLine, never guessed.
 const DATE_PROXIMITY_MS = 3 * 24 * 60 * 60 * 1000
-const AMOUNT_TOLERANCE = 0.01
 
 function withinWindow(a: Date, b: Date): boolean {
   return Math.abs(a.getTime() - b.getTime()) <= DATE_PROXIMITY_MS
 }
 function amountsMatch(a: number, b: number): boolean {
-  return Math.abs(a - b) <= AMOUNT_TOLERANCE
+  return Math.abs(a - b) <= moneyEpsilon()
 }
 
 export const bankStatementService = {
@@ -68,6 +68,7 @@ export const bankStatementService = {
   // Best-effort automatic matching — never destructive, only ever moves an
   // unreconciled line to reconciled when confident (exactly one candidate).
   async autoMatch(bankAccountId: string, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     try {
       const unmatched = await db.bankStatementLine.findMany({ where: { bankAccountId, reconciled: false } })
@@ -164,6 +165,7 @@ export const bankStatementService = {
   },
 
   async getReconciliationSummary(bankAccountId: string) {
+    await getBusinessCurrencyDecimals()
     try {
       const db = getPrisma()
       const account = await db.bankAccount.findUnique({ where: { id: bankAccountId } })

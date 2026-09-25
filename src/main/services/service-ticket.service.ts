@@ -293,7 +293,6 @@ export async function generateTicketInvoice(id: string, amount: number, userId?:
       const result = await billingService.createInvoice({
         customerId: ticket.customerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{ productId: product.id, quantity: 1, unitPrice: amount }],
         notes: `Ticket ${ticket.ticketNumber} — ${ticket.title}`,
         referenceNumber: ticket.ticketNumber,

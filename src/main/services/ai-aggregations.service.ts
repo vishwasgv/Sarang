@@ -9,6 +9,7 @@
 // quantity as POSITIVE, only lineTotal is signed negative).
 import { getPrisma } from '../database/db'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
+import { roundCurrency } from './currency.service'
 
 function daysAgo(days: number): Date {
   const d = new Date()
@@ -105,7 +106,7 @@ export async function getBottomRevenueProducts(limit = 10, dateFrom?: string, da
     .filter((p) => p.quantitySold > 0)
     .sort((a, b) => a.revenue - b.revenue)
     .slice(0, limit)
-    .map((p) => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }))
+    .map((p) => ({ ...p, revenue: roundCurrency(p.revenue) }))
 }
 
 export interface TopCustomer { customerName: string; phone: string | null; invoiceCount: number; revenue: number }
@@ -135,7 +136,7 @@ export async function getTopCustomersByRevenue(limit = 10, dateFrom?: string, da
     .filter((c) => c.revenue > 0)
     .sort((a, b) => b.revenue - a.revenue)
     .slice(0, limit)
-    .map((c) => ({ ...c, revenue: Math.round(c.revenue * 100) / 100 }))
+    .map((c) => ({ ...c, revenue: roundCurrency(c.revenue) }))
 }
 
 export interface InactiveCustomer { customerName: string; phone: string | null; lastPurchaseDate: string | null }
@@ -205,5 +206,5 @@ export async function getTopSuppliersByPurchaseVolume(limit = 10): Promise<TopSu
   return Array.from(map.values())
     .sort((a, b) => b.totalPurchaseValue - a.totalPurchaseValue)
     .slice(0, limit)
-    .map((s) => ({ ...s, totalPurchaseValue: Math.round(s.totalPurchaseValue * 100) / 100 }))
+    .map((s) => ({ ...s, totalPurchaseValue: roundCurrency(s.totalPurchaseValue) }))
 }

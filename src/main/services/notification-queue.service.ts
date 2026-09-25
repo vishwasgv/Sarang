@@ -166,6 +166,35 @@ export async function generateWhatsAppLink(payload: {
   }
 }
 
+// An appointment's calendar date is stored at local midnight and its time as
+// "HH:MM" (or "h:mm AM/PM"); reminders must count back from the real start.
+export function appointmentStartTime(scheduledDate: Date, scheduledTime: string): Date {
+  const start = new Date(scheduledDate)
+  const m = /(\d{1,2}):(\d{2})\s*([AaPp][Mm])?/.exec(scheduledTime ?? '')
+  if (m) {
+    let h = parseInt(m[1], 10)
+    const min = parseInt(m[2], 10)
+    const meridiem = m[3]?.toLowerCase()
+    if (meridiem === 'pm' && h < 12) h += 12
+    if (meridiem === 'am' && h === 12) h = 0
+    start.setHours(h, min, 0, 0)
+  }
+  return start
+}
+
+const APPOINTMENT_REMINDER_TYPES = ['APPOINTMENT_REMINDER_24H', 'APPOINTMENT_REMINDER_2H']
+
+/** Dismisses any still-pending reminders for an appointment (cancelled, completed or being rescheduled). */
+export async function cancelAppointmentReminders(appointmentId: string): Promise<void> {
+  try {
+    const db = getPrisma()
+    await db.notificationQueue.updateMany({
+      where: { appointmentId, status: 'PENDING', notificationType: { in: APPOINTMENT_REMINDER_TYPES } },
+      data: { status: 'DISMISSED' }
+    })
+  } catch { /* non-critical */ }
+}
+
 export async function createAppointmentReminder(appointmentId: string) {
   try {
     const db = getPrisma()
@@ -175,17 +204,24 @@ export async function createAppointmentReminder(appointmentId: string) {
     })
     if (!appt) return { success: false, error: { code: 'NQ-006', message: 'Appointment not found.' } }
 
+    // Always start from a clean slate so calling this again (a reschedule, or a
+    // repeat call) replaces the old pending reminders instead of doubling them.
+    await cancelAppointmentReminders(appointmentId)
+
     const phone = appt.customer?.phone ?? null
-    if (!phone) return { success: true, data: null }
+    if (!phone) {
+      return { success: true, data: null, message: 'No phone number on file, so no WhatsApp reminder was created.' }
+    }
 
     const name = appt.customerName ?? appt.customer?.customerName ?? 'Valued Client'
-    const dateStr = appt.scheduledDate.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
+    const start = appointmentStartTime(appt.scheduledDate, appt.scheduledTime)
+    const dateStr = start.toLocaleDateString('en-IN', { weekday: 'long', day: 'numeric', month: 'long' })
     const message = await renderMessageTemplate('APPOINTMENT_REMINDER_24H', { name, date: dateStr, time: appt.scheduledTime, serviceTitle: appt.serviceTitle })
 
     const link = await buildReminderWhatsAppLink(phone, message)
 
-    const schedule24h = new Date(appt.scheduledDate.getTime() - 24 * 60 * 60 * 1000)
-    const schedule2h  = new Date(appt.scheduledDate.getTime() - 2  * 60 * 60 * 1000)
+    const schedule24h = new Date(start.getTime() - 24 * 60 * 60 * 1000)
+    const schedule2h  = new Date(start.getTime() - 2  * 60 * 60 * 1000)
     const now = new Date()
 
     if (schedule24h > now) {
@@ -198,6 +234,7 @@ export async function createAppointmentReminder(appointmentId: string) {
           notificationType: 'APPOINTMENT_REMINDER_24H',
           templateBody: message,
           whatsappLink: link,
+          referenceKey: `APPOINTMENT_REMINDER_24H:${appointmentId}`,
           scheduledFor: schedule24h,
           status: 'PENDING',
         },
@@ -216,6 +253,7 @@ export async function createAppointmentReminder(appointmentId: string) {
           notificationType: 'APPOINTMENT_REMINDER_2H',
           templateBody: message2h,
           whatsappLink: link2h,
+          referenceKey: `APPOINTMENT_REMINDER_2H:${appointmentId}`,
           scheduledFor: schedule2h,
           status: 'PENDING',
         },
@@ -226,4 +264,23 @@ export async function createAppointmentReminder(appointmentId: string) {
   } catch (err) {
     return { success: false, error: { code: 'NQ-006', message: err instanceof Error ? err.message : 'Could not create reminder.' } }
   }
+}
+
+// One-time tidy-up for reminders queued by older versions, whose message text
+// (and WhatsApp link) ended with an internal "[abc123]" reference token.
+export async function cleanupLegacyReferenceTokens(): Promise<void> {
+  try {
+    const db = getPrisma()
+    const rows = await db.notificationQueue.findMany({
+      where: { status: 'PENDING', notificationType: { in: ['SHIPMENT_DISPATCHED', 'SHIPMENT_DELAYED', 'GRN_POSTED'] } },
+      select: { id: true, templateBody: true, whatsappLink: true }
+    })
+    for (const r of rows) {
+      const body = r.templateBody.replace(/\s\[[A-Za-z0-9-]{6,14}\]$/, '')
+      const link = r.whatsappLink ? r.whatsappLink.replace(/%20%5B[A-Za-z0-9-]{6,14}%5D$/, '') : r.whatsappLink
+      if (body !== r.templateBody || link !== r.whatsappLink) {
+        await db.notificationQueue.update({ where: { id: r.id }, data: { templateBody: body, whatsappLink: link } })
+      }
+    }
+  } catch { /* non-critical */ }
 }

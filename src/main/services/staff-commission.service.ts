@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 
 // StaffCommission.serviceRevenue/commissionRate/commissionAmount/tipAmount
 // are Prisma Decimal fields — Electron's IPC (structured clone) cannot
@@ -31,6 +32,7 @@ export async function calculateCommission(payload: {
   tipAmount?: number
   period?: string
 }) {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
 
@@ -139,6 +141,7 @@ export async function markCommissionsPaid(ids: string[], paidDate?: string) {
 }
 
 export async function getMonthlyCommissionReport(period?: string) {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const p = period ?? currentPeriod()

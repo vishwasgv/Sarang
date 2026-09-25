@@ -38,6 +38,9 @@ export const CreateBillSchema = z.object({
   // Phase 62 — Reverse Charge Mechanism: GST liability shifts to the
   // business receiving the supply.
   isReverseCharge: z.boolean().default(false),
+  // Unit costs/discounts on this bill already include tax (omitted: inherits the linked PO's setting, else exclusive).
+  pricesIncludeTax: z.boolean().optional(),
+  gstType: z.enum(['CGST_SGST', 'IGST', 'GST']).optional(),
   landedCosts: z.array(BillLandedCostSchema).optional(),
   // Phase 65 — Reporting Tags / Cost & Profit Centres.
   costCentreId: z.string().min(1).optional(),
@@ -46,6 +49,8 @@ export const CreateBillSchema = z.object({
   foreignExchangeRate: z.number().positive().optional(),
 })
 
+export const EditBillSchema = CreateBillSchema.extend({ id: z.string().min(1) })
+
 export const VoidBillSchema = z.object({
   id: z.string().min(1),
   reason: z.string().min(1, 'Void reason is required').max(500),
@@ -53,3 +58,4 @@ export const VoidBillSchema = z.object({
 
 export type CreateBillPayload = z.infer<typeof CreateBillSchema>
 export type VoidBillPayload = z.infer<typeof VoidBillSchema>
+export type EditBillPayload = z.infer<typeof EditBillSchema>

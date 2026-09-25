@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
+import { useTaxNumberField } from '@shared/hooks/useTaxNumberField'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@shared/ui/molecules/Modal'
@@ -58,9 +59,10 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const isEdit = !!supplier
 
-  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormValues>({
+  const { register, handleSubmit, reset, watch, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema)
   })
+  const taxField = useTaxNumberField(watch('country'), watch('taxNumber'), t('common.taxNumber'))
   const [priceLists, setPriceLists] = useState<Array<{ id: string; name: string }>>([])
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
 
@@ -144,7 +146,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
           <Input label={t('suppliers.state')} placeholder={t('common.statePlaceholder')} {...register('state')} />
           <Input label={t('common.country')} placeholder={t('common.countryPlaceholder')} {...register('country')} />
         </div>
-        <Input label={t('common.taxNumber')} placeholder={t('common.taxNumberPlaceholder')} {...register('taxNumber')} />
+        <Input label={taxField.label} placeholder={taxField.placeholder ?? t('common.taxNumberPlaceholder')} hint={taxField.hint} {...register('taxNumber')} />
         {priceLists.length > 0 && (
           <Select label={t('common.priceList')} {...register('priceListId')}>
             <option value="">{t('suppliers.priceListNonePurchase')}</option>

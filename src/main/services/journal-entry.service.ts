@@ -37,7 +37,7 @@ async function generateEntryNumber(tx: TxClient): Promise<string> {
 async function applyBankBalanceDeltas(tx: TxClient, lines: EntryLine[]): Promise<void> {
   for (const line of lines) {
     if (!line.bankAccountId) continue
-    const delta = roundCurrency(line.debitAmount - line.creditAmount)
+    const delta = roundCurrency(line.debitAmount - line.creditAmount, 3)
     if (delta === 0) continue
     await tx.bankAccount.update({
       where: { id: line.bankAccountId },
@@ -47,8 +47,8 @@ async function applyBankBalanceDeltas(tx: TxClient, lines: EntryLine[]): Promise
 }
 
 function assertBalanced(lines: EntryLine[]): void {
-  const totalDebit = sumCurrency(lines.map((l) => l.debitAmount))
-  const totalCredit = sumCurrency(lines.map((l) => l.creditAmount))
+  const totalDebit = sumCurrency(lines.map((l) => l.debitAmount), 3)
+  const totalCredit = sumCurrency(lines.map((l) => l.creditAmount), 3)
   if (totalDebit !== totalCredit) {
     throw new ServiceError('JE-001', `Journal entry is not balanced — total debit (${totalDebit}) must equal total credit (${totalCredit}).`)
   }

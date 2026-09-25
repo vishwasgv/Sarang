@@ -13,6 +13,7 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { cn } from '@shared/utils/cn'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface Category { id: string; name: string; parentCategoryId?: string | null }
 interface Inventory { quantity: number; reorderLevel: number; reorderQuantity: number }
@@ -210,7 +211,7 @@ export function ProductsScreen() {
       header: t('products.sellingPrice'),
       cell: ({ row }) => (
         <div className="text-end">
-          <p className="font-medium text-dark dark:text-slate-100">{row.original.sellingPrice.toFixed(2)}</p>
+          <p className="font-medium text-dark dark:text-slate-100">{moneyFixed(row.original.sellingPrice)}</p>
           <p className="text-xs text-slate-400">{row.original.unit}</p>
         </div>
       )

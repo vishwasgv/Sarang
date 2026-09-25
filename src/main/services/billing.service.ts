@@ -2,7 +2,10 @@ import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
-import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals, allocateGlobalDiscount } from './currency.service'
+import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
+import { applyRoundingRule, computeDocumentTotals, splitStoredLines } from '../../shared/utils/money'
+import { defaultGstTypeForPlaceOfSupply, resolvePartyState, resolveLineTaxCategory, type GstType } from '../../shared/utils/gst-presentation'
+import { getInvoiceRoundingRule, getPricesIncludeTaxDefault } from './settings.service'
 import { logAction } from './audit.service'
 import { isModuleEnabled } from './industry-template.service'
 import { createNotification } from './notification.service'
@@ -58,7 +61,8 @@ export async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: strin
   // where costCentreId = X" query is correct regardless of which line a
   // report cares about, without special-casing account types.
   const costCentreId = invoice.costCentreId ?? null
-  const revenueAmount = roundCurrency(invoice.totalAmount - invoice.taxAmount)
+  // 3 places covers every currency (JPY 0, most 2, KWD/BHD/OMR 3): rounding to 2 broke the balance of 3-decimal currencies
+  const revenueAmount = roundCurrency(invoice.totalAmount - invoice.taxAmount, 3)
   const lines = [{ accountId: debitAccount.id, bankAccountId: null, costCentreId, debitAmount: invoice.totalAmount, creditAmount: 0 }]
   if (invoice.taxAmount > 0) {
     const taxAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
@@ -270,7 +274,7 @@ export const billingService = {
     // Decimal places vary by currency (JPY/KRW have none, BHD/KWD/OMR have
     // 3) — hardcoding 2 everywhere silently mis-rounds every non-2dp
     // currency's invoice math, not just its display.
-    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true, gstScheme: true } })
+    const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true, gstScheme: true, state: true, taxNumber: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
     // Phase 62 — Composition Scheme dealers are legally barred from charging
     // GST on outward invoices at all (they pay a flat turnover-based rate to
@@ -279,6 +283,10 @@ export const billingService = {
     // generateInvoiceHtml prints "Bill of Supply" instead of "Invoice" once
     // taxAmount naturally comes out zero for a composition-scheme business.
     const isCompositionScheme = businessProfile?.gstScheme === 'COMPOSITION'
+    // Tax-inclusive pricing: unitPrice/discounts/globalDiscount on this invoice already contain tax. The billing
+    // screen always sends the choice explicitly; other callers (vertical workflows pricing from the catalogue)
+    // follow the business default, the mode the catalogue prices are kept in.
+    const pricesIncludeTax = payload.pricesIncludeTax ?? await getPricesIncludeTaxDefault()
 
     // Fresh-audit fix (2026-07-12): a B2B customer marked tax-exempt (reverse
     // charge, diplomatic/NGO exemption, etc.) previously had no way to get a
@@ -288,11 +296,17 @@ export const billingService = {
     // it's visible on the printed document, not just an internal flag.
     let customerTaxExempt = false
     let customerTaxExemptReason: string | null = null
+    let customerState: string | null = null
     if (payload.customerId) {
-      const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptReason: true } })
+      const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptReason: true, state: true, taxNumber: true } })
       customerTaxExempt = exemptCheck?.taxExempt ?? false
       customerTaxExemptReason = exemptCheck?.taxExemptReason ?? null
+      customerState = exemptCheck ? resolvePartyState(exemptCheck.state, exemptCheck.taxNumber) || null : null
     }
+    // Presentation of the tax (CGST + SGST, IGST or one GST line). Never affects an amount. When the
+    // caller does not choose, it follows the place of supply: the buyer's state typed on the sale, else
+    // the customer's saved state, against the business state; unknown states default to CGST + SGST.
+    const invoiceGstType: GstType = payload.gstType ?? defaultGstTypeForPlaceOfSupply(resolvePartyState(businessProfile?.state, businessProfile?.taxNumber), payload.buyerState || customerState)
 
     // Phase 67 §9.1 — Agri Inputs item 1: crop-season-aligned credit terms.
     // When a season is linked, it OVERRIDES any manually-typed dueDate — the
@@ -321,6 +335,7 @@ export const billingService = {
       jewelleryMakingCharge: number | null; jewelleryHallmarkNumber: string | null
       prescriptionPatientName: string | null; prescriptionDoctorName: string | null
       prescriptionDate: Date | null
+      taxCategory: string
       isFreeOfCost: boolean; schemeId: string | null
       // Phase 64 — composite items/kits. The invoice still shows this as
       // ONE line at the kit's own price; real component stock deductions
@@ -458,8 +473,8 @@ export const billingService = {
       // Decimal-safe: subtotal/discount/tax/total are computed once via
       // Prisma.Decimal (see currency.service.ts) instead of chained float
       // arithmetic, so per-line rounding error can't creep into lineTax.
-      const { subtotal: lineSubtotal, taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, effectiveUnitPrice, lineDiscount, effectiveTaxRate, currencyDecimals)
-      const lineTaxable = roundCurrency(lineSubtotal - lineDiscount, currencyDecimals)
+      const { taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, effectiveUnitPrice, lineDiscount, effectiveTaxRate, currencyDecimals, pricesIncludeTax)
+      const lineTaxable = roundCurrency(lineTotal - lineTax, currencyDecimals)
 
       validatedItems.push({
         productId: item.productId,
@@ -471,6 +486,7 @@ export const billingService = {
         unitPrice: effectiveUnitPrice,
         discountAmount: lineDiscount,
         taxRate: effectiveTaxRate,
+        taxCategory: resolveLineTaxCategory(item.taxCategory ?? product.taxCategory, effectiveTaxRate),
         lineTaxable,
         lineTax,
         lineTotal,
@@ -524,48 +540,26 @@ export const billingService = {
       furnitureTradeInDiscount = tradeIn.tradeInValue
     }
 
-    // Compute invoice-level totals. Summed via Decimal (sumCurrency), not a
-    // plain-float reduce — accumulating many lineTax/discount values with
-    // `+=` on floats is exactly where binary representation error compounds
-    // across a multi-line invoice.
-    const subtotal = sumCurrency(validatedItems.map(i => i.quantity * i.unitPrice), currencyDecimals)
-    const totalLineDiscount = sumCurrency(validatedItems.map(i => i.discountAmount), currencyDecimals)
+    // Invoice-level totals come from the shared money module (src/shared/utils/money.ts) — the
+    // exact same code the billing screen runs to show the cashier the total, so what is shown and
+    // what is saved cannot differ by a paisa. It rounds each line, allocates the invoice-level
+    // discount across lines (GST is charged on the post-discount value, Section 15(3) CGST Act;
+    // mixed tax rates are handled per line), sums exactly, then applies the business's
+    // invoice_rounding_rule (default: nearest 1.00 for INR, none for other currencies).
     const globalDiscount = (payload.globalDiscount ?? 0) + metalExchangeDiscount + furnitureTradeInDiscount
-    const discountAmount = roundCurrency(totalLineDiscount + globalDiscount, currencyDecimals)
-    // Fresh-audit fix (2026-08-11) — real GST compliance bug, not a stylistic choice: this
-    // used to subtract globalDiscount/metalExchangeDiscount from the total only AFTER
-    // taxAmount was already summed from each line's own tax-on-discounted-base, so GST was
-    // charged on the pre-global-discount subtotal. Section 15(3) CGST Act excludes a
-    // discount recorded on the invoice at time of supply from the value of supply — a
-    // bargain applied at billing time (globalDiscount) qualifies. allocateGlobalDiscount
-    // proportionally reduces each line's own taxable base by its share of the global
-    // discount (correct for mixed-tax-rate invoices, not just a flat subtraction) and
-    // recomputes tax per line on the reduced base; a no-op when there's no global discount,
-    // so the common case is byte-for-byte unchanged. The adjusted lineTaxable/lineTax are
-    // written back onto validatedItems so the persisted InvoiceItem rows (and everything
-    // downstream that reads them — HSN Summary, GSTR-1) reflect the correct per-line tax,
-    // not just the invoice-level total.
-    const allocated = allocateGlobalDiscount(
-      validatedItems.map(i => ({ lineTaxable: i.lineTaxable, taxRate: i.taxRate })),
-      globalDiscount,
-      currencyDecimals
+    const roundingRule = await getInvoiceRoundingRule(businessProfile?.currencyCode)
+    const computed = computeDocumentTotals(
+      validatedItems.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountAmount: i.discountAmount, taxRate: i.taxRate })),
+      { decimals: currencyDecimals, roundingRule, globalDiscount, pricesIncludeTax }
     )
     validatedItems.forEach((item, idx) => {
-      item.lineTaxable = allocated[idx].lineTaxable
-      item.lineTax = allocated[idx].lineTax
-      item.lineTotal = roundCurrency(allocated[idx].lineTaxable + allocated[idx].lineTax, currencyDecimals)
+      const l = computed.lines[idx]
+      item.discountAmount = l.discountAmount
+      item.lineTaxable = l.taxable
+      item.lineTax = l.tax
+      item.lineTotal = l.total
     })
-    const taxAmount = sumCurrency(validatedItems.map(i => i.lineTax), currencyDecimals)
-    const rawTotal = roundCurrency(subtotal - discountAmount + taxAmount, currencyDecimals)
-    // Whole-unit cash rounding is an Indian retail convention (rupee coins
-    // are the smallest cash denomination in practice) — applying it to every
-    // currency would be wrong for e.g. a USD invoice, where cents matter.
-    // Only round to whole units for zero-decimal-native currencies (INR
-    // keeps its historical default here) or when the currency already has no
-    // subunit (JPY, KRW, ...); everything else keeps its natural precision.
-    const applyWholeUnitRounding = currencyDecimals === 2 && (businessProfile?.currencyCode ?? 'INR') === 'INR'
-    const totalAmount = applyWholeUnitRounding ? Math.round(rawTotal) : rawTotal
-    const roundingAmount = roundCurrency(totalAmount - rawTotal, currencyDecimals)
+    const { subtotal, discountAmount, taxAmount, totalAmount, roundingAmount } = computed
 
     // RULE B005: Invoice total cannot be negative
     if (totalAmount < 0) {
@@ -640,10 +634,11 @@ export const billingService = {
             taxAmount,
             roundingAmount,
             totalAmount,
+            pricesIncludeTax,
             paidAmount,
             balanceAmount,
             paymentStatus,
-            gstType: payload.gstType ?? 'CGST_SGST',
+            gstType: invoiceGstType,
             buyerState: payload.buyerState ?? null,
             // Real bug found live (2026-07-28 core-commerce audit): a bare
             // `new Date('YYYY-MM-DD')` parses as UTC midnight, which for IST
@@ -754,6 +749,7 @@ export const billingService = {
               unitPrice: item.unitPrice,
               discountAmount: item.discountAmount,
               taxRate: item.taxRate,
+              taxCategory: item.taxCategory,
               taxAmount: item.lineTax,
               lineTotal: item.lineTotal,
               variantId: item.variantId,
@@ -910,7 +906,8 @@ export const billingService = {
               await createNotification({
                 title: 'Low Stock Alert',
                 message: `"${item.productName}" is at or below reorder level. Current stock: ${inv.quantity}.`,
-                notificationType: 'WARNING'
+                notificationType: 'WARNING',
+                actionPath: '/inventory'
               })
             }
           } catch { /* notification failure must not affect billing */ }
@@ -1293,6 +1290,7 @@ export const billingService = {
 
     const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
+    const splitRule = await getInvoiceRoundingRule(businessProfile?.currencyCode)
 
     try {
       const newInvoiceIds = await db.$transaction(async (tx) => {
@@ -1363,26 +1361,25 @@ export const billingService = {
           }
         }
 
+        // Parts are shared out from each line's STORED taxable value, tax, own discount and gross (never
+        // from unit price x quantity), so an invoice-level discount share goes with the quantity and a
+        // line that is fully allocated sums back to the original exactly (last piece takes the remainder).
+        const itemIndex = new Map(original.items.map((i, idx) => [i.id, idx]))
+        const pieces = splitStoredLines(
+          original.items.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountAmount: i.discountAmount, taxRate: i.taxRate, taxAmount: i.taxAmount, lineTotal: i.lineTotal })),
+          payload.splits.map(sp => sp.allocations.map(al => ({ lineIndex: itemIndex.get(al.invoiceItemId)!, quantity: al.quantity }))),
+          { decimals: currencyDecimals, pricesIncludeTax: original.pricesIncludeTax }
+        )
+
         const createdInvoiceIds: string[] = []
-        for (const split of payload.splits) {
+        for (const [splitIdx, split] of payload.splits.entries()) {
           const invoiceNumber = await generateInvoiceNumber(tx)
+          const piece = pieces[splitIdx]
+          const lineRows = piece.lines.map(l => ({ itemId: original.items[l.lineIndex].id, ...l }))
 
-          const lineRows: Array<ReturnType<typeof calculateLineTotal> & { itemId: string }> = split.allocations.map(alloc => {
-            const item = itemById.get(alloc.invoiceItemId)!
-            // Discount is prorated by the fraction of the line's original
-            // quantity this check is taking, then a fresh line is computed
-            // from scratch via the same calculateLineTotal() every other
-            // invoice line in this app goes through — not a proration of
-            // the original (already-rounded) lineTotal, which would
-            // compound rounding error across N splits.
-            const proratedDiscount = roundCurrency(item.discountAmount * (alloc.quantity / item.quantity), currencyDecimals)
-            return { itemId: item.id, ...calculateLineTotal(alloc.quantity, item.unitPrice, proratedDiscount, item.taxRate, currencyDecimals) }
-          })
-
-          const subtotal = sumCurrency(lineRows.map(r => r.subtotal), currencyDecimals)
-          const discountAmount = sumCurrency(lineRows.map(r => r.discountAmount), currencyDecimals)
-          const taxAmount = sumCurrency(lineRows.map(r => r.taxAmount), currencyDecimals)
-          const totalAmount = sumCurrency(lineRows.map(r => r.lineTotal), currencyDecimals)
+          const { subtotal, taxAmount, discountAmount } = piece
+          // Same rounding rule as a direct sale: a split part is a real invoice of its own.
+          const { total: totalAmount, rounding: splitRounding } = applyRoundingRule(piece.rawTotal, splitRule, currencyDecimals)
 
           const newInv = await tx.invoice.create({
             data: {
@@ -1391,8 +1388,9 @@ export const billingService = {
               subtotal,
               discountAmount,
               taxAmount,
-              roundingAmount: 0,
+              roundingAmount: splitRounding,
               totalAmount,
+              pricesIncludeTax: original.pricesIncludeTax,
               paidAmount: 0,
               balanceAmount: totalAmount,
               paymentStatus: 'UNPAID',
@@ -1411,7 +1409,6 @@ export const billingService = {
 
           for (const row of lineRows) {
             const item = itemById.get(row.itemId)!
-            const alloc = split.allocations.find(a => a.invoiceItemId === row.itemId)!
             await tx.invoiceItem.create({
               data: {
                 invoiceId: newInv.id,
@@ -1419,10 +1416,11 @@ export const billingService = {
                 productName: item.productName,
                 productSku: item.productSku,
                 hsnCode: item.hsnCode,
-                quantity: alloc.quantity,
+                quantity: row.quantity,
                 unitPrice: item.unitPrice,
                 discountAmount: row.discountAmount,
                 taxRate: item.taxRate,
+                taxCategory: item.taxCategory,
                 taxAmount: row.taxAmount,
                 lineTotal: row.lineTotal,
                 variantId: item.variantId,

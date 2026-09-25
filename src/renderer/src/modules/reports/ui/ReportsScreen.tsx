@@ -1,5 +1,7 @@
 import React, { useState, useCallback, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
+import type { TFunction } from 'i18next'
 import {
   BarChart3, Package, Receipt, Users, Truck, AlertCircle,
   DollarSign, Shield, ChevronRight, Download, FileText,
@@ -8,7 +10,8 @@ import {
   Boxes, CalendarCheck, Factory, ScanLine, Shirt, GraduationCap, ClipboardCheck, FileStack, CalendarClock, Gem, TrendingUp, HeartPulse,
   Briefcase, Wrench, BedDouble, FolderOpen,
   Car, Scissors, Bug, Home, Repeat, Camera, PartyPopper, UsersRound, HardHat, Pill, HandCoins,
-  PieChart, ShieldCheck, LineChart, Clock, Target, Share2, Timer, Trash2, Bell, Gauge, ChefHat
+  PieChart, ShieldCheck, LineChart, Clock, Target, Share2, Timer, Trash2, Bell, Gauge, ChefHat,
+  Scale, BookOpen, CalendarDays, ArrowRightLeft
 } from 'lucide-react'
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, Legend, CartesianGrid, ResponsiveContainer, Cell, AreaChart, Area, ReferenceLine, Treemap,
@@ -27,20 +30,27 @@ import {
   // first genuine line+bar combo chart (per-season bars, overlaid with an
   // overall-average trend line), matching the artifact's own "(line + bar
   // combo)" chart-form note for this item.
-  ComposedChart
+  ComposedChart, LabelList
 } from 'recharts'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore, type TemplateModule } from '@app/store/industry.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
+import { sumMoney } from '@money'
+import { TAX_CATEGORY_LABEL_KEYS, type TaxCategory } from '@shared/utils/tax-category'
 import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { ShareMenu, type ExportPdfResult } from '@shared/ui/molecules/ShareMenu'
 import { Select } from '@shared/ui/atoms/Select'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Button } from '@shared/ui/atoms/Button'
+import {
+  BalanceSheetView, GeneralLedgerView, DayBookView, CashFlowStatementView,
+  FINANCIAL_STATEMENT_IDS, financialStatementExport, financialStatementSummary, financialStatementCharts,
+  type FinancialStatementId
+} from './FinancialStatementViews'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types (local duplicates — avoids cross-boundary imports from main process)
@@ -54,13 +64,14 @@ interface SalesReport { dateFrom?: string; dateTo?: string; groupBy?: string; su
 interface DiscountReportRow { invoiceNumber: string; date: string; customer: string | null; productName: string; quantity: number; lineGross: number; discountAmount: number; discountPercent: number; staffName: string | null }
 interface DiscountByStaffRow { staffName: string; discountGiven: number; lineCount: number }
 interface DiscountByProductRow { productName: string; discountGiven: number; lineCount: number }
-interface DiscountReport { dateFrom: string; dateTo: string; summary: { totalDiscountGiven: number; discountedLineCount: number; totalLineCount: number; discountIncidencePercent: number; averageDiscountPercent: number }; byStaff: DiscountByStaffRow[]; byProduct: DiscountByProductRow[]; rows: DiscountReportRow[]; total: number }
+interface DiscountReport { dateFrom: string; dateTo: string; summary: { totalDiscountGiven: number; discountedLineCount: number; totalLineCount: number; discountIncidencePercent: number; averageDiscountPercent: number }; invoiceLevelDiscount?: number; byStaff: DiscountByStaffRow[]; byProduct: DiscountByProductRow[]; rows: DiscountReportRow[]; total: number }
 
 interface InventoryReportRow { sku: string | null; productName: string; category: string | null; productType: string; currentStock: number; unit: string; costPrice: number; sellingPrice: number; stockValue: number; lowStockAlert: boolean; cartonBreakdown: { unitsPerPack: number; fullCartons: number; loosePieces: number } | null }
 interface InventoryReport { asOf?: string; summary: { totalProducts: number; totalStockValue: number; lowStockItems: number; outOfStockItems: number }; rows: InventoryReportRow[] }
 
 interface TaxReportRow { taxName: string; taxType: string; rate: number; taxableAmount: number; taxCollected: number; invoiceCount: number }
-interface TaxReport { dateFrom?: string; dateTo?: string; summary: { totalTaxableAmount: number; totalTaxCollected: number }; rows: TaxReportRow[] }
+interface TaxCategoryRow { taxCategory: string; rate: number; taxableAmount: number; taxCollected: number; invoiceCount: number }
+interface TaxReport { dateFrom?: string; dateTo?: string; summary: { totalTaxableAmount: number; totalTaxCollected: number }; rows: TaxReportRow[]; byCategory?: TaxCategoryRow[]; stateUnknownCount?: number }
 
 interface AgingBuckets { current: number; days1to30: number; days31to60: number; days61to90: number; days90plus: number }
 interface OutstandingCustomerRow { customerName: string; phone: string | null; outstanding: number; aging: AgingBuckets }
@@ -126,7 +137,7 @@ interface CashPositionTrendReport { dateFrom: string; dateTo: string; points: Ca
 interface PaymentPerformanceRow { customerId: string; customerName: string; paidInvoiceCount: number; avgDaysToPay: number | null; outstandingInvoiceCount: number; outstandingAmount: number }
 interface PaymentPerformanceReport { dateFrom: string; dateTo: string; rows: PaymentPerformanceRow[]; overallAvgDaysToPay: number | null }
 
-interface TrialBalanceRow { account: string; debit: number; credit: number }
+interface TrialBalanceRow { account: string; accountId?: string; accountType?: string; debit: number; credit: number }
 interface TrialBalanceReport { dateFrom: string; dateTo: string; asOf: string; rows: TrialBalanceRow[]; totalDebit: number; totalCredit: number; balanced: boolean }
 
 interface AuditReportRow { date: string; user: string; action: string; entityType: string; entityId: string; details: string | null }
@@ -184,10 +195,11 @@ interface FastSlowMoverMatrixReport { dateFrom: string; dateTo: string; days: nu
 
 interface GSTR1B2BRow { gstin: string; receiverName: string; invoiceNumber: string; invoiceDate: string; invoiceValue: number; placeOfSupply: string; taxableValue: number; igstAmount: number; cgstAmount: number; sgstAmount: number; rate: number }
 interface GSTR1B2CSRow { placeOfSupply: string; rate: number; taxableValue: number; igstAmount: number; cgstAmount: number; sgstAmount: number }
-interface GSTR1Report { period: string; b2b: GSTR1B2BRow[]; b2cs: GSTR1B2CSRow[]; summary: { totalB2BValue: number; totalB2CSValue: number; totalIgst: number; totalCgst: number; totalSgst: number } }
+interface GSTR1NilExemptRow { category: 'NIL_RATED' | 'EXEMPT' | 'OUT_OF_SCOPE'; interState: boolean; registered: boolean; taxableValue: number }
+interface GSTR1Report { period: string; b2b: GSTR1B2BRow[]; b2cs: GSTR1B2CSRow[]; nilExempt?: GSTR1NilExemptRow[]; summary: { totalB2BValue: number; totalB2CSValue: number; totalIgst: number; totalCgst: number; totalSgst: number; totalNilRated?: number; totalExempt?: number; totalNonGst?: number }; stateUnknownCount?: number }
 
 interface HSNSummaryRow { hsnCode: string; description: string; uqc: string; totalQuantity: number; totalValue: number; taxableValue: number; igstAmount: number; cgstAmount: number; sgstAmount: number }
-interface HSNSummaryReport { period: string; b2b: HSNSummaryRow[]; b2c: HSNSummaryRow[]; summary: { totalTaxableValue: number; totalTax: number; rowCount: number } }
+interface HSNSummaryReport { period: string; b2b: HSNSummaryRow[]; b2c: HSNSummaryRow[]; summary: { totalTaxableValue: number; totalTax: number; rowCount: number }; stateUnknownCount?: number }
 
 interface DocumentSummaryRow { documentType: string; seriesPrefix: string; fromNumber: string; toNumber: string; totalCount: number; cancelledCount: number }
 interface DocumentSummaryReport { period: string; rows: DocumentSummaryRow[] }
@@ -336,6 +348,7 @@ interface GSTR3BPreview {
   table31d: GSTR3BTable31d
   table32: GSTR3BStateRow[]
   notes: string[]
+  stateUnknownCount?: number
 }
 
 // Phase 35 — Service Reports
@@ -949,7 +962,7 @@ type ReportChart =
 
 type ReportType =
   | 'sales' | 'inventory' | 'tax' | 'outstanding'
-  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'audit' | 'backup'
+  | 'customerLedger' | 'supplierLedger' | 'expenses' | 'profitAndLoss' | 'cashBook' | 'trialBalance' | 'balanceSheet' | 'generalLedger' | 'dayBook' | 'cashFlowStatement' | 'audit' | 'backup'
   | 'foodCost' | 'dishContributionMargin' | 'tableTurnoverByHour' | 'orderChannelBreakdown' | 'recipeWasteVariance' | 'deadStockClearance' | 'categorySellThrough' | 'seasonSellThrough' | 'sizeStyleHeatmap' | 'sizeAvailabilityHeatmap' | 'seasonalReorderCalendar' | 'basketComposition' | 'categoryMix' | 'vendorMargin' | 'brandMarginReturnRate' | 'fastSlowMoverMatrix' | 'gstr1' | 'hsnSummary' | 'documentSummary' | 'gstr3bPreview'
   | 'appointmentUtilisation' | 'clientRetention' | 'commission'
   | 'orderVolume' | 'discounts' | 'batchExpiry' | 'labThroughput' | 'bloodStock' | 'donationToIssueCycleTime' | 'jewellery'
@@ -1079,6 +1092,10 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   // cashFlowProjection above (daily NET movement, not a running position).
   { id: 'cashPositionTrend', icon: <TrendingUp size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial', requiredBusinessType: 'GENERAL' },
   { id: 'trialBalance', icon: <Receipt size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'balanceSheet', icon: <Scale size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'generalLedger', icon: <BookOpen size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'dayBook', icon: <CalendarDays size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
+  { id: 'cashFlowStatement', icon: <ArrowRightLeft size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'audit', icon: <Shield size={18} />, category: 'admin', requiresDateRange: false, permission: 'audit.view' },
   { id: 'backup', icon: <HardDrive size={18} />, category: 'admin', requiresDateRange: false, permission: 'backup.view' },
   { id: 'foodCost', icon: <Utensils size={18} />, category: 'restaurant', requiresDateRange: true, permission: 'reports.financial', requiredModule: 'ingredient_tracking' },
@@ -1415,6 +1432,7 @@ function localDateString(d: Date): string {
   return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}`
 }
 function today() { return localDateString(new Date()) }
+function isFinancialStatement(id: ReportType): id is FinancialStatementId { return (FINANCIAL_STATEMENT_IDS as string[]).includes(id) }
 function monthStart() { const d = new Date(); d.setDate(1); return localDateString(d) }
 
 // Table Turnover by Hour's day-of-week axis — uses the browser's native
@@ -1487,6 +1505,46 @@ export function ReportsScreen() {
   const [providerId, setProviderId] = useState('')
   const [staffId, setStaffId] = useState('')
   const [employees, setEmployees] = useState<{ id: string; fullName: string }[]>([])
+  const [searchParams, setSearchParams] = useSearchParams()
+  const [compareDate, setCompareDate] = useState('')
+  const [ledgerAccountId, setLedgerAccountId] = useState('')
+  const [ledgerAccounts, setLedgerAccounts] = useState<{ id: string; accountCode: string; accountName: string }[]>([])
+  const [dayBookType, setDayBookType] = useState('ALL')
+  const [autoRunTick, setAutoRunTick] = useState(0)
+
+  useEffect(() => {
+    window.api.chartOfAccounts.list().then((res) => {
+      if (res.success && res.data) setLedgerAccounts(res.data as { id: string; accountCode: string; accountName: string }[])
+    }).catch(() => { /* the account picker simply stays empty */ })
+  }, [])
+
+  // Deep link from Chart of Accounts: /reports?report=generalLedger&accountId=...
+  useEffect(() => {
+    const report = searchParams.get('report')
+    const accountId = searchParams.get('accountId')
+    if (report !== 'generalLedger' || !accountId) return
+    const now = new Date()
+    const fyYear = now.getMonth() >= 3 ? now.getFullYear() : now.getFullYear() - 1
+    setActiveReport('generalLedger')
+    setLedgerAccountId(accountId)
+    setDateFrom(`${fyYear}-04-01`)
+    setDateTo(today())
+    setSearchParams({}, { replace: true })
+    setAutoRunTick((n) => n + 1)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+
+  useEffect(() => {
+    if (autoRunTick > 0) void runReport()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [autoRunTick])
+
+  function openLedger(accountId: string) {
+    setLedgerAccountId(accountId)
+    setActiveReport('generalLedger')
+    setReportData(null)
+    setAutoRunTick((n) => n + 1)
+  }
 
   // Employees double as both "providers" (Appointment Utilisation) and "staff"
   // (Commission Report) — both reports filter on Employee.id.
@@ -1572,6 +1630,23 @@ export function ReportsScreen() {
           break
         case 'trialBalance':
           res = await window.api.reports.trialBalance({ dateFrom, dateTo })
+          break
+        case 'balanceSheet':
+          res = await window.api.reports.balanceSheet({ asOf: dateTo, compareAsOf: compareDate || undefined })
+          break
+        case 'generalLedger':
+          if (!ledgerAccountId) {
+            toastError(t('reports.title'), t('reports.fs.pickAccountFirst'))
+            setReportData(null)
+            return
+          }
+          res = await window.api.reports.generalLedger({ accountId: ledgerAccountId, dateFrom, dateTo })
+          break
+        case 'dayBook':
+          res = await window.api.reports.dayBook({ dateFrom, dateTo, voucherType: dayBookType })
+          break
+        case 'cashFlowStatement':
+          res = await window.api.reports.cashFlowStatement({ dateFrom, dateTo })
           break
         case 'audit':
           res = await window.api.reports.audit({ dateFrom: dateFrom || undefined, dateTo: dateTo || undefined, page: 1, limit: AUDIT_PAGE_SIZE })
@@ -2119,6 +2194,7 @@ export function ReportsScreen() {
 
   function buildExportData(): { headers: string[]; rows: (string | number | null)[][] } {
     if (!reportData) return { headers: [], rows: [] }
+    if (isFinancialStatement(activeReport)) return financialStatementExport(activeReport, reportData, t, currencySymbol)
     const yn = (b: boolean) => b ? t('common.yes') : t('common.no')
     switch (activeReport) {
       case 'sales': {
@@ -2341,9 +2417,10 @@ export function ReportsScreen() {
         const d = reportData as GSTR1Report
         const b2bRows = d.b2b.map(r => ['B2B', r.gstin, r.receiverName, r.invoiceNumber, r.invoiceDate, r.invoiceValue, r.placeOfSupply, r.taxableValue, r.igstAmount, r.cgstAmount, r.sgstAmount, r.rate])
         const b2csRows = d.b2cs.map(r => ['B2CS', '', '', '', '', '', r.placeOfSupply, r.taxableValue, r.igstAmount, r.cgstAmount, r.sgstAmount, r.rate])
+        const nilRows = (d.nilExempt ?? []).map(r => [nilExemptLabel(r.category, t), '', '', '', '', '', r.interState ? t('reports.summary.interState') : '', r.taxableValue, 0, 0, 0, 0])
         return {
           headers: [t('reports.col.type'), t('reports.col.gstin'), t('reports.col.party'), t('reports.col.invoiceNo'), t('common.date'), t('reports.col.value'), t('reports.col.placeOfSupply'), t('reports.col.taxableShort'), 'IGST', 'CGST', 'SGST', t('reports.col.rateShort')],
-          rows: [...b2bRows, ...b2csRows]
+          rows: [...b2bRows, ...b2csRows, ...nilRows]
         }
       }
       case 'hsnSummary': {
@@ -2433,14 +2510,14 @@ export function ReportsScreen() {
         const d = reportData as RoomWiseADRReport
         return {
           headers: ['Room #', 'Room Type', 'Nights Sold', 'Total Revenue', 'ADR'],
-          rows: d.rows.map(r => [r.roomNumber, r.roomType, r.nightsSold, r.totalRevenue.toFixed(2), r.adr.toFixed(2)])
+          rows: d.rows.map(r => [r.roomNumber, r.roomType, r.nightsSold, moneyFixed(r.totalRevenue), moneyFixed(r.adr)])
         }
       }
       case 'adrRevPAR': {
         const d = reportData as ADRRevPARReport
         return {
           headers: ['Period', 'Room Revenue', 'Nights Sold', 'Available Room-Nights', 'ADR', 'RevPAR'],
-          rows: d.rows.map(r => [r.period, r.roomRevenue.toFixed(2), r.nightsSold, r.availableRoomNights, r.adr.toFixed(2), r.revPAR.toFixed(2)])
+          rows: d.rows.map(r => [r.period, moneyFixed(r.roomRevenue), r.nightsSold, r.availableRoomNights, moneyFixed(r.adr), moneyFixed(r.revPAR)])
         }
       }
       case 'appointmentUtilisation': {
@@ -2664,7 +2741,7 @@ export function ReportsScreen() {
         const d = reportData as FieldRepLeaderboardReport
         return {
           headers: [t('reports.col.repName'), t('reports.col.ordersBooked'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.customersVisited'), t('reports.col.plannedStops'), t('reports.col.hitRatePercent')],
-          rows: d.rows.map(r => [r.repName, r.ordersBooked, r.totalValue.toFixed(2), r.distinctCustomersVisited, r.plannedStops ?? '—', r.hitRatePercent !== null ? `${r.hitRatePercent}%` : '—'])
+          rows: d.rows.map(r => [r.repName, r.ordersBooked, moneyFixed(r.totalValue), r.distinctCustomersVisited, r.plannedStops ?? '—', r.hitRatePercent !== null ? `${r.hitRatePercent}%` : '—'])
         }
       }
       case 'stylistRepeatClient': {
@@ -2713,14 +2790,14 @@ export function ReportsScreen() {
         const d = reportData as LawyerBillableHoursReport
         return {
           headers: [t('reports.col.advocate'), t('reports.col.billableHours'), t('reports.col.nonBillableHours'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.billedAmount'), t('reports.col.unbilledAmount')],
-          rows: d.rows.map(r => [r.advocateName, r.billableHours, r.nonBillableHours, r.billableAmount.toFixed(2), r.billedAmount.toFixed(2), r.unbilledAmount.toFixed(2)])
+          rows: d.rows.map(r => [r.advocateName, r.billableHours, r.nonBillableHours, moneyFixed(r.billableAmount), moneyFixed(r.billedAmount), moneyFixed(r.unbilledAmount)])
         }
       }
       case 'feeRealization': {
         const d = reportData as FeeRealizationReport
         return {
           headers: [t('reports.col.engagement'), t('reports.col.clientName'), `${t('common.amount')} (${currencySymbol})`, t('reports.col.invoicedThisPeriod')],
-          rows: d.rows.map(r => [r.engagementTitle, r.clientName, r.expectedFee.toFixed(2), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])
+          rows: d.rows.map(r => [r.engagementTitle, r.clientName, moneyFixed(r.expectedFee), r.isInvoicedThisPeriod ? t('common.yes') : t('common.no')])
         }
       }
       case 'drawingApprovalCycleTime': {
@@ -2741,7 +2818,7 @@ export function ReportsScreen() {
         const d = reportData as SiteVisitBillingReport
         return {
           headers: [t('reports.col.projectName'), t('reports.col.visitDate'), t('reports.col.visitType'), `${t('reports.col.billableAmount')} (${currencySymbol})`, t('reports.col.billedStatus')],
-          rows: d.rows.map(r => [r.projectName, r.visitDate, r.visitType, r.billableAmount.toFixed(2), r.isBilled ? t('common.yes') : t('common.no')])
+          rows: d.rows.map(r => [r.projectName, r.visitDate, r.visitType, moneyFixed(r.billableAmount), r.isBilled ? t('common.yes') : t('common.no')])
         }
       }
       case 'materialTestResults': {
@@ -2755,35 +2832,35 @@ export function ReportsScreen() {
         const d = reportData as RetainerUtilizationReport
         return {
           headers: [t('reports.col.title'), t('reports.col.client'), t('reports.col.hoursPerMonth'), t('reports.col.hoursUsed'), t('reports.col.utilizationPercent'), `${t('reports.col.monthlyAmount')} (${currencySymbol})`, t('reports.col.billedThisPeriod')],
-          rows: d.rows.map(r => [r.title, r.clientName, r.hoursPerMonth, r.hoursUsed, r.utilizationPercent, r.monthlyAmount.toFixed(2), r.billedThisPeriod ? t('common.yes') : t('common.no')])
+          rows: d.rows.map(r => [r.title, r.clientName, r.hoursPerMonth, r.hoursUsed, r.utilizationPercent, moneyFixed(r.monthlyAmount), r.billedThisPeriod ? t('common.yes') : t('common.no')])
         }
       }
       case 'clientRevenueConcentration': {
         const d = reportData as ClientRevenueConcentrationReport
         return {
           headers: [t('reports.col.client'), `${t('reports.col.revenue')} (${currencySymbol})`, t('reports.col.revenueSharePercent'), t('reports.col.cumulativeSharePercent')],
-          rows: d.rows.map(r => [r.clientName, r.revenue.toFixed(2), r.revenueSharePercent, r.cumulativeSharePercent])
+          rows: d.rows.map(r => [r.clientName, moneyFixed(r.revenue), r.revenueSharePercent, r.cumulativeSharePercent])
         }
       }
       case 'campaignROI': {
         const d = reportData as CampaignROIReport
         return {
           headers: [t('reports.col.projectName'), t('reports.col.client'), t('reports.col.targetChannel'), `${t('reports.col.adSpendBudget')} (${currencySymbol})`, `${t('reports.col.actualSpend')} (${currencySymbol})`, t('reports.col.budgetVariancePercent'), t('reports.col.conversions'), t('reports.col.costPerConversion')],
-          rows: d.rows.map(r => [r.projectName, r.clientName, r.targetChannel ?? '—', r.adSpendBudget ?? '—', r.actualSpend.toFixed(2), r.budgetVariancePercent ?? '—', r.conversions, r.costPerConversion ?? '—'])
+          rows: d.rows.map(r => [r.projectName, r.clientName, r.targetChannel ?? '—', r.adSpendBudget ?? '—', moneyFixed(r.actualSpend), r.budgetVariancePercent ?? '—', r.conversions, r.costPerConversion ?? '—'])
         }
       }
       case 'channelPerformance': {
         const d = reportData as ChannelPerformanceReport
         return {
           headers: [t('reports.col.targetChannel'), t('reports.col.campaignCount'), t('reports.col.totalImpressions'), t('reports.col.totalClicks'), t('reports.col.totalConversions'), `${t('reports.col.totalActualSpend')} (${currencySymbol})`, t('reports.col.ctrPercent'), t('reports.col.costPerConversion')],
-          rows: d.rows.map(r => [r.channel, r.campaignCount, r.totalImpressions, r.totalClicks, r.totalConversions, r.totalActualSpend.toFixed(2), r.ctrPercent ?? '—', r.costPerConversion ?? '—'])
+          rows: d.rows.map(r => [r.channel, r.campaignCount, r.totalImpressions, r.totalClicks, r.totalConversions, moneyFixed(r.totalActualSpend), r.ctrPercent ?? '—', r.costPerConversion ?? '—'])
         }
       }
       case 'retainerWorkDelivered': {
         const d = reportData as RetainerWorkDeliveredReport
         return {
           headers: [t('reports.col.title'), t('reports.col.client'), `${t('reports.col.monthlyAmount')} (${currencySymbol})`, t('reports.col.deliveredCount'), t('reports.col.billedThisPeriod')],
-          rows: d.rows.map(r => [r.title, r.clientName, r.monthlyAmount.toFixed(2), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])
+          rows: d.rows.map(r => [r.title, r.clientName, moneyFixed(r.monthlyAmount), r.deliveredCount, r.billedThisPeriod ? t('common.yes') : t('common.no')])
         }
       }
       case 'issueAging': {
@@ -2818,7 +2895,7 @@ export function ReportsScreen() {
         const d = reportData as ShootTypeRevenueMixReport
         return {
           headers: [t('reports.col.shootType'), t('reports.col.bookingCount'), `${t('common.amount')} (${currencySymbol})`, `${t('reports.col.avgTicket')} (${currencySymbol})`, t('reports.col.revenueSharePercent')],
-          rows: d.rows.map(r => [r.shootType, r.bookingCount, r.totalRevenue.toFixed(2), r.avgTicket.toFixed(2), r.revenueSharePercent])
+          rows: d.rows.map(r => [r.shootType, r.bookingCount, moneyFixed(r.totalRevenue), moneyFixed(r.avgTicket), r.revenueSharePercent])
         }
       }
       case 'equipmentCheckout': {
@@ -2832,7 +2909,7 @@ export function ReportsScreen() {
         const d = reportData as VendorCostVsBudgetReport
         return {
           headers: [t('reports.col.eventName'), t('reports.col.client'), `${t('reports.col.clientBudget')} (${currencySymbol})`, `${t('reports.col.totalVendorCost')} (${currencySymbol})`, t('reports.col.budgetVariancePercent')],
-          rows: d.rows.map(r => [r.eventName, r.clientName, r.clientBudget ?? '—', r.totalVendorCost.toFixed(2), r.budgetVariancePercent ?? '—'])
+          rows: d.rows.map(r => [r.eventName, r.clientName, r.clientBudget ?? '—', moneyFixed(r.totalVendorCost), r.budgetVariancePercent ?? '—'])
         }
       }
       case 'vendorPerformanceHistory': {
@@ -2867,14 +2944,14 @@ export function ReportsScreen() {
         const d = reportData as CarPartsVarianceReport
         return {
           headers: ['Job #', 'Vehicle #', 'Quoted Parts', 'Actual Parts', 'Variance', 'Variance %'],
-          rows: d.rows.map(r => [r.jobNumber, r.vehicleNumber, r.quotedPartsTotal.toFixed(2), r.actualPartsTotal.toFixed(2), r.variance.toFixed(2), r.variancePercent != null ? `${r.variancePercent}%` : '—'])
+          rows: d.rows.map(r => [r.jobNumber, r.vehicleNumber, moneyFixed(r.quotedPartsTotal), moneyFixed(r.actualPartsTotal), moneyFixed(r.variance), r.variancePercent != null ? `${r.variancePercent}%` : '—'])
         }
       }
       case 'serviceTypeRevenue': {
         const d = reportData as ServiceTypeRevenueReport
         return {
           headers: ['Service Type', 'Jobs', t('common.amount')],
-          rows: d.rows.map(r => [r.serviceType, r.jobCount, r.totalRevenue.toFixed(2)])
+          rows: d.rows.map(r => [r.serviceType, r.jobCount, moneyFixed(r.totalRevenue)])
         }
       }
       case 'tailoringOrders': {
@@ -2902,7 +2979,7 @@ export function ReportsScreen() {
         const d = reportData as FabricPopularityReport
         return {
           headers: ['Fabric / Design', 'Orders', t('common.amount')],
-          rows: d.rows.map(r => [r.fabricDescription, r.orderCount, r.totalRevenue.toFixed(2)])
+          rows: d.rows.map(r => [r.fabricDescription, r.orderCount, moneyFixed(r.totalRevenue)])
         }
       }
       case 'pestContracts': {
@@ -2916,7 +2993,7 @@ export function ReportsScreen() {
         const d = reportData as RenewalFunnelReport
         return {
           headers: ['Stage', 'Count', t('common.amount')],
-          rows: d.stages.map(s => [s.stage, s.count, s.value.toFixed(2)])
+          rows: d.stages.map(s => [s.stage, s.count, moneyFixed(s.value)])
         }
       }
       case 'chemicalUsageCompliance': {
@@ -2930,7 +3007,7 @@ export function ReportsScreen() {
         const d = reportData as RecurringValueTrendReport
         return {
           headers: ['Period', t('common.amount'), 'Invoices'],
-          rows: d.rows.map(r => [r.period, r.totalValue.toFixed(2), r.invoiceCount])
+          rows: d.rows.map(r => [r.period, moneyFixed(r.totalValue), r.invoiceCount])
         }
       }
       case 'realEstatePipeline': {
@@ -3245,7 +3322,7 @@ export function ReportsScreen() {
         const d = reportData as FeeDueUnderperformanceReport
         return {
           headers: [t('reports.col.studentName'), t('reports.col.batchName'), `${t('reports.col.feeDueAmount')} (${currencySymbol})`, t('reports.col.avgTestPercentage')],
-          rows: d.rows.map(r => [r.studentName, r.batchName, r.feeDueAmount.toFixed(2), r.avgTestPercentage])
+          rows: d.rows.map(r => [r.studentName, r.batchName, moneyFixed(r.feeDueAmount), r.avgTestPercentage])
         }
       }
       case 'coilWastageYield': {
@@ -3266,14 +3343,14 @@ export function ReportsScreen() {
         const d = reportData as SeasonalDemandForecastReport
         return {
           headers: ['Month', 'Units Sold', `Revenue (${currencySymbol})`],
-          rows: d.rows.map(r => [r.monthName, r.unitsSold, r.revenue.toFixed(2)])
+          rows: d.rows.map(r => [r.monthName, r.unitsSold, moneyFixed(r.revenue)])
         }
       }
       case 'institutionalOrderHistory': {
         const d = reportData as InstitutionalOrderHistoryReport
         return {
           headers: ['Order #', 'Institution', 'List Name', 'Status', 'Items', `Total Value (${currencySymbol})`, 'Created'],
-          rows: d.rows.map(r => [r.orderNumber, r.institutionName, r.listName, r.status, r.itemCount, r.totalValue.toFixed(2), r.createdAt])
+          rows: d.rows.map(r => [r.orderNumber, r.institutionName, r.listName, r.status, r.itemCount, moneyFixed(r.totalValue), r.createdAt])
         }
       }
       case 'locationStockSplit': {
@@ -3287,14 +3364,14 @@ export function ReportsScreen() {
         const d = reportData as DeliveryInstallationScheduleReport
         return {
           headers: ['Booking #', 'Customer', 'Delivery Date', 'Address', 'Status', 'Items', `Value (${currencySymbol})`],
-          rows: d.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, r.totalValue.toFixed(2)])
+          rows: d.rows.map(r => [r.bookingNumber, r.customerName, r.deliveryDate, r.deliveryAddress ?? '—', r.status, r.itemCount, moneyFixed(r.totalValue)])
         }
       }
       case 'specWiseFastMovers': {
         const d = reportData as SpecWiseFastMoversReport
         return {
           headers: ['Spec', 'Product', 'Units Sold', `Revenue (${currencySymbol})`],
-          rows: d.rows.map(r => [r.spec, r.productName, r.unitsSold, r.revenue.toFixed(2)])
+          rows: d.rows.map(r => [r.spec, r.productName, r.unitsSold, moneyFixed(r.revenue)])
         }
       }
       case 'fittingCrossSell': {
@@ -3308,21 +3385,21 @@ export function ReportsScreen() {
         const d = reportData as MaterialSalesMixReport
         return {
           headers: ['Material', 'Units Sold', `Revenue (${currencySymbol})`, 'Revenue Share %'],
-          rows: d.rows.map(r => [r.materialName, r.unitsSold, r.revenue.toFixed(2), r.revenueSharePercent])
+          rows: d.rows.map(r => [r.materialName, r.unitsSold, moneyFixed(r.revenue), r.revenueSharePercent])
         }
       }
       case 'mrpViolation': {
         const d = reportData as MrpViolationReport
         return {
           headers: ['Invoice #', 'Date', 'Product', 'SKU', `Unit Price (${currencySymbol})`, `MRP (${currencySymbol})`, `Excess/Unit (${currencySymbol})`, 'Qty'],
-          rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.sku ?? '—', r.unitPrice.toFixed(2), r.mrp.toFixed(2), r.excessPerUnit.toFixed(2), r.quantity])
+          rows: d.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.sku ?? '—', moneyFixed(r.unitPrice), moneyFixed(r.mrp), moneyFixed(r.excessPerUnit), r.quantity])
         }
       }
       case 'perishableWastage': {
         const d = reportData as PerishableWastageReport
         return {
           headers: ['Product', 'SKU', 'Wastage Qty', `Wastage Value (${currencySymbol})`],
-          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.expiredWastageQty, r.expiredWastageValue.toFixed(2)])
+          rows: d.rows.map(r => [r.productName, r.sku ?? '—', r.expiredWastageQty, moneyFixed(r.expiredWastageValue)])
         }
       }
       case 'dailyRestockAlert': {
@@ -3336,14 +3413,14 @@ export function ReportsScreen() {
         const d = reportData as LooseVsPackagedMixReport
         return {
           headers: ['Type', 'Units Sold', `Revenue (${currencySymbol})`],
-          rows: d.rows.map(r => [r.label, r.unitsSold, r.revenue.toFixed(2)])
+          rows: d.rows.map(r => [r.label, r.unitsSold, moneyFixed(r.revenue)])
         }
       }
       case 'khataRisk': {
         const d = reportData as KhataRiskReport
         return {
           headers: ['Customer', 'Phone', `Outstanding (${currencySymbol})`, 'Oldest Debt (days)', 'Trend', 'Risk Tier'],
-          rows: d.rows.map(r => [r.customerName, r.phone ?? '—', r.outstanding.toFixed(2), r.daysOldOfOldestDebt, r.trend, r.riskTier])
+          rows: d.rows.map(r => [r.customerName, r.phone ?? '—', moneyFixed(r.outstanding), r.daysOldOfOldestDebt, r.trend, r.riskTier])
         }
       }
       case 'preOrderProductionSheet': {
@@ -3367,21 +3444,21 @@ export function ReportsScreen() {
         const d = reportData as CommissionByAgentReport
         return {
           headers: ['Agent', 'Bookings', `Package Revenue (${currencySymbol})`, `Commission (${currencySymbol})`],
-          rows: d.rows.map(r => [r.agentName, r.bookingCount, r.totalPackageRevenue.toFixed(2), r.totalCommission.toFixed(2)])
+          rows: d.rows.map(r => [r.agentName, r.bookingCount, moneyFixed(r.totalPackageRevenue), moneyFixed(r.totalCommission)])
         }
       }
       case 'tripProfitability': {
         const d = reportData as TripProfitabilityReport
         return {
           headers: ['Booking #', 'Customer', `Revenue (${currencySymbol})`, `Driver Cost (${currencySymbol})`, `Fuel Est. (${currencySymbol})`, `Maintenance Est. (${currencySymbol})`, `Commission (${currencySymbol})`, `Net Profit (${currencySymbol})`],
-          rows: d.rows.map(r => [r.bookingNumber, r.customerName, r.revenue.toFixed(2), r.driverCost.toFixed(2), r.fuelCostEstimate.toFixed(2), r.maintenanceCostEstimate.toFixed(2), r.commission.toFixed(2), r.netProfit.toFixed(2)])
+          rows: d.rows.map(r => [r.bookingNumber, r.customerName, moneyFixed(r.revenue), moneyFixed(r.driverCost), moneyFixed(r.fuelCostEstimate), moneyFixed(r.maintenanceCostEstimate), moneyFixed(r.commission), moneyFixed(r.netProfit)])
         }
       }
       case 'eventProfitability': {
         const d = reportData as EventProfitabilityReport
         return {
           headers: ['Event #', 'Customer', `Revenue (${currencySymbol})`, `Staff Cost (${currencySymbol})`, `Ingredient Est. (${currencySymbol})`, `Net Profit (${currencySymbol})`],
-          rows: d.rows.map(r => [r.eventNumber, r.customerName, r.revenue.toFixed(2), r.staffCost.toFixed(2), r.ingredientCostEstimate.toFixed(2), r.netProfit.toFixed(2)])
+          rows: d.rows.map(r => [r.eventNumber, r.customerName, moneyFixed(r.revenue), moneyFixed(r.staffCost), moneyFixed(r.ingredientCostEstimate), moneyFixed(r.netProfit)])
         }
       }
       case 'complianceTasks': {
@@ -3435,7 +3512,7 @@ export function ReportsScreen() {
       const charts = getReportCharts()
       const res = await window.api.export.generateReportHtml({
         title: def.label,
-        dateRange: def.requiresDateRange ? `${dateFrom} to ${dateTo}` : undefined,
+        dateRange: def.requiresDateRange ? rangeText() : undefined,
         summaryCards,
         charts,
         tables: [{ headers, rows }],
@@ -3460,8 +3537,12 @@ export function ReportsScreen() {
   // for sharing (CSV/Excel export above stays available, unaffected) — a
   // spreadsheet has no meaningful "share as a message" reading experience
   // the way a PDF does.
+  function rangeText(): string {
+    return activeReport === 'balanceSheet' ? dateTo : `${dateFrom} to ${dateTo}`
+  }
+
   function reportDateRangeLabel(): string {
-    return def.requiresDateRange ? `${dateFrom} to ${dateTo}` : t('reports.allTimeRange')
+    return def.requiresDateRange ? rangeText() : t('reports.allTimeRange')
   }
 
   async function handleExportPdfForShare(): Promise<ExportPdfResult> {
@@ -3471,7 +3552,7 @@ export function ReportsScreen() {
       const charts = getReportCharts()
       const htmlRes = await window.api.export.generateReportHtml({
         title: def.label,
-        dateRange: def.requiresDateRange ? `${dateFrom} to ${dateTo}` : undefined,
+        dateRange: def.requiresDateRange ? rangeText() : undefined,
         summaryCards,
         charts,
         tables: [{ headers, rows }],
@@ -3506,6 +3587,7 @@ export function ReportsScreen() {
 
   function getSummaryCards(): { label: string; value: string }[] {
     if (!reportData) return []
+    if (isFinancialStatement(activeReport)) return financialStatementSummary(activeReport, reportData, t, fmt)
     switch (activeReport) {
       case 'sales': {
         const d = reportData as SalesReport
@@ -3921,7 +4003,7 @@ export function ReportsScreen() {
         const d = reportData as FieldRepLeaderboardReport
         return [
           { label: t('reports.summary.totalOrdersBooked'), value: String(d.summary.totalOrdersBooked) },
-          { label: `${t('common.amount')} (${currencySymbol})`, value: d.summary.totalValue.toFixed(2) }
+          { label: `${t('common.amount')} (${currencySymbol})`, value: moneyFixed(d.summary.totalValue) }
         ]
       }
       case 'stylistRepeatClient': {
@@ -3949,7 +4031,7 @@ export function ReportsScreen() {
         const d = reportData as LawyerBillableHoursReport
         return [
           { label: t('reports.col.billableHours'), value: String(d.summary.totalBillableHours) },
-          { label: `${t('common.amount')} (${currencySymbol})`, value: d.summary.totalBillableAmount.toFixed(2) }
+          { label: `${t('common.amount')} (${currencySymbol})`, value: moneyFixed(d.summary.totalBillableAmount) }
         ]
       }
       case 'serviceProjects': {
@@ -4576,6 +4658,11 @@ export function ReportsScreen() {
   // right form is not a chart" principle.
   function getReportCharts(): ReportChart[] {
     if (!reportData) return []
+    if (isFinancialStatement(activeReport)) return financialStatementCharts(activeReport, reportData, t)
+    // Reports whose on-screen charts were added in the every-report-has-a-chart pass are built by
+    // viewPdfCharts from the same data builders; their older chart-free cases in the switch below are superseded.
+    const viewCharts = viewPdfCharts(activeReport, reportData, t)
+    if (viewCharts) return viewCharts
     switch (activeReport) {
       case 'sales': {
         const d = reportData as SalesReport
@@ -5403,13 +5490,15 @@ export function ReportsScreen() {
           <div className="flex flex-wrap items-end gap-3">
             {def.requiresDateRange && activeReport !== 'commission' && (
               <>
+                {activeReport !== 'balanceSheet' && (
+                  <div>
+                    <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.dateFrom')}</label>
+                    <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
+                      className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+                  </div>
+                )}
                 <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.dateFrom')}</label>
-                  <input type="date" value={dateFrom} onChange={e => setDateFrom(e.target.value)}
-                    className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-                </div>
-                <div>
-                  <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.dateTo')}</label>
+                  <label className="block text-xs font-semibold text-slate-500 mb-1">{activeReport === 'balanceSheet' ? t('reports.fs.asOfDate') : t('reports.dateTo')}</label>
                   <input type="date" value={dateTo} onChange={e => setDateTo(e.target.value)}
                     className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
@@ -5437,6 +5526,28 @@ export function ReportsScreen() {
                     className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
                 </div>
               </>
+            )}
+
+            {activeReport === 'balanceSheet' && (
+              <div>
+                <label className="block text-xs font-semibold text-slate-500 mb-1">{t('reports.fs.compareWith')}</label>
+                <input type="date" value={compareDate} onChange={e => setCompareDate(e.target.value)}
+                  className="h-9 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
+              </div>
+            )}
+
+            {activeReport === 'generalLedger' && (
+              <Select label={t('reports.fs.account')} value={ledgerAccountId} onChange={e => setLedgerAccountId(e.target.value)}>
+                <option value="">{t('reports.fs.selectAccount')}</option>
+                {ledgerAccounts.map(a => <option key={a.id} value={a.id}>{a.accountCode} — {a.accountName}</option>)}
+              </Select>
+            )}
+
+            {activeReport === 'dayBook' && (
+              <Select label={t('reports.fs.voucherType')} value={dayBookType} onChange={e => setDayBookType(e.target.value)}>
+                <option value="ALL">{t('reports.fs.allVouchers')}</option>
+                {['SALES', 'PURCHASE', 'RECEIPT', 'PAYMENT', 'EXPENSE', 'JOURNAL', 'OTHER'].map(v => <option key={v} value={v}>{t(`reports.fs.voucherTypes.${v}`)}</option>)}
+              </Select>
             )}
 
             {activeReport === 'appointmentUtilisation' && (
@@ -5544,7 +5655,7 @@ export function ReportsScreen() {
           ) : !reportData ? (
             <EmptyState title={t('reports.noData')} subtitle={t('common.tryAgain')} />
           ) : (
-            <ReportContent reportType={activeReport} data={reportData} fmt={fmt} onAuditPageChange={goToAuditPage} />
+            <ReportContent reportType={activeReport} data={reportData} fmt={fmt} onAuditPageChange={goToAuditPage} onOpenLedger={openLedger} />
           )}
         </div>
       </div>
@@ -5629,10 +5740,11 @@ function DataTable({ headers, rows, emptyText = 'No records found.' }: {
 // Report Content dispatcher
 // ─────────────────────────────────────────────────────────────────────────────
 
-function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
+function ReportContent({ reportType, data, fmt, onAuditPageChange, onOpenLedger }: {
   reportType: ReportType; data: unknown
   fmt: (n: number) => string
   onAuditPageChange: (page: number) => void
+  onOpenLedger: (accountId: string) => void
 }) {
   switch (reportType) {
     case 'sales': return <SalesReportView data={data as SalesReport} fmt={fmt} />
@@ -5644,7 +5756,11 @@ function ReportContent({ reportType, data, fmt, onAuditPageChange }: {
     case 'expenses': return <ExpenseReportView data={data as ExpenseReport} fmt={fmt} />
     case 'profitAndLoss': return <ProfitAndLossView data={data as ProfitAndLossReport} fmt={fmt} />
     case 'cashBook': return <CashBookView data={data as CashBookReport} fmt={fmt} />
-    case 'trialBalance': return <TrialBalanceView data={data as TrialBalanceReport} fmt={fmt} />
+    case 'trialBalance': return <TrialBalanceView data={data as TrialBalanceReport} fmt={fmt} onOpenLedger={onOpenLedger} />
+    case 'balanceSheet': return <BalanceSheetView data={data as React.ComponentProps<typeof BalanceSheetView>['data']} fmt={fmt} />
+    case 'generalLedger': return <GeneralLedgerView data={data as React.ComponentProps<typeof GeneralLedgerView>['data']} fmt={fmt} />
+    case 'dayBook': return <DayBookView data={data as React.ComponentProps<typeof DayBookView>['data']} fmt={fmt} />
+    case 'cashFlowStatement': return <CashFlowStatementView data={data as React.ComponentProps<typeof CashFlowStatementView>['data']} fmt={fmt} />
     case 'audit': return <AuditReportView data={data as AuditReport} onPageChange={onAuditPageChange} />
     case 'backup': return <BackupReportView data={data as unknown[]} />
     case 'foodCost': return <FoodCostReportView data={data as FoodCostReport} fmt={fmt} />
@@ -5902,6 +6018,17 @@ function InventoryReportView({ data, fmt }: { data: InventoryReport; fmt: (n: nu
   )
 }
 
+function nilExemptLabel(category: GSTR1NilExemptRow['category'], t: (k: string) => string): string {
+  return t(category === 'NIL_RATED' ? 'reports.section.nilRatedLabel' : category === 'EXEMPT' ? 'reports.section.exemptLabel' : 'reports.section.nonGstLabel')
+}
+
+// Combined-GST documents with no known state are filed as CGST + SGST; say how many so the owner can fix the state.
+function StateUnknownWarning({ count }: { count?: number }) {
+  const { t } = useTranslation()
+  if (!count) return null
+  return <p className="text-xs text-warning" role="status">{t('reports.section.stateUnknown', { count })}</p>
+}
+
 function TaxReportView({ data, fmt }: { data: TaxReport; fmt: (n: number) => string }) {
   const { t } = useTranslation()
   const s = data.summary
@@ -5911,12 +6038,22 @@ function TaxReportView({ data, fmt }: { data: TaxReport; fmt: (n: number) => str
         { label: t('reports.summary.totalTaxable'), value: fmt(s.totalTaxableAmount) },
         { label: t('reports.summary.taxCollected'), value: fmt(s.totalTaxCollected) }
       ]} />
+      <StateUnknownWarning count={data.stateUnknownCount} />
       <BreakdownChart title={t('reports.summary.taxCollected')} data={data.rows} labelKey="taxName" valueKey="taxCollected" fmt={fmt} />
       <DataTable
         headers={[t('reports.col.taxName'), t('reports.col.type'), t('reports.col.ratePercent'), t('reports.col.taxableAmount'), t('reports.summary.taxCollected'), t('reports.col.invoiceCount')]}
         rows={data.rows.map(r => [r.taxName, r.taxType, `${r.rate}%`, fmt(r.taxableAmount), fmt(r.taxCollected), r.invoiceCount])}
         emptyText={t('reports.empty.taxable')}
       />
+      {data.byCategory && data.byCategory.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.byCategoryHeading')}</h3>
+          <DataTable
+            headers={[t('reports.col.taxCategory'), t('reports.col.ratePercent'), t('reports.col.taxableAmount'), t('reports.summary.taxCollected'), t('reports.col.invoiceCount')]}
+            rows={data.byCategory.map(r => [t(TAX_CATEGORY_LABEL_KEYS[r.taxCategory as TaxCategory] ?? 'billing.taxCategoryStandard'), `${r.rate}%`, fmt(r.taxableAmount), fmt(r.taxCollected), r.invoiceCount])}
+          />
+        </div>
+      )}
     </div>
   )
 }
@@ -6175,8 +6312,11 @@ function CashBookView({ data, fmt }: { data: CashBookReport; fmt: (n: number) =>
   )
 }
 
-function TrialBalanceView({ data, fmt }: { data: TrialBalanceReport; fmt: (n: number) => string }) {
+const TRIAL_BALANCE_TYPE_ORDER = ['ASSET', 'LIABILITY', 'EQUITY', 'INCOME', 'EXPENSE', 'OTHER']
+
+function TrialBalanceView({ data, fmt, onOpenLedger }: { data: TrialBalanceReport; fmt: (n: number) => string; onOpenLedger: (accountId: string) => void }) {
   const { t } = useTranslation()
+  const byType = trialBalanceTypeChartData(data.rows, t)
   return (
     <div className="space-y-6">
       <Card padding="md" className="flex flex-wrap items-center gap-6">
@@ -6184,6 +6324,15 @@ function TrialBalanceView({ data, fmt }: { data: TrialBalanceReport; fmt: (n: nu
         <div><div className="text-xs text-slate-400 font-semibold uppercase mb-1">{t('common.credit')}</div><div className="text-sm font-semibold text-dark dark:text-slate-100">{fmt(data.totalCredit)}</div></div>
         <Badge variant={data.balanced ? 'success' : 'danger'}>{data.balanced ? t('reports.summary.balanced') : t('reports.summary.notBalanced')}</Badge>
       </Card>
+      <SeriesBarChart
+        title={t('reports.chart.tbTitle')}
+        data={byType}
+        xKey="type"
+        series={[{ key: 'debit', name: t('common.debit'), color: STATUS_COLORS.brand }, { key: 'credit', name: t('common.credit'), color: STATUS_COLORS.warning }]}
+        fmt={fmt}
+        categoryLabel={t('reports.chart.accountType')}
+        valueLabel={t('common.amount')}
+      />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full text-sm">
           <thead>
@@ -6196,7 +6345,11 @@ function TrialBalanceView({ data, fmt }: { data: TrialBalanceReport; fmt: (n: nu
           <tbody className="divide-y divide-slate-100 dark:divide-slate-800">
             {data.rows.map((r) => (
               <tr key={r.account}>
-                <td className="px-5 py-3 text-slate-600 dark:text-slate-300">{r.account}</td>
+                <td className="px-5 py-3 text-slate-600 dark:text-slate-300">
+                  {r.accountId ? (
+                    <button onClick={() => onOpenLedger(r.accountId as string)} className="min-h-[44px] text-start text-brand font-medium hover:underline">{r.account}</button>
+                  ) : r.account}
+                </td>
                 <td className="px-5 py-3 text-end text-dark dark:text-slate-100">{r.debit > 0 ? fmt(r.debit) : ''}</td>
                 <td className="px-5 py-3 text-end text-dark dark:text-slate-100">{r.credit > 0 ? fmt(r.credit) : ''}</td>
               </tr>
@@ -6213,8 +6366,27 @@ function TrialBalanceView({ data, fmt }: { data: TrialBalanceReport; fmt: (n: nu
   )
 }
 
+function auditActionChartData(rows: AuditReportRow[], otherLabel: string): { data: ChartDatum[]; series: ChartSeries[] } {
+  const totals = chartCountBy(rows, r => r.action || '—')
+  const top = [...totals.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5).map(([action]) => action)
+  const hasOther = totals.size > top.length
+  const series: ChartSeries[] = [...top.map((action, i) => ({ key: `a${i}`, name: action })), ...(hasOther ? [{ key: 'other', name: otherLabel, color: '#94a3b8' }] : [])]
+  const byDay = new Map<string, ChartDatum>()
+  for (const r of rows) {
+    const day = chartDayKey(r.date)
+    if (!day) continue
+    const d = byDay.get(day) ?? { day, ...Object.fromEntries(series.map(s => [s.key, 0])) }
+    const idx = top.indexOf(r.action || '—')
+    const key = idx >= 0 ? `a${idx}` : 'other'
+    d[key] = (Number(d[key]) || 0) + 1
+    byDay.set(day, d)
+  }
+  return { data: [...byDay.values()].sort((a, b) => String(a.day).localeCompare(String(b.day))).slice(-45), series }
+}
+
 function AuditReportView({ data, onPageChange }: { data: AuditReport; onPageChange: (page: number) => void }) {
   const { t } = useTranslation()
+  const auditChart = auditActionChartData(data.rows, t('reports.chart.other'))
   const totalPages = Math.max(1, Math.ceil(data.totalRecords / data.limit))
   const rangeStart = data.totalRecords === 0 ? 0 : (data.page - 1) * data.limit + 1
   const rangeEnd = Math.min(data.page * data.limit, data.totalRecords)
@@ -6246,6 +6418,15 @@ function AuditReportView({ data, onPageChange }: { data: AuditReport; onPageChan
           </div>
         )}
       </Card>
+      <SeriesBarChart
+        title={t('reports.chart.auditTitle')}
+        data={auditChart.data}
+        xKey="day"
+        series={auditChart.series}
+        stacked
+        categoryLabel={t('reports.chart.day')}
+        valueLabel={t('reports.chart.actions')}
+      />
       <DataTable
         headers={[t('common.date'), t('reports.col.user'), t('reports.col.action'), t('reports.col.entityType'), t('reports.col.entityId'), t('common.details')]}
         rows={data.rows.map(r => [formatDate(r.date), r.user, r.action, r.entityType, r.entityId, r.details])}
@@ -6258,12 +6439,34 @@ function AuditReportView({ data, onPageChange }: { data: AuditReport; onPageChan
 function BackupReportView({ data }: { data: unknown[] }) {
   const { t } = useTranslation()
   const backups = (data ?? []) as { backupName?: string; backupDate?: string; backupSize?: number; backupVersion?: string; schemaVersion?: string; isValid?: boolean }[]
+  const weekRows = backupWeekChartData(backups)
+  const hasSizes = weekRows.some(w => w.size > 0)
   return (
     <div className="space-y-6">
       <Card padding="md">
         <span className="text-sm font-semibold text-dark">{backups.length}</span>
         <span className="text-xs text-slate-400 ms-1">{t('reports.section.backupsFound', { count: backups.length })}</span>
       </Card>
+      {hasSizes ? (
+        <SeriesBarChart
+          title={t('reports.chart.backupSizeTitle')}
+          data={weekRows}
+          xKey="week"
+          series={[{ key: 'size', name: t('reports.chart.sizeMb'), color: STATUS_COLORS.brand }]}
+          fmt={(n) => `${moneyFixed(n)} MB`}
+          categoryLabel={t('reports.chart.week')}
+          valueLabel={t('reports.chart.sizeMb')}
+        />
+      ) : (
+        <SeriesBarChart
+          title={t('reports.chart.backupCountTitle')}
+          data={weekRows}
+          xKey="week"
+          series={[{ key: 'count', name: t('reports.chart.backups'), color: STATUS_COLORS.brand }]}
+          categoryLabel={t('reports.chart.week')}
+          valueLabel={t('reports.chart.backups')}
+        />
+      )}
       <DataTable
         headers={[t('reports.col.backupName'), t('common.date'), t('reports.col.sizeShort'), t('reports.col.version'), t('reports.col.schemaVersion'), t('reports.col.valid')]}
         rows={backups.map(b => [
@@ -6364,7 +6567,6 @@ function DishContributionMarginView({ data, fmt }: { data: DishContributionMargi
 // heatmap primitive, and a 168-cell grid doesn't need one.
 function TableTurnoverHeatmapView({ data }: { data: TableTurnoverByHourReport }) {
   const { t, i18n } = useTranslation()
-  const maxCount = Math.max(1, ...data.cells.map(c => c.count))
   const cellByDayHour = new Map(data.cells.map(c => [`${c.dayOfWeek}-${c.hour}`, c.count]))
   const peakLabel = data.summary.peakDayOfWeek !== null && data.summary.peakHour !== null
     ? `${weekdayLabel(data.summary.peakDayOfWeek, i18n.language)}, ${String(data.summary.peakHour).padStart(2, '0')}:00`
@@ -6378,32 +6580,16 @@ function TableTurnoverHeatmapView({ data }: { data: TableTurnoverByHourReport })
         { label: t('reports.summary.peakTurns'), value: String(data.summary.peakCount) },
       ]} />
       {data.summary.totalTurns > 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.section.tableTurnoverHeatmap')}</h3>
-          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: '3rem repeat(24, 1.6rem)' }}>
-            <div />
-            {Array.from({ length: 24 }, (_, hour) => (
-              <div key={`h-${hour}`} className="text-[9px] text-slate-400 text-center">{hour}</div>
-            ))}
-            {Array.from({ length: 7 }, (_, day) => (
-              <React.Fragment key={`row-${day}`}>
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center">{weekdayLabel(day, i18n.language)}</div>
-                {Array.from({ length: 24 }, (_, hour) => {
-                  const count = cellByDayHour.get(`${day}-${hour}`) ?? 0
-                  const intensity = count / maxCount
-                  return (
-                    <div
-                      key={`c-${day}-${hour}`}
-                      title={`${weekdayLabel(day, i18n.language, false)}, ${String(hour).padStart(2, '0')}:00 — ${count} ${t('reports.col.turns')}`}
-                      className="w-[1.6rem] h-[1.6rem] rounded-sm"
-                      style={{ backgroundColor: count === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})` }}
-                    />
-                  )
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
+        <HeatmapGrid
+          title={t('reports.section.tableTurnoverHeatmap')}
+          rows={Array.from({ length: 7 }, (_, day) => ({ key: String(day), label: weekdayLabel(day, i18n.language) }))}
+          cols={Array.from({ length: 24 }, (_, hour) => ({ key: String(hour), label: String(hour) }))}
+          valueAt={(day, hour) => cellByDayHour.get(`${day}-${hour}`) ?? 0}
+          describe={(day, hour, count) => `${weekdayLabel(Number(day.key), i18n.language, false)}, ${hour.key.padStart(2, '0')}:00 — ${count} ${t('reports.col.turns')}`}
+          labelWidth="3rem"
+          cellWidth="1.6rem"
+          dense
+        />
       ) : (
         <EmptyState title={t('reports.empty.tableTurnoverByHour')} subtitle="" />
       )}
@@ -6570,7 +6756,6 @@ function SeasonSellThroughView({ data }: { data: SeasonSellThroughReport }) {
 // (capped to the top 15 by net units sold), columns are every size present.
 function SizeStyleHeatmapView({ data }: { data: SizeStyleHeatmapReport }) {
   const { t } = useTranslation()
-  const maxUnits = Math.max(1, ...data.cells.map(c => c.unitsSold))
   const cellByStyleSize = new Map(data.cells.map(c => [`${c.style}|${c.size}`, c.unitsSold]))
   const topCellLabel = data.summary.topCellStyle && data.summary.topCellSize
     ? `${data.summary.topCellStyle} / ${data.summary.topCellSize}`
@@ -6584,34 +6769,13 @@ function SizeStyleHeatmapView({ data }: { data: SizeStyleHeatmapReport }) {
         { label: t('reports.summary.topCombinationUnits'), value: String(data.summary.topCellUnitsSold) },
       ]} />
       {data.styles.length > 0 && data.sizes.length > 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.sizeStyleHeatmap')}</h3>
-          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `10rem repeat(${data.sizes.length}, 3rem)` }}>
-            <div />
-            {data.sizes.map(size => (
-              <div key={`h-${size}`} className="text-[10px] text-slate-400 text-center">{size}</div>
-            ))}
-            {data.styles.map(style => (
-              <React.Fragment key={`row-${style}`}>
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center truncate pe-2" title={style}>{style}</div>
-                {data.sizes.map(size => {
-                  const units = cellByStyleSize.get(`${style}|${size}`) ?? 0
-                  const intensity = units / maxUnits
-                  return (
-                    <div
-                      key={`c-${style}-${size}`}
-                      title={`${style} / ${size} — ${units} ${t('reports.col.unitsSold')}`}
-                      className="h-8 rounded-sm flex items-center justify-center text-[10px]"
-                      style={{ backgroundColor: units === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})`, color: intensity > 0.5 ? '#fff' : undefined }}
-                    >
-                      {units > 0 ? units : ''}
-                    </div>
-                  )
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
+        <HeatmapGrid
+          title={t('reports.summary.sizeStyleHeatmap')}
+          rows={data.styles.map(style => ({ key: style, label: style }))}
+          cols={data.sizes.map(size => ({ key: size, label: size }))}
+          valueAt={(style, size) => cellByStyleSize.get(`${style}|${size}`) ?? 0}
+          describe={(style, size, units) => `${style.label} / ${size.label} — ${units} ${t('reports.col.unitsSold')}`}
+        />
       ) : (
         <EmptyState title={t('reports.empty.sizeStyleHeatmap')} subtitle="" />
       )}
@@ -6681,6 +6845,15 @@ function SizeAvailabilityHeatmapView({ data }: { data: SizeAvailabilityHeatmapRe
       ) : (
         <EmptyState title={t('reports.empty.sizeAvailabilityHeatmap')} subtitle="" />
       )}
+      <SeriesBarChart
+        title={t('reports.chart.sizeStockOutTitle')}
+        data={sizeStockOutChartData(data)}
+        xKey="size"
+        series={[{ key: 'out', name: t('reports.chart.outOfStock'), color: STATUS_COLORS.danger }, { key: 'low', name: t('reports.chart.lowStock'), color: STATUS_COLORS.warning }]}
+        categoryLabel={t('reports.chart.size')}
+        valueLabel={t('reports.chart.styleCount')}
+      />
+
       <DataTable
         headers={[t('reports.col.style'), t('reports.col.size'), t('reports.col.stock'), t('reports.col.status')]}
         rows={data.cells.map(c => [c.style, c.size, c.stockQty, c.status])}
@@ -6691,7 +6864,11 @@ function SizeAvailabilityHeatmapView({ data }: { data: SizeAvailabilityHeatmapRe
 }
 
 const MONTH_SHORT = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec']
-const EMPTY_CYCLE_FORM = { id: '', name: '', startMonth: 1, startDay: 1, endMonth: 1, endDay: 1, leadTimeDays: 30 }
+function seasonCoversMonth(e: SeasonalCalendarEntry, month: number): boolean {
+  return e.startMonth <= e.endMonth ? month >= e.startMonth && month <= e.endMonth : month >= e.startMonth || month <= e.endMonth
+}
+
+const EMPTY_CYCLE_FORM ={ id: '', name: '', startMonth: 1, startDay: 1, endMonth: 1, endDay: 1, leadTimeDays: 30 }
 
 // Phase 67 §9.1 — Footwear item 5: seasonal reorder calendar. Unlike every
 // other report view in this file (purely presentational off the `data`
@@ -6826,6 +7003,26 @@ function SeasonalReorderCalendarView({ data }: { data: SeasonalCalendarEntry[] }
         </div>
       )}
 
+      {entries.length > 0 && (
+        <>
+          <HeatmapGrid
+            title={t('reports.chart.seasonHeatTitle')}
+            rows={[{ key: 'seasons', label: t('reports.chart.activeSeasons') }]}
+            cols={MONTH_SHORT.map((m, i) => ({ key: String(i + 1), label: m }))}
+            valueAt={(_, month) => entries.filter(e => seasonCoversMonth(e, Number(month))).length}
+            describe={(_, month, n) => `${month.label} — ${n} ${t('reports.chart.activeSeasons')}`}
+            cellWidth="2.75rem"
+          />
+          <SeriesBarChart
+            title={t('reports.chart.seasonReorderTitle')}
+            data={seasonReorderChartData(entries)}
+            xKey="month"
+            series={[{ key: 'lowStock', name: t('reports.chart.lowStockProducts'), color: STATUS_COLORS.warning }]}
+            categoryLabel={t('reports.chart.month')}
+            valueLabel={t('reports.chart.lowStockProducts')}
+          />
+        </>
+      )}
       {entries.length > 0 ? (
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           {entries.map(e => (
@@ -6985,6 +7182,14 @@ function BrandMarginReturnRateView({ data }: { data: BrandMarginReturnRateReport
   )
 }
 
+function categoryMixDonutData(rows: CategoryMixRow[], otherLabel: string): { name: string; value: number; color: string }[] {
+  const sorted = [...rows].sort((a, b) => b.revenue - a.revenue)
+  const top = sorted.slice(0, 8).map((r, i) => ({ name: r.categoryName, value: r.revenue, color: CATEGORY_MIX_COLORS[i % CATEGORY_MIX_COLORS.length] }))
+  const rest = sorted.slice(8)
+  if (rest.length > 0) top.push({ name: otherLabel, value: sumMoney(rest.map(r => r.revenue)), color: '#94a3b8' })
+  return top
+}
+
 function CategoryMixView({ data }: { data: CategoryMixReport }) {
   const { t } = useTranslation()
   return (
@@ -6994,18 +7199,12 @@ function CategoryMixView({ data }: { data: CategoryMixReport }) {
         { label: t('reports.summary.categoryCount'), value: String(data.summary.categoryCount) },
       ]} />
       {data.rows.length > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.summary.revenueByCategory')}</h3>
-          <ResponsiveContainer width="100%" height={320}>
-            <RCPieChart>
-              <Pie data={data.rows} dataKey="revenue" nameKey="categoryName" cx="50%" cy="50%" outerRadius={110} label={(p: { categoryName?: string; revenuePercent?: number }) => `${p.categoryName} (${p.revenuePercent}%)`}>
-                {data.rows.map((r, i) => <Cell key={r.categoryId} fill={CATEGORY_MIX_COLORS[i % CATEGORY_MIX_COLORS.length]} />)}
-              </Pie>
-              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => formatCurrency(v)} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </RCPieChart>
-          </ResponsiveContainer>
-        </div>
+        <DonutChart
+          title={t('reports.chart.categoryMixTitle')}
+          data={categoryMixDonutData(data.rows, t('reports.chart.other'))}
+          fmt={formatCurrency}
+          height={320}
+        />
       )}
       <DataTable
         headers={[t('reports.col.category'), t('reports.col.unitsSold'), t('reports.col.revenue'), t('reports.col.revenuePercent')]}
@@ -7087,6 +7286,15 @@ function FastSlowMoverMatrixView({ data }: { data: FastSlowMoverMatrixReport }) 
   )
 }
 
+function gstr1RateChartData(data: GSTR1Report): ChartDatum[] {
+  const rates = [...new Set([...data.b2b.map(r => r.rate), ...data.b2cs.map(r => r.rate)])].sort((a, b) => a - b)
+  return rates.map(rate => ({
+    rate: `${rate}%`,
+    b2b: sumMoney(data.b2b.filter(r => r.rate === rate).map(r => r.taxableValue)),
+    b2c: sumMoney(data.b2cs.filter(r => r.rate === rate).map(r => r.taxableValue))
+  }))
+}
+
 function GSTR1ReportView({ data, fmt }: { data: GSTR1Report; fmt: (n: number) => string }) {
   const { t } = useTranslation()
   const s = data.summary
@@ -7102,7 +7310,24 @@ function GSTR1ReportView({ data, fmt }: { data: GSTR1Report; fmt: (n: number) =>
         { label: t('reports.summary.totalCgst'), value: fmt(s.totalCgst) },
         { label: t('reports.summary.totalSgst'), value: fmt(s.totalSgst) },
         { label: t('reports.summary.totalIgst'), value: fmt(s.totalIgst), sub: t('reports.summary.interState') },
+        ...(data.nilExempt && data.nilExempt.length > 0 ? [
+          { label: t('reports.summary.nilRatedValue'), value: fmt(s.totalNilRated ?? 0) },
+          { label: t('reports.summary.exemptValue'), value: fmt(s.totalExempt ?? 0) },
+          { label: t('reports.summary.nonGstValue'), value: fmt(s.totalNonGst ?? 0) }
+        ] : []),
       ]} />
+      <StateUnknownWarning count={data.stateUnknownCount} />
+      {(data.b2b.length > 0 || data.b2cs.length > 0) && (
+        <SeriesBarChart
+          title={t('reports.chart.gstr1Title')}
+          data={gstr1RateChartData(data)}
+          xKey="rate"
+          series={[{ key: 'b2b', name: t('reports.chart.b2b'), color: STATUS_COLORS.brand }, { key: 'b2c', name: t('reports.chart.b2c'), color: STATUS_COLORS.warning }]}
+          fmt={fmt}
+          categoryLabel={t('reports.chart.rate')}
+          valueLabel={t('reports.chart.taxableValue')}
+        />
+      )}
       {data.b2b.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.b2bHeading')}</h3>
@@ -7128,11 +7353,29 @@ function GSTR1ReportView({ data, fmt }: { data: GSTR1Report; fmt: (n: number) =>
           />
         </div>
       )}
-      {data.b2b.length === 0 && data.b2cs.length === 0 && (
+      {data.nilExempt && data.nilExempt.length > 0 && (
+        <div>
+          <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.nilExemptHeading')}</h3>
+          <DataTable
+            headers={[t('reports.col.supplyKind'), t('reports.col.interStateCol'), t('reports.col.registeredBuyer'), t('reports.col.taxableValue')]}
+            rows={data.nilExempt.map(r => [nilExemptLabel(r.category, t), r.interState ? t('common.yes') : t('common.no'), r.registered ? t('common.yes') : t('common.no'), fmt(r.taxableValue)])}
+          />
+        </div>
+      )}
+      {data.b2b.length === 0 && data.b2cs.length === 0 && (!data.nilExempt || data.nilExempt.length === 0) && (
         <div className="text-center py-12 text-slate-400 text-sm">{t('reports.empty.gstr1')}</div>
       )}
     </div>
   )
+}
+
+function hsnTopChartData(data: HSNSummaryReport): ChartDatum[] {
+  const byCode = new Map<string, number[]>()
+  for (const r of [...data.b2b, ...data.b2c]) byCode.set(r.hsnCode, [...(byCode.get(r.hsnCode) ?? []), r.taxableValue])
+  return [...byCode.entries()]
+    .map(([hsn, values]) => ({ hsn, taxable: sumMoney(values) }))
+    .sort((a, b) => b.taxable - a.taxable)
+    .slice(0, 10)
 }
 
 function HSNSummaryView({ data, fmt }: { data: HSNSummaryReport; fmt: (n: number) => string }) {
@@ -7153,6 +7396,19 @@ function HSNSummaryView({ data, fmt }: { data: HSNSummaryReport; fmt: (n: number
         { label: t('reports.summary.totalTax'), value: fmt(s.totalTax) },
         { label: t('reports.summary.hsnRows'), value: String(s.rowCount) },
       ]} />
+      <StateUnknownWarning count={data.stateUnknownCount} />
+      {(data.b2b.length > 0 || data.b2c.length > 0) && (
+        <SeriesBarChart
+          title={t('reports.chart.hsnTitle')}
+          data={hsnTopChartData(data)}
+          xKey="hsn"
+          series={[{ key: 'taxable', name: t('reports.chart.taxableValue'), color: STATUS_COLORS.brand }]}
+          fmt={fmt}
+          horizontal
+          categoryLabel={t('reports.chart.hsnCode')}
+          valueLabel={t('reports.chart.taxableValue')}
+        />
+      )}
       {data.b2b.length > 0 && (
         <div>
           <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.hsnB2BHeading')}</h3>
@@ -7172,6 +7428,17 @@ function HSNSummaryView({ data, fmt }: { data: HSNSummaryReport; fmt: (n: number
   )
 }
 
+function documentTypeChartData(data: DocumentSummaryReport): ChartDatum[] {
+  const byType = new Map<string, { total: number; cancelled: number }>()
+  for (const r of data.rows) {
+    const e = byType.get(r.documentType) ?? { total: 0, cancelled: 0 }
+    e.total += r.totalCount
+    e.cancelled += r.cancelledCount
+    byType.set(r.documentType, e)
+  }
+  return [...byType.entries()].map(([type, e]) => ({ type, active: Math.max(0, e.total - e.cancelled), cancelled: e.cancelled }))
+}
+
 function DocumentSummaryView({ data }: { data: DocumentSummaryReport }) {
   const { t } = useTranslation()
   return (
@@ -7180,6 +7447,17 @@ function DocumentSummaryView({ data }: { data: DocumentSummaryReport }) {
         <strong>{t('reports.section.gstr1Period', { period: data.period })}</strong><br />
         {t('reports.section.documentSummaryDisclaimer')}
       </div>
+      {data.rows.length > 0 && (
+        <SeriesBarChart
+          title={t('reports.chart.docTitle')}
+          data={documentTypeChartData(data)}
+          xKey="type"
+          series={[{ key: 'active', name: t('reports.chart.activeDocs'), color: STATUS_COLORS.brand }, { key: 'cancelled', name: t('reports.chart.cancelledDocs'), color: STATUS_COLORS.danger }]}
+          stacked
+          categoryLabel={t('reports.chart.docType')}
+          valueLabel={t('reports.chart.documents')}
+        />
+      )}
       {data.rows.length > 0 ? (
         <DataTable
           headers={[t('reports.col.documentType'), t('reports.col.series'), t('reports.col.fromNumber'), t('reports.col.toNumber'), t('reports.col.totalCount'), t('reports.col.cancelledCount')]}
@@ -7200,6 +7478,30 @@ function GSTR3BPreviewView({ data, fmt }: { data: GSTR3BPreview; fmt: (n: number
       <div className="bg-warning/10 dark:bg-warning/15 border border-warning/30 rounded-xl p-4 text-sm text-warning">
         <strong>{t('reports.section.gstr1Period', { period: data.period })}</strong><br />
         {t('reports.section.gstr3bDisclaimer')}
+      </div>
+      <StateUnknownWarning count={data.stateUnknownCount} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SeriesBarChart
+          title={t('reports.chart.gstr3bHeadTitle')}
+          data={[{ head: 'CGST', tax: t31.taxAmount.cgst }, { head: 'SGST', tax: t31.taxAmount.sgst }, { head: 'IGST', tax: t31.taxAmount.igst }]}
+          xKey="head"
+          series={[{ key: 'tax', name: t('reports.chart.tax'), color: STATUS_COLORS.brand }]}
+          fmt={fmt}
+          pointColors={[STATUS_COLORS.brand, STATUS_COLORS.success, STATUS_COLORS.warning]}
+          categoryLabel={t('reports.chart.taxHead')}
+          valueLabel={t('reports.chart.tax')}
+        />
+        <SeriesBarChart
+          title={t('reports.chart.gstr3bCompareTitle')}
+          data={[
+            { group: t('reports.chart.outward'), taxable: t31.taxableOutwardSupplies, tax: sumMoney([t31.taxAmount.igst, t31.taxAmount.cgst, t31.taxAmount.sgst]) },
+            { group: t('reports.chart.reverseCharge'), taxable: data.table31d.taxableValue, tax: data.table31d.taxAmount }
+          ]}
+          xKey="group"
+          series={[{ key: 'taxable', name: t('reports.chart.taxableValue'), color: STATUS_COLORS.brand }, { key: 'tax', name: t('reports.chart.tax'), color: STATUS_COLORS.warning }]}
+          fmt={fmt}
+          valueLabel={t('reports.col.value')}
+        />
       </div>
       <div>
         <h3 className="text-sm font-semibold text-dark mb-3">{t('reports.section.table31Heading')}</h3>
@@ -7448,7 +7750,6 @@ function MembershipRenewalFunnelView({ data }: { data: MembershipRenewalFunnelRe
 // already established.
 function ClassAttendanceHeatmapView({ data }: { data: ClassAttendanceHeatmapReport }) {
   const { t } = useTranslation()
-  const maxCount = Math.max(1, ...data.cells.map(c => c.checkInCount))
   const cellByKey = new Map(data.cells.map(c => [`${c.className}|${c.dayOfWeek}`, c.checkInCount]))
   return (
     <div className="space-y-6">
@@ -7458,34 +7759,13 @@ function ClassAttendanceHeatmapView({ data }: { data: ClassAttendanceHeatmapRepo
         { label: t('reports.col.dayOfWeek'), value: data.summary.busiestDay ?? '—' },
       ]} />
       {data.classNames.length > 0 && data.daysOfWeek.length > 0 ? (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5 overflow-x-auto">
-          <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.classAttendanceHeatmap.label')}</h3>
-          <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `10rem repeat(${data.daysOfWeek.length}, 3rem)` }}>
-            <div />
-            {data.daysOfWeek.map(day => (
-              <div key={`h-${day}`} className="text-[10px] text-slate-400 text-center">{day}</div>
-            ))}
-            {data.classNames.map(className => (
-              <React.Fragment key={`row-${className}`}>
-                <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center truncate pe-2" title={className}>{className}</div>
-                {data.daysOfWeek.map(day => {
-                  const count = cellByKey.get(`${className}|${day}`) ?? 0
-                  const intensity = count / maxCount
-                  return (
-                    <div
-                      key={`c-${className}-${day}`}
-                      title={`${className} / ${day} — ${count} ${t('reports.col.checkInCount')}`}
-                      className="h-8 rounded-sm flex items-center justify-center text-[10px]"
-                      style={{ backgroundColor: count === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})`, color: intensity > 0.5 ? '#fff' : undefined }}
-                    >
-                      {count > 0 ? count : ''}
-                    </div>
-                  )
-                })}
-              </React.Fragment>
-            ))}
-          </div>
-        </div>
+        <HeatmapGrid
+          title={t('reports.defs.classAttendanceHeatmap.label')}
+          rows={data.classNames.map(name => ({ key: name, label: name }))}
+          cols={data.daysOfWeek.map(day => ({ key: day, label: day }))}
+          valueAt={(name, day) => cellByKey.get(`${name}|${day}`) ?? 0}
+          describe={(name, day, count) => `${name.label} / ${day.label} — ${count} ${t('reports.col.checkInCount')}`}
+        />
       ) : (
         <EmptyState title={t('reports.empty.classAttendanceHeatmap')} subtitle="" />
       )}
@@ -7496,29 +7776,17 @@ function ClassAttendanceHeatmapView({ data }: { data: ClassAttendanceHeatmapRepo
 // Phase 68 §9.1 — Driving School item 4: Learner Progress Funnel.
 function LearnerProgressFunnelView({ data }: { data: LearnerProgressFunnelReport }) {
   const { t } = useTranslation()
-  const maxCount = Math.max(1, ...data.stages.map(s => s.learnerCount))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: t('reports.summary.totalEnrolled'), value: String(data.summary.totalEnrolled) },
         { label: t('reports.summary.overallCompletionPercent'), value: `${data.summary.overallCompletionPercent}%` },
       ]} />
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.learnerProgressFunnel.label')}</h3>
-        <div className="space-y-3">
-          {data.stages.map((s) => (
-            <div key={s.stage}>
-              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-                <span>{s.stage}</span>
-                <span className="font-semibold text-dark dark:text-slate-100">{s.learnerCount}</span>
-              </div>
-              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.learnerCount / maxCount) * 100 : 0}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <FunnelBarChart
+        title={t('reports.defs.learnerProgressFunnel.label')}
+        stages={data.stages.map(s => ({ label: s.stage, value: s.learnerCount }))}
+        valueLabel={t('reports.summary.totalEnrolled')}
+      />
     </div>
   )
 }
@@ -7788,29 +8056,17 @@ function CampaignROIView({ data, fmt }: { data: CampaignROIReport; fmt: (n: numb
 // Phase 68 §9.1 — Marketing Agency item 3: Deliverable Status Pipeline.
 function DeliverableStatusPipelineView({ data }: { data: DeliverableStatusPipelineReport }) {
   const { t } = useTranslation()
-  const maxCount = Math.max(1, ...data.stages.map(s => s.count))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: t('reports.summary.totalDeliverables'), value: String(data.summary.totalDeliverables) },
         { label: t('reports.summary.overdueCount'), value: String(data.summary.overdueCount) },
       ]} />
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.deliverableStatusPipeline.label')}</h3>
-        <div className="space-y-3">
-          {data.stages.map((s) => (
-            <div key={s.status}>
-              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-                <span>{s.status.replace(/_/g, ' ')}</span>
-                <span className="font-semibold text-dark dark:text-slate-100">{s.count}</span>
-              </div>
-              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.count / maxCount) * 100 : 0}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <FunnelBarChart
+        title={t('reports.defs.deliverableStatusPipeline.label')}
+        stages={data.stages.map(s => ({ label: s.status.replace(/_/g, ' '), value: s.count }))}
+        valueLabel={t('reports.summary.totalDeliverables')}
+      />
     </div>
   )
 }
@@ -7910,7 +8166,6 @@ function SprintBillingView({ data, fmt }: { data: SprintBillingReport; fmt: (n: 
 // Phase 68 §9.1 — Photo Studio items 1/2/5: Delivery Pipeline.
 function DeliveryPipelineView({ data }: { data: DeliveryPipelineReport }) {
   const { t } = useTranslation()
-  const maxCount = Math.max(1, ...data.stages.map(s => s.count))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
@@ -7919,22 +8174,11 @@ function DeliveryPipelineView({ data }: { data: DeliveryPipelineReport }) {
         { label: t('reports.summary.overdueCount'), value: String(data.summary.overdueCount) },
         { label: t('reports.summary.avgRevisionRounds'), value: String(data.summary.avgRevisionRounds) },
       ]} />
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.defs.deliveryPipeline.label')}</h3>
-        <div className="space-y-3">
-          {data.stages.map((s) => (
-            <div key={s.stage}>
-              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-                <span>{s.stage.replace(/_/g, ' ')}</span>
-                <span className="font-semibold text-dark dark:text-slate-100">{s.count}</span>
-              </div>
-              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.count / maxCount) * 100 : 0}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <FunnelBarChart
+        title={t('reports.defs.deliveryPipeline.label')}
+        stages={data.stages.map(s => ({ label: s.stage.replace(/_/g, ' '), value: s.count }))}
+        valueLabel={t('reports.summary.totalActive')}
+      />
       <DataTable
         headers={[t('reports.col.client'), t('reports.col.shootType'), t('reports.col.stage'), t('reports.col.revisionRounds')]}
         rows={data.revisionRows.map(r => [r.clientName, r.shootType, r.stage.replace(/_/g, ' '), r.revisionRounds])}
@@ -8053,9 +8297,25 @@ function HotelOccupancyView({ data }: { data: HotelOccupancyReport }) {
 }
 
 function HotelGuestRegisterView({ data }: { data: HotelGuestRegisterReport }) {
+  const { t } = useTranslation()
+  const arrivals = hotelArrivalChartData(data.rows)
+  const idTypes = chartSortedEntries(chartCountBy(data.rows, r => r.idType || t('reports.chart.unknown')))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[{ label: 'Registered Guests', value: String(data.rows.length) }]} />
+      {data.rows.length > 0 && (
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <SeriesBarChart
+            title={t('reports.chart.hotelArrivalsTitle')}
+            data={arrivals}
+            xKey="day"
+            series={[{ key: 'count', name: t('reports.chart.arrivals'), color: STATUS_COLORS.brand }]}
+            categoryLabel={t('reports.chart.day')}
+            valueLabel={t('reports.chart.arrivals')}
+          />
+          <DonutChart title={t('reports.chart.hotelIdTitle')} data={idTypes.map(([name, value]) => ({ name, value }))} />
+        </div>
+      )}
       {data.rows.length > 0 ? (
         <DataTable
           headers={['Booking', 'Room', 'Guest Name', 'ID Type', 'ID Number', 'Nationality', 'Address', 'Check-In', 'Check-Out']}
@@ -8374,6 +8634,481 @@ function BreakdownChart<T>({
   )
 }
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Shared chart building blocks — every report must show a chart next to its
+// numbers (enforced by __tests__/report-chart-catalogue.test.ts). These keep
+// the styling, tooltips, axis labels, legends and empty states identical
+// across the views that use them instead of hand-rolling each one.
+// ─────────────────────────────────────────────────────────────────────────────
+
+const CHART_PALETTE = [STATUS_COLORS.brand, STATUS_COLORS.success, STATUS_COLORS.warning, STATUS_COLORS.danger, '#8B5CF6', '#EC4899', '#14B8A6', '#F97316']
+const CHART_AXIS_LABEL = { fontSize: 10, fill: '#94a3b8' }
+
+type ChartSeries = { key: string; name: string; color?: string }
+type ChartDatum = Record<string, string | number>
+
+function ChartCard({ title, children }: { title: string; children: React.ReactNode }) {
+  return (
+    <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
+      <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{title}</h3>
+      {children}
+    </div>
+  )
+}
+
+function ChartEmpty({ title }: { title: string }) {
+  const { t } = useTranslation()
+  return (
+    <ChartCard title={title}>
+      <p className="text-sm text-slate-400 italic text-center py-8">{t('reports.chart.noData')}</p>
+    </ChartCard>
+  )
+}
+
+function hasChartValues(data: ChartDatum[], keys: string[]): boolean {
+  return data.some(d => keys.some(k => (Number(d[k]) || 0) !== 0))
+}
+
+// Grouped, stacked or horizontal bar chart. `fmt` is the same money/number
+// formatter the tables use, applied to tooltip values.
+function SeriesBarChart({ title, data, xKey, series, fmt, stacked = false, horizontal = false, categoryLabel, valueLabel, height = 260, pointColors }: {
+  title: string
+  data: ChartDatum[]
+  xKey: string
+  series: ChartSeries[]
+  fmt?: (n: number) => string
+  stacked?: boolean
+  horizontal?: boolean
+  categoryLabel?: string
+  valueLabel?: string
+  height?: number
+  pointColors?: string[]
+}) {
+  if (data.length === 0 || !hasChartValues(data, series.map(s => s.key))) return <ChartEmpty title={title} />
+  const h = horizontal ? Math.max(height, data.length * 34 + 70) : height
+  const showLegend = series.length > 1
+  const catLabel = categoryLabel ? { value: categoryLabel, position: 'insideBottom' as const, offset: -10, ...CHART_AXIS_LABEL } : undefined
+  const valLabel = valueLabel ? { value: valueLabel, angle: -90, position: 'insideLeft' as const, offset: 4, style: { textAnchor: 'middle' as const }, ...CHART_AXIS_LABEL } : undefined
+  return (
+    <ChartCard title={title}>
+      <ResponsiveContainer width="100%" height={h}>
+        <BarChart data={data} layout={horizontal ? 'vertical' : 'horizontal'} barCategoryGap="20%" margin={horizontal ? { left: 12, bottom: valueLabel ? 20 : 0 } : { bottom: categoryLabel ? 22 : 0, left: valueLabel ? 6 : 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          {horizontal ? (
+            <>
+              <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} label={valueLabel ? { value: valueLabel, position: 'insideBottom', offset: -10, ...CHART_AXIS_LABEL } : undefined} />
+              <YAxis type="category" dataKey={xKey} tick={CHART_TICK} tickLine={false} axisLine={false} width={categoryLabel ? 150 : 130} label={categoryLabel ? { value: categoryLabel, angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, ...CHART_AXIS_LABEL } : undefined} />
+            </>
+          ) : (
+            <>
+              <XAxis dataKey={xKey} tick={CHART_TICK} tickLine={false} axisLine={false} label={catLabel} />
+              <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} width={valueLabel ? 64 : 48} label={valLabel} />
+            </>
+          )}
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [fmt ? fmt(v) : String(v), name]} />
+          {showLegend && <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />}
+          {series.map((s, si) => (
+            <Bar key={s.key} dataKey={s.key} name={s.name} stackId={stacked ? 'stack' : undefined} fill={s.color ?? CHART_PALETTE[si % CHART_PALETTE.length]}
+              radius={stacked ? undefined : horizontal ? [0, 4, 4, 0] : [4, 4, 0, 0]}>
+              {!showLegend && pointColors && data.map((_, i) => <Cell key={i} fill={pointColors[i % pointColors.length]} />)}
+            </Bar>
+          ))}
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function SeriesLineChart({ title, data, xKey, series, fmt, categoryLabel, valueLabel, height = 240 }: {
+  title: string
+  data: ChartDatum[]
+  xKey: string
+  series: ChartSeries[]
+  fmt?: (n: number) => string
+  categoryLabel?: string
+  valueLabel?: string
+  height?: number
+}) {
+  if (data.length === 0 || !hasChartValues(data, series.map(s => s.key))) return <ChartEmpty title={title} />
+  return (
+    <ChartCard title={title}>
+      <ResponsiveContainer width="100%" height={height}>
+        <RCLineChart data={data} margin={{ bottom: categoryLabel ? 22 : 0, left: valueLabel ? 6 : 0 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis dataKey={xKey} tick={CHART_TICK} tickLine={false} axisLine={false} label={categoryLabel ? { value: categoryLabel, position: 'insideBottom', offset: -10, ...CHART_AXIS_LABEL } : undefined} />
+          <YAxis tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} width={valueLabel ? 64 : 48} label={valueLabel ? { value: valueLabel, angle: -90, position: 'insideLeft', offset: 4, style: { textAnchor: 'middle' }, ...CHART_AXIS_LABEL } : undefined} />
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [fmt ? fmt(v) : String(v), name]} />
+          {series.length > 1 && <Legend verticalAlign="top" wrapperStyle={{ fontSize: 11 }} />}
+          {series.map((s, si) => (
+            <Line key={s.key} type="monotone" dataKey={s.key} name={s.name} stroke={s.color ?? CHART_PALETTE[si % CHART_PALETTE.length]} strokeWidth={2} dot={data.length <= 40} />
+          ))}
+        </RCLineChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+function DonutChart({ title, data, fmt, height = 260 }: {
+  title: string
+  data: { name: string; value: number; color?: string }[]
+  fmt?: (n: number) => string
+  height?: number
+}) {
+  const rows = data.filter(d => d.value > 0)
+  if (rows.length === 0) return <ChartEmpty title={title} />
+  const total = rows.reduce((s, d) => s + d.value, 0)
+  return (
+    <ChartCard title={title}>
+      <ResponsiveContainer width="100%" height={height}>
+        <RCPieChart>
+          <Pie data={rows} dataKey="value" nameKey="name" innerRadius={Math.round(height * 0.19)} outerRadius={Math.round(height * 0.32)} paddingAngle={rows.length > 1 ? 2 : 0} label={false}>
+            {rows.map((r, i) => <Cell key={r.name} fill={r.color ?? CHART_PALETTE[i % CHART_PALETTE.length]} />)}
+          </Pie>
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number, name: string) => [`${fmt ? fmt(v) : v} (${total > 0 ? Math.round((v / total) * 1000) / 10 : 0}%)`, name]} />
+          <Legend verticalAlign="bottom" wrapperStyle={{ fontSize: 11 }} />
+        </RCPieChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+// Horizontal, decreasing bars for stage funnels; the tooltip also shows each
+// stage as a share of the first stage.
+function FunnelBarChart({ title, stages, valueLabel }: { title: string; stages: { label: string; value: number }[]; valueLabel: string }) {
+  const { t } = useTranslation()
+  if (stages.length === 0 || stages.every(s => s.value === 0)) return <ChartEmpty title={title} />
+  const first = stages[0].value
+  return (
+    <ChartCard title={title}>
+      <ResponsiveContainer width="100%" height={Math.max(200, stages.length * 44 + 70)}>
+        <BarChart data={stages} layout="vertical" barCategoryGap="18%" margin={{ left: 12, right: 32, bottom: 20 }}>
+          <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+          <XAxis type="number" tick={CHART_TICK} tickLine={false} axisLine={false} allowDecimals={false} label={{ value: valueLabel, position: 'insideBottom', offset: -10, ...CHART_AXIS_LABEL }} />
+          <YAxis type="category" dataKey="label" tick={CHART_TICK} tickLine={false} axisLine={false} width={150} label={{ value: t('reports.chart.stage'), angle: -90, position: 'insideLeft', style: { textAnchor: 'middle' }, ...CHART_AXIS_LABEL }} />
+          <Tooltip contentStyle={CHART_TOOLTIP_STYLE} formatter={(v: number) => [t('reports.chart.funnelTooltip', { value: v, percent: first > 0 ? Math.round((v / first) * 1000) / 10 : 0 }), valueLabel]} />
+          <Bar dataKey="value" name={valueLabel} radius={[0, 4, 4, 0]}>
+            {stages.map((_, i) => <Cell key={i} fill={STATUS_COLORS.brand} fillOpacity={stages.length > 1 ? 1 - (0.5 * i) / (stages.length - 1) : 1} />)}
+            <LabelList dataKey="value" position="right" style={{ fontSize: 11, fill: '#64748b' }} />
+          </Bar>
+        </BarChart>
+      </ResponsiveContainer>
+    </ChartCard>
+  )
+}
+
+// Coloured grid with a colour-scale legend and a live readout of the hovered
+// (or keyboard-focused) cell's exact value.
+function HeatmapGrid({ title, rows, cols, valueAt, describe, labelWidth = '10rem', cellWidth = '3rem', dense = false }: {
+  title: string
+  rows: { key: string; label: string }[]
+  cols: { key: string; label: string }[]
+  valueAt: (rowKey: string, colKey: string) => number
+  describe: (row: { key: string; label: string }, col: { key: string; label: string }, value: number) => string
+  labelWidth?: string
+  cellWidth?: string
+  dense?: boolean
+}) {
+  const { t } = useTranslation()
+  const [hover, setHover] = useState<string | null>(null)
+  const grid = rows.map(r => cols.map(c => valueAt(r.key, c.key)))
+  const max = Math.max(0, ...grid.flat())
+  const scale = 'linear-gradient(to right, rgba(0,174,239,0.15), rgba(0,174,239,1))'
+  return (
+    <ChartCard title={title}>
+      <div className="overflow-x-auto">
+        <p className="text-xs text-slate-500 dark:text-slate-400 mb-3 min-h-[1rem]" aria-live="polite">{hover ?? t('reports.chart.heatHint')}</p>
+        <div className="inline-grid gap-0.5" style={{ gridTemplateColumns: `${labelWidth} repeat(${cols.length}, ${cellWidth})` }}>
+          <div />
+          {cols.map(c => (
+            <div key={`h-${c.key}`} className={cn('text-slate-400 text-center', dense ? 'text-[9px]' : 'text-[10px]')}>{c.label}</div>
+          ))}
+          {rows.map((r, ri) => (
+            <React.Fragment key={`row-${r.key}`}>
+              <div className="text-xs text-slate-500 dark:text-slate-400 flex items-center truncate pe-2" title={r.label}>{r.label}</div>
+              {cols.map((c, ci) => {
+                const v = grid[ri][ci]
+                const intensity = max > 0 ? v / max : 0
+                const text = describe(r, c, v)
+                return (
+                  <div
+                    key={`c-${r.key}-${c.key}`}
+                    title={text}
+                    aria-label={text}
+                    tabIndex={dense ? undefined : 0}
+                    onMouseEnter={() => setHover(text)}
+                    onFocus={() => setHover(text)}
+                    onMouseLeave={() => setHover(null)}
+                    onBlur={() => setHover(null)}
+                    className={cn('rounded-sm flex items-center justify-center text-[10px]', dense ? 'h-[1.6rem]' : 'h-8')}
+                    style={{ backgroundColor: v === 0 ? 'rgba(148,163,184,0.12)' : `rgba(0,174,239,${0.15 + intensity * 0.85})`, color: intensity > 0.5 ? '#fff' : undefined }}
+                  >
+                    {!dense && v > 0 ? v : ''}
+                  </div>
+                )
+              })}
+            </React.Fragment>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-2 mt-4 text-[11px] text-slate-400">
+          <span className="w-2.5 h-2.5 rounded-sm" style={{ backgroundColor: 'rgba(148,163,184,0.12)' }} />
+          <span>{t('reports.chart.heatNone')}</span>
+          <span className="ms-3">{t('reports.chart.heatLow')}</span>
+          <span className="h-2.5 w-28 rounded-sm" style={{ background: scale }} />
+          <span>{t('reports.chart.heatHigh')} ({max})</span>
+        </div>
+      </div>
+    </ChartCard>
+  )
+}
+
+// YYYY-MM-DD of a date or ISO string without shifting a date-only string
+// through UTC; '' when it is not a valid date.
+function chartDayKey(value: string | null | undefined): string {
+  if (!value) return ''
+  if (/^\d{4}-\d{2}-\d{2}/.test(value)) return value.slice(0, 10)
+  const d = new Date(value)
+  return Number.isNaN(d.getTime()) ? '' : toLocalISODate(d)
+}
+
+// Monday of the week containing the given YYYY-MM-DD day.
+function chartWeekKey(dayKey: string): string {
+  const [y, m, d] = dayKey.split('-').map(Number)
+  const date = new Date(y, m - 1, d)
+  date.setDate(date.getDate() - ((date.getDay() + 6) % 7))
+  return toLocalISODate(date)
+}
+
+function chartCountBy<T>(items: T[], keyOf: (item: T) => string): Map<string, number> {
+  const counts = new Map<string, number>()
+  for (const item of items) {
+    const k = keyOf(item)
+    if (k) counts.set(k, (counts.get(k) ?? 0) + 1)
+  }
+  return counts
+}
+
+function chartSortedEntries(map: Map<string, number>): [string, number][] {
+  return [...map.entries()].sort((a, b) => a[0].localeCompare(b[0]))
+}
+
+function chartTopCounts(map: Map<string, number>, limit = 10): [string, number][] {
+  return [...map.entries()].sort((a, b) => b[1] - a[1]).slice(0, limit)
+}
+
+// Data builders shared by the on-screen charts and the printed/PDF charts, so
+// both always show the same numbers.
+function trialBalanceTypeChartData(rows: TrialBalanceRow[], t: TFunction): { type: string; rows: number; debit: number; credit: number }[] {
+  return TRIAL_BALANCE_TYPE_ORDER.map(type => {
+    const inType = rows.filter(r => (r.accountType && TRIAL_BALANCE_TYPE_ORDER.includes(r.accountType) ? r.accountType : 'OTHER') === type)
+    return { type: t(`reports.chart.accountTypes.${type}`), rows: inType.length, debit: sumMoney(inType.map(r => r.debit)), credit: sumMoney(inType.map(r => r.credit)) }
+  }).filter(g => g.rows > 0)
+}
+
+function khataExposureChartData(rows: KhataRiskRow[], t: TFunction): { tier: string; RISING: number; STABLE: number; FALLING: number }[] {
+  return (['HIGH', 'MEDIUM', 'LOW'] as const).map(tier => {
+    const inTier = rows.filter(r => r.riskTier === tier)
+    const trendTotal = (trend: KhataRiskRow['trend']) => sumMoney(inTier.filter(r => r.trend === trend).map(r => r.outstanding))
+    return { tier: t(`reports.chart.riskTiers.${tier}`), RISING: trendTotal('RISING'), STABLE: trendTotal('STABLE'), FALLING: trendTotal('FALLING') }
+  })
+}
+
+function backupWeekChartData(backups: { backupDate?: string; backupSize?: number }[]): { week: string; size: number; count: number }[] {
+  const weeks = new Map<string, { count: number; bytes: number }>()
+  for (const b of backups) {
+    const day = chartDayKey(b.backupDate)
+    if (!day) continue
+    const wk = chartWeekKey(day)
+    const e = weeks.get(wk) ?? { count: 0, bytes: 0 }
+    e.count += 1
+    e.bytes += b.backupSize ?? 0
+    weeks.set(wk, e)
+  }
+  return [...weeks.entries()].sort((a, b) => a[0].localeCompare(b[0])).slice(-26)
+    .map(([week, e]) => ({ week, size: Math.round((e.bytes / 1024 / 1024) * 100) / 100, count: e.count }))
+}
+
+function complianceMonthChartData(rows: ComplianceTaskReportRow[]): { month: string; count: number }[] {
+  return chartSortedEntries(chartCountBy(rows, r => chartDayKey(r.dueDate).slice(0, 7))).map(([month, count]) => ({ month, count }))
+}
+
+function fittingMissChartData(rows: CrossSellMissRow[]): { fitting: string; missed: number }[] {
+  return chartTopCounts(chartCountBy(rows, r => r.expectedPartnerProductName)).map(([fitting, missed]) => ({ fitting, missed }))
+}
+
+function mrpProductChartData(rows: MrpViolationRow[]): { product: string; count: number }[] {
+  return chartTopCounts(chartCountBy(rows, r => r.productName)).map(([product, count]) => ({ product, count }))
+}
+
+function vehicleWeekChartData(rows: VehicleServiceDueRow[], noDateLabel: string): { week: string; count: number }[] {
+  const dueRows = rows.filter(r => r.isDueSoon || r.nextServiceDueDate)
+  const dated = chartCountBy(dueRows, r => {
+    const day = chartDayKey(r.nextServiceDueDate)
+    return day ? chartWeekKey(day) : ''
+  })
+  const data = chartSortedEntries(dated).map(([week, count]) => ({ week, count }))
+  const undated = dueRows.filter(r => !chartDayKey(r.nextServiceDueDate)).length
+  if (undated > 0) data.push({ week: noDateLabel, count: undated })
+  return data
+}
+
+function vehicleTypeChartData(rows: VehicleServiceDueRow[], unknownLabel: string): { name: string; value: number }[] {
+  return chartSortedEntries(chartCountBy(rows.filter(r => r.isDueSoon || r.nextServiceDueDate), r => r.vehicleType || unknownLabel)).map(([name, value]) => ({ name, value }))
+}
+
+function hotelArrivalChartData(rows: HotelGuestRegisterRow[]): { day: string; count: number }[] {
+  return chartSortedEntries(chartCountBy(rows, r => chartDayKey(r.checkInDate))).map(([day, count]) => ({ day, count }))
+}
+
+function seasonReorderChartData(entries: SeasonalCalendarEntry[]): { month: string; lowStock: number }[] {
+  return MONTH_SHORT.map((m, i) => ({
+    month: m,
+    lowStock: entries.filter(e => Number(chartDayKey(e.reorderByDate).slice(5, 7)) === i + 1).reduce((s, e) => s + e.lowOrOutOfStockCount, 0)
+  }))
+}
+
+function sizeStockOutChartData(data: SizeAvailabilityHeatmapReport): { size: string; out: number; low: number }[] {
+  return data.sizes.map(size => ({
+    size,
+    out: data.cells.filter(c => c.size === size && c.status === 'OUT').length,
+    low: data.cells.filter(c => c.size === size && c.status === 'LOW').length
+  }))
+}
+
+// Printed/PDF counterparts of the on-screen charts above, built from the same
+// data builders. Returns null for reports that have no entry here so the
+// legacy switch in getReportCharts still decides them. Heatmap grids have no
+// PDF chart shape and stay table-only in print.
+function viewPdfCharts(id: ReportType, raw: unknown, t: TFunction): ReportChart[] | null {
+  const S = STATUS_COLORS
+  const bar = (title: string, data: { label: string; value: number; color?: string }[], valueIsCurrency = false): ReportChart[] =>
+    data.some(d => d.value !== 0) ? [{ type: 'bar', orientation: 'vertical', title, data, valueIsCurrency }] : []
+  const pie = (title: string, data: { label: string; value: number; color?: string }[], valueIsCurrency = false): ReportChart[] =>
+    data.some(d => d.value > 0) ? [{ type: 'pie', title, data: data.filter(d => d.value > 0), valueIsCurrency }] : []
+  const stacked = (title: string, data: { label: string; segments: { value: number; color: string; name?: string }[] }[], legend: { name: string; color: string }[]): ReportChart[] =>
+    data.some(d => d.segments.some(s => s.value !== 0)) ? [{ type: 'stackedBar', title, data, legend }] : []
+  switch (id) {
+    case 'gstr1': {
+      const legend = [{ name: t('reports.chart.b2b'), color: S.brand }, { name: t('reports.chart.b2c'), color: S.warning }]
+      return stacked(t('reports.chart.gstr1Title'), gstr1RateChartData(raw as GSTR1Report).map(r => ({
+        label: String(r.rate),
+        segments: [{ value: Number(r.b2b), color: S.brand, name: legend[0].name }, { value: Number(r.b2c), color: S.warning, name: legend[1].name }]
+      })), legend)
+    }
+    case 'hsnSummary':
+      return bar(t('reports.chart.hsnTitle'), hsnTopChartData(raw as HSNSummaryReport).map(r => ({ label: String(r.hsn), value: Number(r.taxable), color: S.brand })), true)
+    case 'documentSummary': {
+      const legend = [{ name: t('reports.chart.activeDocs'), color: S.brand }, { name: t('reports.chart.cancelledDocs'), color: S.danger }]
+      return stacked(t('reports.chart.docTitle'), documentTypeChartData(raw as DocumentSummaryReport).map(r => ({
+        label: String(r.type),
+        segments: [{ value: Number(r.active), color: S.brand, name: legend[0].name }, { value: Number(r.cancelled), color: S.danger, name: legend[1].name }]
+      })), legend)
+    }
+    case 'gstr3bPreview': {
+      const d = raw as GSTR3BPreview
+      return bar(t('reports.chart.gstr3bHeadTitle'), [
+        { label: 'CGST', value: d.table31.taxAmount.cgst, color: S.brand },
+        { label: 'SGST', value: d.table31.taxAmount.sgst, color: S.success },
+        { label: 'IGST', value: d.table31.taxAmount.igst, color: S.warning }
+      ], true)
+    }
+    case 'trialBalance': {
+      const legend = [{ name: t('common.debit'), color: S.brand }, { name: t('common.credit'), color: S.warning }]
+      return stacked(t('reports.chart.tbTitle'), trialBalanceTypeChartData((raw as TrialBalanceReport).rows, t).map(g => ({
+        label: g.type,
+        segments: [{ value: g.debit, color: S.brand, name: legend[0].name }, { value: g.credit, color: S.warning, name: legend[1].name }]
+      })), legend)
+    }
+    case 'khataRisk': {
+      const legend = [{ name: t('reports.chart.trends.RISING'), color: S.danger }, { name: t('reports.chart.trends.STABLE'), color: S.warning }, { name: t('reports.chart.trends.FALLING'), color: S.success }]
+      return stacked(t('reports.chart.khataTitle'), khataExposureChartData((raw as KhataRiskReport).rows, t).map(g => ({
+        label: g.tier,
+        segments: [{ value: g.RISING, color: S.danger, name: legend[0].name }, { value: g.STABLE, color: S.warning, name: legend[1].name }, { value: g.FALLING, color: S.success, name: legend[2].name }]
+      })), legend)
+    }
+    case 'audit': {
+      const c = auditActionChartData((raw as AuditReport).rows, t('reports.chart.other'))
+      const colors = c.series.map((s, i) => s.color ?? CHART_PALETTE[i % CHART_PALETTE.length])
+      return stacked(t('reports.chart.auditTitle'), c.data.map(d => ({
+        label: String(d.day),
+        segments: c.series.map((s, i) => ({ value: Number(d[s.key]) || 0, color: colors[i], name: s.name }))
+      })), c.series.map((s, i) => ({ name: s.name, color: colors[i] })))
+    }
+    case 'backup': {
+      const weeks = backupWeekChartData((raw ?? []) as { backupDate?: string; backupSize?: number }[])
+      return weeks.some(w => w.size > 0)
+        ? bar(t('reports.chart.backupSizeTitle'), weeks.map(w => ({ label: w.week, value: w.size, color: S.brand })))
+        : bar(t('reports.chart.backupCountTitle'), weeks.map(w => ({ label: w.week, value: w.count, color: S.brand })))
+    }
+    case 'complianceTasks': {
+      const d = raw as ComplianceTaskReport
+      return [
+        ...pie(t('reports.chart.complianceStatusTitle'), [
+          { label: t('reports.chart.overdue'), value: d.summary.overdueCount, color: S.danger },
+          { label: t('reports.chart.dueSoon'), value: d.summary.dueThisWeekCount, color: S.warning },
+          { label: t('reports.chart.pendingLater'), value: Math.max(0, d.summary.totalOpen - d.summary.overdueCount - d.summary.dueThisWeekCount), color: S.brand }
+        ]),
+        ...bar(t('reports.chart.complianceMonthTitle'), complianceMonthChartData(d.rows).map(m => ({ label: m.month, value: m.count, color: S.brand })))
+      ]
+    }
+    case 'fittingCrossSell':
+      return bar(t('reports.chart.fittingTitle'), fittingMissChartData((raw as FittingCrossSellReport).rows).map(r => ({ label: r.fitting, value: r.missed, color: S.warning })))
+    case 'hotelGuestRegister': {
+      const d = raw as HotelGuestRegisterReport
+      return [
+        ...bar(t('reports.chart.hotelArrivalsTitle'), hotelArrivalChartData(d.rows).map(r => ({ label: r.day, value: r.count, color: S.brand }))),
+        ...pie(t('reports.chart.hotelIdTitle'), chartSortedEntries(chartCountBy(d.rows, r => r.idType || t('reports.chart.unknown'))).map(([label, value]) => ({ label, value })))
+      ]
+    }
+    case 'mrpViolation':
+      return bar(t('reports.chart.mrpProductTitle'), mrpProductChartData((raw as MrpViolationReport).rows).map(r => ({ label: r.product, value: r.count, color: S.danger })))
+    case 'scheduleH1XRegister': {
+      const legend = [{ name: t('reports.chart.rxComplete'), color: S.success }, { name: t('reports.chart.rxMissing'), color: S.danger }]
+      return stacked(t('reports.chart.h1xTitle'), h1xDayChartData((raw as ScheduleH1XRegisterReport).rows).map(r => ({
+        label: String(r.day),
+        segments: [{ value: Number(r.complete), color: S.success, name: legend[0].name }, { value: Number(r.missing), color: S.danger, name: legend[1].name }]
+      })), legend)
+    }
+    case 'seasonalReorderCalendar':
+      return bar(t('reports.chart.seasonReorderTitle'), seasonReorderChartData((raw ?? []) as SeasonalCalendarEntry[]).map(r => ({ label: r.month, value: r.lowStock, color: S.warning })))
+    case 'sizeAvailabilityHeatmap': {
+      const legend = [{ name: t('reports.chart.outOfStock'), color: S.danger }, { name: t('reports.chart.lowStock'), color: S.warning }]
+      return stacked(t('reports.chart.sizeStockOutTitle'), sizeStockOutChartData(raw as SizeAvailabilityHeatmapReport).map(r => ({
+        label: r.size,
+        segments: [{ value: r.out, color: S.danger, name: legend[0].name }, { value: r.low, color: S.warning, name: legend[1].name }]
+      })), legend)
+    }
+    case 'vehicleServiceDue': {
+      const d = raw as VehicleServiceDueReport
+      return [
+        ...bar(t('reports.chart.vehicleWeekTitle'), vehicleWeekChartData(d.rows, t('reports.chart.noDate')).map(r => ({ label: r.week, value: r.count, color: S.warning }))),
+        ...pie(t('reports.chart.vehicleTypeTitle'), vehicleTypeChartData(d.rows, t('reports.chart.unknown')).map(r => ({ label: r.name, value: r.value })))
+      ]
+    }
+    case 'chronicRecallCompliance':
+    case 'dentalRecallCompliance':
+    case 'vaccinationCompliance': {
+      const groups = id === 'chronicRecallCompliance'
+        ? (raw as ChronicRecallComplianceReport).byCondition.map(r => ({ label: r.conditionName, total: r.total, onTime: r.onTime }))
+        : id === 'dentalRecallCompliance'
+          ? (raw as DentalRecallComplianceReport).byRecallType.map(r => ({ label: r.recallType, total: r.total, onTime: r.onTime }))
+          : (raw as VaccinationComplianceReport).byVaccine.map(r => ({ label: r.vaccineName, total: r.total, onTime: r.onTime }))
+      const legend = [{ name: t('reports.col.onTime'), color: S.success }, { name: t('reports.chart.late'), color: S.danger }]
+      return stacked(t('reports.chart.recallOnTimeTitle'), groups.map(g => ({
+        label: g.label,
+        segments: [{ value: g.onTime, color: S.success, name: legend[0].name }, { value: Math.max(0, g.total - g.onTime), color: S.danger, name: legend[1].name }]
+      })), legend)
+    }
+    case 'learnerProgressFunnel':
+      return bar(t('reports.defs.learnerProgressFunnel.label'), (raw as LearnerProgressFunnelReport).stages.map(s => ({ label: s.stage, value: s.learnerCount, color: S.brand })))
+    case 'deliverableStatusPipeline':
+      return bar(t('reports.defs.deliverableStatusPipeline.label'), (raw as DeliverableStatusPipelineReport).stages.map(s => ({ label: s.status.replace(/_/g, ' '), value: s.count, color: S.brand })))
+    case 'deliveryPipeline':
+      return bar(t('reports.defs.deliveryPipeline.label'), (raw as DeliveryPipelineReport).stages.map(s => ({ label: s.stage.replace(/_/g, ' '), value: s.count, color: S.brand })))
+    default:
+      return null
+  }
+}
+
 function OrderVolumeView({ data }: { data: OrderVolumeReport }) {
   const { t } = useTranslation()
   const s = data.summary
@@ -8425,6 +9160,7 @@ function DiscountsView({ data, fmt }: { data: DiscountReport; fmt: (n: number) =
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: t('reports.summary.totalDiscountGiven'), value: fmt(s.totalDiscountGiven) },
+        ...(data.invoiceLevelDiscount ? [{ label: t('reports.summary.invoiceLevelDiscount'), value: fmt(data.invoiceLevelDiscount) }] : []),
         { label: t('reports.summary.discountedLines'), value: `${s.discountedLineCount} / ${s.totalLineCount}` },
         { label: t('reports.summary.discountIncidence'), value: `${s.discountIncidencePercent}%` },
         { label: t('reports.summary.avgDiscountPercent'), value: `${s.averageDiscountPercent}%` }
@@ -9122,17 +9858,27 @@ function HallmarkComplianceView({ data }: { data: HallmarkComplianceReport }) {
         { label: t('reports.summary.compliancePercent'), value: `${s.compliancePercent}%` },
       ]} />
       {s.totalItems > 0 && (
-        <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-          <ResponsiveContainer width="100%" height={220}>
-            <RCPieChart>
-              <Pie data={[{ name: t('reports.col.compliant'), value: s.compliantCount }, { name: t('reports.col.nonCompliant'), value: s.nonCompliantCount }]} dataKey="value" nameKey="name" cx="50%" cy="50%" outerRadius={80} label={(p: { name?: string; value?: number }) => `${p.name} (${p.value})`}>
-                <Cell fill={STATUS_COLORS.success} />
-                <Cell fill={STATUS_COLORS.dangerDeep} />
-              </Pie>
-              <Tooltip contentStyle={CHART_TOOLTIP_STYLE} />
-              <Legend wrapperStyle={{ fontSize: 11 }} />
-            </RCPieChart>
-          </ResponsiveContainer>
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          <DonutChart
+            title={t('reports.chart.hallmarkStatusTitle')}
+            data={[
+              { name: t('reports.col.compliant'), value: s.compliantCount, color: STATUS_COLORS.success },
+              { name: t('reports.col.nonCompliant'), value: s.nonCompliantCount, color: STATUS_COLORS.dangerDeep }
+            ]}
+          />
+          <SeriesBarChart
+            title={t('reports.chart.hallmarkByMetalTitle')}
+            data={[...new Set(data.rows.map(r => r.metalType || t('reports.chart.unknown')))].sort().map(metal => ({
+              metal,
+              compliant: data.rows.filter(r => (r.metalType || t('reports.chart.unknown')) === metal && r.compliant).length,
+              nonCompliant: data.rows.filter(r => (r.metalType || t('reports.chart.unknown')) === metal && !r.compliant).length
+            }))}
+            xKey="metal"
+            series={[{ key: 'compliant', name: t('reports.col.compliant'), color: STATUS_COLORS.success }, { key: 'nonCompliant', name: t('reports.col.nonCompliant'), color: STATUS_COLORS.dangerDeep }]}
+            stacked
+            categoryLabel={t('reports.chart.metal')}
+            valueLabel={t('reports.summary.totalItems')}
+          />
         </div>
       )}
       <DataTable
@@ -9172,7 +9918,7 @@ function MetalRateVsSalesVolumeView({ data }: { data: MetalRateVsSalesVolumeRepo
       </div>
       <DataTable
         headers={[t('reports.col.month'), t('jewellery.ratePerGram'), t('reports.col.salesWeightGrams')]}
-        rows={data.rows.map(r => [r.month, r.avgRatePerGram != null ? r.avgRatePerGram.toFixed(2) : '—', r.salesWeightGrams.toFixed(3)])}
+        rows={data.rows.map(r => [r.month, r.avgRatePerGram != null ? moneyFixed(r.avgRatePerGram) : '—', r.salesWeightGrams.toFixed(3)])}
       />
     </div>
   )
@@ -10080,7 +10826,6 @@ function PlacementReportView({ data, fmt }: { data: PlacementReport; fmt: (n: nu
 
 // Phase 68 §9.1 — Placement Agency item 1: candidate pipeline funnel.
 function CandidatePipelineFunnelView({ data }: { data: CandidatePipelineFunnelReport }) {
-  const maxCount = Math.max(1, ...data.stages.map(s => s.candidateCount))
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
@@ -10088,22 +10833,11 @@ function CandidatePipelineFunnelView({ data }: { data: CandidatePipelineFunnelRe
         { label: 'Placed', value: String(data.summary.placedCount) },
         { label: 'Conversion %', value: `${data.summary.overallConversionPercent}%` }
       ]} />
-      <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 p-5">
-        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">Candidate Pipeline</h3>
-        <div className="space-y-3">
-          {data.stages.map((s) => (
-            <div key={s.stage}>
-              <div className="flex items-center justify-between text-xs text-slate-500 dark:text-slate-400 mb-1">
-                <span>{s.stage}</span>
-                <span className="font-semibold text-dark dark:text-slate-100">{s.candidateCount}</span>
-              </div>
-              <div className="h-6 rounded-lg bg-slate-100 dark:bg-slate-800 overflow-hidden">
-                <div className="h-full rounded-lg bg-brand" style={{ width: `${maxCount > 0 ? (s.candidateCount / maxCount) * 100 : 0}%` }} />
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
+      <FunnelBarChart
+        title="Candidate Pipeline"
+        stages={data.stages.map(s => ({ label: s.stage, value: s.candidateCount }))}
+        valueLabel="Candidates"
+      />
     </div>
   )
 }
@@ -10319,6 +11053,19 @@ function PrescriptionDrugSalesReportView({ data, fmt }: { data: PrescriptionDrug
 // Deliberately does not claim full statutory register-field completeness
 // (no doctor registration number or patient address anywhere in this
 // platform) — surfaces exactly what Sarang actually records, honestly.
+function h1xDayChartData(rows: ScheduleH1XRegisterRow[]): ChartDatum[] {
+  const byDay = new Map<string, { complete: number; missing: number }>()
+  for (const r of rows) {
+    const day = chartDayKey(r.invoiceDate)
+    if (!day) continue
+    const e = byDay.get(day) ?? { complete: 0, missing: 0 }
+    if (r.patientName && r.doctorName) e.complete += 1
+    else e.missing += 1
+    byDay.set(day, e)
+  }
+  return [...byDay.entries()].sort((a, b) => a[0].localeCompare(b[0])).map(([day, e]) => ({ day, ...e }))
+}
+
 function ScheduleH1XRegisterView({ data }: { data: ScheduleH1XRegisterReport }) {
   const { t } = useTranslation()
   const s = data.summary
@@ -10329,6 +11076,15 @@ function ScheduleH1XRegisterView({ data }: { data: ScheduleH1XRegisterReport }) 
         { label: t('reports.summary.totalQuantity'), value: String(s.totalQuantity) },
         { label: t('reports.summary.missingDetails'), value: String(s.missingPrescriptionDetails) }
       ]} />
+      <SeriesBarChart
+        title={t('reports.chart.h1xTitle')}
+        data={h1xDayChartData(data.rows)}
+        xKey="day"
+        series={[{ key: 'complete', name: t('reports.chart.rxComplete'), color: STATUS_COLORS.success }, { key: 'missing', name: t('reports.chart.rxMissing'), color: STATUS_COLORS.danger }]}
+        stacked
+        categoryLabel={t('reports.chart.day')}
+        valueLabel={t('reports.chart.entries')}
+      />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.scheduleH1XRegister')}</h3>
         <DataTable
@@ -10426,6 +11182,15 @@ function ChronicRecallComplianceView({ data }: { data: ChronicRecallComplianceRe
           {t('reports.summary.recallsClosed')}: {data.totalRecallsClosed}
         </p>
       </div>
+      <SeriesBarChart
+        title={t('reports.chart.recallOnTimeTitle')}
+        data={data.byCondition.map(r => ({ label: r.conditionName, onTime: r.onTime, late: Math.max(0, r.total - r.onTime) }))}
+        xKey="label"
+        series={[{ key: 'onTime', name: t('reports.col.onTime'), color: STATUS_COLORS.success }, { key: 'late', name: t('reports.chart.late'), color: STATUS_COLORS.danger }]}
+        stacked
+        categoryLabel={t('reports.col.condition')}
+        valueLabel={t('reports.chart.count')}
+      />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceByCondition')}</h3>
         <DataTable
@@ -10453,6 +11218,15 @@ function VaccinationComplianceView({ data }: { data: VaccinationComplianceReport
           {t('reports.summary.dosesEvaluated')}: {data.totalDosesEvaluated}
         </p>
       </div>
+      <SeriesBarChart
+        title={t('reports.chart.recallOnTimeTitle')}
+        data={data.byVaccine.map(r => ({ label: r.vaccineName, onTime: r.onTime, late: Math.max(0, r.total - r.onTime) }))}
+        xKey="label"
+        series={[{ key: 'onTime', name: t('reports.col.onTime'), color: STATUS_COLORS.success }, { key: 'late', name: t('reports.chart.late'), color: STATUS_COLORS.danger }]}
+        stacked
+        categoryLabel={t('reports.col.vaccineName')}
+        valueLabel={t('reports.chart.count')}
+      />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceByVaccine')}</h3>
         <DataTable
@@ -10479,6 +11253,15 @@ function DentalRecallComplianceView({ data }: { data: DentalRecallComplianceRepo
           {t('reports.summary.recallsClosed')}: {data.totalRecallsClosed}
         </p>
       </div>
+      <SeriesBarChart
+        title={t('reports.chart.recallOnTimeTitle')}
+        data={data.byRecallType.map(r => ({ label: r.recallType, onTime: r.onTime, late: Math.max(0, r.total - r.onTime) }))}
+        xKey="label"
+        series={[{ key: 'onTime', name: t('reports.col.onTime'), color: STATUS_COLORS.success }, { key: 'late', name: t('reports.chart.late'), color: STATUS_COLORS.danger }]}
+        stacked
+        categoryLabel={t('reports.col.recallType')}
+        valueLabel={t('reports.chart.count')}
+      />
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceByRecallType')}</h3>
         <DataTable
@@ -11540,6 +12323,24 @@ function ComplianceTaskView({ data }: { data: ComplianceTaskReport }) {
         { label: t('reports.summary.dueThisWeekCount'), value: String(s.dueThisWeekCount) },
         { label: t('reports.summary.clientCount'), value: String(s.clientCount) }
       ]} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <DonutChart
+          title={t('reports.chart.complianceStatusTitle')}
+          data={[
+            { name: t('reports.chart.overdue'), value: s.overdueCount, color: STATUS_COLORS.danger },
+            { name: t('reports.chart.dueSoon'), value: s.dueThisWeekCount, color: STATUS_COLORS.warning },
+            { name: t('reports.chart.pendingLater'), value: Math.max(0, s.totalOpen - s.overdueCount - s.dueThisWeekCount), color: STATUS_COLORS.brand }
+          ]}
+        />
+        <SeriesBarChart
+          title={t('reports.chart.complianceMonthTitle')}
+          data={complianceMonthChartData(data.rows)}
+          xKey="month"
+          series={[{ key: 'count', name: t('reports.chart.tasks'), color: STATUS_COLORS.brand }]}
+          categoryLabel={t('reports.chart.month')}
+          valueLabel={t('reports.chart.tasks')}
+        />
+      </div>
       <div>
         <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-3">{t('reports.section.complianceTaskDetails')}</h3>
         <DataTable
@@ -11767,6 +12568,15 @@ function FittingCrossSellView({ data }: { data: FittingCrossSellReport }) {
         { label: t('reports.fittingCrossSell.missedOpportunities'), value: String(s.missedOpportunities) },
         { label: t('reports.fittingCrossSell.invoicesScanned'), value: String(s.invoicesScanned) }
       ]} />
+      <SeriesBarChart
+        title={t('reports.chart.fittingTitle')}
+        data={fittingMissChartData(data.rows)}
+        xKey="fitting"
+        series={[{ key: 'missed', name: t('reports.chart.missedPairings'), color: STATUS_COLORS.warning }]}
+        horizontal
+        categoryLabel={t('reports.chart.fitting')}
+        valueLabel={t('reports.chart.missedPairings')}
+      />
       <DataTable
         headers={[t('reports.col.invoiceNo'), t('common.date'), t('reports.fittingCrossSell.productSold'), t('reports.fittingCrossSell.usuallyPairedWith'), t('reports.fittingCrossSell.pairStrength')]}
         rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.anchorProductName, r.expectedPartnerProductName, `${r.pairStrengthPercent}%`])}
@@ -11798,6 +12608,7 @@ function MaterialSalesMixView({ data, fmt }: { data: MaterialSalesMixReport; fmt
 
 // 2026-09 §12 — Grocery/Kirana item 1: MRP Compliance. Register-shaped, no chart.
 function MrpViolationView({ data, fmt }: { data: MrpViolationReport; fmt: (n: number) => string }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
@@ -11805,6 +12616,25 @@ function MrpViolationView({ data, fmt }: { data: MrpViolationReport; fmt: (n: nu
         { label: 'Violations', value: String(s.violationCount) },
         { label: 'Total Excess Collected', value: fmt(s.totalExcessCollected) }
       ]} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SeriesBarChart
+          title={t('reports.chart.mrpProductTitle')}
+          data={mrpProductChartData(data.rows)}
+          xKey="product"
+          series={[{ key: 'count', name: t('reports.chart.violations'), color: STATUS_COLORS.danger }]}
+          horizontal
+          categoryLabel={t('reports.chart.product')}
+          valueLabel={t('reports.chart.violations')}
+        />
+        <SeriesLineChart
+          title={t('reports.chart.mrpTrendTitle')}
+          data={chartSortedEntries(chartCountBy(data.rows, r => chartDayKey(r.invoiceDate))).map(([day, count]) => ({ day, count }))}
+          xKey="day"
+          series={[{ key: 'count', name: t('reports.chart.violations'), color: STATUS_COLORS.danger }]}
+          categoryLabel={t('reports.chart.day')}
+          valueLabel={t('reports.chart.violations')}
+        />
+      </div>
       <DataTable
         headers={['Invoice #', 'Date', 'Product', 'SKU', 'Unit Price', 'MRP', 'Excess/Unit', 'Qty']}
         rows={data.rows.map(r => [r.invoiceNumber, r.invoiceDate, r.productName, r.sku ?? '—', fmt(r.unitPrice), fmt(r.mrp), fmt(r.excessPerUnit), r.quantity])}
@@ -11933,12 +12763,27 @@ function KhataRiskView({ data, fmt }: { data: KhataRiskReport; fmt: (n: number) 
     }
   }
 
+  const exposureData = khataExposureChartData(data.rows, t)
   return (
     <div className="space-y-6">
       <SummaryCards cards={[
         { label: 'High Risk', value: String(s.highRiskCount) },
         { label: 'Medium Risk', value: String(s.mediumRiskCount) }
       ]} />
+      <SeriesBarChart
+        title={t('reports.chart.khataTitle')}
+        data={exposureData}
+        xKey="tier"
+        series={[
+          { key: 'RISING', name: t('reports.chart.trends.RISING'), color: STATUS_COLORS.danger },
+          { key: 'STABLE', name: t('reports.chart.trends.STABLE'), color: STATUS_COLORS.warning },
+          { key: 'FALLING', name: t('reports.chart.trends.FALLING'), color: STATUS_COLORS.success }
+        ]}
+        stacked
+        fmt={fmt}
+        categoryLabel={t('reports.chart.riskTier')}
+        valueLabel={t('reports.chart.outstanding')}
+      />
       <div className="bg-white dark:bg-slate-900 rounded-xl border border-slate-200 dark:border-slate-700 overflow-hidden">
         <table className="w-full text-sm">
           <thead className="bg-slate-50 dark:bg-slate-800 text-left text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">
@@ -12010,6 +12855,7 @@ function PreOrderProductionSheetView({ data }: { data: PreOrderProductionSheetRe
 
 // 2026-09 §12 — Tours & Travels item 4: Vehicle Service-Due & Total-KM-Run.
 function VehicleServiceDueView({ data }: { data: VehicleServiceDueReport }) {
+  const { t } = useTranslation()
   const s = data.summary
   return (
     <div className="space-y-6">
@@ -12017,6 +12863,20 @@ function VehicleServiceDueView({ data }: { data: VehicleServiceDueReport }) {
         { label: 'Due Soon', value: String(s.dueSoonCount) },
         { label: 'Total Fleet Km', value: String(s.totalFleetKm) }
       ]} />
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SeriesBarChart
+          title={t('reports.chart.vehicleWeekTitle')}
+          data={vehicleWeekChartData(data.rows, t('reports.chart.noDate'))}
+          xKey="week"
+          series={[{ key: 'count', name: t('reports.chart.vehiclesDue'), color: STATUS_COLORS.warning }]}
+          categoryLabel={t('reports.chart.week')}
+          valueLabel={t('reports.chart.vehiclesDue')}
+        />
+        <DonutChart
+          title={t('reports.chart.vehicleTypeTitle')}
+          data={vehicleTypeChartData(data.rows, t('reports.chart.unknown'))}
+        />
+      </div>
       <DataTable
         headers={['Vehicle', 'Type', 'Odometer (km)', 'Km Since Last Service', 'Last Service', 'Next Service Due (km)', 'Status']}
         rows={data.rows.map(r => [

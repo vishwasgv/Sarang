@@ -247,7 +247,6 @@ export async function generateTailoringInvoice(id: string) {
     const result = await billingService.createInvoice({
       customerId: order.clientId,
       paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
       items: [{ productId: tailoringProduct.id, quantity: order.quantity, unitPrice: Number(order.unitPrice) }],
       notes: `Order ${order.orderNumber} — ${order.garmentType} × ${order.quantity}`,
       referenceNumber: order.orderNumber,

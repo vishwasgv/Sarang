@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { roundCurrency } from './currency.service'
+import { roundMoney } from '../../shared/utils/money'
 import { parseLocalDateStart } from '../utils/date.util'
 
 // 2026-09 §12 — Tours & Travels vertical: driver duty settlement, the
@@ -102,16 +103,16 @@ export async function closeDuty(payload: { id: string; endOdometer: number; duty
       return { success: false, error: { code: 'DDL-004', message: 'Duty end time cannot be before start time.' } }
     }
 
-    const kmDriven = roundCurrency(payload.endOdometer - log.startOdometer)
+    const kmDriven = roundMoney(payload.endOdometer - log.startOdometer, 2)
     const drivingHours = Math.round(((dutyEndTime.getTime() - log.dutyStartTime.getTime()) / 3600000) * 100) / 100
 
     const booking = log.tripBooking
     const vehicleType = booking.vehicle?.vehicleType
     const excessKmRate = vehicleType ? (EXCESS_KM_RATE_BY_VEHICLE_TYPE[vehicleType] ?? DEFAULT_EXCESS_KM_RATE) : DEFAULT_EXCESS_KM_RATE
 
-    const excessKm = booking.includedKmPerDay != null ? Math.max(0, roundCurrency(kmDriven - booking.includedKmPerDay)) : 0
+    const excessKm = booking.includedKmPerDay != null ? Math.max(0, roundMoney(kmDriven - booking.includedKmPerDay, 2)) : 0
     const excessKmCharge = roundCurrency(excessKm * excessKmRate)
-    const excessHours = booking.includedHoursPerDay != null ? Math.max(0, roundCurrency(drivingHours - booking.includedHoursPerDay)) : 0
+    const excessHours = booking.includedHoursPerDay != null ? Math.max(0, roundMoney(drivingHours - booking.includedHoursPerDay, 2)) : 0
     const excessHourCharge = roundCurrency(excessHours * EXCESS_HOUR_RATE)
 
     const updated = await db.$transaction(async (tx) => {

@@ -41,7 +41,7 @@ Once a product is finished and in stock, **Dispatch** records it going out the d
 
 **Finished Goods** lists every product that has a BOM defined for it — in other words, everything you actually manufacture rather than just resell. For each one you can see current stock, selling price, and pull up its full **production history** (every production order that has ever produced it, planned vs. produced quantity, and status).
 
-## 6. Vendor Management
+## 6. Raw Material Suppliers (Vendor Management)
 
 This screen is your raw-material supplier directory: every active supplier that has at least one raw material linked to them, with contact details, outstanding balance, and a drill-down into exactly which materials you buy from them (with each material's current stock, low-stock flag, and unit cost). It reuses the same Supplier records as the rest of Sarang — there's no separate "manufacturing vendor" list to maintain.
 

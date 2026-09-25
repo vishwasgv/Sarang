@@ -1,4 +1,5 @@
 import React, { useEffect, useState } from 'react'
+import { useMoneyContext } from '@shared/utils/money-context'
 import { useForm, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -12,6 +13,9 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
 import { ProductAutocomplete } from '@shared/ui/organisms/ProductAutocomplete'
+import { TAX_CATEGORIES, TAX_CATEGORY_LABEL_KEYS } from '@shared/utils/tax-category'
+import { isOffSlabRate } from '@shared/utils/off-slab-rate.util'
+import { suggestTaxCategory } from '@gst'
 
 const schema = z.object({
   productName: z.string().min(1, 'Product name is required').max(200),
@@ -26,6 +30,7 @@ const schema = z.object({
   sellingPrice: z.coerce.number().min(0),
   mrp: z.coerce.number().min(0).optional(),
   taxRate: z.coerce.number().min(0).max(100),
+  taxCategory: z.enum(TAX_CATEGORIES).default('STANDARD'),
   reorderLevel: z.coerce.number().min(0).optional(),
   reorderQuantity: z.coerce.number().min(0).optional(),
   // Phase 58 §2 — generic reorder automation: which supplier to draft a PO
@@ -141,7 +146,7 @@ type FormValues = z.infer<typeof schema>
 
 interface Category { id: string; name: string; parentCategoryId?: string | null }
 interface Product {
-  id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; mrp?: number | null; taxRate: number; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
+  id: string; productName: string; categoryId?: string | null; sku?: string | null; barcode?: string | null; hsnCode?: string | null; description?: string | null; productType: 'STANDARD' | 'SERVICE'; unit: string; costPrice: number; sellingPrice: number; mrp?: number | null; taxRate: number; taxCategory?: string | null; imagePath?: string | null; inventory?: { reorderLevel: number; reorderQuantity: number } | null
   sellByWeight?: boolean; weightUnit?: string | null; pricePerWeightUnit?: number | null
   sellByLength?: boolean; lengthUnit?: string | null; pricePerLengthUnit?: number | null
   sellByPack?: boolean; packUnit?: string | null; unitsPerPack?: number | null
@@ -190,6 +195,7 @@ const UNITS = ['PCS', 'KG', 'G', 'L', 'ML', 'M', 'CM', 'SQFT', 'SQM', 'BOX', 'DO
 
 export function ProductFormModal({ open, onClose, onSaved, product, categories, onCategoryCreated }: ProductFormModalProps) {
   const { t } = useTranslation()
+  const moneyCtx = useMoneyContext()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
   // Phase 38: opt-in, off by default for every business type — see
@@ -221,7 +227,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
   // retyped by hand, one at a time. This doesn't replace the free-typed
   // field (a product may genuinely need a one-off rate not in the list) —
   // it adds a one-click way to apply any currently configured rate.
-  const [taxConfigs, setTaxConfigs] = useState<{ id: string; taxName: string; rate: number; isDefault: boolean }[]>([])
+  const [taxConfigs, setTaxConfigs] = useState<{ id: string; taxName: string; rate: number; isDefault: boolean; isLegacy?: boolean; taxType: string }[]>([])
   // Phase 64 — composite items/kits. Managed as its own save action
   // (window.api.products.setKitComponents), separate from the main product
   // update — a kit needs a real productId to attach components to, and
@@ -241,7 +247,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
 
   const { control, register, handleSubmit, reset, watch, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByLength: false, sellByPack: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
+    defaultValues: { productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, taxCategory: 'STANDARD', reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByLength: false, sellByPack: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' }
   })
   const { businessType } = useIndustryStore()
   const isPharmacy = businessType === 'PHARMACY'
@@ -335,6 +341,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
   const productType = watch('productType')
   const isPrescriptionRequiredWatch = watch('isPrescriptionRequired')
   const imagePath = watch('imagePath')
+  const taxRateWatch = Number(watch('taxRate'))
   const sellByWeight = watch('sellByWeight')
   const sellByLength = watch('sellByLength')
   const sellByPack = watch('sellByPack')
@@ -382,6 +389,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
           sellingPrice: product.sellingPrice,
           mrp: product.mrp ?? undefined,
           taxRate: product.taxRate,
+          taxCategory: (TAX_CATEGORIES as readonly string[]).includes(product.taxCategory ?? '') ? product.taxCategory as typeof TAX_CATEGORIES[number] : 'STANDARD',
           imagePath: product.imagePath ?? undefined,
           reorderLevel: product.inventory?.reorderLevel ?? 5,
           reorderQuantity: product.inventory?.reorderQuantity ?? 10,
@@ -419,7 +427,7 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
         setRateLines(product.rentalRates ?? [])
         setCustomFieldValues(parseCustomFields(product.customFields))
       } else {
-        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByLength: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
+        reset({ productType: 'STANDARD', unit: 'PCS', costPrice: 0, sellingPrice: 0, taxRate: 0, taxCategory: 'STANDARD', reorderLevel: 5, reorderQuantity: 10, openingQuantity: 0, sellByWeight: false, sellByLength: false, sellByPack: false, isRentable: false, isPrescriptionRequired: false, isScheduleH1X: false, floatingUnitConversion: false, valuationMethod: 'WEIGHTED_AVERAGE' })
         setRateLines([])
         setCustomFieldValues({})
       }
@@ -620,26 +628,33 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
 
         {/* Pricing */}
         <div className="grid grid-cols-4 gap-4">
-          <Input label={t('products.form.costPriceRequired')} type="number" step="0.01" min="0" {...register('costPrice')} error={errors.costPrice?.message} />
-          <Input label={t('products.form.sellingPriceRequired')} type="number" step="0.01" min="0" {...register('sellingPrice')} error={errors.sellingPrice?.message} />
+          <Input label={t('products.form.costPriceBeforeTax')} type="number" step="0.01" min="0" {...register('costPrice')} error={errors.costPrice?.message} />
+          <Input label={t(moneyCtx.pricesIncludeTaxDefault ? 'products.form.sellingPriceInclTax' : 'products.form.sellingPriceBeforeTax')} type="number" step="0.01" min="0" {...register('sellingPrice')} error={errors.sellingPrice?.message} />
           <Input label={t('products.mrp')} type="number" step="0.01" min="0" {...register('mrp')} error={errors.mrp?.message} />
           <div>
-            <Input label={t('products.form.taxRatePercentLabel')} type="number" step="0.5" min="0" max="100" {...register('taxRate')} error={errors.taxRate?.message} />
+            <Input label={t('products.form.taxRatePercentLabel')} type="number" step="any" min="0" max="100" {...register('taxRate')} error={errors.taxRate?.message} />
+            {isOffSlabRate(taxRateWatch, taxConfigs) && (
+              <p className="text-xs text-warning mt-1">{t('billing.offSlabRate', { rate: taxRateWatch })}</p>
+            )}
             {taxConfigs.length > 0 && (
               <div className="flex flex-wrap gap-1 mt-1.5">
-                {taxConfigs.map((tc) => (
+                {[...taxConfigs.filter(tc => !tc.isLegacy), ...taxConfigs.filter(tc => tc.isLegacy)].map((tc) => (
                   <button
                     key={tc.id}
                     type="button"
-                    onClick={() => setValue('taxRate', tc.rate, { shouldValidate: true })}
-                    className="text-xs px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors"
-                    title={t('products.form.applyTaxRateTitle', { taxName: tc.taxName, rate: tc.rate })}
+                    onClick={() => { setValue('taxRate', tc.rate, { shouldValidate: true }); setValue('taxCategory', suggestTaxCategory(tc.rate)) }}
+                    className={`text-xs px-2 py-0.5 rounded-full border border-slate-200 dark:border-slate-700 text-slate-500 dark:text-slate-400 hover:border-brand hover:text-brand transition-colors${tc.isLegacy ? ' opacity-60' : ''}`}
+                    title={tc.isLegacy ? `${t('billing.olderRatesShort')}: ${t('products.form.applyTaxRateTitle', { taxName: tc.taxName, rate: tc.rate })}` : t('products.form.applyTaxRateTitle', { taxName: tc.taxName, rate: tc.rate })}
                   >
                     {tc.taxName} {tc.rate}%{tc.isDefault ? ' •' : ''}
                   </button>
                 ))}
               </div>
             )}
+            <Select label={t('billing.taxCategoryLabel')} {...register('taxCategory')}>
+              {TAX_CATEGORIES.map(c => <option key={c} value={c}>{t(TAX_CATEGORY_LABEL_KEYS[c])}</option>)}
+            </Select>
+            <p className="text-xs text-slate-400 mt-1">{t('billing.taxCategoryHint')}</p>
           </div>
         </div>
 

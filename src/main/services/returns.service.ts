@@ -5,7 +5,9 @@ import { ServiceError } from '../errors/service-error'
 import { restoreBatchStockFIFO } from './batch.service'
 import { restoreVariantStockTx } from './variant.service'
 import { customerLedgerService } from './customer-ledger.service'
-import { roundCurrency, sumCurrency } from './currency.service'
+import { roundCurrency, sumCurrency, moneyEpsilon } from './currency.service'
+import { prorateAmount } from '../../shared/utils/money'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { applyLocationDeltaTx } from './inventory.service'
 import { explodeKitComponentsTx } from './kit.service'
 import { markSerialAvailableTx } from './serial.service'
@@ -148,19 +150,38 @@ export async function createReturn(
       // through unrounded into taxAmount/lineTotal). Rounded to 2dp at each
       // step via roundCurrency now, matching calculateLineTotal's own
       // discipline.
+      // Every original (tax-exclusive or inclusive, with or without an invoice-level discount) refunds from the
+      // stored line total and stored tax, proportionally by quantity. Those already hold the line discount and the
+      // line's share of any invoice-level discount, which unit price x quantity does not. The last piece of a
+      // line takes exactly what is left, so a line can never refund more than it was sold for and a full return
+      // refunds the sold amount to the last minor unit.
+      const dp = await getBusinessCurrencyDecimals()
+      const priorValues = await getReturnedAwayValues(tx, originalInvoiceId, dp)
       const returnItems = items.map(ri => {
         const orig = original.items.find(i => sameLine(i, ri.productId, ri.variantId))!
-        const discountReversed = roundCurrency(orig.discountAmount * (ri.quantity / orig.quantity))
-        const lineTotal = roundCurrency(-(ri.quantity * orig.unitPrice - discountReversed))
-        const lineTax = roundCurrency(lineTotal * (orig.taxRate / 100))
+        const key = itemKey(ri.productId, ri.variantId)
+        const priorQty = alreadyReturned.get(key) ?? 0
+        const prior = priorValues.get(key) ?? { total: 0, tax: 0 }
+        const isRest = ri.quantity >= orig.quantity - priorQty - 0.0000001
+        const remTotal = roundCurrency(orig.lineTotal - prior.total, dp)
+        const remTax = roundCurrency(orig.taxAmount - prior.tax, dp)
+        const inclTotal = isRest ? remTotal : Math.min(remTotal, prorateAmount(orig.lineTotal, ri.quantity, orig.quantity, dp))
+        const lineTax = isRest ? remTax : Math.min(remTax, prorateAmount(orig.taxAmount, ri.quantity, orig.quantity, dp))
+        const taxable = roundCurrency(inclTotal - lineTax, dp)
+        // Exclusive returns show the gross they reverse and the discount (line plus invoice-level share) that
+        // separates it from the refunded taxable value; inclusive returns carry their entered line prices.
+        const gross = roundCurrency(orig.unitPrice * ri.quantity, dp)
         return {
           productId: ri.productId,
           quantity: ri.quantity,
           unitPrice: orig.unitPrice,
-          discountAmount: discountReversed,
+          discountAmount: original.pricesIncludeTax
+            ? prorateAmount(orig.discountAmount, ri.quantity, orig.quantity, dp)
+            : Math.max(0, roundCurrency(gross - taxable, dp)),
           taxRate: orig.taxRate,
-          taxAmount: Math.abs(lineTax),
-          lineTotal, // negative
+          taxCategory: orig.taxCategory,
+          taxAmount: lineTax,
+          lineTotal: -taxable, // negative, tax-exclusive like every return line
           // Carried onto the return's own InvoiceItem so the return record
           // itself stays traceable to the exact variant, matching how the
           // original sale's line was recorded.
@@ -169,16 +190,20 @@ export async function createReturn(
         }
       })
 
-      const returnSubtotal = sumCurrency(returnItems.map(i => Math.abs(i.unitPrice * i.quantity)))
-      const returnDiscountReversed = sumCurrency(returnItems.map(i => i.discountAmount))
-      const returnNetBeforeTax = sumCurrency(returnItems.map(i => i.lineTotal)) // negative
-      const returnTaxAmount = sumCurrency(returnItems.map(i => i.taxAmount)) // positive magnitude
+      const returnNetBeforeTax = sumCurrency(returnItems.map(i => i.lineTotal), dp) // negative
+      // An inclusive return's lines carry their entered (tax-inclusive) prices, so the header's
+      // tax-exclusive subtotal is the refunded taxable value itself (no separate discount to show).
+      const returnSubtotal = original.pricesIncludeTax
+        ? Math.abs(returnNetBeforeTax)
+        : sumCurrency(returnItems.map(i => Math.abs(i.lineTotal) + i.discountAmount), dp) // gross reversed = refunded taxable + discount, so subtotal - discount + tax = total to the last unit
+      const returnDiscountReversed = original.pricesIncludeTax ? 0 : sumCurrency(returnItems.map(i => i.discountAmount), dp)
+      const returnTaxAmount = sumCurrency(returnItems.map(i => i.taxAmount), dp) // positive magnitude
       // The invoice's real money total MUST include tax — the customer is
       // owed back the tax they paid too, not just the pre-tax goods value.
       // The previous version used returnNetBeforeTax directly as totalAmount,
       // silently excluding tax from both the invoice total and (via
       // creditAmount below) the customer's ledger credit.
-      const returnTotal = returnNetBeforeTax - returnTaxAmount // negative, tax-inclusive
+      const returnTotal = roundCurrency(returnNetBeforeTax - returnTaxAmount, dp) // negative, tax-inclusive
 
       // Create return invoice
       const returnInvoice = await tx.invoice.create({
@@ -193,6 +218,10 @@ export async function createReturn(
           taxAmount: returnTaxAmount,
           roundingAmount: 0,
           totalAmount: returnTotal,
+          pricesIncludeTax: original.pricesIncludeTax,
+          // A return is presented the way its sale was, so it reverses the same tax head.
+          gstType: original.gstType,
+          buyerState: original.buyerState,
           paidAmount: 0,
           balanceAmount: returnTotal,
           paymentStatus: 'PAID',
@@ -327,12 +356,12 @@ export async function createReturn(
       const currentOriginal = await tx.invoice.findUniqueOrThrow({ where: { id: original.id }, select: { balanceAmount: true, paymentStatus: true } })
       if (currentOriginal.balanceAmount > 0) {
         const appliedToOriginal = Math.min(currentOriginal.balanceAmount, returnAmountAbs)
-        const newBalance = currentOriginal.balanceAmount - appliedToOriginal
+        const newBalance = roundCurrency(currentOriginal.balanceAmount - appliedToOriginal, dp)
         await tx.invoice.update({
           where: { id: original.id },
           data: {
             balanceAmount: newBalance,
-            paymentStatus: newBalance <= 0.01 ? 'PAID' : currentOriginal.paymentStatus
+            paymentStatus: newBalance <= moneyEpsilon(dp) ? 'PAID' : currentOriginal.paymentStatus
           }
         })
       }
@@ -424,6 +453,29 @@ export async function getReturnedAwayQuantities(
     }
   }
   return returnedAway
+}
+
+// Tax-inclusive originals only: value already refunded per line (tax-inclusive total and tax part).
+// A return line stores lineTotal as the negative tax-exclusive value, so inclusive = |lineTotal| + taxAmount.
+async function getReturnedAwayValues(
+  tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0],
+  originalInvoiceId: string,
+  dp: number
+): Promise<Map<string, { total: number; tax: number }>> {
+  const priorDocs = await tx.invoice.findMany({
+    where: { invoiceType: { in: ['RETURN', 'EXCHANGE'] }, originalInvoiceId },
+    include: { items: true }
+  })
+  const out = new Map<string, { total: number; tax: number }>()
+  for (const doc of priorDocs) {
+    for (const it of doc.items) {
+      if (it.lineTotal >= 0) continue
+      const key = itemKey(it.productId, it.variantId)
+      const cur = out.get(key) ?? { total: 0, tax: 0 }
+      out.set(key, { total: sumCurrency([cur.total, Math.abs(it.lineTotal), it.taxAmount], dp), tax: sumCurrency([cur.tax, it.taxAmount], dp) })
+    }
+  }
+  return out
 }
 
 // Retail's dashboard widget deliverable (spec §9.3) — a lightweight,

@@ -260,7 +260,6 @@ export async function generateCommissionInvoice(dealId: string) {
     const result = await billingService.createInvoice({
       customerId: deal.buyerClientId,
       paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
       items: [{
         productId: commissionProduct.id,
         quantity: 1,

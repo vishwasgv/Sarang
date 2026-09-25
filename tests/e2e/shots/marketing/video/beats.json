@@ -1,0 +1,42 @@
+[
+  {
+    "label": "dashboard",
+    "start": 15781,
+    "end": 21099
+  },
+  {
+    "label": "billing",
+    "start": 21099,
+    "end": 28050
+  },
+  {
+    "label": "inventory",
+    "start": 28050,
+    "end": 33863
+  },
+  {
+    "label": "reports",
+    "start": 33863,
+    "end": 39240
+  },
+  {
+    "label": "ai",
+    "start": 39240,
+    "end": 44131
+  },
+  {
+    "label": "verticals",
+    "start": 44131,
+    "end": 50071
+  },
+  {
+    "label": "language",
+    "start": 50071,
+    "end": 56030
+  },
+  {
+    "label": "closing",
+    "start": 56030,
+    "end": 60406
+  }
+]

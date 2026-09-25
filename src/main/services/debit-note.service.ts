@@ -2,8 +2,13 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { generateSequenceNumber } from './sequence.service'
-import { calculateLineTotal, sumCurrency } from './currency.service'
+import { computeNoteTotals } from '../../shared/utils/money'
+import { getBusinessCurrencyDecimals } from './settings.service'
+import { roundCurrency } from './currency.service'
+import { ServiceError } from '../errors/service-error'
+import { dominantTaxRate, defaultBusinessTaxRate, postDebitNoteJournalTx, noteHasJournalTx, reverseNoteJournalTx } from './note-tax.util'
 
+import { resolveDocumentGstType, supplierStateOf } from './gst-type.util'
 export interface DebitNoteItemPayload {
   productId?: string
   serviceDescription?: string
@@ -23,6 +28,14 @@ export interface CreateDebitNotePayload {
   reason: string
   amount?: number
   items?: DebitNoteItemPayload[]
+  // false: no tax on this note (tax 0, total = taxable amount). Unset: itemised notes tax by their lines, plain notes
+  // tax only when a taxRate is given.
+  taxApplied?: boolean
+  // Plain-amount notes only; unset falls back to the linked order's dominant rate, else the business default.
+  taxRate?: number
+  // Line unit prices already include tax (omitted: inherits the linked PO's setting, else exclusive).
+  pricesIncludeTax?: boolean
+  gstType?: 'CGST_SGST' | 'IGST' | 'GST'
   notes?: string
 }
 
@@ -31,6 +44,9 @@ export interface UpdateDebitNotePayload {
   purchaseOrderId?: string | null
   reason?: string
   amount?: number
+  taxApplied?: boolean
+  taxRate?: number | null
+  pricesIncludeTax?: boolean
   notes?: string | null
 }
 
@@ -38,16 +54,32 @@ export const debitNoteService = {
   async create(payload: CreateDebitNotePayload, userId: string) {
     const db = getPrisma()
 
+    let linkedIncludesTax = false
+    let linkedGstType: string | undefined
+    let linkedRate: number | null = null
     if (payload.purchaseOrderId) {
-      const po = await db.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId } })
+      const po = await db.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId }, include: { items: true } })
       if (!po) return { success: false, error: { code: 'PO-001', message: 'Purchase order not found.' } }
+      linkedIncludesTax = po.pricesIncludeTax === true
+      linkedGstType = po.gstType
+      linkedRate = dominantTaxRate((po as { items?: Array<{ taxRate?: number }> }).items)
     }
+    // The note is presented like the order it corrects unless told otherwise; else from the supplier's state.
+    const gstType = await resolveDocumentGstType(payload.gstType ?? linkedGstType, await supplierStateOf(payload.supplierId))
+    const pricesIncludeTax = payload.pricesIncludeTax ?? linkedIncludesTax
 
-    // Phase 63 — Account-based line items. Same "server recomputes, never
+    // Phase 63 - Account-based line items. Same "server recomputes, never
     // trusts a parallel scalar" discipline as credit-note.service.ts's own
     // identical change.
-    const lineRows = payload.items?.map(item => ({ item, ...calculateLineTotal(item.quantity, item.unitPrice, 0, item.taxRate) })) ?? null
-    const computedAmount = lineRows ? sumCurrency(lineRows.map(r => r.lineTotal)) : payload.amount!
+    const decimals = await getBusinessCurrencyDecimals()
+    const itemised = !!payload.items && payload.items.length > 0
+    const taxApplied = payload.taxApplied ?? (itemised ? true : (payload.taxRate ?? 0) > 0)
+    const plainRate = itemised || !taxApplied ? null : (payload.taxRate ?? linkedRate ?? await defaultBusinessTaxRate())
+    const noteTotals = computeNoteTotals({ items: itemised ? payload.items : undefined, amount: payload.amount, taxApplied, taxRate: plainRate, pricesIncludeTax, decimals })
+    const lineRows = itemised
+      ? payload.items!.map((item, idx) => ({ item, taxAmount: noteTotals.lines[idx].tax, lineTotal: noteTotals.lines[idx].total }))
+      : null
+    const computedAmount = noteTotals.totalAmount
 
     const dn = await db.$transaction(async (tx) => {
       // Number generation must happen inside the same transaction as the
@@ -68,6 +100,11 @@ export const debitNoteService = {
           purchaseOrderId: payload.purchaseOrderId ?? null,
           reason: payload.reason,
           amount: computedAmount,
+          pricesIncludeTax: itemised || taxApplied ? pricesIncludeTax : false,
+          gstType,
+          taxApplied,
+          taxRate: noteTotals.taxRate,
+          taxAmount: noteTotals.taxAmount,
           notes: payload.notes ?? null,
           createdBy: userId,
           ...(lineRows && {
@@ -101,6 +138,8 @@ export const debitNoteService = {
         }, tx)
       }
 
+      await postDebitNoteJournalTx(tx, { id: created.id, debitNoteNumber, amount: computedAmount })
+
       return created
     })
 
@@ -132,7 +171,7 @@ export const debitNoteService = {
     const db = getPrisma()
     const dn = await db.debitNote.findUnique({
       where: { id },
-      include: { supplier: true, purchaseOrder: true, items: true }
+      include: { supplier: true, purchaseOrder: true, items: { include: { product: { select: { productName: true } } } } }
     })
     if (!dn) return { success: false, error: { code: 'DN-001', message: 'Debit note not found.' } }
     return { success: true, data: dn }
@@ -140,6 +179,7 @@ export const debitNoteService = {
 
   async update(id: string, payload: UpdateDebitNotePayload, userId: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     if (payload.purchaseOrderId) {
       const po = await db.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId } })
@@ -152,12 +192,39 @@ export const debitNoteService = {
       // Lookup must happen INSIDE the transaction — see credit-note.service.ts's
       // update() for why (mirrors the same fix already applied there, and the
       // established precedent in billing.service.ts's cancelInvoice).
-      const existing = await tx.debitNote.findUnique({ where: { id } })
+      const existing = await tx.debitNote.findUnique({ where: { id }, include: { items: true } })
       if (!existing) throw new Error('DN-001')
       existingSnapshot = existing
 
       const newSupplierId = payload.supplierId !== undefined ? payload.supplierId : existing.supplierId
-      const newAmount = payload.amount !== undefined ? payload.amount : existing.amount
+      const existingLines = (existing as { items?: Array<{ id: string; quantity: number; unitPrice: number; taxRate: number }> }).items ?? []
+      const wasApplied = (existing as { taxApplied?: boolean }).taxApplied ?? false
+      const existingTax = (existing as { taxAmount?: number }).taxAmount ?? 0
+      const newApplied = payload.taxApplied ?? wasApplied
+      const newIncl = payload.pricesIncludeTax ?? (existing as { pricesIncludeTax?: boolean }).pricesIncludeTax === true
+      const taxTouched = payload.taxApplied !== undefined || payload.taxRate !== undefined || payload.pricesIncludeTax !== undefined
+      let newAmount = existing.amount
+      let newTaxAmount = existingTax
+      let newTaxRate = (existing as { taxRate?: number | null }).taxRate ?? null
+      let itemUpdates: Array<{ id: string; taxAmount: number; lineTotal: number }> = []
+      if (existingLines.length > 0) {
+        if (payload.amount !== undefined && payload.amount !== existing.amount) {
+          throw new ServiceError('DN-005', 'This debit note has lines, so its amount follows them and cannot be typed over.')
+        }
+        if (taxTouched) {
+          const t = computeNoteTotals({ items: existingLines, taxApplied: newApplied, pricesIncludeTax: newIncl, decimals: dp })
+          newAmount = t.totalAmount
+          newTaxAmount = t.taxAmount
+          itemUpdates = existingLines.map((l, i) => ({ id: l.id, taxAmount: t.lines[i].tax, lineTotal: t.lines[i].total }))
+        }
+      } else if (payload.amount !== undefined || taxTouched) {
+        const stored = wasApplied ? ((existing as { pricesIncludeTax?: boolean }).pricesIncludeTax === true ? existing.amount : roundCurrency(existing.amount - existingTax, dp)) : existing.amount
+        if (newApplied) newTaxRate = payload.taxRate ?? newTaxRate ?? await defaultBusinessTaxRate()
+        else if (payload.taxRate !== undefined) newTaxRate = payload.taxRate
+        const t = computeNoteTotals({ amount: payload.amount ?? stored, taxApplied: newApplied, taxRate: newTaxRate, pricesIncludeTax: newIncl, decimals: dp })
+        newAmount = t.totalAmount
+        newTaxAmount = t.taxAmount
+      }
       // Ledger only needs touching if the party or the amount actually changes —
       // a reason/notes-only edit has no financial effect.
       const ledgerAffected = newSupplierId !== existing.supplierId || newAmount !== existing.amount
@@ -168,11 +235,18 @@ export const debitNoteService = {
           ...(payload.supplierId !== undefined ? { supplierId: payload.supplierId } : {}),
           ...(payload.purchaseOrderId !== undefined ? { purchaseOrderId: payload.purchaseOrderId } : {}),
           ...(payload.reason !== undefined ? { reason: payload.reason } : {}),
-          ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
+          ...(newAmount !== existing.amount ? { amount: newAmount } : {}),
+          ...(taxTouched || newTaxAmount !== existingTax ? { taxApplied: newApplied, taxAmount: newTaxAmount, taxRate: newTaxRate, pricesIncludeTax: newIncl } : {}),
           ...(payload.notes !== undefined ? { notes: payload.notes } : {})
         },
         include: { supplier: true, purchaseOrder: true, items: true }
       })
+      for (const u of itemUpdates) await tx.debitNoteItem.update({ where: { id: u.id }, data: { taxAmount: u.taxAmount, lineTotal: u.lineTotal } })
+
+      if ((newAmount !== existing.amount || newTaxAmount !== existingTax) && await noteHasJournalTx(tx, 'DEBIT_NOTE', id)) {
+        await reverseNoteJournalTx(tx, 'DEBIT_NOTE', id, `Debit Note ${existing.debitNoteNumber} edited`, userId)
+        await postDebitNoteJournalTx(tx, { id, debitNoteNumber: existing.debitNoteNumber, amount: newAmount })
+      }
 
       if (ledgerAffected) {
         // Never mutate a posted ledger row — reverse the old effect (on the OLD
@@ -203,10 +277,12 @@ export const debitNoteService = {
       return result
     }).catch((e) => {
       if (e instanceof Error && e.message === 'DN-001') return null
+      if (e instanceof ServiceError) return e
       throw e
     })
 
     if (!updated) return { success: false, error: { code: 'DN-001', message: 'Debit note not found.' } }
+    if (updated instanceof ServiceError) return { success: false, error: { code: updated.code, message: updated.message } }
 
     await logAction({ userId, action: 'UPDATE_DEBIT_NOTE', entityType: 'DebitNote', entityId: id, oldValue: existingSnapshot, newValue: updated })
     return { success: true, data: updated }
@@ -235,6 +311,7 @@ export const debitNoteService = {
           remarks: `Voided Debit Note ${dn.debitNoteNumber}: ${dn.reason}`
         }, tx)
       }
+      await reverseNoteJournalTx(tx, 'DEBIT_NOTE', id, `Debit Note ${dn.debitNoteNumber} voided`, userId)
       await tx.debitNote.delete({ where: { id } })
       return true
     }).catch((e) => {

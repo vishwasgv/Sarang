@@ -236,6 +236,7 @@ model Product {
   // elsewhere.
   mrp                    Float?
   taxRate                Float     @default(0)
+  taxCategory            String    @default("STANDARD")
   imagePath              String?
   isActive               Boolean   @default(true)
   // Phase 48 — MENS|WOMENS|UNISEX. Nullable/optional, no default forced —
@@ -1116,6 +1117,10 @@ model PurchaseOrder {
   subtotal             Float     @default(0)
   taxAmount            Float     @default(0)
   totalAmount          Float     @default(0)
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
+  // How tax is presented: CGST_SGST, IGST or GST (single line). Never changes the amounts.
+  gstType String @default("CGST_SGST")
   notes                String?
   createdById          String?
   createdAt            DateTime  @default(now())
@@ -1190,6 +1195,10 @@ model Bill {
   discountAmount      Float     @default(0)
   taxAmount           Float     @default(0)
   totalAmount         Float     @default(0)
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
+  // How tax is presented: CGST_SGST, IGST or GST (single line). Never changes the amounts.
+  gstType String @default("CGST_SGST")
   paidAmount          Float     @default(0)
   balanceAmount       Float     @default(0)
   notes               String?
@@ -1264,6 +1273,7 @@ model BillItem {
   unitCost           Float
   discountAmount     Float    @default(0)
   taxRate            Float    @default(0)
+  taxCategory String @default("STANDARD")
   taxAmount          Float    @default(0)
   total              Float
   createdAt          DateTime @default(now())
@@ -1645,6 +1655,8 @@ model Invoice {
   taxAmount             Float     @default(0)
   roundingAmount        Float     @default(0)
   totalAmount           Float     @default(0)
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
   paidAmount            Float     @default(0)
   balanceAmount         Float     @default(0)
   paymentStatus         String    @default("UNPAID")
@@ -1809,6 +1821,7 @@ model InvoiceItem {
   unitPrice               Float
   discountAmount          Float     @default(0)
   taxRate                 Float     @default(0)
+  taxCategory String @default("STANDARD")
   taxAmount               Float     @default(0)
   lineTotal               Float
   variantId               String?
@@ -1968,6 +1981,7 @@ model TaxConfiguration {
   country   String?
   isDefault Boolean  @default(false)
   isActive  Boolean  @default(true)
+  isLegacy  Boolean  @default(false)
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -2036,6 +2050,9 @@ model Notification {
   title            String
   message          String
   isRead           Boolean  @default(false)
+  // 2026-09-24 — in-app route this notification opens when clicked (e.g. '/inventory').
+  // Null keeps the old behaviour: click only marks it read.
+  actionPath       String?
   createdAt        DateTime @default(now())
 }
 
@@ -3322,6 +3339,10 @@ model Quotation {
   taxAmount       Float     @default(0)
   discountAmount  Float     @default(0)
   totalAmount     Float     @default(0)
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
+  // How tax is presented: CGST_SGST, IGST or GST (single line). Never changes the amounts.
+  gstType String @default("CGST_SGST")
   notes           String?
   // Phase 63 — set at creation when this Estimate represents a retainer
   // engagement. Mirrors RetainerAgreement.retainerType's own enum. When
@@ -3361,6 +3382,7 @@ model QuotationItem {
   discount    Float   @default(0)
   taxRate     Float   @default(0)
   lineTotal   Float
+  hsnCode     String? // HSN/SAC snapshotted from the product when the line is added, kept through conversion
 
   quotation Quotation @relation(fields: [quotationId], references: [id], onDelete: Cascade)
 
@@ -3374,6 +3396,16 @@ model CreditNote {
   invoiceId        String?
   reason           String
   amount           Float
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
+  // How tax is presented: CGST_SGST, IGST or GST (single line). Never changes the amounts.
+  gstType String @default("CGST_SGST")
+  // false: no tax on this note (tax amount 0, total = taxable amount, nothing posted to tax payable).
+  taxApplied Boolean @default(true)
+  // Plain-amount notes only: the rate applied to the entered amount when taxApplied.
+  taxRate    Float?
+  // Tax inside `amount` (amount is always the payable total: taxable + tax).
+  taxAmount  Float   @default(0)
   // REAL BUG found+fixed 2026-09-15: create() caps how much of `amount`
   // actually reduces the linked invoice's balance at the invoice's own
   // balance at that moment (any excess becomes a general, invoice-unlinked
@@ -3407,6 +3439,16 @@ model DebitNote {
   purchaseOrderId String?
   reason          String
   amount          Float
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
+  // How tax is presented: CGST_SGST, IGST or GST (single line). Never changes the amounts.
+  gstType String @default("CGST_SGST")
+  // false: no tax on this note (tax amount 0, total = taxable amount, nothing posted to input tax).
+  taxApplied Boolean @default(true)
+  // Plain-amount notes only: the rate applied to the entered amount when taxApplied.
+  taxRate    Float?
+  // Tax inside `amount` (amount is always the payable total: taxable + tax).
+  taxAmount  Float   @default(0)
   notes           String?
   createdBy       String
   createdAt       DateTime @default(now())
@@ -3869,6 +3911,8 @@ model NotificationQueue {
   notificationType String // APPOINTMENT_REMINDER|APPOINTMENT_CONFIRM|APPOINTMENT_CANCEL|CUSTOM
   templateBody     String
   whatsappLink     String?
+  // Internal de-duplication key ("TYPE:entityId"). Never shown or sent.
+  referenceKey     String?
   scheduledFor     DateTime?
   status           String    @default("PENDING") // PENDING | SENT | DISMISSED | FAILED
   sentAt           DateTime?
@@ -3879,6 +3923,7 @@ model NotificationQueue {
   @@index([appointmentId])
   @@index([customerId])
   @@index([scheduledFor])
+  @@index([referenceKey])
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -5317,6 +5362,9 @@ model RetainerAgreement {
   startDate          DateTime
   endDate            DateTime?
   notes              String?
+  // Pricing mode carried from the quotation this retainer came from: monthlyAmount is tax-inclusive when true,
+  // tax-exclusive when false, and null (manual retainers) follows the business default when invoicing.
+  pricesIncludeTax   Boolean?
   lastInvoicedPeriod String? // Phase 54B — "YYYY-MM" of the last period actually invoiced; recurring, so unlike a one-off invoiceId this is a claim key not a nullable pointer
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
@@ -6702,6 +6750,10 @@ model SalesOrder {
   subtotal     Float     @default(0)
   taxAmount    Float     @default(0)
   totalAmount  Float     @default(0)
+  // Prices on this document already include tax (unitPrice/unitCost/discounts are tax-inclusive amounts).
+  pricesIncludeTax Boolean @default(false)
+  // How tax is presented: CGST_SGST, IGST or GST (single line). Never changes the amounts.
+  gstType String @default("CGST_SGST")
   notes        String?
   // Phase 67 §9.1 — General's Universal Quote -> Order -> Invoice pipeline.
   // 1:1, same shape as Invoice.quotationId elsewhere in this schema — set
@@ -6739,6 +6791,7 @@ model SalesOrderItem {
   taxRate            Float    @default(0)
   taxAmount          Float    @default(0)
   total              Float
+  hsnCode            String? // HSN/SAC snapshotted from the product (or the quotation line) so the invoice line keeps it
   createdAt          DateTime @default(now())
 
   salesOrder      SalesOrder       @relation(fields: [salesOrderId], references: [id], onDelete: Cascade)

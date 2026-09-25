@@ -3,7 +3,8 @@ import { parseLocalDateStart } from '../utils/date.util'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
-import { roundCurrency } from './currency.service'
+import { roundCurrency, moneyEpsilon } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
@@ -84,6 +85,7 @@ async function recordForeignCurrencyBillSettlement(
   userId?: string
 ) {
   const db = getPrisma()
+  const dp = await getBusinessCurrencyDecimals()
   try {
     const payment = await db.$transaction(async (tx) => {
       const bill = await tx.bill.findUnique({ where: { id: payload.billId } })
@@ -137,7 +139,7 @@ async function recordForeignCurrencyBillSettlement(
       await postSupplierPaymentJournalEntry(tx, { paymentId: pmt.id, billNumber: bill.billNumber, amount: appliedAmount, tdsAmount: 0 })
 
       const gainLoss = roundCurrency(computedBaseAmount - balanceBefore)
-      if (Math.abs(gainLoss) >= 0.01) {
+      if (Math.abs(gainLoss) >= Math.pow(10, -dp) - 1e-12) {
         const fxAccount = await chartOfAccountsService.getOrCreateSystemAccountByCode('4200', tx)
         const apAccount = await chartOfAccountsService.getSystemAccountByCode('2000', tx)
         const magnitude = Math.abs(gainLoss)
@@ -203,6 +205,7 @@ export const supplierPaymentService = {
 
   async recordSupplierPayment(payload: RecordSupplierPaymentPayload, userId?: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     try {
       const payment = await db.$transaction(async (tx) => {
@@ -218,8 +221,8 @@ export const supplierPaymentService = {
         if (bill.balanceAmount <= 0) {
           throw new ServiceError('SPM-002', 'This bill is already fully paid.')
         }
-        if (payload.amount > bill.balanceAmount + 0.01) {
-          throw new ServiceError('SPM-003', `Payment amount (${payload.amount.toFixed(2)}) exceeds outstanding balance (${bill.balanceAmount.toFixed(2)}).`)
+        if (payload.amount > bill.balanceAmount + moneyEpsilon(dp)) {
+          throw new ServiceError('SPM-003', `Payment amount (${payload.amount.toFixed(dp)}) exceeds outstanding balance (${bill.balanceAmount.toFixed(dp)}).`)
         }
         // Phase 62 — TDS withheld is still part of the full settlement amount
         // (the vendor's bill is discharged in full: partly by cash, partly by
@@ -249,7 +252,7 @@ export const supplierPaymentService = {
 
         const newPaidAmount = roundCurrency(bill.paidAmount + payload.amount)
         const newBalance = roundCurrency(bill.balanceAmount - payload.amount)
-        const newStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIALLY_PAID'
+        const newStatus = newBalance <= moneyEpsilon(dp) ? 'PAID' : 'PARTIALLY_PAID'
 
         await tx.bill.update({
           where: { id: payload.billId },
@@ -289,6 +292,7 @@ export const supplierPaymentService = {
   // guarantee is the same).
   async recordBulkPayment(payload: RecordBulkSupplierPaymentPayload, userId?: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     try {
       const payments = await db.$transaction(async (tx) => {
@@ -309,8 +313,8 @@ export const supplierPaymentService = {
           if (bill.balanceAmount <= 0) {
             throw new ServiceError('SPM-002', `Bill ${bill.billNumber} is already fully paid.`)
           }
-          if (alloc.amount > bill.balanceAmount + 0.01) {
-            throw new ServiceError('SPM-003', `Payment amount (${alloc.amount.toFixed(2)}) exceeds outstanding balance (${bill.balanceAmount.toFixed(2)}) for bill ${bill.billNumber}.`)
+          if (alloc.amount > bill.balanceAmount + moneyEpsilon(dp)) {
+            throw new ServiceError('SPM-003', `Payment amount (${alloc.amount.toFixed(dp)}) exceeds outstanding balance (${bill.balanceAmount.toFixed(dp)}) for bill ${bill.billNumber}.`)
           }
 
           const pmt = await tx.supplierPayment.create({
@@ -328,7 +332,7 @@ export const supplierPaymentService = {
 
           const newPaidAmount = roundCurrency(bill.paidAmount + alloc.amount)
           const newBalance = roundCurrency(bill.balanceAmount - alloc.amount)
-          const newStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIALLY_PAID'
+          const newStatus = newBalance <= moneyEpsilon(dp) ? 'PAID' : 'PARTIALLY_PAID'
 
           await tx.bill.update({
             where: { id: alloc.billId },
@@ -366,6 +370,7 @@ export const supplierPaymentService = {
 
   async reverseSupplierPayment(payload: ReverseSupplierPaymentPayload, userId?: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     try {
       await db.$transaction(async (tx) => {
@@ -400,7 +405,7 @@ export const supplierPaymentService = {
 
         const newPaidAmount = Math.max(0, roundCurrency(payment.bill.paidAmount - restoreAmount))
         const newBalance = roundCurrency(payment.bill.balanceAmount + restoreAmount)
-        const newStatus = newPaidAmount <= 0.01 ? 'OPEN' : 'PARTIALLY_PAID'
+        const newStatus = newPaidAmount <= moneyEpsilon(dp) ? 'OPEN' : 'PARTIALLY_PAID'
 
         await tx.bill.update({
           where: { id: payment.billId },

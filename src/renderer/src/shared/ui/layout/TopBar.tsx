@@ -12,7 +12,7 @@ import { TutorialStartModal } from '@shared/ui/organisms/TutorialStartModal'
 
 interface NotificationItem {
   id: string; title: string; message: string
-  notificationType: string; isRead: boolean; createdAt: string
+  notificationType: string; isRead: boolean; createdAt: string; actionPath?: string | null
 }
 
 interface TopBarProps {
@@ -87,6 +87,16 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
       setUnreadCount(c => Math.max(0, c - 1))
     } catch {
       toast.error(t('common.error'), t('common.error'))
+    }
+  }
+
+  // Clicking a notification marks it read and, when it carries a destination,
+  // opens that screen and closes the panel.
+  async function handleOpenNotification(n: NotificationItem) {
+    if (!n.isRead) await handleMarkRead(n.id)
+    if (n.actionPath) {
+      setNotifOpen(false)
+      navigate(n.actionPath)
     }
   }
 
@@ -196,12 +206,13 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
                     notifications.map(n => (
                       <div
                         key={n.id}
-                        onClick={() => !n.isRead && handleMarkRead(n.id)}
+                        onClick={() => void handleOpenNotification(n)}
                         className={cn(
                           'flex items-start gap-3 px-4 py-3 border-b border-slate-50 dark:border-slate-800 last:border-0 transition-colors',
                           n.isRead
                             ? 'bg-white dark:bg-slate-900'
-                            : 'bg-brand/5 dark:bg-brand/10 cursor-pointer hover:bg-brand/10 dark:hover:bg-brand/15'
+                            : 'bg-brand/5 dark:bg-brand/10 cursor-pointer hover:bg-brand/10 dark:hover:bg-brand/15',
+                          n.actionPath && 'cursor-pointer hover:bg-slate-50 dark:hover:bg-slate-800'
                         )}
                       >
                         <div className={cn('mt-0.5 w-2 h-2 rounded-full shrink-0', n.isRead ? 'bg-slate-200 dark:bg-slate-700' : 'bg-brand')} />
@@ -213,6 +224,7 @@ export function TopBar({ title, onSearchClick }: TopBarProps) {
                             </span>
                           </div>
                           <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 line-clamp-2">{n.message}</p>
+                          {n.actionPath && <p className="text-[11px] font-medium text-brand mt-1">Open →</p>}
                         </div>
                       </div>
                     ))

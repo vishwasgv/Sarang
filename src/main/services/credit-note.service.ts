@@ -1,9 +1,14 @@
 import { getPrisma } from '../database/db'
+import { ServiceError } from '../errors/service-error'
 import { logAction } from './audit.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { generateSequenceNumber } from './sequence.service'
-import { calculateLineTotal, sumCurrency } from './currency.service'
+import { computeNoteTotals } from '../../shared/utils/money'
+import { dominantTaxRate, defaultBusinessTaxRate, postCreditNoteJournalTx, noteHasJournalTx, reverseNoteJournalTx } from './note-tax.util'
+import { getBusinessCurrencyDecimals } from './settings.service'
+import { roundCurrency, moneyEpsilon } from './currency.service'
 
+import { resolveDocumentGstType, customerStateOf } from './gst-type.util'
 export interface CreditNoteItemPayload {
   productId?: string
   serviceDescription?: string
@@ -19,6 +24,14 @@ export interface CreateCreditNotePayload {
   reason: string
   amount?: number
   items?: CreditNoteItemPayload[]
+  // false: no tax on this note (tax 0, total = taxable amount). Unset: itemised notes tax by their lines, plain notes
+  // tax only when a taxRate is given.
+  taxApplied?: boolean
+  // Plain-amount notes only; unset falls back to the linked invoice's dominant rate, else the business default.
+  taxRate?: number
+  // Line unit prices already include tax (omitted: inherits the linked invoice's setting, else exclusive).
+  pricesIncludeTax?: boolean
+  gstType?: 'CGST_SGST' | 'IGST' | 'GST'
   notes?: string
 }
 
@@ -27,6 +40,9 @@ export interface UpdateCreditNotePayload {
   invoiceId?: string | null
   reason?: string
   amount?: number
+  taxApplied?: boolean
+  taxRate?: number | null
+  pricesIncludeTax?: boolean
   notes?: string | null
 }
 
@@ -34,17 +50,33 @@ export const creditNoteService = {
   async create(payload: CreateCreditNotePayload, userId: string) {
     const db = getPrisma()
 
+    let linkedIncludesTax = false
+    let linkedGstType: string | undefined
+    let linkedRate: number | null = null
     if (payload.invoiceId) {
-      const inv = await db.invoice.findUnique({ where: { id: payload.invoiceId } })
+      const inv = await db.invoice.findUnique({ where: { id: payload.invoiceId }, include: { items: true } })
       if (!inv) return { success: false, error: { code: 'INV-001', message: 'Invoice not found.' } }
+      linkedIncludesTax = inv.pricesIncludeTax === true
+      linkedGstType = inv.gstType
+      linkedRate = dominantTaxRate((inv as { items?: Array<{ taxRate?: number }> }).items)
     }
+    // The note is presented like the invoice it corrects unless told otherwise; else from the customer's state.
+    const gstType = await resolveDocumentGstType(payload.gstType ?? linkedGstType, await customerStateOf(payload.customerId))
+    const pricesIncludeTax = payload.pricesIncludeTax ?? linkedIncludesTax
 
     // Phase 63 — Account-based line items. When items are provided, amount
     // is always the computed sum of the lines, never trusted from whatever
     // the caller separately sent — same "server recomputes, never trusts a
     // parallel scalar" discipline as Expense's own mileage amount.
-    const lineRows = payload.items?.map(item => ({ item, ...calculateLineTotal(item.quantity, item.unitPrice, 0, item.taxRate) })) ?? null
-    const computedAmount = lineRows ? sumCurrency(lineRows.map(r => r.lineTotal)) : payload.amount!
+    const decimals = await getBusinessCurrencyDecimals()
+    const itemised = !!payload.items && payload.items.length > 0
+    const taxApplied = payload.taxApplied ?? (itemised ? true : (payload.taxRate ?? 0) > 0)
+    const plainRate = itemised || !taxApplied ? null : (payload.taxRate ?? linkedRate ?? await defaultBusinessTaxRate())
+    const noteTotals = computeNoteTotals({ items: itemised ? payload.items : undefined, amount: payload.amount, taxApplied, taxRate: plainRate, pricesIncludeTax, decimals })
+    const lineRows = itemised
+      ? payload.items!.map((item, idx) => ({ item, taxAmount: noteTotals.lines[idx].tax, lineTotal: noteTotals.lines[idx].total }))
+      : null
+    const computedAmount = noteTotals.totalAmount
 
     const cn = await db.$transaction(async (tx) => {
       // Number generation must happen inside the same transaction as the
@@ -65,6 +97,11 @@ export const creditNoteService = {
           invoiceId: payload.invoiceId ?? null,
           reason: payload.reason,
           amount: computedAmount,
+          pricesIncludeTax: itemised || taxApplied ? pricesIncludeTax : false,
+          gstType,
+          taxApplied,
+          taxRate: noteTotals.taxRate,
+          taxAmount: noteTotals.taxAmount,
           notes: payload.notes ?? null,
           createdBy: userId,
           ...(lineRows && {
@@ -100,6 +137,8 @@ export const creditNoteService = {
         }, tx)
       }
 
+      await postCreditNoteJournalTx(tx, { id: created.id, creditNoteNumber, amount: computedAmount, taxAmount: noteTotals.taxAmount })
+
       // Real bug found live (2026-07-28 core-commerce audit): a credit note
       // linked to an invoice used to only ever touch the Customer Ledger,
       // never the invoice's own balanceAmount/paymentStatus — so
@@ -119,12 +158,12 @@ export const creditNoteService = {
         })
         if (currentInvoice.balanceAmount > 0) {
           const appliedToInvoice = Math.min(currentInvoice.balanceAmount, computedAmount)
-          const newBalance = currentInvoice.balanceAmount - appliedToInvoice
+          const newBalance = roundCurrency(currentInvoice.balanceAmount - appliedToInvoice, decimals)
           await tx.invoice.update({
             where: { id: payload.invoiceId },
             data: {
               balanceAmount: newBalance,
-              paymentStatus: newBalance <= 0.01 ? 'PAID' : currentInvoice.paymentStatus
+              paymentStatus: newBalance <= moneyEpsilon(decimals) ? 'PAID' : currentInvoice.paymentStatus
             }
           })
           // Persisted so update()/delete() can reverse exactly this figure
@@ -164,7 +203,7 @@ export const creditNoteService = {
     const db = getPrisma()
     const cn = await db.creditNote.findUnique({
       where: { id },
-      include: { customer: true, invoice: true, items: true }
+      include: { customer: true, invoice: true, items: { include: { product: { select: { productName: true } } } } }
     })
     if (!cn) return { success: false, error: { code: 'CN-001', message: 'Credit note not found.' } }
     return { success: true, data: cn }
@@ -172,6 +211,7 @@ export const creditNoteService = {
 
   async update(id: string, payload: UpdateCreditNotePayload, userId: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     if (payload.invoiceId) {
       const inv = await db.invoice.findUnique({ where: { id: payload.invoiceId } })
@@ -187,12 +227,43 @@ export const creditNoteService = {
       // amount/customerId and each post a reversal against it, double-reversing the
       // ledger. Same bug class already fixed once in billing.service.ts's
       // cancelInvoice — mirroring that fix here.
-      const existing = await tx.creditNote.findUnique({ where: { id } })
+      const existing = await tx.creditNote.findUnique({ where: { id }, include: { items: true } })
       if (!existing) throw new Error('CN-001')
       existingSnapshot = existing
 
       const newCustomerId = payload.customerId !== undefined ? payload.customerId : existing.customerId
-      const newAmount = payload.amount !== undefined ? payload.amount : existing.amount
+      // Tax fields: notes made before tax could be skipped carry taxApplied from their migration (true only when
+      // they had tax), so an edit keeps behaving exactly as before unless the caller changes them.
+      const existingLines = (existing as { items?: Array<{ id: string; quantity: number; unitPrice: number; taxRate: number }> }).items ?? []
+      const wasApplied = (existing as { taxApplied?: boolean }).taxApplied ?? false
+      const existingTax = (existing as { taxAmount?: number }).taxAmount ?? 0
+      const newApplied = payload.taxApplied ?? wasApplied
+      const newIncl = payload.pricesIncludeTax ?? (existing as { pricesIncludeTax?: boolean }).pricesIncludeTax === true
+      const taxTouched = payload.taxApplied !== undefined || payload.taxRate !== undefined || payload.pricesIncludeTax !== undefined
+      let newAmount = existing.amount
+      let newTaxAmount = existingTax
+      let newTaxRate = (existing as { taxRate?: number | null }).taxRate ?? null
+      let itemUpdates: Array<{ id: string; taxAmount: number; lineTotal: number }> = []
+      if (existingLines.length > 0) {
+        if (payload.amount !== undefined && payload.amount !== existing.amount) {
+          throw new ServiceError('CN-005', 'This credit note has lines, so its amount follows them and cannot be typed over.')
+        }
+        if (taxTouched) {
+          const t = computeNoteTotals({ items: existingLines, taxApplied: newApplied, pricesIncludeTax: newIncl, decimals: dp })
+          newAmount = t.totalAmount
+          newTaxAmount = t.taxAmount
+          itemUpdates = existingLines.map((l, i) => ({ id: l.id, taxAmount: t.lines[i].tax, lineTotal: t.lines[i].total }))
+        }
+      } else if (payload.amount !== undefined || taxTouched) {
+        // The entered amount: taxable when prices exclude tax, the tax-inclusive amount when they include it.
+        const stored = wasApplied ? ((existing as { pricesIncludeTax?: boolean }).pricesIncludeTax === true ? existing.amount : roundCurrency(existing.amount - existingTax, dp)) : existing.amount
+        if (newApplied) newTaxRate = payload.taxRate ?? newTaxRate ?? await defaultBusinessTaxRate()
+        else if (payload.taxRate !== undefined) newTaxRate = payload.taxRate
+        const t = computeNoteTotals({ amount: payload.amount ?? stored, taxApplied: newApplied, taxRate: newTaxRate, pricesIncludeTax: newIncl, decimals: dp })
+        newAmount = t.totalAmount
+        newTaxAmount = t.taxAmount
+        if (!newApplied) newTaxRate = payload.taxRate ?? newTaxRate
+      }
       const newInvoiceId = payload.invoiceId !== undefined ? payload.invoiceId : existing.invoiceId
       // Ledger only needs touching if the party or the amount actually changes —
       // a reason/notes-only edit has no financial effect.
@@ -210,11 +281,20 @@ export const creditNoteService = {
           ...(payload.customerId !== undefined ? { customerId: payload.customerId } : {}),
           ...(payload.invoiceId !== undefined ? { invoiceId: payload.invoiceId } : {}),
           ...(payload.reason !== undefined ? { reason: payload.reason } : {}),
-          ...(payload.amount !== undefined ? { amount: payload.amount } : {}),
+          ...(newAmount !== existing.amount ? { amount: newAmount } : {}),
+          ...(taxTouched || newTaxAmount !== existingTax ? { taxApplied: newApplied, taxAmount: newTaxAmount, taxRate: newTaxRate, pricesIncludeTax: newIncl } : {}),
           ...(payload.notes !== undefined ? { notes: payload.notes } : {})
         },
         include: { customer: true, invoice: true, items: true }
       })
+      for (const u of itemUpdates) await tx.creditNoteItem.update({ where: { id: u.id }, data: { taxAmount: u.taxAmount, lineTotal: u.lineTotal } })
+
+      // Notes that already carry a journal entry are re-posted for the new figures (notes from before postings
+      // existed have none and stay that way, so an edit never invents a posting for a document that had none).
+      if ((newAmount !== existing.amount || newTaxAmount !== existingTax) && await noteHasJournalTx(tx, 'CREDIT_NOTE', id)) {
+        await reverseNoteJournalTx(tx, 'CREDIT_NOTE', id, `Credit Note ${existing.creditNoteNumber} edited`, userId)
+        await postCreditNoteJournalTx(tx, { id, creditNoteNumber: existing.creditNoteNumber, amount: newAmount, taxAmount: newTaxAmount })
+      }
 
       if (ledgerAffected) {
         // Never mutate a posted ledger row — reverse the old effect (on the OLD
@@ -255,12 +335,12 @@ export const creditNoteService = {
           // can exceed what create()/this same block actually applied,
           // since that's capped at the invoice's balance at the time. See
           // the appliedToInvoiceAmount field's own schema comment.
-          const restoredBalance = Math.min(oldInv.totalAmount, oldInv.balanceAmount + (existing.appliedToInvoiceAmount ?? existing.amount))
+          const restoredBalance = Math.min(oldInv.totalAmount, roundCurrency(oldInv.balanceAmount + (existing.appliedToInvoiceAmount ?? existing.amount), dp))
           await tx.invoice.update({
             where: { id: existing.invoiceId },
             data: {
               balanceAmount: restoredBalance,
-              paymentStatus: restoredBalance <= 0.01 ? 'PAID' : (oldInv.paidAmount > 0.01 ? 'PARTIAL' : 'UNPAID')
+              paymentStatus: restoredBalance <= moneyEpsilon(dp) ? 'PAID' : (oldInv.paidAmount > moneyEpsilon(dp) ? 'PARTIAL' : 'UNPAID')
             }
           })
         }
@@ -272,12 +352,12 @@ export const creditNoteService = {
           })
           if (newInv.balanceAmount > 0) {
             newAppliedToInvoice = Math.min(newInv.balanceAmount, newAmount)
-            const newBalance = newInv.balanceAmount - newAppliedToInvoice
+            const newBalance = roundCurrency(newInv.balanceAmount - newAppliedToInvoice, dp)
             await tx.invoice.update({
               where: { id: newInvoiceId },
               data: {
                 balanceAmount: newBalance,
-                paymentStatus: newBalance <= 0.01 ? 'PAID' : newInv.paymentStatus
+                paymentStatus: newBalance <= moneyEpsilon(dp) ? 'PAID' : newInv.paymentStatus
               }
             })
           }
@@ -288,10 +368,12 @@ export const creditNoteService = {
       return result
     }).catch((e) => {
       if (e instanceof Error && e.message === 'CN-001') return null
+      if (e instanceof ServiceError) return e
       throw e
     })
 
     if (!updated) return { success: false, error: { code: 'CN-001', message: 'Credit note not found.' } }
+    if (updated instanceof ServiceError) return { success: false, error: { code: updated.code, message: updated.message } }
 
     await logAction({ userId, action: 'UPDATE_CREDIT_NOTE', entityType: 'CreditNote', entityId: id, oldValue: existingSnapshot, newValue: updated })
     return { success: true, data: updated }
@@ -299,6 +381,7 @@ export const creditNoteService = {
 
   async delete(id: string, userId: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
     let cnNumber: string | null = null
 
     const deleted = await db.$transaction(async (tx) => {
@@ -335,15 +418,16 @@ export const creditNoteService = {
         // Reverse exactly what was actually applied, not the full `amount`
         // — see appliedToInvoiceAmount's own schema comment (mirrors update()'s
         // identical fix).
-        const restoredBalance = Math.min(inv.totalAmount, inv.balanceAmount + (cn.appliedToInvoiceAmount ?? cn.amount))
+        const restoredBalance = Math.min(inv.totalAmount, roundCurrency(inv.balanceAmount + (cn.appliedToInvoiceAmount ?? cn.amount), dp))
         await tx.invoice.update({
           where: { id: cn.invoiceId },
           data: {
             balanceAmount: restoredBalance,
-            paymentStatus: restoredBalance <= 0.01 ? 'PAID' : (inv.paidAmount > 0.01 ? 'PARTIAL' : 'UNPAID')
+            paymentStatus: restoredBalance <= moneyEpsilon(dp) ? 'PAID' : (inv.paidAmount > moneyEpsilon(dp) ? 'PARTIAL' : 'UNPAID')
           }
         })
       }
+      await reverseNoteJournalTx(tx, 'CREDIT_NOTE', id, `Credit Note ${cn.creditNoteNumber} voided`, userId)
       await tx.creditNote.delete({ where: { id } })
       return true
     }).catch((e) => {

@@ -5,7 +5,7 @@ import { ArrowLeft, Building2, Phone, Mail, MapPin, TrendingUp, TrendingDown, Pl
 import { useAuthStore } from '@app/store/auth.store'
 import { api } from '@renderer/services/ipc-client'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
@@ -128,7 +128,7 @@ export function SupplierDetailScreen() {
       else next.add(billId)
       return next
     })
-    setBulkAmounts(prev => (billId in prev ? prev : { ...prev, [billId]: balance.toFixed(2) }))
+    setBulkAmounts(prev => (billId in prev ? prev : { ...prev, [billId]: moneyFixed(balance) }))
   }
 
   function openBulkPaymentModal() {
@@ -365,13 +365,13 @@ export function SupplierDetailScreen() {
                       </td>
                       <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{entry.remarks ?? entry.referenceType}</td>
                       <td className="px-5 py-3 text-end text-danger font-medium">
-                        {entry.debitAmount > 0 ? entry.debitAmount.toFixed(2) : '—'}
+                        {entry.debitAmount > 0 ? moneyFixed(entry.debitAmount) : '—'}
                       </td>
                       <td className="px-5 py-3 text-end text-success font-medium">
-                        {entry.creditAmount > 0 ? entry.creditAmount.toFixed(2) : '—'}
+                        {entry.creditAmount > 0 ? moneyFixed(entry.creditAmount) : '—'}
                       </td>
                       <td className={`px-5 py-3 text-end font-semibold ${entry.balance > 0 ? 'text-danger' : entry.balance < 0 ? 'text-success' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {entry.balance.toFixed(2)}
+                        {moneyFixed(entry.balance)}
                       </td>
                     </tr>
                   ))}

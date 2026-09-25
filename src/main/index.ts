@@ -4,6 +4,8 @@ import { existsSync } from 'fs'
 import { registerAllIpcHandlers } from './ipc'
 import { initializeDatabase, closeDatabase } from './database/db'
 import { checkDatabaseIntegrity, createBackup } from './services/backup.service'
+import { quotationService } from './services/quotation.service'
+import { cleanupLegacyReferenceTokens } from './services/notification-queue.service'
 import { createNotification } from './services/notification.service'
 import { getPrisma } from './database/db'
 import { seedDefaultData } from './database/seed'
@@ -43,8 +45,9 @@ async function evaluateNotificationQueue(): Promise<void> {
       _lastDueCount = dueCount
       await createNotification({
         title: 'WhatsApp Reminders Due',
-        message: `${dueCount} reminder${dueCount > 1 ? 's are' : ' is'} ready to send. Visit the Notifications screen.`,
+        message: `${dueCount} reminder${dueCount > 1 ? 's are' : ' is'} ready to send. Click to open WhatsApp Reminders.`,
         notificationType: 'INFO',
+        actionPath: '/service-notifications',
       })
     } else if (dueCount === 0) {
       _lastDueCount = 0
@@ -70,6 +73,7 @@ async function generateComplianceTasks(): Promise<void> {
         title: 'Compliance Tasks Generated',
         message: `${created} new compliance task${created > 1 ? 's were' : ' was'} created from the statutory calendar.`,
         notificationType: 'INFO',
+        actionPath: '/ca-cs/compliance',
       })
     }
   } catch (err) {
@@ -104,7 +108,8 @@ async function checkAutoBackupReminder(): Promise<void> {
       await createNotification({
         title: 'Auto-Backup Complete',
         message: `Your data was automatically backed up (${daysSinceBackup} days since last backup).`,
-        notificationType: 'INFO'
+        notificationType: 'INFO',
+        actionPath: '/backup'
       })
     }
   } catch (err) {
@@ -334,8 +339,9 @@ app.whenReady().then(async () => {
       logger.error('[DB] Integrity issue on startup:', r.message)
       createNotification({
         title: 'Database Integrity Issue',
-        message: `${r.message} Go to Backup & Recovery to restore from a backup.`,
-        notificationType: 'ERROR'
+        message: `${r.message} Click to open Backup & Recovery and restore from a backup.`,
+        notificationType: 'ERROR',
+        actionPath: '/backup'
       }).catch(() => {})
     } else {
       logger.info('[DB] Integrity check passed.')
@@ -364,6 +370,8 @@ app.whenReady().then(async () => {
   recurringProfileService.generateDueRecurringDocuments().catch(() => {})
   // Phase 67 §9.1 — Retail time-boxed markdown auto-revert, same shape.
   priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
+  quotationService.expireOverdue().catch(() => {})
+  cleanupLegacyReferenceTokens().catch(() => {})
   setInterval(() => {
     checkAutoBackupReminder().catch(() => {})
     evaluateNotificationQueue().catch(() => {})
@@ -371,6 +379,7 @@ app.whenReady().then(async () => {
     generateComplianceTasks().catch(() => {})
     recurringProfileService.generateDueRecurringDocuments().catch(() => {})
     priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
+    quotationService.expireOverdue().catch(() => {})
   }, 60 * 60 * 1000)
 
   // Usage-metrics tick — shorter cadence than the hour-ly evaluators above

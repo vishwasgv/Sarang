@@ -1,4 +1,13 @@
 import React, { useEffect, useState, useCallback } from 'react'
+import { useMoneyContext } from '@shared/utils/money-context'
+import { computeNoteTotals, convertPriceMode, roundMoney } from '@money'
+import { PricesIncludeTaxToggle } from '@shared/ui/molecules/PricesIncludeTaxToggle'
+import { GstTypeSelector } from '@shared/ui/molecules/GstTypeSelector'
+import { OffSlabRateWarning } from '@shared/ui/molecules/OffSlabRateWarning'
+import { useGstTypeChoice } from '@shared/utils/gst-type-choice'
+import { resolvePartyState } from '../../../../../shared/utils/gst-presentation'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { isGstType } from '@gst'
 import { PlusCircle, RefreshCw, Trash2, Edit2, Printer, Receipt, Plus } from 'lucide-react'
 import { useTranslation } from 'react-i18next'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -18,10 +27,12 @@ interface DebitNote {
   id: string; debitNoteNumber: string; reason: string; amount: number; notes?: string | null
   createdAt: string; supplier?: { id: string; supplierName: string; phone?: string | null; email?: string | null } | null
   purchaseOrder?: { id: string; poNumber: string } | null
+  taxApplied?: boolean; taxAmount?: number; taxRate?: number | null; pricesIncludeTax?: boolean
+  items?: Array<{ quantity: number; unitPrice: number; taxRate: number }>
 }
 
-interface Supplier { id: string; supplierName: string }
-interface PurchaseOrder { id: string; poNumber: string }
+interface Supplier { id: string; supplierName: string; state?: string | null; taxNumber?: string | null }
+interface PurchaseOrder { id: string; poNumber: string; pricesIncludeTax?: boolean; gstType?: string | null; taxAmount?: number }
 interface ExpenseCategory { id: string; categoryName: string }
 interface DebitNoteLineItem {
   lineType: 'PRODUCT' | 'SERVICE'
@@ -33,12 +44,15 @@ interface DebitNoteLineItem {
   taxRate: number
 }
 
+// The amount as it was entered on a plain-amount note: taxable when prices exclude tax, the tax-inclusive figure when
+// they include it (the note stores the payable total, so the exclusive figure is total less tax).
+function enteredAmountOf(n: { amount: number; taxApplied?: boolean; taxAmount?: number; pricesIncludeTax?: boolean; items?: unknown[] }, decimals: number): number {
+  if (n.taxApplied && (n.items?.length ?? 0) === 0 && !n.pricesIncludeTax) return roundMoney(n.amount - (n.taxAmount ?? 0), decimals)
+  return n.amount
+}
+
 const EMPTY_LINE_ITEM: DebitNoteLineItem = { lineType: 'PRODUCT', productId: '', serviceDescription: '', serviceCategoryId: '', quantity: 1, unitPrice: 0, taxRate: 0 }
 
-function lineItemTotal(item: DebitNoteLineItem): number {
-  const base = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
-  return base + base * ((Number(item.taxRate) || 0) / 100)
-}
 
 
 export function DebitNotesScreen() {
@@ -66,7 +80,42 @@ export function DebitNotesScreen() {
   // actually do.
   const [useItems, setUseItems] = useState(false)
   const [lineItems, setLineItems] = useState<DebitNoteLineItem[]>([{ ...EMPTY_LINE_ITEM }])
-  const itemsTotal = lineItems.reduce((sum, item) => sum + lineItemTotal(item), 0)
+  // Same shared module the note's backend service runs on save (src/shared/utils/money.ts).
+  const moneyCtx = useMoneyContext()
+  // A note against a purchase order follows that order's price mode unless the user changes it.
+  const [inclTaxChoice, setInclTaxChoice] = useState<boolean | null>(null)
+  const linkedPO = purchaseOrders.find(p => p.id === form.purchaseOrderId)
+  const pricesIncludeTax = inclTaxChoice ?? linkedPO?.pricesIncludeTax ?? moneyCtx.pricesIncludeTaxDefault
+  // Flipping the switch re-expresses every entered price in the other mode, so the debited price does not change.
+  function changePriceMode(next: boolean) {
+    setLineItems(items => items.map(i => ({ ...i, unitPrice: convertPriceMode(Number(i.unitPrice) || 0, Number(i.taxRate) || 0, next, moneyCtx.decimals) })))
+    setInclTaxChoice(next)
+  }
+  const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const gstChoice = useGstTypeChoice(resolvePartyState(suppliers.find(s => s.id === form.supplierId)?.state, suppliers.find(s => s.id === form.supplierId)?.taxNumber))
+  // Presented like the order it corrects unless the owner chooses otherwise.
+  const linkedGstType = isGstType(linkedPO?.gstType) ? linkedPO?.gstType : undefined
+  const shownGstType = gstChoice.isAuto && linkedGstType ? linkedGstType : gstChoice.gstType
+
+  // Add or skip tax per note. The default follows the linked document: yes when it carries tax, no when it does not
+  // or when nothing is linked. Either way the owner can change it.
+  const [taxChoice, setTaxChoice] = useState<boolean | null>(null)
+  const [plainRate, setPlainRate] = useState('')
+  const [defaultRate, setDefaultRate] = useState(0)
+  const linkedTaxed = linkedPO ? (Number(linkedPO.taxAmount) || 0) > 0 : false
+  const taxApplied = taxChoice ?? (editTarget ? editTarget.taxApplied === true : linkedTaxed)
+  const editingItemised = !!editTarget && (editTarget.items?.length ?? 0) > 0
+  const rateNumber = plainRate.trim() !== '' ? Number(plainRate) || 0 : defaultRate
+  // One calculation for the form, the saved note and every print (src/shared/utils/money.ts computeNoteTotals).
+  const itemsComputed = computeNoteTotals(
+    useItems
+      ? { items: lineItems.map(i => ({ quantity: Number(i.quantity) || 0, unitPrice: Number(i.unitPrice) || 0, taxRate: Number(i.taxRate) || 0 })), taxApplied, pricesIncludeTax, decimals: moneyCtx.decimals }
+      : editingItemised
+        ? { items: editTarget!.items, taxApplied, pricesIncludeTax, decimals: moneyCtx.decimals }
+        : { amount: Number(form.amount) || 0, taxApplied, taxRate: rateNumber, pricesIncludeTax, decimals: moneyCtx.decimals }
+  )
+  const itemsTotal = itemsComputed.totalAmount
+  const noteTaxLines = splitTaxLines(taxModel, itemsComputed.taxAmount, shownGstType, moneyCtx.decimals, itemsComputed.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax })))
 
   const loadData = useCallback(async () => {
     setLoading(true)
@@ -82,6 +131,16 @@ export function DebitNotesScreen() {
   }, [toastError, t])
 
   useEffect(() => { loadData() }, [loadData])
+
+  useEffect(() => {
+    if (!showForm) return
+    window.api.tax.list().then(r => {
+      if (!r.success) return
+      const configs = (r.data as Array<{ rate: number; isDefault: boolean; isLegacy?: boolean }>) ?? []
+      const current = configs.filter(c => !c.isLegacy)
+      setDefaultRate((current.find(c => c.isDefault) ?? current.find(c => c.rate > 0))?.rate ?? 0)
+    }).catch(() => {})
+  }, [showForm])
 
   useEffect(() => {
     if (!showForm) return
@@ -115,11 +174,14 @@ export function DebitNotesScreen() {
       supplierId: dn.supplier?.id ?? '',
       purchaseOrderId: dn.purchaseOrder?.id ?? '',
       reason: dn.reason,
-      amount: String(dn.amount),
+      amount: String(enteredAmountOf(dn, moneyCtx.decimals)),
       notes: dn.notes ?? ''
     })
     // suppliers/purchaseOrders dropdown lists get the linked record merged in by
     // the fetch effect above (keyed on editTarget) — no need to do it here too.
+    setTaxChoice(dn.taxApplied === true)
+    setPlainRate(dn.taxRate != null ? String(dn.taxRate) : '')
+    setInclTaxChoice(dn.pricesIncludeTax === true)
     setUseItems(false)
     setShowForm(true)
   }
@@ -130,6 +192,10 @@ export function DebitNotesScreen() {
     setForm({ supplierId: '', purchaseOrderId: '', reason: '', amount: '', notes: '' })
     setUseItems(false)
     setLineItems([{ ...EMPTY_LINE_ITEM }])
+    setInclTaxChoice(null)
+    setTaxChoice(null)
+    setPlainRate('')
+    gstChoice.reset()
   }
 
   function updateLineItem(index: number, patch: Partial<DebitNoteLineItem>) {
@@ -162,13 +228,19 @@ export function DebitNotesScreen() {
             supplierId: form.supplierId || null,
             purchaseOrderId: form.purchaseOrderId || null,
             reason: form.reason,
-            amount: parseFloat(form.amount),
+            amount: editingItemised ? undefined : parseFloat(form.amount),
+            taxApplied,
+            pricesIncludeTax,
+            taxRate: taxApplied && !editingItemised && plainRate.trim() !== '' ? Number(plainRate) : undefined,
             notes: form.notes || null
           })
         : await window.api.debitNotes.create(useItems ? {
             supplierId: form.supplierId || undefined,
             purchaseOrderId: form.purchaseOrderId || undefined,
             reason: form.reason,
+            pricesIncludeTax,
+            taxApplied,
+            gstType: gstChoice.isGst ? shownGstType : undefined,
             items: validItems.map(i => ({
               productId: i.lineType === 'PRODUCT' ? i.productId : undefined,
               serviceDescription: i.lineType === 'SERVICE' ? i.serviceDescription : undefined,
@@ -183,6 +255,10 @@ export function DebitNotesScreen() {
             purchaseOrderId: form.purchaseOrderId || undefined,
             reason: form.reason,
             amount: parseFloat(form.amount),
+            taxApplied,
+            taxRate: taxApplied && plainRate.trim() !== '' ? Number(plainRate) : undefined,
+            pricesIncludeTax,
+            gstType: gstChoice.isGst && taxApplied ? shownGstType : undefined,
             notes: form.notes || undefined
           })
       if (res.success) {
@@ -294,7 +370,7 @@ export function DebitNotesScreen() {
             </div>
             <div>
               <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">{t('debitNotes.amountLabel')}</label>
-              <input type="number" min="0" value={useItems ? itemsTotal.toFixed(2) : form.amount}
+              <input type="number" min="0" value={useItems ? itemsTotal.toFixed(moneyCtx.decimals) : form.amount}
                 disabled={useItems}
                 onChange={e => setForm(f => ({ ...f, amount: e.target.value }))} placeholder="0.00"
                 className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:border-brand disabled:opacity-60" />
@@ -307,6 +383,41 @@ export function DebitNotesScreen() {
             </div>
           </div>
 
+          <div className="border-t border-slate-100 dark:border-slate-800 pt-4 space-y-2">
+            <label className="flex items-center gap-3 min-h-[44px] text-sm font-medium text-dark dark:text-slate-100 cursor-pointer">
+              <input type="checkbox" className="w-5 h-5" checked={taxApplied} onChange={e => setTaxChoice(e.target.checked)} />
+              <span>{t('debitNotes.addTax')}</span>
+            </label>
+            <p className="text-xs text-slate-400">{t('debitNotes.addTaxHint')}</p>
+            {linkedTaxed && !taxApplied && <p className="text-xs text-warning">{t('debitNotes.taxSkippedWarning')}</p>}
+            {taxApplied && !useItems && (
+              <div className="grid grid-cols-2 gap-4">
+                {!editingItemised && (
+                  <div>
+                    <label className="block text-sm font-medium text-slate-600 dark:text-slate-300 mb-1">{t('debitNotes.taxRateLabel')}</label>
+                    <input type="number" min="0" max="100" step="0.01" value={plainRate} placeholder={String(defaultRate)}
+                      onChange={e => setPlainRate(e.target.value)}
+                      className="w-full px-3 py-2.5 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-sm focus:outline-none focus:border-brand" />
+                    <p className="text-xs text-slate-400 mt-1">{t('debitNotes.taxRateHint')}</p>
+                  </div>
+                )}
+                <PricesIncludeTaxToggle checked={pricesIncludeTax} onChange={setInclTaxChoice} />
+              </div>
+            )}
+            {taxApplied && !useItems && !editTarget && gstChoice.isGst && <GstTypeSelector value={shownGstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto && !linkedGstType} />}
+            <div className="rounded-xl bg-slate-50 dark:bg-slate-800 px-3 py-2 space-y-1 text-sm">
+              {noteTaxLines.length > 0 && (
+                <>
+                  <div className="flex justify-between text-slate-500"><span>{t('debitNotes.amountBeforeTax')}</span><span>{formatCurrency(itemsComputed.taxable)}</span></div>
+                  {noteTaxLines.map(line => (
+                    <div key={line.label} className="flex justify-between text-slate-500"><span>{line.label}</span><span>{formatCurrency(line.amount)}</span></div>
+                  ))}
+                </>
+              )}
+              <div className="flex justify-between font-semibold text-dark dark:text-slate-100"><span>{t('debitNotes.noteTotal')}</span><span>{formatCurrency(itemsTotal)}</span></div>
+            </div>
+          </div>
+
           {!editTarget && (
             <div className="border-t border-slate-100 dark:border-slate-800 pt-4">
               <label className="flex items-center gap-2 cursor-pointer mb-3">
@@ -315,6 +426,8 @@ export function DebitNotesScreen() {
               </label>
               {useItems && (
                 <div className="space-y-2">
+                  <PricesIncludeTaxToggle checked={pricesIncludeTax} onChange={changePriceMode} />
+                  {gstChoice.isGst && <GstTypeSelector value={shownGstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto && !linkedGstType} />}
                   <div className="flex items-center justify-between">
                     <p className="text-xs font-semibold text-slate-600 dark:text-slate-300 uppercase tracking-wide">{t('purchaseOrders.items')}</p>
                     <button type="button" onClick={addLineItem} className="flex items-center gap-1 text-xs font-medium text-brand hover:text-brand/80 transition-colors">
@@ -341,7 +454,7 @@ export function DebitNotesScreen() {
                       <div className="grid grid-cols-[2fr_1fr_1fr_1fr] gap-2 items-start">
                         {item.lineType === 'PRODUCT' ? (
                           <ProductAutocomplete value={item.productId} onlyProductType="STANDARD" onChange={(p) => {
-                            updateLineItem(index, { productId: p.id, unitPrice: p.costPrice ?? item.unitPrice })
+                            updateLineItem(index, { productId: p.id, unitPrice: p.costPrice === undefined || p.costPrice === null ? item.unitPrice : (pricesIncludeTax ? convertPriceMode(p.costPrice, p.taxRate ?? 0, true, moneyCtx.decimals) : p.costPrice), taxRate: p.taxRate ?? 0 })
                           }} />
                         ) : (
                           <div className="space-y-1">
@@ -358,7 +471,7 @@ export function DebitNotesScreen() {
                         <input type="number" min="1" step="1" placeholder={t('bills.quantity')} value={item.quantity}
                           onChange={e => updateLineItem(index, { quantity: Number(e.target.value) || 1 })}
                           className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
-                        <input type="number" min="0" step="0.01" placeholder={t('bills.unitCost')} value={item.unitPrice}
+                        <input type="number" min="0" step="0.01" placeholder={`${t('bills.unitCost')} ${pricesIncludeTax ? t('billing.priceInclTax') : t('billing.priceExclTax')}`} value={item.unitPrice}
                           onChange={e => updateLineItem(index, { unitPrice: Number(e.target.value) || 0 })}
                           className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
                         <input type="number" min="0" max="100" step="0.5" placeholder={t('bills.taxPercent')} value={item.taxRate}
@@ -367,6 +480,7 @@ export function DebitNotesScreen() {
                       </div>
                     </div>
                   ))}
+                  <OffSlabRateWarning rates={lineItems.map(i => Number(i.taxRate) || 0)} />
                 </div>
               )}
             </div>

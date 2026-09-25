@@ -167,7 +167,6 @@ export async function generateMilestoneInvoice(milestoneId: string) {
       const result = await billingService.createInvoice({
         customerId: milestone.project.clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{
           productId: product.id,
           quantity: 1,

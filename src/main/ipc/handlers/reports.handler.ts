@@ -1,11 +1,13 @@
 import { reportService } from '../../services/report.service'
+import { financialStatementsService } from '../../services/financial-statements.service'
 import { requirePermission } from '../permission-guard'
 import {
   SalesReportSchema, InventoryReportSchema, TaxReportSchema,
   ExpenseReportSchema, CustomerLedgerReportSchema, SupplierLedgerReportSchema, AuditReportSchema, GSTR1Schema,
   OrderVolumeReportSchema, LabThroughputReportSchema, DateRangeSchema, DiscountReportSchema,
   CashBookReportSchema, TrialBalanceReportSchema, CostCentreTreemapReportSchema, BudgetVsActualReportSchema, StatutoryComplianceSummaryReportSchema, CashFlowProjectionReportSchema, PaymentPerformanceReportSchema,
-  ReferralLeaderboardReportSchema, SingleDateSchema
+  ReferralLeaderboardReportSchema, SingleDateSchema,
+  BalanceSheetReportSchema, GeneralLedgerReportSchema, DayBookReportSchema, CashFlowStatementReportSchema
 } from '../../validation/report.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -112,6 +114,41 @@ export function register(handle: HandleFn): void {
     const parsed = TrialBalanceReportSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
     const data = await reportService.generateTrialBalanceReport(parsed.data)
+    return { success: true, data }
+  })
+
+  // Balance Sheet / General Ledger / Day Book / Cash Flow Statement expose the
+  // same profit-adjacent figures as Trial Balance, so same permission.
+  handle('reports:balanceSheet', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = BalanceSheetReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await financialStatementsService.generateBalanceSheet(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:generalLedger', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = GeneralLedgerReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await financialStatementsService.generateGeneralLedger(parsed.data)
+    if (!data) return { success: false, error: { code: 'COA-001', message: 'Account not found.' } }
+    return { success: true, data }
+  })
+
+  handle('reports:dayBook', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = DayBookReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await financialStatementsService.generateDayBook(parsed.data)
+    return { success: true, data }
+  })
+
+  handle('reports:cashFlowStatement', async (payload) => {
+    const deny = await requirePermission('analytics.viewProfit'); if (deny) return deny
+    const parsed = CashFlowStatementReportSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.issues[0]?.message ?? 'Invalid payload' } }
+    const data = await financialStatementsService.generateCashFlowStatement(parsed.data)
     return { success: true, data }
   })
 

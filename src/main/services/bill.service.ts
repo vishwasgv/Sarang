@@ -2,6 +2,8 @@ import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.service'
+import { computeDocumentTotals, sumMoney, unitAmount } from '../../shared/utils/money'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -10,6 +12,7 @@ import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { allocateLandedCostAcrossLines } from './landed-cost.service'
 import { ServiceError } from '../errors/service-error'
+import { resolveDocumentGstType, lineTaxCategories } from './gst-type.util'
 import type { CreateBillPayload } from '../validation/bill.validation'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -30,7 +33,7 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // still equals totalAmount + taxAmount either way, so this balances by
 // construction.
 async function postBillJournalEntry(tx: TxClient, bill: { id: string; billNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean; costCentreId?: string | null }): Promise<void> {
-  const grossExpense = roundCurrency(bill.totalAmount + (bill.isReverseCharge ? bill.taxAmount : 0))
+  const grossExpense = roundCurrency(bill.totalAmount + (bill.isReverseCharge ? bill.taxAmount : 0), 3)
   if (grossExpense <= 0) return
   const [expenseAccount, apAccount] = await Promise.all([
     chartOfAccountsService.getSystemAccountByCode('6000', tx),
@@ -56,6 +59,44 @@ async function postBillJournalEntry(tx: TxClient, bill: { id: string; billNumber
 // poNumber — see purchase-order.service.ts's generatePONumber for the full
 // reasoning. Must be called with a tx from inside the same $transaction that
 // performs the create.
+// Reverses everything a bill posted (supplier-ledger debit, journal entry,
+// cost history) and marks it VOID. Shared by voidBill and by editBill (which
+// replaces a bill atomically), so both stay identical.
+async function reverseBillPostings(tx: TxClient, id: string, reason: string, userId?: string, renameTo?: string) {
+  const bill = await tx.bill.findUnique({ where: { id } })
+  if (!bill) throw new ServiceError('BILL-002', 'Bill not found.')
+  if (bill.status === 'VOID') throw new ServiceError('BILL-003', 'This bill is already void.')
+  await assertNotLockedOrThrow(tx, bill.billDate)
+  if (bill.paidAmount > 0) {
+    throw new ServiceError('BILL-004', 'Cannot void a bill with payments recorded. Reverse the payments first.')
+  }
+
+  // Only credit back a debit that really exists (a PO-linked bill raised
+  // against an already-received PO never posted one).
+  const originalDebit = await tx.supplierLedger.findFirst({ where: { referenceType: 'BILL', referenceId: bill.id } })
+  if (originalDebit) {
+    await supplierLedgerService.addEntry({
+      supplierId: bill.supplierId,
+      referenceType: 'BILL_VOID',
+      referenceId: bill.id,
+      debitAmount: 0,
+      creditAmount: bill.totalAmount,
+      remarks: `Void: ${reason} (Bill ${bill.billNumber})`
+    }, tx)
+  }
+
+  await reverseEntryBySourceTx(tx, 'BILL', bill.id, `Bill ${bill.billNumber} voided: ${reason}`, userId)
+  // A voided bill's purchase cost must not keep feeding cost history.
+  await tx.productCostHistory.deleteMany({ where: { sourceType: 'BILL', sourceId: bill.id } })
+
+  const noteText = bill.notes ? `${bill.notes}\nVoided: ${reason}` : `Voided: ${reason}`
+  const updated = await tx.bill.update({
+    where: { id },
+    data: { status: 'VOID', balanceAmount: 0, notes: noteText, ...(renameTo ? { billNumber: renameTo } : {}) }
+  })
+  return { before: bill, after: updated }
+}
+
 async function generateBillNumber(tx: TxClient): Promise<string> {
   return generateSequenceNumber(
     tx, 'bill_number_sequence', 'BILL', 5,
@@ -72,15 +113,19 @@ async function generateBillNumber(tx: TxClient): Promise<string> {
 }
 
 export const billService = {
-  async createBill(payload: CreateBillPayload, userId?: string) {
+  async createBill(payload: CreateBillPayload, userId?: string, opts?: { replaceBillId?: string }) {
     const db = getPrisma()
 
     const supplier = await db.supplier.findUnique({ where: { id: payload.supplierId } })
     if (!supplier) return { success: false, error: { code: 'SUP-001', message: 'Supplier not found.' } }
     if (!supplier.isActive) return { success: false, error: { code: 'SUP-004', message: 'Cannot bill an archived supplier.' } }
 
+    let linkedPoIncludesTax = false
+    let linkedPoGstType: string | undefined
     if (payload.purchaseOrderId) {
       const po = await db.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId } })
+      linkedPoIncludesTax = po?.pricesIncludeTax === true
+      linkedPoGstType = po?.gstType
       if (!po) return { success: false, error: { code: 'PO-001', message: 'Purchase order not found.' } }
       if (po.supplierId !== payload.supplierId) {
         return { success: false, error: { code: 'BILL-001', message: 'Purchase order belongs to a different supplier.' } }
@@ -101,13 +146,20 @@ export const billService = {
       }
     }
 
-    const lineRows = payload.items.map(item => ({
-      item,
-      ...calculateLineTotal(item.quantity, item.unitCost, item.discountAmount ?? 0, item.taxRate ?? 0)
-    }))
-    const subtotal = sumCurrency(lineRows.map(r => r.subtotal))
-    const discountAmount = sumCurrency(lineRows.map(r => r.discountAmount))
-    const taxAmount = sumCurrency(lineRows.map(r => r.taxAmount))
+    const pricesIncludeTax = payload.pricesIncludeTax ?? linkedPoIncludesTax
+    // Presentation of the tax only: the chosen one, else the linked PO's, else from the supplier's state.
+    const gstType = await resolveDocumentGstType(payload.gstType ?? linkedPoGstType, supplier.state)
+    const lineCategories = await lineTaxCategories(payload.items.map(i => ({ productId: i.productId, taxRate: i.taxRate })))
+    const decimals = await getBusinessCurrencyDecimals()
+    const billTotals = computeDocumentTotals(
+      payload.items.map(i => ({ quantity: i.quantity, unitPrice: i.unitCost, discountAmount: i.discountAmount ?? 0, taxRate: i.taxRate ?? 0 })),
+      { decimals, excludeTaxFromTotal: payload.isReverseCharge === true, pricesIncludeTax }
+    )
+    const lineRows = payload.items.map((item, idx) => {
+      const l = billTotals.lines[idx]
+      return { item, discountAmount: l.discountAmount, taxAmount: l.tax, lineTotal: l.total }
+    })
+    const { subtotal, discountAmount, taxAmount } = billTotals
     // Reverse Charge Mechanism: under RCM the supplier's own invoice does not
     // include GST at all — the business self-assesses and owes that tax
     // directly to the government, not to the supplier. totalAmount (what's
@@ -115,9 +167,7 @@ export const billService = {
     // track) must exclude it; taxAmount is still computed and stored
     // separately for the self-assessed liability posting and GSTR-3B
     // Table 3.1(d) reporting.
-    const totalAmount = payload.isReverseCharge
-      ? roundCurrency(subtotal - discountAmount)
-      : sumCurrency(lineRows.map(r => r.lineTotal))
+    const totalAmount = billTotals.totalAmount
 
     // Phase 62 — Transaction Locking.
     const resolvedBillDate = payload.billDate ? parseLocalDateStart(payload.billDate) : new Date()
@@ -136,7 +186,20 @@ export const billService = {
 
     try {
       const bill = await db.$transaction(async (tx) => {
-        const billNumber = await generateBillNumber(tx)
+        let billNumber: string
+        if (opts?.replaceBillId) {
+          // Edit = void the old copy (reversing every posting) and re-create it
+          // under the SAME bill number, all in this one transaction. The old copy
+          // stays visible as "<number>-R<n>" (VOID) for the audit trail.
+          const old = await tx.bill.findUnique({ where: { id: opts.replaceBillId } })
+          if (!old) throw new ServiceError('BILL-002', 'Bill not found.')
+          if (old.status !== 'OPEN') throw new ServiceError('BILL-005', 'Only an open bill with no payments can be edited.')
+          const revisions = await tx.bill.count({ where: { billNumber: { startsWith: `${old.billNumber}-R` } } })
+          await reverseBillPostings(tx, old.id, 'Edited', userId, `${old.billNumber}-R${revisions + 1}`)
+          billNumber = old.billNumber
+        } else {
+          billNumber = await generateBillNumber(tx)
+        }
         const created = await tx.bill.create({
           data: {
             billNumber,
@@ -149,6 +212,8 @@ export const billService = {
             discountAmount,
             taxAmount,
             totalAmount,
+            pricesIncludeTax,
+            gstType,
             paidAmount: 0,
             balanceAmount: totalAmount,
             isReverseCharge: payload.isReverseCharge,
@@ -162,7 +227,7 @@ export const billService = {
             foreignTotalAmount: (payload.foreignCurrencyCode && payload.foreignExchangeRate) ? roundCurrency(totalAmount / payload.foreignExchangeRate) : null,
             createdById: userId ?? null,
             items: {
-              create: lineRows.map(({ item, discountAmount: lineDiscount, taxAmount: lineTax, lineTotal }) => ({
+              create: lineRows.map(({ item, discountAmount: lineDiscount, taxAmount: lineTax, lineTotal }, rowIdx) => ({
                 productId: item.productId || null,
                 serviceDescription: item.serviceDescription || null,
                 serviceCategoryId: item.serviceCategoryId || null,
@@ -170,6 +235,7 @@ export const billService = {
                 unitCost: item.unitCost,
                 discountAmount: lineDiscount,
                 taxRate: item.taxRate ?? 0,
+                taxCategory: lineCategories[rowIdx],
                 taxAmount: lineTax,
                 total: lineTotal
               }))
@@ -192,13 +258,17 @@ export const billService = {
         // that line's own ProductCostHistory unitCost below — never touches
         // Inventory (Bill still doesn't affect stock, unchanged).
         const productItems = created.items.filter(row => row.productId)
+        // Tax paid on a purchase is not part of stock cost: an inclusive bill's cost basis per unit is the
+        // stored line taxable value (total - tax) / quantity, never the entered tax-inclusive unitCost.
+        const stockUnitCost = (row: { quantity: number; unitCost: number; total: number; taxAmount: number }) =>
+          pricesIncludeTax && row.quantity > 0 ? unitAmount(sumMoney([row.total, -row.taxAmount], 3), row.quantity) : row.unitCost
         const landedCostPerItemId = new Map<string, number>()
         if (payload.landedCosts && payload.landedCosts.length > 0 && productItems.length > 0) {
           const perLineTotal = new Array(productItems.length).fill(0)
           for (const lc of payload.landedCosts) {
             const shares = allocateLandedCostAcrossLines(
               lc.amount, lc.allocationMethod,
-              productItems.map(row => ({ value: row.quantity * row.unitCost, quantity: row.quantity }))
+              productItems.map(row => ({ value: row.quantity * stockUnitCost(row), quantity: row.quantity }))
             )
             shares.forEach((s, i) => { perLineTotal[i] += s })
             await tx.landedCostAllocation.create({
@@ -217,7 +287,7 @@ export const billService = {
         // addStockTx's job, driven off PO receiving, not billing).
         for (const row of created.items) {
           if (!row.productId) continue
-          const effectiveUnitCost = row.unitCost + (landedCostPerItemId.get(row.id) ?? 0)
+          const effectiveUnitCost = stockUnitCost(row) + (landedCostPerItemId.get(row.id) ?? 0)
           await tx.productCostHistory.create({
             data: {
               productId: row.productId,
@@ -279,6 +349,7 @@ export const billService = {
       include: {
         supplier: { select: { id: true, supplierName: true, supplierCode: true, phone: true, email: true, isMsmeRegistered: true } },
         purchaseOrder: { select: { id: true, poNumber: true } },
+        landedCosts: true,
         items: {
           include: {
             product: { select: { id: true, productName: true, sku: true, unit: true } },
@@ -300,7 +371,15 @@ export const billService = {
 
     const where: Record<string, unknown> = {}
     if (filters?.supplierId) where.supplierId = filters.supplierId
-    if (filters?.status) where.status = filters.status
+    if (filters?.status === 'OVERDUE') {
+      // Derived: still owing, and the due date has passed.
+      const startOfToday = new Date()
+      startOfToday.setHours(0, 0, 0, 0)
+      where.status = { in: ['OPEN', 'PARTIALLY_PAID'] }
+      where.dueDate = { not: null, lt: startOfToday }
+    } else if (filters?.status) {
+      where.status = filters.status
+    }
 
     const [bills, total] = await db.$transaction([
       db.bill.findMany({
@@ -319,51 +398,19 @@ export const billService = {
     return { success: true, data: { bills, total } }
   },
 
+  // Replaces an open, unpaid bill with corrected details, keeping its number.
+  async editBill(id: string, payload: CreateBillPayload, userId?: string) {
+    const result = await billService.createBill(payload, userId, { replaceBillId: id })
+    if (result.success) {
+      await logAction({ userId: userId ?? getCurrentSession()?.userId, action: 'BILL_EDITED', entityType: 'Bill', entityId: (result.data as { id: string }).id, newValue: { replacedBillId: id } })
+    }
+    return result
+  },
+
   async voidBill(id: string, reason: string, userId?: string) {
     const db = getPrisma()
     try {
-      const updated = await db.$transaction(async (tx) => {
-        const bill = await tx.bill.findUnique({ where: { id } })
-        if (!bill) throw new ServiceError('BILL-002', 'Bill not found.')
-        if (bill.status === 'VOID') throw new ServiceError('BILL-003', 'This bill is already void.')
-        await assertNotLockedOrThrow(tx, bill.billDate)
-        // Matches the founding logic of every other void/cancel path in this
-        // codebase (cancelPO blocks a RECEIVED PO, cancelInvoice blocks a
-        // paid invoice being silently zeroed out): a bill with money already
-        // recorded against it must have those payments reversed first, not
-        // have the whole document erased out from under them.
-        if (bill.paidAmount > 0) {
-          throw new ServiceError('BILL-004', 'Cannot void a bill with payments recorded. Reverse the payments first.')
-        }
-
-        // Reverse the AP debit this bill posted at creation — voiding must
-        // not leave a phantom "we owe this" balance on the supplier ledger.
-        // BUT a PO-linked bill raised against an already-received PO never
-        // posted a debit in the first place (createBill's own double-count
-        // guard skips it — see that function's comment) — crediting back
-        // money that was never debited would create the exact same
-        // phantom-balance bug this reversal exists to prevent, just in the
-        // other direction. Check the real ledger for whether a debit
-        // actually exists for this bill rather than assuming one always
-        // does, so this stays correct regardless of which path created it.
-        const originalDebit = await tx.supplierLedger.findFirst({ where: { referenceType: 'BILL', referenceId: bill.id } })
-        if (originalDebit) {
-          await supplierLedgerService.addEntry({
-            supplierId: bill.supplierId,
-            referenceType: 'BILL_VOID',
-            referenceId: bill.id,
-            debitAmount: 0,
-            creditAmount: bill.totalAmount,
-            remarks: `Void: ${reason} (Bill ${bill.billNumber})`
-          }, tx)
-        }
-
-        // Phase 62 — GL auto-posting: reverse the original Bill's JournalEntry.
-        await reverseEntryBySourceTx(tx, 'BILL', bill.id, `Bill ${bill.billNumber} voided: ${reason}`, userId)
-
-        const noteText = bill.notes ? `${bill.notes}\nVoided: ${reason}` : `Voided: ${reason}`
-        return tx.bill.update({ where: { id }, data: { status: 'VOID', balanceAmount: 0, notes: noteText } })
-      })
+      const updated = await db.$transaction(async (tx) => (await reverseBillPostings(tx, id, reason, userId)).after)
       await logAction({ userId, action: 'BILL_VOIDED', entityType: 'Bill', entityId: id, newValue: { status: 'VOID', reason } })
       return { success: true, data: updated }
     } catch (err) {

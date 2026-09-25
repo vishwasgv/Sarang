@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { sumCurrency } from './currency.service'
+import { sumCurrency, roundCurrency } from './currency.service'
 
 export async function getLogisticsAnalytics(payload?: { fromDate?: string; toDate?: string }) {
   try {
@@ -107,7 +107,7 @@ export async function getLogisticsAnalytics(payload?: { fromDate?: string; toDat
         },
         freight: {
           total: freightTotal, paid: freightPaid, pending: freightPending,
-          avgPerShipment: shipments.length ? Math.round(freightTotal / shipments.length) : 0,
+          avgPerShipment: shipments.length ? roundCurrency(freightTotal / shipments.length) : 0,
         },
         fleet: {
           total: vehicles.length,

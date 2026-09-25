@@ -11,6 +11,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { toLocalISODate } from '@shared/utils/locale.util'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface GoldSavingsInstallment { id: string; amount: number; paymentMethod: string | null; paidAt: string }
 interface GoldSavingsScheme {
@@ -116,7 +117,7 @@ export function GoldSavingsScreen(): React.JSX.Element {
     try {
       const res = await window.api.goldSavings.recordInstallment({ schemeId: installTarget.id, amount })
       if (res.success) {
-        toastSuccess(t('jewellery.installmentRecorded'), t('jewellery.installmentRecordedDesc', { amount: `${sym}${amount.toFixed(2)}` }))
+        toastSuccess(t('jewellery.installmentRecorded'), t('jewellery.installmentRecordedDesc', { amount: `${sym}${moneyFixed(amount)}` }))
         setInstallTarget(null)
         setInstallAmount('')
         await load()
@@ -198,7 +199,7 @@ export function GoldSavingsScreen(): React.JSX.Element {
       {redeemTarget && (
         <Card padding="md" className="space-y-3 border-brand/40">
           <p className="text-sm font-semibold text-dark">{t('jewellery.redeemSchemeTitle', { number: redeemTarget.schemeNumber })}</p>
-          <p className="text-xs text-slate-400">{t('jewellery.redeemHint', { amount: `${sym}${redeemTarget.totalDeposited.toFixed(2)}` })}</p>
+          <p className="text-xs text-slate-400">{t('jewellery.redeemHint', { amount: `${sym}${moneyFixed(redeemTarget.totalDeposited)}` })}</p>
           <Input label={t('jewellery.bonusAmount')} type="number" step="0.01" min="0" value={bonusAmount} onChange={(e) => setBonusAmount(e.target.value)} />
           <div className="flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => { setRedeemTarget(null); setBonusAmount('0') }} disabled={redeeming}>{t('jewellery.cancel')}</Button>
@@ -227,9 +228,9 @@ export function GoldSavingsScreen(): React.JSX.Element {
                   </div>
                   <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{s.customer.customerName}</div>
                   <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
-                    <span>{t('jewellery.monthlyOverTenure', { amount: `${sym}${s.monthlyAmount.toFixed(2)}`, tenure: s.tenureMonths })}</span>
-                    <span className="font-semibold text-dark dark:text-slate-100">{t('jewellery.deposited', { amount: `${sym}${s.totalDeposited.toFixed(2)}` })}</span>
-                    {s.status === 'REDEEMED' && <span>{t('jewellery.redeemedFor', { amount: `${sym}${(s.redeemedAmount ?? 0).toFixed(2)}` })}</span>}
+                    <span>{t('jewellery.monthlyOverTenure', { amount: `${sym}${moneyFixed(s.monthlyAmount)}`, tenure: s.tenureMonths })}</span>
+                    <span className="font-semibold text-dark dark:text-slate-100">{t('jewellery.deposited', { amount: `${sym}${moneyFixed(s.totalDeposited)}` })}</span>
+                    {s.status === 'REDEEMED' && <span>{t('jewellery.redeemedFor', { amount: `${sym}${moneyFixed(s.redeemedAmount ?? 0)}` })}</span>}
                   </div>
                 </div>
                 {canManage && s.status === 'ACTIVE' && (

@@ -154,6 +154,8 @@ export async function createRetainer(payload: {
   retainerType?: string
   status?: string
   monthlyAmount: number
+  // Whether monthlyAmount includes tax; unset follows the business default when invoicing.
+  pricesIncludeTax?: boolean
   billingDay?: number
   hoursPerMonth?: number
   deliverables?: string
@@ -174,6 +176,7 @@ export async function createRetainer(payload: {
         retainerType:  payload.retainerType ?? 'FIXED_FEE',
         status:        payload.status ?? 'ACTIVE',
         monthlyAmount: payload.monthlyAmount,
+        pricesIncludeTax: payload.pricesIncludeTax ?? null,
         billingDay,
         hoursPerMonth: payload.hoursPerMonth ?? null,
         deliverables:  payload.deliverables ?? null,
@@ -303,7 +306,7 @@ export async function generateInvoiceForRetainer(retainerId: string, period?: st
       const result = await billingService.createInvoice({
         customerId: retainer.clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
+        ...(retainer.pricesIncludeTax != null ? { pricesIncludeTax: retainer.pricesIncludeTax } : {}),
         items: [{
           productId: product.id,
           quantity: 1,

@@ -673,7 +673,7 @@ function NewAppointmentModal({ onClose, onSaved, prefillCustomer, prefillName, p
   // it — a substitute session with a different trainer must always remain
   // possible, so this only fills providerId if it's still empty.
   const hasSessionPacks = useIndustryStore((s) => s.isModuleEnabled('session_packs'))
-  const { error: toastError } = useNotificationStore()
+  const { error: toastError, info: toastInfo } = useNotificationStore()
   const [services, setServices] = useState<Service[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
   const [pickedCustomer, setPickedCustomer] = useState<Customer | null>(prefillCustomer ?? null)
@@ -887,7 +887,10 @@ function NewAppointmentModal({ onClose, onSaved, prefillCustomer, prefillName, p
     if (res.success) {
       const newAppt = res.data as { id: string }
       if (newAppt?.id) {
-        api.notificationQueue.createReminder({ appointmentId: newAppt.id }).catch(() => {})
+        api.notificationQueue.createReminder({ appointmentId: newAppt.id }).then((r) => {
+          const msg = (r as { message?: string } | undefined)?.message
+          if (r?.success && r.data === null && msg) toastInfo(msg)
+        }).catch(() => {})
         // Closes the walk-in loop: TokenQueueScreen.tsx's "Create Visit
         // Record" sent us here specifically to produce this Appointment —
         // link the token back to it now that it exists, so Doctor Pad and

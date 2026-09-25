@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { billingService } from './billing.service'
 import { generateSequenceNumber } from './sequence.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
+import { createAppointmentReminder, cancelAppointmentReminders } from './notification-queue.service'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
 type Db = ReturnType<typeof getPrisma>
@@ -459,6 +460,12 @@ export async function updateAppointment(payload: {
     if (result.status === 'scheduleViolation') {
       return { success: false, error: { code: 'APT-SCHEDULE', message: result.reason } }
     }
+    // A changed date, time or client means any queued reminders are stale:
+    // replace them so nobody is reminded of the old slot.
+    const timingChanged = payload.scheduledDate !== undefined || payload.scheduledTime !== undefined || payload.customerId !== undefined
+    if (timingChanged && ['SCHEDULED', 'CONFIRMED'].includes(result.item.status)) {
+      await createAppointmentReminder(result.item.id).catch(() => {})
+    }
     return { success: true, data: result.item }
   } catch (err) {
     return { success: false, error: { code: 'APT-005', message: err instanceof Error ? err.message : 'Could not update appointment.' } }
@@ -482,6 +489,9 @@ export async function updateAppointmentStatus(payload: {
     await db.auditLog.create({
       data: { action: `STATUS_${payload.status}`, entityType: 'Appointment', entityId: payload.id },
     }).catch(() => {})
+    if (['CANCELLED', 'NO_SHOW', 'COMPLETED', 'IN_PROGRESS'].includes(payload.status)) {
+      await cancelAppointmentReminders(payload.id)
+    }
     return { success: true, data: item }
   } catch (err) {
     return { success: false, error: { code: 'APT-006', message: err instanceof Error ? err.message : 'Could not update appointment status.' } }
@@ -496,6 +506,7 @@ export async function deleteAppointment(id: string) {
     if (['COMPLETED', 'IN_PROGRESS'].includes(existing.status)) {
       return { success: false, error: { code: 'APT-007', message: 'Cannot delete a completed or in-progress appointment.' } }
     }
+    await cancelAppointmentReminders(id)
     await db.appointment.delete({ where: { id } })
     await db.auditLog.create({
       data: { action: 'DELETE', entityType: 'Appointment', entityId: id },
@@ -661,7 +672,6 @@ export async function generateAppointmentInvoice(
       const result = await billingService.createInvoice({
         customerId: appt.customerId,
         paymentMethod: options?.paymentMethod ?? 'CREDIT',
-        gstType: 'CGST_SGST',
         items: allItems,
         notes: `Appointment ${appt.appointmentNumber} — ${appt.serviceTitle}`,
         referenceNumber: id.slice(0, 12),
@@ -736,7 +746,6 @@ export async function generateAppointmentBatchInvoice(appointmentIds: string[]) 
       const result = await billingService.createInvoice({
         customerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: allItems,
         notes: `${appts.length} appointments`,
         referenceNumber: uniqueIds[0].slice(0, 12),

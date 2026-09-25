@@ -3,7 +3,10 @@ import { readFileSync } from 'fs'
 import { join } from 'path'
 import { aszurexFooterHtml, aszurexBrandSuffixHtml } from '../utils/branding'
 import { getPrisma } from '../database/db'
-import { formatAmount as formatAmountLocaleAware } from './currency.service'
+import { formatAmount as formatAmountLocaleAware, getCurrencyDecimals } from './currency.service'
+import { gstPresentationLines } from '../../shared/utils/gst-presentation'
+import { taxLabelForCountry } from '../../shared/data/tax-presets'
+import { computeDocumentTotals, resolveDisplayDecimals, roundMoney, sumMoney } from '../../shared/utils/money'
 
 // Phase 38: jsbarcode's minified browser bundle, inlined as a <script> block into
 // generated label HTML rather than referenced by file:// path — this guarantees it
@@ -15,6 +18,101 @@ function getJsBarcodeScript(): string {
     jsBarcodeScriptCache = readFileSync(join(require.resolve('jsbarcode/package.json'), '..', 'dist', 'JsBarcode.all.min.js'), 'utf-8')
   }
   return jsBarcodeScriptCache
+}
+
+// Tax lines for a non-invoice document. GST businesses see the document's own presentation
+// (CGST + SGST, IGST or a single GST line); every other tax model keeps the single "Tax" line.
+function documentTaxLines(
+  profile: BusinessProfile | null,
+  doc: { gstType?: string | null; taxAmount: number },
+  rateTaxes?: Array<{ taxRate: number; taxAmount: number }>
+): Array<{ label: string; amount: number }> {
+  if (!(doc.taxAmount > 0)) return []
+  if (profile?.taxModel === 'GST') return gstPresentationLines(doc.gstType, doc.taxAmount, getCurrencyDecimals(profile?.currencyCode), rateTaxes)
+  return [{ label: 'Tax', amount: doc.taxAmount }]
+}
+
+function quotationRateTaxes(q: { items: Array<{ quantity: number; unitPrice: number; discount: number; taxRate: number }>; pricesIncludeTax?: boolean | null }, currencyCode?: string | null) {
+  const t = computeDocumentTotals(
+    q.items.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountPercent: i.discount ?? 0, taxRate: i.taxRate ?? 0 })),
+    { decimals: getCurrencyDecimals(currencyCode), pricesIncludeTax: q.pricesIncludeTax === true }
+  )
+  return t.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))
+}
+
+export interface NotePrintDoc {
+  amount: number
+  taxApplied?: boolean | null
+  taxRate?: number | null
+  taxAmount?: number | null
+  pricesIncludeTax?: boolean | null
+  gstType?: string | null
+  items?: Array<{
+    productName?: string | null
+    serviceDescription?: string | null
+    product?: { productName: string } | null
+    quantity: number
+    unitPrice: number
+    taxRate: number
+    taxAmount: number
+    lineTotal: number
+  }> | null
+}
+
+// Every figure a printed credit or debit note shows, from the stored note: the payable total, the tax (zero when the
+// note skipped tax, whatever the line rates say), the taxable value, the tax lines of the stored presentation and the
+// pricing-mode note. Amounts are never recomputed here, so the print equals the saved note to the last minor unit.
+export function noteFigures(doc: NotePrintDoc, profile: BusinessProfile | null) {
+  const decimals = getCurrencyDecimals(profile?.currencyCode)
+  const items = doc.items ?? []
+  const itemTax = sumMoney(items.map(i => i.taxAmount), decimals)
+  const applied = doc.taxApplied ?? ((doc.taxAmount ?? itemTax) > 0)
+  const tax = applied ? (doc.taxAmount ?? itemTax) : 0
+  const total = Math.abs(doc.amount)
+  const taxable = roundMoney(total - tax, decimals)
+  const rateTaxes = items.length > 0
+    ? items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount }))
+    : tax > 0 ? [{ taxRate: doc.taxRate ?? 0, taxAmount: tax }] : []
+  const taxLines = applied ? documentTaxLines(profile, { gstType: doc.gstType, taxAmount: tax }, rateTaxes) : []
+  const modeNote = taxLines.length > 0 ? (doc.pricesIncludeTax ? 'Amounts include tax.' : 'Amounts are before tax.') : ''
+  return { items, applied, tax, total, taxable, taxLines, modeNote, inclusive: doc.pricesIncludeTax === true && taxLines.length > 0 }
+}
+
+function noteLineName(i: { productName?: string | null; serviceDescription?: string | null; product?: { productName: string } | null }): string {
+  return i.productName || i.product?.productName || i.serviceDescription || 'Item'
+}
+
+function noteItemsTableHtml(fig: ReturnType<typeof noteFigures>, fmt: (n: number) => string): string {
+  if (fig.items.length === 0) return ''
+  const rows = fig.items.map(i => `
+      <tr>
+        <td>${escHtml(noteLineName(i))}</td>
+        <td class="right">${i.quantity}</td>
+        <td class="right">${fmt(i.unitPrice)}</td>
+        <td class="right">${fig.applied && i.taxRate > 0 ? i.taxRate + '%' : '—'}</td>
+        <td class="right bold">${fmt(i.lineTotal)}</td>
+      </tr>`).join('')
+  return `<table style="width:100%;border-collapse:collapse;margin-bottom:16px;font-size:11px">
+    <thead><tr style="text-align:left;border-bottom:1px solid #cbd5e1">
+      <th>Description</th><th class="right">Qty</th><th class="right">Unit Price${fig.inclusive ? ' (incl. tax)' : ''}</th><th class="right">Tax%</th><th class="right">Amount</th>
+    </tr></thead>
+    <tbody>${rows}</tbody>
+  </table>`
+}
+
+function noteTotalsHtml(fig: ReturnType<typeof noteFigures>, fmt: (n: number) => string, totalLabel: string): string {
+  const taxRows = fig.taxLines.length > 0
+    ? `<div class="summary-row"><span>Taxable value</span><span>${fmt(fig.taxable)}</span></div>` + fig.taxLines.map(l => `<div class="summary-row"><span>${l.label}</span><span>${fmt(l.amount)}</span></div>`).join('')
+    : ''
+  return `${taxRows}${fig.modeNote ? `<div class="ref-line">${fig.modeNote}</div>` : ''}<div class="summary-total"><span>${totalLabel}</span><span>${fmt(fig.total)}</span></div>`
+}
+
+function noteReceiptHtml(fig: ReturnType<typeof noteFigures>, fmt: (n: number) => string, totalLabel: string): string {
+  const itemRows = fig.items.map(i => `<div class="row"><span>${escHtml(noteLineName(i))} x${i.quantity}</span><span>${fmt(i.lineTotal)}</span></div>`).join('')
+  const taxRows = fig.taxLines.length > 0
+    ? `<div class="row"><span>Taxable value</span><span>${fmt(fig.taxable)}</span></div>` + fig.taxLines.map(l => `<div class="row"><span>${l.label}</span><span>${fmt(l.amount)}</span></div>`).join('')
+    : ''
+  return `${itemRows}${fig.items.length > 0 ? '<div class="divider"></div>' : ''}${taxRows}${fig.modeNote ? `<div style="font-size:8px">${fig.modeNote}</div>` : ''}<div class="row total-row"><span>${totalLabel}</span><span>${fmt(fig.total)}</span></div>`
 }
 
 function escHtml(s: string | null | undefined): string {
@@ -144,7 +242,9 @@ function watermarkHtml(profile: BusinessProfile | null, logoUrl?: string): strin
 }
 
 /** Mirrors renderer's tax.util.ts getTaxLabel() — main process can't import renderer code. */
-function getTaxLabel(taxModel?: string | null): string {
+function getTaxLabel(taxModel?: string | null, country?: string | null): string {
+  const local = taxLabelForCountry(country, taxModel)
+  if (local) return local
   switch (taxModel) {
     case 'GST': return 'GST'
     case 'VAT': return 'VAT'
@@ -171,10 +271,14 @@ function threeDigitsToWords(n: number): string {
 // for every offline-first install regardless of BusinessProfile.country,
 // not just India. Rounds to whole currency units; the fractional part (if
 // any) is spelled out as "and N/100" the way a cheque amount conventionally
-// is, rather than silently dropped.
-function amountToWords(amount: number, currencyName: string): string {
-  const whole = Math.floor(Math.abs(amount))
-  const fraction = Math.round((Math.abs(amount) - whole) * 100)
+// is, rather than silently dropped. The fraction is in the currency's own minor
+// unit (N/100, N/1000 for KWD, none for JPY) and is taken from exact minor units
+// so 0.995 can never read "100/100".
+export function amountToWords(amount: number, currencyName: string, decimals = 2): string {
+  const unit = Math.pow(10, decimals)
+  const minor = Math.round(Math.abs(roundMoney(amount, decimals)) * unit)
+  const whole = Math.floor(minor / unit)
+  const fraction = minor % unit
 
   if (whole === 0 && fraction === 0) return `Zero ${currencyName} Only`
 
@@ -190,7 +294,7 @@ function amountToWords(amount: number, currencyName: string): string {
   if (n > 0) parts.push(threeDigitsToWords(n))
 
   const wholeWords = parts.length > 0 ? parts.join(' ') : 'Zero'
-  const fractionWords = fraction > 0 ? ` and ${fraction}/100` : ''
+  const fractionWords = fraction > 0 ? ` and ${fraction}/${unit}` : ''
   return `${wholeWords} ${currencyName}${fractionWords} Only`
 }
 
@@ -273,6 +377,8 @@ interface Invoice {
   paymentStatus: string
   notes?: string | null
   gstType?: string | null
+  // Unit prices/discounts on this document are tax-inclusive; the tax lines below are the tax contained in them.
+  pricesIncludeTax?: boolean | null
   foreignCurrencyCode?: string | null
   foreignExchangeRate?: number | null
   foreignTotalAmount?: number | null
@@ -320,10 +426,11 @@ async function getPrintFormatSettings(): Promise<{ numberFormat: string; decimal
   const rows = await db.setting.findMany({ where: { settingKey: { in: ['number_format', 'decimal_places', 'currency_symbol_position'] } } })
   const map = new Map(rows.map(r => [r.settingKey, r.settingValue]))
   const numberFormat = map.get('number_format') ?? 'IN'
-  const decimalsRaw = map.get('decimal_places')
-  const decimals = decimalsRaw !== undefined ? parseInt(decimalsRaw, 10) : 2
+  let currencyCode: string | null = null
+  try { currencyCode = (await db.businessProfile.findFirst({ select: { currencyCode: true } }))?.currencyCode ?? null } catch { /* fall back to the setting */ }
+  const decimals = resolveDisplayDecimals(currencyCode, map.get('decimal_places'))
   const symbolPosition = map.get('currency_symbol_position') === 'suffix' ? 'suffix' : 'prefix'
-  return { numberFormat, decimals: Number.isFinite(decimals) ? decimals : 2, symbolPosition }
+  return { numberFormat, decimals, symbolPosition }
 }
 
 // Exported so other main-process code building printable content (e.g. Phase
@@ -382,16 +489,12 @@ export const printService = {
     // inter-state (IGST) sale must print a single IGST line, never CGST+SGST —
     // showing CGST/SGST on an inter-state sale is legally incorrect under GST.
     const isGstModel = profile?.taxModel === 'GST'
-    const isIGST = invoice.gstType === 'IGST'
-    const cgst = invoice.taxAmount / 2
-    const sgst = invoice.taxAmount / 2
+    // CGST + SGST (split exactly per rate), a single IGST line, or a single GST line; always the invoice's own tax.
+    const gstLines = gstPresentationLines(invoice.gstType, invoice.taxAmount, getCurrencyDecimals(profile?.currencyCode), invoice.items)
     const taxHtml = invoice.taxAmount > 0
       ? isGstModel
-        ? isIGST
-          ? `<div class="totals-row"><span>IGST</span><span>${formatAmount(invoice.taxAmount, sym)}</span></div>`
-          : `<div class="totals-row"><span>CGST</span><span>${formatAmount(cgst, sym)}</span></div>
-           <div class="totals-row"><span>SGST</span><span>${formatAmount(sgst, sym)}</span></div>`
-        : `<div class="totals-row"><span>${escHtml(getTaxLabel(profile?.taxModel))}</span><span>${formatAmount(invoice.taxAmount, sym)}</span></div>`
+        ? gstLines.map(l => `<div class="totals-row"><span>${l.label}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')
+        : `<div class="totals-row"><span>${escHtml(getTaxLabel(profile?.taxModel, profile?.country))}</span><span>${formatAmount(invoice.taxAmount, sym)}</span></div>`
       : ''
 
     // HSN/SAC is a legally-required GST line-item field in India above
@@ -400,6 +503,10 @@ export const printService = {
     // this file's convention for legally-relevant fields elsewhere, e.g.
     // the CGST/SGST breakdown above), not gated behind a template toggle.
     const showHsn = isGstModel
+    const inclusive = invoice.pricesIncludeTax === true
+    // A return line stores its total as the negative tax-exclusive refund; an inclusive document shows the
+    // tax-inclusive refund so the line agrees with the tax-inclusive unit price beside it.
+    const lineShown = (item: InvoiceItem) => inclusive && isReturn ? Math.abs(item.lineTotal) + item.taxAmount : item.lineTotal
     const itemsHtml = invoice.items.map((item, i) => `
       <tr>
         <td>${i + 1}</td>
@@ -409,14 +516,14 @@ export const printService = {
         <td class="right">${formatAmount(item.unitPrice, sym)}</td>
         <td class="right">${item.discountAmount > 0 ? formatAmount(item.discountAmount, sym) : '—'}</td>
         <td class="right">${item.taxRate > 0 ? item.taxRate + '%' : '—'}</td>
-        <td class="right bold">${formatAmount(item.lineTotal, sym)}</td>
+        <td class="right bold">${formatAmount(lineShown(item), sym)}</td>
       </tr>`).join('')
 
     const placeOfSupply = invoice.buyerState ? escHtml(invoice.buyerState) : ''
     const dueDateHtml = invoice.dueDate ? `<div class="inv-date">Due: ${formatDate(invoice.dueDate)}</div>` : ''
 
     const amountInWordsHtml = templateConfig?.showAmountInWords
-      ? `<div class="amount-words"><span class="section-title">Amount in Words</span><p>${escHtml(amountToWords(invoice.totalAmount, currencyNameFor(profile?.currencyCode)))}</p></div>`
+      ? `<div class="amount-words"><span class="section-title">Amount in Words</span><p>${escHtml(amountToWords(invoice.totalAmount, currencyNameFor(profile?.currencyCode), getCurrencyDecimals(profile?.currencyCode)))}</p></div>`
       : ''
 
     const hasBankDetails = !!(profile?.bankAccountNumber || profile?.bankName)
@@ -544,7 +651,7 @@ export const printService = {
           <th>Product</th>
           ${showHsn ? '<th>HSN/SAC</th>' : ''}
           <th class="right">Qty</th>
-          <th class="right">Unit Price</th>
+          <th class="right">Unit Price${inclusive ? ' (incl. tax)' : ''}</th>
           <th class="right">Discount</th>
           <th class="right">Tax</th>
           <th class="right">Total</th>
@@ -552,6 +659,7 @@ export const printService = {
       </thead>
       <tbody>${itemsHtml}</tbody>
     </table>
+    ${inclusive ? '<p style="font-size:10px;color:#64748b;margin-top:-8px">Prices include tax.</p>' : ''}
   </div>
 
   ${invoice.notes ? `<div class="notes-box">Note: ${escHtml(invoice.notes)}</div>` : ''}
@@ -741,24 +849,20 @@ export const printService = {
       } catch { /* optional */ }
     }
 
+    const inclusiveR = invoice.pricesIncludeTax === true
     const itemsHtml = invoice.items.map(item => `
       <tr>
         <td>${escHtml(item.productName)}${item.variantInfo ? ` <span style="font-size:9px;color:#666">(${escHtml(item.variantInfo)})</span>` : ''}${jewelleryDetailLine(item, sym) ? `<br><span style="font-size:9px;color:#666">${escHtml(jewelleryDetailLine(item, sym))}</span>` : ''}</td>
         <td style="text-align:right">${item.quantity}×${formatAmount(item.unitPrice, sym)}</td>
-        <td style="text-align:right">${formatAmount(item.lineTotal, sym)}</td>
+        <td style="text-align:right">${formatAmount(inclusiveR && isReturn ? Math.abs(item.lineTotal) + item.taxAmount : item.lineTotal, sym)}</td>
       </tr>`).join('')
 
     const isGstModelR = profile?.taxModel === 'GST'
-    const isIGSTR = invoice.gstType === 'IGST'
-    const rcptCgst = invoice.taxAmount / 2
-    const rcptSgst = invoice.taxAmount / 2
+    const rcptGstLines = gstPresentationLines(invoice.gstType, invoice.taxAmount, getCurrencyDecimals(profile?.currencyCode), invoice.items)
     const rcptTaxHtml = invoice.taxAmount > 0
       ? isGstModelR
-        ? isIGSTR
-          ? `<tr><td colspan="2">IGST</td><td style="text-align:right">${formatAmount(invoice.taxAmount, sym)}</td></tr>`
-          : `<tr><td colspan="2">CGST</td><td style="text-align:right">${formatAmount(rcptCgst, sym)}</td></tr>
-           <tr><td colspan="2">SGST</td><td style="text-align:right">${formatAmount(rcptSgst, sym)}</td></tr>`
-        : `<tr><td colspan="2">${escHtml(getTaxLabel(profile?.taxModel))}</td><td style="text-align:right">${formatAmount(invoice.taxAmount, sym)}</td></tr>`
+        ? rcptGstLines.map(l => `<tr><td colspan="2">${l.label}</td><td style="text-align:right">${formatAmount(l.amount, sym)}</td></tr>`).join('')
+        : `<tr><td colspan="2">${escHtml(getTaxLabel(profile?.taxModel, profile?.country))}</td><td style="text-align:right">${formatAmount(invoice.taxAmount, sym)}</td></tr>`
       : ''
 
     return `<!DOCTYPE html>
@@ -798,12 +902,14 @@ export const printService = {
     </tr>
     ${invoice.discountAmount > 0 ? `<tr><td colspan="2">Discount</td><td style="text-align:right">-${formatAmount(invoice.discountAmount, sym)}</td></tr>` : ''}
     ${rcptTaxHtml}
+    ${Math.abs(invoice.roundingAmount) > 0.001 ? `<tr><td colspan="2">Rounding</td><td style="text-align:right">${invoice.roundingAmount >= 0 ? '+' : ''}${formatAmount(invoice.roundingAmount, sym)}</td></tr>` : ''}
     <tr class="total-row">
       <td colspan="2">TOTAL</td>
       <td style="text-align:right">${formatAmount(invoice.totalAmount, sym)}</td>
     </tr>
     ${invoice.balanceAmount > 0.01 ? `<tr><td colspan="2">Balance Due</td><td style="text-align:right">${formatAmount(invoice.balanceAmount, sym)}</td></tr>` : ''}
   </table>
+  ${inclusiveR ? '<div style="font-size:8px;margin-top:2px">Prices include tax.</div>' : ''}
   <div class="divider"></div>
   ${qrHtml}
   <div class="center" style="font-size:8px;margin-top:8px">${escHtml(templateConfig?.footerText || 'Thank you for your business!')}</div>
@@ -818,8 +924,10 @@ export const printService = {
     validUntil?: string | Date | null
     customerName?: string | null
     customer?: { customerName: string; phone?: string | null } | null
-    items: Array<{ productName: string; quantity: number; unitPrice: number; discount: number; taxRate: number; lineTotal: number }>
+    items: Array<{ productName: string; hsnCode?: string | null; quantity: number; unitPrice: number; discount: number; taxRate: number; lineTotal: number }>
     subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number
+    pricesIncludeTax?: boolean | null
+    gstType?: string | null
     notes?: string | null
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
@@ -833,9 +941,11 @@ export const printService = {
     const customerDisplay = escHtml(quotation.customer?.customerName ?? quotation.customerName ?? 'Walk-in Customer')
     const validUntilStr = quotation.validUntil ? formatDate(quotation.validUntil as string | Date) : 'No expiry'
 
+    const showHsn = quotation.items.some(i => !!i.hsnCode)
     const itemsHtml = quotation.items.map(item => `
       <tr>
         <td>${escHtml(item.productName)}</td>
+        ${showHsn ? `<td>${escHtml(item.hsnCode) || '—'}</td>` : ''}
         <td class="right">${item.quantity}</td>
         <td class="right">${formatAmount(item.unitPrice, sym)}</td>
         <td class="right">${item.discount > 0 ? item.discount + '%' : '—'}</td>
@@ -911,8 +1021,9 @@ export const printService = {
     <thead>
       <tr>
         <th>Description</th>
+        ${showHsn ? '<th>HSN/SAC</th>' : ''}
         <th class="right">Qty</th>
-        <th class="right">Unit Price</th>
+        <th class="right">Unit Price${quotation.pricesIncludeTax ? ' (incl. tax)' : ''}</th>
         <th class="right">Disc%</th>
         <th class="right">Tax%</th>
         <th class="right">Amount</th>
@@ -920,12 +1031,13 @@ export const printService = {
     </thead>
     <tbody>${itemsHtml}</tbody>
   </table>
+  ${quotation.pricesIncludeTax ? '<p style="font-size:10px;color:#64748b;margin-top:-8px;margin-bottom:12px">Prices include tax.</p>' : ''}
 
   <div class="totals">
     <div class="totals-table">
       <div class="totals-row"><span>Subtotal</span><span>${formatAmount(quotation.subtotal, sym)}</span></div>
       ${quotation.discountAmount > 0 ? `<div class="totals-row"><span>Discount</span><span>−${formatAmount(quotation.discountAmount, sym)}</span></div>` : ''}
-      ${quotation.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(quotation.taxAmount, sym)}</span></div>` : ''}
+      ${documentTaxLines(profile, quotation, quotationRateTaxes(quotation, profile?.currencyCode)).map(l => `<div class="totals-row"><span>${l.label}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')}
       <div class="totals-total"><span>Total Amount</span><span>${formatAmount(quotation.totalAmount, sym)}</span></div>
     </div>
   </div>
@@ -950,8 +1062,10 @@ export const printService = {
     validUntil?: string | Date | null
     customerName?: string | null
     customer?: { customerName: string; phone?: string | null } | null
-    items: Array<{ productName: string; quantity: number; unitPrice: number; discount: number; taxRate: number; lineTotal: number }>
+    items: Array<{ productName: string; hsnCode?: string | null; quantity: number; unitPrice: number; discount: number; taxRate: number; lineTotal: number }>
     subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number
+    pricesIncludeTax?: boolean | null
+    gstType?: string | null
     notes?: string | null
   }, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
@@ -1010,12 +1124,13 @@ export const printService = {
       <td style="text-align:right">${formatAmount(quotation.subtotal, sym)}</td>
     </tr>
     ${quotation.discountAmount > 0 ? `<tr><td colspan="2">Discount</td><td style="text-align:right">-${formatAmount(quotation.discountAmount, sym)}</td></tr>` : ''}
-    ${quotation.taxAmount > 0 ? `<tr><td colspan="2">Tax</td><td style="text-align:right">${formatAmount(quotation.taxAmount, sym)}</td></tr>` : ''}
+    ${documentTaxLines(profile, quotation, quotationRateTaxes(quotation, profile?.currencyCode)).map(l => `<tr><td colspan="2">${l.label}</td><td style="text-align:right">${formatAmount(l.amount, sym)}</td></tr>`).join('')}
     <tr class="total-row">
       <td colspan="2">TOTAL</td>
       <td style="text-align:right">${formatAmount(quotation.totalAmount, sym)}</td>
     </tr>
   </table>
+  ${quotation.pricesIncludeTax ? '<div style="font-size:8px;margin-top:2px">Prices include tax.</div>' : ''}
   <div class="divider"></div>
   ${quotation.notes ? `<div style="font-size:8px">Notes: ${escHtml(quotation.notes)}</div><div class="divider"></div>` : ''}
   <div class="center" style="font-size:7px;margin-top:4px;color:#666;font-style:italic">Not a tax invoice. Prices subject to change.</div>
@@ -1036,7 +1151,7 @@ export const printService = {
     notes?: string | null
     customer?: { customerName: string; phone?: string | null } | null
     invoice?: { invoiceNumber: string; invoiceDate: string | Date } | null
-  }, profile: BusinessProfile | null): Promise<string> {
+  } & NotePrintDoc, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
     // Locale-aware formatting settings, fetched once per document and
@@ -1046,6 +1161,8 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const customerDisplay = escHtml(cn.customer?.customerName ?? 'Walk-in Customer')
+    const fig = noteFigures(cn, profile)
+    const fmt = (n: number) => formatAmount(n, sym)
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1105,9 +1222,10 @@ export const printService = {
 
   <div class="notice">This credit note reduces the amount owed by the customer. It is not a refund of cash unless separately settled.</div>
 
+  ${noteItemsTableHtml(fig, fmt)}
   <div class="summary-box">
     <div class="summary-row"><span>Reason</span><span>${escHtml(cn.reason)}</span></div>
-    <div class="summary-total"><span>Credit Amount</span><span>${formatAmount(cn.amount, sym)}</span></div>
+    ${noteTotalsHtml(fig, fmt, 'Credit Amount')}
   </div>
 
   ${cn.notes ? `<div class="notice"><strong>Notes:</strong> ${escHtml(cn.notes)}</div>` : ''}
@@ -1132,7 +1250,7 @@ export const printService = {
     notes?: string | null
     customer?: { customerName: string; phone?: string | null } | null
     invoice?: { invoiceNumber: string; invoiceDate: string | Date } | null
-  }, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
+  } & NotePrintDoc, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
     // Locale-aware formatting settings, fetched once per document and
@@ -1142,6 +1260,8 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const customerDisplay = escHtml(cn.customer?.customerName ?? 'Walk-in Customer')
+    const fig = noteFigures(cn, profile)
+    const fmt = (n: number) => formatAmount(n, sym)
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'
     const headerFontSize = paperWidth === '58mm' ? '12px' : '14px'
@@ -1172,7 +1292,7 @@ export const printService = {
   ${cn.invoice ? `<div style="font-size:8px">Against Invoice ${escHtml(cn.invoice.invoiceNumber)} (${formatDate(cn.invoice.invoiceDate)})</div>` : ''}
   <div class="divider"></div>
   <div class="row"><span>Reason</span><span>${escHtml(cn.reason)}</span></div>
-  <div class="row total-row"><span>Credit Amount</span><span>${formatAmount(cn.amount, sym)}</span></div>
+  ${noteReceiptHtml(fig, fmt, 'Credit Amount')}
   <div class="divider"></div>
   ${cn.notes ? `<div style="font-size:8px">Notes: ${escHtml(cn.notes)}</div><div class="divider"></div>` : ''}
   <div class="center" style="font-size:7px;margin-top:4px;color:#666;font-style:italic">Reduces amount owed. Not a cash refund unless settled separately.</div>
@@ -1189,7 +1309,7 @@ export const printService = {
     notes?: string | null
     supplier?: { supplierName: string; phone?: string | null } | null
     purchaseOrder?: { poNumber: string; orderDate: string | Date } | null
-  }, profile: BusinessProfile | null): Promise<string> {
+  } & NotePrintDoc, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
     // Locale-aware formatting settings, fetched once per document and
@@ -1199,6 +1319,8 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const supplierDisplay = escHtml(dn.supplier?.supplierName ?? 'Supplier')
+    const fig = noteFigures(dn, profile)
+    const fmt = (n: number) => formatAmount(n, sym)
 
     return `<!DOCTYPE html>
 <html lang="en">
@@ -1258,9 +1380,10 @@ export const printService = {
 
   <div class="notice">This debit note reduces the amount owed to the supplier. It is not a cash recovery unless separately settled.</div>
 
+  ${noteItemsTableHtml(fig, fmt)}
   <div class="summary-box">
     <div class="summary-row"><span>Reason</span><span>${escHtml(dn.reason)}</span></div>
-    <div class="summary-total"><span>Debit Amount</span><span>${formatAmount(dn.amount, sym)}</span></div>
+    ${noteTotalsHtml(fig, fmt, 'Debit Amount')}
   </div>
 
   ${dn.notes ? `<div class="notice"><strong>Notes:</strong> ${escHtml(dn.notes)}</div>` : ''}
@@ -1283,7 +1406,7 @@ export const printService = {
     notes?: string | null
     supplier?: { supplierName: string; phone?: string | null } | null
     purchaseOrder?: { poNumber: string; orderDate: string | Date } | null
-  }, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
+  } & NotePrintDoc, profile: BusinessProfile | null, paperWidth: '80mm' | '58mm' = '80mm'): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
     const bizName = escHtml(profile?.businessName ?? 'Business')
     // Locale-aware formatting settings, fetched once per document and
@@ -1293,6 +1416,8 @@ export const printService = {
     const _fmtSettings = await getPrintFormatSettings()
     const formatAmount = (amount: number, symbol = sym): string => formatAmountLocaleAware(Math.abs(amount), symbol, _fmtSettings.numberFormat, _fmtSettings.decimals, _fmtSettings.symbolPosition)
     const supplierDisplay = escHtml(dn.supplier?.supplierName ?? 'Supplier')
+    const fig = noteFigures(dn, profile)
+    const fmt = (n: number) => formatAmount(n, sym)
     const width = paperWidth === '58mm' ? '56mm' : '72mm'
     const baseFontSize = paperWidth === '58mm' ? '9px' : '11px'
     const headerFontSize = paperWidth === '58mm' ? '12px' : '14px'
@@ -1323,7 +1448,7 @@ export const printService = {
   ${dn.purchaseOrder ? `<div style="font-size:8px">Against PO ${escHtml(dn.purchaseOrder.poNumber)} (${formatDate(dn.purchaseOrder.orderDate)})</div>` : ''}
   <div class="divider"></div>
   <div class="row"><span>Reason</span><span>${escHtml(dn.reason)}</span></div>
-  <div class="row total-row"><span>Debit Amount</span><span>${formatAmount(dn.amount, sym)}</span></div>
+  ${noteReceiptHtml(fig, fmt, 'Debit Amount')}
   <div class="divider"></div>
   ${dn.notes ? `<div style="font-size:8px">Notes: ${escHtml(dn.notes)}</div><div class="divider"></div>` : ''}
   <div class="center" style="font-size:7px;margin-top:4px;color:#666;font-style:italic">Reduces amount owed to supplier. Not a cash recovery unless settled separately.</div>
@@ -1340,6 +1465,8 @@ export const printService = {
   // (PurchaseOrderItem has none — unlike QuotationItem/InvoiceItem).
   async generatePurchaseOrderHtml(po: {
     poNumber: string
+    pricesIncludeTax?: boolean | null
+    gstType?: string | null
     orderDate: string | Date
     expectedDate?: string | Date | null
     status: string
@@ -1358,7 +1485,7 @@ export const printService = {
     // as always-present and crashed on any PO with a service line — fixed
     // by mirroring generateBillHtml/generateSalesOrderHtml's own null-safe
     // pattern, which already handles this correctly.
-    items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
+    items: Array<{ quantity: number; unitCost: number; taxRate: number; taxAmount?: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
     subtotal: number; taxAmount: number; totalAmount: number
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
@@ -1460,7 +1587,7 @@ export const printService = {
       <tr>
         <th>Description</th>
         <th class="right">Qty</th>
-        <th class="right">Unit Cost</th>
+        <th class="right">Unit Cost${po.pricesIncludeTax ? ' (incl. tax)' : ''}</th>
         <th class="right">Tax%</th>
         <th class="right">Amount</th>
       </tr>
@@ -1468,10 +1595,12 @@ export const printService = {
     <tbody>${itemsHtml}</tbody>
   </table>
 
+  ${po.pricesIncludeTax ? '<p style="font-size:10px;color:#64748b;margin-bottom:12px">Prices include tax.</p>' : ''}
+
   <div class="totals">
     <div class="totals-table">
       <div class="totals-row"><span>Subtotal</span><span>${formatAmount(po.subtotal, sym)}</span></div>
-      ${po.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(po.taxAmount, sym)}</span></div>` : ''}
+      ${documentTaxLines(profile, po, po.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))).map(l => `<div class="totals-row"><span>${l.label}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')}
       <div class="totals-total"><span>Total Amount</span><span>${formatAmount(po.totalAmount, sym)}</span></div>
     </div>
   </div>
@@ -1499,12 +1628,15 @@ export const printService = {
   // SalesOrderItem has, handled the same way in generateSalesOrderHtml below.
   async generateBillHtml(bill: {
     billNumber: string
+    pricesIncludeTax?: boolean | null
+    gstType?: string | null
+    discountAmount?: number
     billDate: string | Date
     dueDate?: string | Date | null
     status: string
     notes?: string | null
     supplier: { supplierName: string; supplierCode?: string | null; phone?: string | null } | null
-    items: Array<{ quantity: number; unitCost: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
+    items: Array<{ quantity: number; unitCost: number; taxRate: number; taxAmount?: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
     subtotal: number; taxAmount: number; totalAmount: number; balanceAmount: number
     foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null; foreignTotalAmount?: number | null
   }, profile: BusinessProfile | null): Promise<string> {
@@ -1593,7 +1725,7 @@ export const printService = {
       <tr>
         <th>Description</th>
         <th class="right">Qty</th>
-        <th class="right">Unit Cost</th>
+        <th class="right">Unit Cost${bill.pricesIncludeTax ? ' (incl. tax)' : ''}</th>
         <th class="right">Tax%</th>
         <th class="right">Amount</th>
       </tr>
@@ -1601,10 +1733,13 @@ export const printService = {
     <tbody>${itemsHtml}</tbody>
   </table>
 
+  ${bill.pricesIncludeTax ? '<p style="font-size:10px;color:#64748b;margin-bottom:12px">Prices include tax.</p>' : ''}
+
   <div class="totals">
     <div class="totals-table">
       <div class="totals-row"><span>Subtotal</span><span>${formatAmount(bill.subtotal, sym)}</span></div>
-      ${bill.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(bill.taxAmount, sym)}</span></div>` : ''}
+      ${(bill.discountAmount ?? 0) > 0 ? `<div class="totals-row"><span>Discount</span><span>- ${formatAmount(bill.discountAmount ?? 0, sym)}</span></div>` : ''}
+      ${documentTaxLines(profile, bill, bill.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))).map(l => `<div class="totals-row"><span>${l.label}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')}
       <div class="totals-total"><span>Total Amount</span><span>${formatAmount(bill.totalAmount, sym)}</span></div>
       ${bill.foreignCurrencyCode && bill.foreignTotalAmount != null ? `<div class="totals-row"><span>≈ ${escHtml(bill.foreignCurrencyCode)}</span><span>${formatAmount(bill.foreignTotalAmount, '')}${bill.foreignExchangeRate ? ` (@ ${bill.foreignExchangeRate})` : ''}</span></div>` : ''}
       ${bill.balanceAmount > 0 && bill.balanceAmount !== bill.totalAmount ? `<div class="totals-row"><span>Balance Due</span><span>${formatAmount(bill.balanceAmount, sym)}</span></div>` : ''}
@@ -1627,12 +1762,14 @@ export const printService = {
   // product-or-service line duality generateBillHtml above handles.
   async generateSalesOrderHtml(so: {
     soNumber: string
+    pricesIncludeTax?: boolean | null
+    gstType?: string | null
     orderDate: string | Date
     expectedDate?: string | Date | null
     status: string
     notes?: string | null
     customer: { customerName: string; customerCode?: string | null; phone?: string | null } | null
-    items: Array<{ quantity: number; unitPrice: number; taxRate: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
+    items: Array<{ quantity: number; unitPrice: number; taxRate: number; taxAmount?: number; total: number; product: { productName: string; sku?: string | null; unit: string } | null; serviceDescription?: string | null }>
     subtotal: number; taxAmount: number; totalAmount: number
   }, profile: BusinessProfile | null): Promise<string> {
     const sym = escHtml(profile?.currencySymbol ?? '₹')
@@ -1720,7 +1857,7 @@ export const printService = {
       <tr>
         <th>Description</th>
         <th class="right">Qty</th>
-        <th class="right">Unit Price</th>
+        <th class="right">Unit Price${so.pricesIncludeTax ? ' (incl. tax)' : ''}</th>
         <th class="right">Tax%</th>
         <th class="right">Amount</th>
       </tr>
@@ -1728,10 +1865,12 @@ export const printService = {
     <tbody>${itemsHtml}</tbody>
   </table>
 
+  ${so.pricesIncludeTax ? '<p style="font-size:10px;color:#64748b;margin-bottom:12px">Prices include tax.</p>' : ''}
+
   <div class="totals">
     <div class="totals-table">
       <div class="totals-row"><span>Subtotal</span><span>${formatAmount(so.subtotal, sym)}</span></div>
-      ${so.taxAmount > 0 ? `<div class="totals-row"><span>Tax</span><span>${formatAmount(so.taxAmount, sym)}</span></div>` : ''}
+      ${documentTaxLines(profile, so, so.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))).map(l => `<div class="totals-row"><span>${l.label}</span><span>${formatAmount(l.amount, sym)}</span></div>`).join('')}
       <div class="totals-total"><span>Total Amount</span><span>${formatAmount(so.totalAmount, sym)}</span></div>
     </div>
   </div>

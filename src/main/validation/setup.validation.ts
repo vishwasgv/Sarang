@@ -13,6 +13,8 @@ export const SetupPayloadSchema = z.object({
   taxNumber: z.string().max(50).optional(),
   upiId: z.string().max(100).optional(),
   logoPath: z.string().optional(),
+  pricesIncludeTax: z.boolean().optional(),
+  invoiceRoundingRule: z.enum(['NONE', '0.05', '0.10', '0.50', '1']).optional(),
   adminFullName: z.string().min(1, 'Full name is required').max(200),
   adminUsername: z.string().min(3, 'Username must be at least 3 characters').max(50).regex(/^[a-zA-Z0-9_]+$/, 'Only letters, numbers, underscores'),
   adminPassword: z.string().min(6, 'Password must be at least 6 characters')

@@ -4,6 +4,7 @@ import { logAction } from './audit.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService } from './journal-entry.service'
 import { roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { ServiceError } from '../errors/service-error'
 import type { CloseFinancialYearPayload } from '../validation/year-end-close.validation'
 
@@ -32,6 +33,7 @@ async function computeAccountBalance(tx: TxClient, accountId: string, asOfDate: 
 
 export const yearEndCloseService = {
   async closeFinancialYear(payload: CloseFinancialYearPayload, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     try {
       const closingDate = parseLocalDateStart(payload.closingDate)

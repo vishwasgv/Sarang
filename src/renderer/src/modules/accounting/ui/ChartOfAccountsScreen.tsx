@@ -1,6 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Landmark, RefreshCw, Plus } from 'lucide-react'
+import { useNavigate } from 'react-router-dom'
+import { Landmark, RefreshCw, Plus, BookOpen } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { Select } from '@shared/ui/atoms/Select'
@@ -27,6 +28,8 @@ export function ChartOfAccountsScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
   const canManage = hasPermission('chartOfAccounts.manage')
+  const canViewLedger = hasPermission('analytics.viewProfit')
+  const navigate = useNavigate()
 
   const [accounts, setAccounts] = useState<Account[]>([])
   const [loading, setLoading] = useState(true)
@@ -100,6 +103,7 @@ export function ChartOfAccountsScreen() {
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('accounting.chartOfAccounts.colType')}</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('accounting.chartOfAccounts.colSource')}</th>
                 <th className="text-center px-4 py-3 text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase">{t('accounting.chartOfAccounts.colStatus')}</th>
+                {canViewLedger && <th className="px-4 py-3" />}
               </tr>
             </thead>
             <tbody>
@@ -112,6 +116,16 @@ export function ChartOfAccountsScreen() {
                   <td className="px-4 py-3 text-center">
                     <Badge variant={a.isActive ? 'success' : 'neutral'} size="sm">{a.isActive ? t('common.active') : t('common.inactive')}</Badge>
                   </td>
+                  {canViewLedger && (
+                    <td className="px-4 py-3 text-end">
+                      <button
+                        onClick={() => navigate(`/reports?report=generalLedger&accountId=${encodeURIComponent(a.id)}`)}
+                        className="inline-flex items-center gap-1.5 h-9 px-3 rounded-lg text-xs font-semibold border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 hover:border-brand hover:text-brand transition-colors"
+                      >
+                        <BookOpen size={14} /> {t('accounting.chartOfAccounts.viewLedger')}
+                      </button>
+                    </td>
+                  )}
                 </tr>
               ))}
             </tbody>

@@ -268,7 +268,6 @@ export async function generateSiteVisitInvoice(siteVisitId: string) {
       const result = await billingService.createInvoice({
         customerId: visit.project.clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{
           productId: product.id,
           quantity: 1,

@@ -5,6 +5,8 @@ import { useTranslation } from 'react-i18next'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
+import { computeDocumentTotals, getCurrencyDecimals } from '@money'
+import { splitTaxLines, taxLinesText } from '@shared/utils/tax.util'
 import { cn } from '@shared/utils/cn'
 import { formatDate } from '@shared/utils/locale.util'
 import { formatCurrency } from '@shared/utils/currency.util'
@@ -20,7 +22,7 @@ interface QuotationItem {
 }
 interface Quotation {
   id: string; quotationNumber: string; customerName?: string | null; status: string
-  totalAmount: number; validUntil?: string | null; createdAt: string; items?: QuotationItem[]
+  totalAmount: number; taxAmount?: number; gstType?: string | null; pricesIncludeTax?: boolean; validUntil?: string | null; createdAt: string; items?: QuotationItem[]
   invoice?: { id: string; invoiceNumber: string } | null
   salesOrder?: { id: string; soNumber: string } | null
   customer?: { id: string; customerName: string; phone?: string | null; email?: string | null } | null
@@ -44,6 +46,19 @@ export function QuotationsScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const hasPermission = useAuthStore(s => s.hasPermission)
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
+  const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const currencyCode = useBusinessStore(s => s.profile?.currencyCode)
+
+  // Tax lines for the share text, shown the way the quotation presents its tax (same per-rate split as the print).
+  function quotationShareMessage(q: Quotation): string {
+    const base = t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeQuotation'), number: q.quotationNumber, amount: formatCurrency(q.totalAmount) })
+    const decimals = getCurrencyDecimals(currencyCode)
+    const rates = q.items && q.items.length > 0
+      ? computeDocumentTotals(q.items.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountPercent: i.discount, taxRate: i.taxRate })), { decimals, pricesIncludeTax: q.pricesIncludeTax === true }).lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))
+      : undefined
+    const taxText = taxLinesText(splitTaxLines(taxModel, q.taxAmount ?? 0, q.gstType, decimals, rates), formatCurrency)
+    return taxText ? `${base} ${t('billing.shareTaxLines', { lines: taxText })}` : base
+  }
 
   const [quotations, setQuotations] = useState<Quotation[]>([])
   const [loading, setLoading] = useState(true)
@@ -309,7 +324,7 @@ export function QuotationsScreen() {
                 <ShareMenu
                   recipientPhone={q.customer?.phone}
                   recipientEmail={q.customer?.email}
-                  buildWhatsAppMessage={() => t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeQuotation'), number: q.quotationNumber, amount: formatCurrency(q.totalAmount) })}
+                  buildWhatsAppMessage={() => quotationShareMessage(q)}
                   buildEmailSubject={() => t('billing.shareEmailSubject', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName })}
                   buildEmailBody={() => t('billing.shareEmailBody', { documentType: t('share.docTypeQuotation'), number: q.quotationNumber, businessName, amount: formatCurrency(q.totalAmount) })}
                   onExportPdf={() => handleExportPdfForShare(q)}

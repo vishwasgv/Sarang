@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -373,6 +374,7 @@ export async function getMonthlySummaries(payload: {
   year: number
   month: number
 }): Result<{ summaries: MonthlySummary[] }> {
+  await getBusinessCurrencyDecimals()
   try {
     const prisma = getPrisma()
     // Same basis-mismatch fix as getMonthAttendance above.

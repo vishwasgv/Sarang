@@ -6,6 +6,7 @@ import { getPrisma } from '../database/db'
 import { aszurexFooterHtml } from '../utils/branding'
 import { renderBarChart, renderStackedBarChart, renderLineChart, renderPieChart, CHART_STYLES } from '../utils/svg-charts'
 import { formatAmount as formatAmountLocaleAware } from './currency.service'
+import { resolveDisplayDecimals } from '../../shared/utils/money'
 
 export type ReportChartSpec =
   | { type: 'bar'; title: string; orientation?: 'horizontal' | 'vertical'; data: { label: string; value: number; color?: string }[]; valueIsCurrency?: boolean }
@@ -184,9 +185,7 @@ export async function generateReportHtml(params: {
   const fmtSettingsRows = await db.setting.findMany({ where: { settingKey: { in: ['number_format', 'decimal_places', 'currency_symbol_position'] } } })
   const fmtSettingsMap = new Map(fmtSettingsRows.map(r => [r.settingKey, r.settingValue]))
   const numberFormat = fmtSettingsMap.get('number_format') ?? 'IN'
-  const decimalsRaw = fmtSettingsMap.get('decimal_places')
-  const decimalsParsed = decimalsRaw !== undefined ? parseInt(decimalsRaw, 10) : 2
-  const decimals = Number.isFinite(decimalsParsed) ? decimalsParsed : 2
+  const decimals = resolveDisplayDecimals(bizProfile?.currencyCode, fmtSettingsMap.get('decimal_places'))
   const symbolPosition = fmtSettingsMap.get('currency_symbol_position') === 'suffix' ? 'suffix' : 'prefix'
 
   const fmtPlain = (n: number) => new Intl.NumberFormat(numberFormat === 'IN' ? 'en-IN' : numberFormat === 'EU' ? 'de-DE' : numberFormat === 'UK' ? 'en-GB' : 'en-US', { maximumFractionDigits: 2 }).format(n)

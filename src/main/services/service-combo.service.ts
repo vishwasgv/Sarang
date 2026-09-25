@@ -1,5 +1,7 @@
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
+import { roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 
 // Phase 68 §9.1 — Beauty Salon item 5: service-combo package builder. A
 // combo bundles N ServiceCatalog entries at one package price, typically
@@ -144,6 +146,7 @@ export async function deleteServiceCombo(id: string, userId?: string) {
 // when EVERY member is priced at 0, so the combo price is never silently
 // dropped entirely.
 export async function resolveComboServices(comboId: string) {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const combo = await db.serviceCombo.findUnique({ where: { id: comboId }, include })
@@ -152,7 +155,7 @@ export async function resolveComboServices(comboId: string) {
 
     const services = combo.items.map((i) => i.serviceCatalog)
     const totalBasePrice = services.reduce((s, svc) => s + svc.basePrice, 0)
-    const round2 = (n: number) => Math.round(n * 100) / 100
+    const round2 = (n: number) => roundCurrency(n)
 
     const priced = services.map((svc) => ({
       id: svc.id,

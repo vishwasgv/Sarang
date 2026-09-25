@@ -23,6 +23,9 @@ export const CreatePOSchema = z.object({
   items: z.array(POItemSchema).min(1, 'At least one item is required'),
   // Phase 62 — Reverse Charge Mechanism, same meaning as Bill's own.
   isReverseCharge: z.boolean().default(false),
+  // Unit costs on this order already include tax.
+  pricesIncludeTax: z.boolean().optional(),
+  gstType: z.enum(['CGST_SGST', 'IGST', 'GST']).optional(),
   // Phase 63 — drop-shipment: deliver directly to a customer's address
   // instead of the business's own location. Narrower cut than a full
   // pass-through-inventory feature — see PurchaseOrder's own schema comment.

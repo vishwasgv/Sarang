@@ -667,7 +667,8 @@ export async function deductIngredients(
           await createNotification({
             title: 'Ingredient stock not deducted',
             message: `Recipe "${recipe.recipeName}" fulfilled, but stock for one ingredient could not be updated (${message}). Recount this ingredient's stock manually.`,
-            notificationType: 'WARNING'
+            notificationType: 'WARNING',
+            actionPath: '/inventory'
           }).catch(() => {})
         }
       }

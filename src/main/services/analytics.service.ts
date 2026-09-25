@@ -5,6 +5,7 @@ import { getLicenseState, LICENSE_WARNING_WINDOW_DAYS } from './license.service'
 import { checkForUpdatesIfDue, getUpdateReadyVersion } from './update-check.service'
 import { getProductCostsBatch } from './valuation.service'
 import { formatDashboardAlert } from '../i18n/dashboardAlerts'
+import { roundCurrency, moneyEpsilon } from './currency.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -411,8 +412,8 @@ export async function getRevenueTrend(
       : key.length === 7
         ? shortMonth(new Date(key + '-01'))    // '12m' / custom monthly: 'YYYY-MM'
         : labelFn(new Date(key)),              // daily / weekly: 'YYYY-MM-DD'
-    revenue: Math.round((revenueMap.get(key) ?? 0) * 100) / 100,
-    expenses: Math.round((expenseMap.get(key) ?? 0) * 100) / 100
+    revenue: roundCurrency(revenueMap.get(key) ?? 0),
+    expenses: roundCurrency(expenseMap.get(key) ?? 0)
   }))
 }
 
@@ -476,7 +477,7 @@ export async function getTopProducts(limit: number = 10, dateFrom?: string, date
   return Array.from(map.values())
     .sort(sortBy === 'quantity' ? (a, b) => b.quantitySold - a.quantitySold : (a, b) => b.revenue - a.revenue)
     .slice(0, limit)
-    .map(p => ({ ...p, revenue: Math.round(p.revenue * 100) / 100 }))
+    .map(p => ({ ...p, revenue: roundCurrency(p.revenue) }))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -739,10 +740,10 @@ export async function getTopOutstanding(limit: number = 5): Promise<TopOutstandi
 
   return customers
     .map(c => ({ customerId: c.id, customerName: c.customerName, outstanding: balanceByCustomerId.get(c.id) ?? 0 }))
-    .filter(r => r.outstanding > 0.01)
+    .filter(r => r.outstanding > moneyEpsilon())
     .sort((a, b) => b.outstanding - a.outstanding)
     .slice(0, limit)
-    .map(r => ({ ...r, outstanding: Math.round(r.outstanding * 100) / 100 }))
+    .map(r => ({ ...r, outstanding: roundCurrency(r.outstanding) }))
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -778,7 +779,7 @@ export async function getTopCategories(limit: number = 5): Promise<TopCategory[]
   return Array.from(map.entries())
     .map(([categoryName, stats]) => ({
       categoryName,
-      revenue: Math.round(stats.revenue * 100) / 100,
+      revenue: roundCurrency(stats.revenue),
       itemsSold: stats.itemsSold
     }))
     .sort((a, b) => b.revenue - a.revenue)

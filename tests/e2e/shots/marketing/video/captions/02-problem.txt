@@ -1,0 +1,2 @@
+Billing app. Inventory app.
+Staff app. Reports app.

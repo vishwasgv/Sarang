@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
+import { useTaxNumberField } from '@shared/hooks/useTaxNumberField'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
 import { Modal } from '@shared/ui/molecules/Modal'
@@ -98,6 +99,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
     resolver: zodResolver(schema)
   })
   const taxExempt = watch('taxExempt')
+  const taxField = useTaxNumberField(watch('country'), watch('taxNumber'), t('common.taxNumber'))
   const customerKind = watch('customerKind')
   const [priceLists, setPriceLists] = useState<Array<{ id: string; name: string }>>([])
   const [customFieldValues, setCustomFieldValues] = useState<Record<string, string | number>>({})
@@ -213,7 +215,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           <Input label={t('common.country')} placeholder={t('common.countryPlaceholder')} {...register('country')} />
         </div>
         <div className="grid grid-cols-2 gap-4">
-          <Input label={t('common.taxNumber')} placeholder={t('common.taxNumberPlaceholder')} {...register('taxNumber')} />
+          <Input label={taxField.label} placeholder={taxField.placeholder ?? t('common.taxNumberPlaceholder')} hint={taxField.hint} {...register('taxNumber')} />
           <Input label={t('customers.creditLimit')} type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
         </div>
         {priceLists.length > 0 && (

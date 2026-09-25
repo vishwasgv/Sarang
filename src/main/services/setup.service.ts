@@ -1,5 +1,8 @@
 import { getPrisma } from '../database/db'
 import { hashPassword, generateRecoveryCode, checkPasswordLength } from './auth.service'
+import { addMissingIndiaSplitRows } from './india-gst-slabs.service'
+import { addMissingPresetRates } from './tax-preset.service'
+import { getTaxPreset, isIndiaCountry } from '../../shared/data/tax-presets'
 import { seedDefaultData } from '../database/seed'
 import { logAction } from './audit.service'
 import { SERVICE_TEMPLATE_TYPES, getLanguageLockFor } from './industry-template.service'
@@ -7,6 +10,8 @@ import { seedDefaultServicesForTemplate } from './service-catalog.service'
 import { logger } from '../utils/logger'
 import { isValidLogoPath } from '../utils/logo-path'
 import { getLicenseState } from './license.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
+import { getCurrencyDecimals } from '../../shared/utils/money'
 import type { ApiResponse, SetupPayload } from '../ipc/channels'
 
 /**
@@ -137,7 +142,7 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
       })
 
       // Seed default tax configurations and expense categories
-      await seedBusinessDefaults(tx, payload.country, payload.taxModel)
+      await seedBusinessDefaults(tx, payload.country, payload.taxModel, payload.currencyCode, { pricesIncludeTax: payload.pricesIncludeTax, invoiceRoundingRule: payload.invoiceRoundingRule })
 
       await tx.setting.upsert({
         where: { settingKey: 'recovery_code_hash' },
@@ -158,6 +163,7 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
       }
     }, { timeout: 30000 })
 
+    await getBusinessCurrencyDecimals()
     return { success: true, data: { recoveryCode } }
   } catch (err) {
     logger.error('[Setup] completeSetup error:', err instanceof Error ? (err.stack ?? err.message) : String(err))
@@ -165,7 +171,7 @@ export async function completeSetup(payload: SetupPayload): Promise<ApiResponse>
   }
 }
 
-async function seedBusinessDefaults(tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0], country: string, taxModel: string) {
+async function seedBusinessDefaults(tx: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0], country: string, taxModel: string, currencyCode: string, confirmed: { pricesIncludeTax?: boolean; invoiceRoundingRule?: string } = {}) {
   // Idempotent creates — app startup's seedDefaultData() (database/seed.ts)
   // already runs before this wizard can ever be shown and seeds its own
   // default expense categories ('Rent', 'Miscellaneous', etc. overlap here)
@@ -176,22 +182,22 @@ async function seedBusinessDefaults(tx: Parameters<Parameters<ReturnType<typeof 
     if (!existing) await tx.taxConfiguration.create({ data: t })
   }
 
-  // Default tax configurations
-  if (taxModel === 'GST') {
-    const gstRates = [
-      { taxName: 'GST 0%', taxType: 'GST', rate: 0, country },
-      { taxName: 'GST 5%', taxType: 'GST', rate: 5, country },
-      { taxName: 'GST 12%', taxType: 'GST', rate: 12, country },
-      { taxName: 'GST 18%', taxType: 'GST', rate: 18, country, isDefault: true },
-      { taxName: 'GST 28%', taxType: 'GST', rate: 28, country }
-    ]
-    for (const t of gstRates) {
-      await createTaxConfigIfMissing(t)
+  // Default tax configurations. Only the business's own country is ever loaded: India's GST rows for India, a
+  // country preset (tax-presets.ts) for a country that has one, a single "No Tax" row otherwise. No country gets
+  // another country's rows, and no rate is invented for a country without a preset (the owner adds rates in
+  // Settings > Tax Configuration).
+  const preset = getTaxPreset(country)
+  if (taxModel === 'NONE') {
+    await createTaxConfigIfMissing({ taxName: 'No Tax', taxType: 'NONE', rate: 0, country, isDefault: true })
+  } else if (isIndiaCountry(country)) {
+    if (taxModel === 'GST') {
+      await addMissingPresetRates(tx, preset!)
+      await addMissingIndiaSplitRows(tx)
+    } else {
+      await createTaxConfigIfMissing({ taxName: 'No Tax', taxType: 'NONE', rate: 0, country, isDefault: true })
     }
-  } else if (taxModel === 'VAT') {
-    await createTaxConfigIfMissing({ taxName: 'VAT 20%', taxType: 'VAT', rate: 20, country, isDefault: true })
-  } else if (taxModel === 'SALES_TAX') {
-    await createTaxConfigIfMissing({ taxName: 'Sales Tax', taxType: 'SALES_TAX', rate: 8, country, isDefault: true })
+  } else if (preset && preset.taxModel !== 'NONE') {
+    await addMissingPresetRates(tx, preset)
   } else {
     await createTaxConfigIfMissing({ taxName: 'No Tax', taxType: 'NONE', rate: 0, country, isDefault: true })
   }
@@ -219,7 +225,7 @@ async function seedBusinessDefaults(tx: Parameters<Parameters<ReturnType<typeof 
     { settingKey: 'date_format', settingValue: 'DD/MM/YYYY', settingType: 'STRING' },
     { settingKey: 'time_format', settingValue: '12H', settingType: 'STRING' },
     { settingKey: 'number_format', settingValue: 'IN', settingType: 'STRING' },
-    { settingKey: 'decimal_places', settingValue: '2', settingType: 'NUMBER' },
+    { settingKey: 'decimal_places', settingValue: String(getCurrencyDecimals(currencyCode)), settingType: 'NUMBER' },
     { settingKey: 'thermal_print_size', settingValue: '80mm', settingType: 'STRING' },
     { settingKey: 'password_min_length', settingValue: '10', settingType: 'NUMBER' },
     // 2026-09-02 — Password Policy: expiry/history, both 0 = disabled by default.
@@ -236,5 +242,13 @@ async function seedBusinessDefaults(tx: Parameters<Parameters<ReturnType<typeof 
   ]
   for (const s of defaults) {
     await tx.setting.upsert({ where: { settingKey: s.settingKey }, create: s, update: {} })
+  }
+
+  // Suggestions from the country preset that the owner confirmed in the wizard; never applied unless confirmed.
+  const confirmedSettings: Array<{ settingKey: string; settingValue: string; settingType: string }> = []
+  if (typeof confirmed.pricesIncludeTax === 'boolean') confirmedSettings.push({ settingKey: 'prices_include_tax', settingValue: String(confirmed.pricesIncludeTax), settingType: 'BOOLEAN' })
+  if (confirmed.invoiceRoundingRule) confirmedSettings.push({ settingKey: 'invoice_rounding_rule', settingValue: confirmed.invoiceRoundingRule, settingType: 'STRING' })
+  for (const s of confirmedSettings) {
+    await tx.setting.upsert({ where: { settingKey: s.settingKey }, create: s, update: { settingValue: s.settingValue } })
   }
 }

@@ -27,6 +27,11 @@ export const CreateCreditNoteSchema = z.object({
   reason: z.string().min(1, 'Reason is required').max(500),
   amount: z.number().positive('Amount must be greater than zero').optional(),
   items: z.array(CreditNoteItemSchema).optional(),
+  pricesIncludeTax: z.boolean().optional(),
+  gstType: z.enum(['CGST_SGST', 'IGST', 'GST']).optional(),
+  // false: no tax on this note. taxRate applies to a plain-amount note only.
+  taxApplied: z.boolean().optional(),
+  taxRate: z.number().min(0).max(100).optional(),
   notes: z.string().max(2000).optional()
 }).refine((v) => (v.amount !== undefined && v.amount > 0) || (v.items && v.items.length > 0), {
   message: 'Either an amount or at least one line item is required.'
@@ -39,6 +44,9 @@ export const UpdateCreditNoteSchema = z.object({
   invoiceId: z.string().nullable().optional(),
   reason: z.string().min(1, 'Reason is required').max(500).optional(),
   amount: z.number().positive('Amount must be greater than zero').optional(),
+  taxApplied: z.boolean().optional(),
+  taxRate: z.number().min(0).max(100).nullable().optional(),
+  pricesIncludeTax: z.boolean().optional(),
   notes: z.string().max(2000).nullable().optional()
 })
 

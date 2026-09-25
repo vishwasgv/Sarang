@@ -14,6 +14,17 @@ export interface ManualChapter {
 
 export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'getting-started', group: 'getting-started', title: 'Getting Started' },
+  // 2026-09-24 — task-based guides: step-by-step workflows for every owner, written
+  // end to end (who, what, in which screen, and what it does to stock and money).
+  { slug: 'guide-find-your-way', group: 'getting-started', title: 'Start Here: Where Everything Is' },
+  { slug: 'guide-selling', group: 'getting-started', title: 'Guide: Selling, From Quote to Money' },
+  { slug: 'guide-buying', group: 'getting-started', title: 'Guide: Buying From Suppliers, From Order to Payment' },
+  { slug: 'guide-products-stock', group: 'getting-started', title: 'Guide: Products, Categories and Stock' },
+  { slug: 'guide-tax-gst', group: 'getting-started', title: 'Guide: Tax and GST, How Sarang Calculates It' },
+  { slug: 'guide-tax-international', group: 'getting-started', title: 'Guide: Tax Outside India (VAT, Sales Tax and Other Taxes)' },
+  { slug: 'guide-reminders-alerts', group: 'getting-started', title: 'Guide: Reminders and Alerts' },
+  { slug: 'guide-money-books', group: 'getting-started', title: 'Guide: Money and Your Books' },
+  { slug: 'guide-routine', group: 'getting-started', title: 'Guide: Daily, Weekly and Monthly Routine' },
 
   // Universal features — apply to every business type
   { slug: 'billing', group: 'universal', title: 'Billing & Documents' },
@@ -30,7 +41,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   // explaining how it actually works). Placed right after Customers &
   // Suppliers since the ad-hoc send flow lives on that screen.
   { slug: 'whatsapp-messaging', group: 'universal', title: 'WhatsApp Messaging & Reminders' },
-  { slug: 'bills-purchases', group: 'universal', title: 'Bills & Payments Made' },
+  { slug: 'bills-purchases', group: 'universal', title: 'Supplier Bills & Supplier Payments' },
   // Phase 63 — Sales-Side Completion & Pricing Infrastructure. Placed right
   // after bills-purchases, mirroring that chapter's own position relative
   // to Billing (the purchase-side and sales-side "beyond the basic

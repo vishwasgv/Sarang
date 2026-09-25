@@ -7,6 +7,7 @@ import { invoiceTemplateService } from '../../services/invoice-template.service'
 import { exportToPdf } from '../../services/export.service'
 import { heldSaleService } from '../../services/held-sale.service'
 import { formatAmount as formatAmountLocaleAware } from '../../services/currency.service'
+import { resolveDisplayDecimals } from '../../../shared/utils/money'
 import { requirePermission, requireSession, hasPermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { logAction } from '../../services/audit.service'
@@ -375,11 +376,10 @@ export function register(handle: HandleFn): void {
     // currency.service.ts's already-correct, locale-aware formatter.
     const fmtMap = new Map(fmtSettingRows.map(r => [r.settingKey, r.settingValue]))
     const numberFormat = fmtMap.get('number_format') ?? 'IN'
-    const decimalsRaw = fmtMap.get('decimal_places')
-    const decimals = decimalsRaw !== undefined ? parseInt(decimalsRaw, 10) : 2
+    const decimals = resolveDisplayDecimals(profile?.currencyCode, fmtMap.get('decimal_places'))
     const symbolPosition = fmtMap.get('currency_symbol_position') === 'suffix' ? 'suffix' : 'prefix'
     const formatAmount = (amount: number, symbol = profile?.currencySymbol ?? '₹'): string =>
-      formatAmountLocaleAware(Math.abs(amount), symbol, numberFormat, Number.isFinite(decimals) ? decimals : 2, symbolPosition)
+      formatAmountLocaleAware(Math.abs(amount), symbol, numberFormat, decimals, symbolPosition)
 
     // Tracks the price actually printed for each *regular batch* line (not the
     // weigh-and-print ad-hoc flow, which already has its own LabelPrintLog

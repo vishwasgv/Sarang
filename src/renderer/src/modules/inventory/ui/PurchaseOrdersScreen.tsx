@@ -11,6 +11,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { cn } from '@shared/utils/cn'
 import { formatDate } from '@shared/utils/locale.util'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string }
 interface PO {
@@ -113,7 +114,7 @@ export function PurchaseOrdersScreen() {
       accessorKey: 'totalAmount',
       header: () => t('common.total'),
       cell: ({ getValue }) => (
-        <span className="text-sm font-semibold text-dark dark:text-slate-100">{(getValue() as number).toFixed(2)}</span>
+        <span className="text-sm font-semibold text-dark dark:text-slate-100">{moneyFixed(getValue() as number)}</span>
       )
     },
     {

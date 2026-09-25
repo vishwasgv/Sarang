@@ -35,13 +35,17 @@ function makeDb(existing: typeof EXISTING | null = EXISTING) {
     setting: {
       findUnique: vi.fn(async () => settingRow),
       update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),
-      create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow })
+      create: vi.fn(async ({ data }: { data: { settingKey: string; settingValue: string } }) => { settingRow = { settingKey: data.settingKey, settingValue: data.settingValue }; return settingRow }),
+      updateMany: vi.fn(async ({ data }: { data: { settingValue: string } }) => { if (settingRow) settingRow = { ...settingRow, settingValue: data.settingValue }; return { count: settingRow ? 1 : 0 } })
     },
     supplierLedger: {
       aggregate: vi.fn().mockResolvedValue({ _sum: { debitAmount: 0, creditAmount: 0 } }),
       create: vi.fn().mockImplementation((args) => { ledgerCreateCalls.push(args.data); return Promise.resolve({ id: 'entry-x' }) })
     },
-    supplier: { update: vi.fn().mockResolvedValue({}) }
+    supplier: { update: vi.fn().mockResolvedValue({}) },
+    // Notes post a journal entry (sales/purchases against receivables/payables); accounts resolve by code.
+    chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
+    journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) }
   }
   return {
     debitNote: { findUnique: vi.fn().mockResolvedValue(existing) },

@@ -1,19 +1,8 @@
 import { useBusinessStore } from '@app/store/business.store'
 
-// ISO 4217 currencies whose minor unit isn't 2 decimal places — mirrors
-// getCurrencyDecimals() in src/main/services/currency.service.ts. Kept in
-// sync manually (main and renderer are separate TS projects with separate
-// path-alias roots in this codebase, so there's no single shared import
-// point without a larger build-config change).
-const ZERO_DECIMAL_CURRENCIES = new Set(['BIF', 'CLP', 'DJF', 'GNF', 'ISK', 'JPY', 'KMF', 'KRW', 'PYG', 'RWF', 'UGX', 'VND', 'VUV', 'XAF', 'XOF', 'XPF'])
-const THREE_DECIMAL_CURRENCIES = new Set(['BHD', 'IQD', 'JOD', 'KWD', 'LYD', 'OMR', 'TND'])
-
-export function getCurrencyDecimals(currencyCode?: string | null): number {
-  if (!currencyCode) return 2
-  if (ZERO_DECIMAL_CURRENCIES.has(currencyCode)) return 0
-  if (THREE_DECIMAL_CURRENCIES.has(currencyCode)) return 3
-  return 2
-}
+// Same table the main process uses: one shared module (src/shared/utils/money.ts).
+import { getCurrencyDecimals, resolveDisplayDecimals, roundMoney } from '@money'
+export { getCurrencyDecimals }
 
 export function formatCurrency(amount: number, currencyCode?: string, currencySymbol?: string): string {
   const { profile, getSetting } = useBusinessStore.getState()
@@ -24,7 +13,7 @@ export function formatCurrency(amount: number, currencyCode?: string, currencySy
   // display to whole rupees); when unset, default to the currency's own
   // correct precision instead of a hardcoded "2" that mis-displays JPY/KRW
   // (no subunit) and BHD/KWD/OMR (3 decimal places) alike.
-  const decimals = parseInt(getSetting('decimal_places', String(getCurrencyDecimals(code))))
+  const decimals = resolveDisplayDecimals(code, getSetting('decimal_places', String(getCurrencyDecimals(code))))
 
   try {
     const locale = numberFormat === 'IN' ? 'en-IN' : numberFormat === 'EU' ? 'de-DE' : 'en-US'
@@ -36,6 +25,24 @@ export function formatCurrency(amount: number, currencyCode?: string, currencySy
   } catch {
     return `${symbol}${amount.toFixed(decimals)}`
   }
+}
+
+/** Decimals money is shown with for the business currency (or the given one): 3 for KWD, 0 for JPY. */
+export function moneyDecimals(currencyCode?: string | null): number {
+  const { profile, getSetting } = useBusinessStore.getState()
+  const code = currencyCode ?? profile?.currencyCode ?? 'INR'
+  return resolveDisplayDecimals(code, getSetting('decimal_places', String(getCurrencyDecimals(code))))
+}
+
+/** Plain fixed-point money text (no symbol, no grouping) for inputs, placeholders and exports. */
+export function moneyFixed(amount: number, currencyCode?: string | null): string {
+  return Number(amount).toFixed(moneyDecimals(currencyCode))
+}
+
+/** Rounds a money amount to the currency's own minor unit (never to a fixed 2 decimals). */
+export function roundToCurrency(amount: number, currencyCode?: string | null): number {
+  const { profile } = useBusinessStore.getState()
+  return roundMoney(amount, getCurrencyDecimals(currencyCode ?? profile?.currencyCode ?? 'INR'))
 }
 
 export function parseCurrencyInput(value: string): number {

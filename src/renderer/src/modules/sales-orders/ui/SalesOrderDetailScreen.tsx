@@ -10,13 +10,16 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { formatDate } from '@shared/utils/locale.util'
 import { formatCurrency } from '@shared/utils/currency.util'
+import { useBusinessStore } from '@app/store/business.store'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { getCurrencyDecimals } from '@money'
 import { cn } from '@shared/utils/cn'
 import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
 
 interface Customer { id: string; customerName: string; customerCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string }
 interface SalesOrderItem {
-  id: string; quantity: number; invoicedQty: number; unitPrice: number; taxRate: number; total: number
+  id: string; quantity: number; invoicedQty: number; unitPrice: number; taxRate: number; taxAmount?: number; total: number
   product: Product | null
   serviceDescription: string | null
   serviceCategory: { id: string; categoryName: string } | null
@@ -24,7 +27,7 @@ interface SalesOrderItem {
 interface SalesOrder {
   id: string; soNumber: string; status: string
   orderDate: string; expectedDate?: string | null; notes?: string | null
-  subtotal: number; taxAmount: number; totalAmount: number
+  subtotal: number; taxAmount: number; totalAmount: number; gstType?: string | null
   customer: Customer
   items: SalesOrderItem[]
   invoices: { id: string; invoiceNumber: string; totalAmount: number; invoiceDate: string }[]
@@ -40,6 +43,8 @@ const STATUS_VARIANT: Record<string, 'neutral' | 'brand' | 'success' | 'danger' 
 }
 
 export function SalesOrderDetailScreen() {
+  const taxModelDoc = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const decimalsDoc = getCurrencyDecimals(useBusinessStore(s => s.profile?.currencyCode))
   const { t } = useTranslation()
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -308,10 +313,12 @@ export function SalesOrderDetailScreen() {
               <span>{t('billing.subtotal')}</span>
               <span>{formatCurrency(so.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
-              <span>{t('billing.tax')}</span>
-              <span>{formatCurrency(so.taxAmount)}</span>
-            </div>
+            {splitTaxLines(taxModelDoc, so.taxAmount, so.gstType, decimalsDoc, so.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))).map(line => (
+              <div key={line.label} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
+                <span>{line.label}</span>
+                <span>{formatCurrency(line.amount)}</span>
+              </div>
+            ))}
             <div className="flex justify-between text-sm font-bold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
               <span>{formatCurrency(so.totalAmount)}</span>

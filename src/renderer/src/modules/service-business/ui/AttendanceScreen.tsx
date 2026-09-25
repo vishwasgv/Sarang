@@ -193,7 +193,7 @@ export default function AttendanceScreen() {
     <div className="p-6 max-w-4xl mx-auto">
       <div className="flex items-center gap-3 mb-6">
         <ClipboardCheck size={24} className="text-brand" />
-        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Attendance</h1>
+        <h1 className="text-2xl font-bold text-slate-900 dark:text-slate-100">Student Attendance</h1>
       </div>
 
       {/* Controls */}

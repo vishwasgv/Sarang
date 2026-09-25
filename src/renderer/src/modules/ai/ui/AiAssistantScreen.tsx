@@ -5,6 +5,7 @@ import { Sparkles, Send, BookOpen } from 'lucide-react'
 import { Card } from '@shared/ui/molecules/Card'
 import { Button } from '@shared/ui/atoms/Button'
 import { findManualMatch, type ManualChapterRef } from '@modules/ai/manual-match.util'
+import { useIndustryStore } from '@app/store/industry.store'
 
 // Phase 57 — AI Assistant chat panel. English-only (see
 // docs/manual chapter ai-assistant.md's "Language" section, which discloses
@@ -40,6 +41,25 @@ export function AiAssistantScreen() {
   const location = useLocation()
   const navigate = useNavigate()
   const { i18n } = useTranslation()
+  const enabledModules = useIndustryStore((s) => s.enabledModules)
+  const updateEnabledModules = useIndustryStore((s) => s.updateEnabledModules)
+  const enabled = enabledModules.includes('ai_assistant' as never)
+  const [enabling, setEnabling] = useState(false)
+  const [enableError, setEnableError] = useState('')
+  const pendingQuestionRef = useRef<string | null>(null)
+
+  async function handleEnable() {
+    setEnabling(true)
+    setEnableError('')
+    try {
+      const res = await updateEnabledModules([...enabledModules, 'ai_assistant' as never] as typeof enabledModules)
+      if (!res.success) setEnableError('Could not turn on Ask Sarang. Please try again.')
+    } catch {
+      setEnableError('Could not turn on Ask Sarang. Please try again.')
+    } finally {
+      setEnabling(false)
+    }
+  }
 
   useEffect(() => {
     scrollRef.current?.scrollTo({ top: scrollRef.current.scrollHeight, behavior: 'smooth' })
@@ -57,7 +77,7 @@ export function AiAssistantScreen() {
     // reads the `question` state, which a setState just before calling this
     // wouldn't have applied in time.
     const q = (override ?? question).trim()
-    if (!q || asking) return
+    if (!q || asking || !enabled) return
     setMessages((prev) => [...prev, { role: 'user', text: q }])
     setQuestion('')
 
@@ -109,10 +129,22 @@ export function AiAssistantScreen() {
     const initial = (location.state as { initialQuestion?: string } | null)?.initialQuestion
     if (initial && consumedKeyRef.current !== location.key) {
       consumedKeyRef.current = location.key
-      void handleAsk(initial)
+      if (enabled) void handleAsk(initial)
+      else pendingQuestionRef.current = initial
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [location.key])
+
+  // A question typed on the Dashboard while Ask Sarang is still off is held
+  // here and answered as soon as the owner turns it on.
+  useEffect(() => {
+    if (enabled && pendingQuestionRef.current) {
+      const q = pendingQuestionRef.current
+      pendingQuestionRef.current = null
+      void handleAsk(q)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [enabled])
 
   function handleKeyDown(e: React.KeyboardEvent<HTMLInputElement>) {
     if (e.key === 'Enter' && !e.shiftKey) {
@@ -121,11 +153,44 @@ export function AiAssistantScreen() {
     }
   }
 
+  if (!enabled) {
+    return (
+      <div className="p-6 h-full flex flex-col max-w-3xl mx-auto">
+        <div className="mb-4">
+          <h1 className="text-2xl font-bold text-dark dark:text-slate-100 flex items-center gap-2">
+            <Sparkles size={24} className="text-brand" /> Ask Sarang
+          </h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Ask Your Business.</p>
+        </div>
+        <Card padding="none" className="px-6 py-8 text-center">
+          <Sparkles size={36} className="mx-auto mb-3 text-brand" />
+          <p className="text-lg font-semibold text-dark dark:text-slate-100">Turn on Ask Sarang</p>
+          <p className="text-sm text-slate-500 dark:text-slate-400 mt-2 max-w-md mx-auto">
+            Ask questions about your sales, stock, customers, suppliers and profit in plain English.
+            Answers are worked out on this computer from your own data — no internet needed and nothing is sent anywhere.
+            Ask Sarang understands English only. It works best on a computer with 8 GB of memory or more,
+            and the first answer after starting Sarang can take up to a minute.
+          </p>
+          {pendingQuestionRef.current && (
+            <p className="text-sm text-slate-600 dark:text-slate-300 mt-3">Your question will be answered as soon as it is on: "{pendingQuestionRef.current}"</p>
+          )}
+          <div className="mt-5">
+            <Button onClick={() => void handleEnable()} disabled={enabling}>
+              {enabling ? 'Turning on…' : 'Turn on Ask Sarang'}
+            </Button>
+          </div>
+          {enableError && <p className="text-sm text-danger mt-3">{enableError}</p>}
+          <p className="text-xs text-slate-400 mt-4">You can turn it off any time in Settings → AI Assistant.</p>
+        </Card>
+      </div>
+    )
+  }
+
   return (
     <div className="p-6 h-full flex flex-col max-w-3xl mx-auto">
       <div className="mb-4">
         <h1 className="text-2xl font-bold text-dark dark:text-slate-100 flex items-center gap-2">
-          <Sparkles size={24} className="text-brand" /> AI Assistant
+          <Sparkles size={24} className="text-brand" /> Ask Sarang
         </h1>
         <p className="text-sm text-slate-500 dark:text-slate-400 mt-0.5">Ask Your Business.</p>
       </div>

@@ -839,7 +839,6 @@ export async function generateBloodIssueInvoice(id: string) {
       const result = await billingService.createInvoice({
         customerId: issue.customerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items,
         notes: `Blood Issue ${issue.issueNumber} — ${issue.recipientName}`,
         referenceNumber: id.slice(0, 12),

@@ -19,11 +19,14 @@ import { Button } from '@shared/ui/atoms/Button'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { api } from '@renderer/services/ipc-client'
 import { CURRENCIES } from '@shared/utils/currency.util'
+import { PRICES_INCLUDE_TAX_SETTING_KEY, ROUNDING_RULE_SETTING_KEY, resolvePricesIncludeTax, resolveRoundingRule } from '@money'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { documentLogoUrl } from '@shared/ui/molecules/DocumentWatermark'
 import { TutorialStartModal } from '@shared/ui/organisms/TutorialStartModal'
+import { useTaxNumberField } from '@shared/hooks/useTaxNumberField'
+import { isIndiaCountry, resolveCountryCode } from '@taxpresets'
 
 interface SettingsSection {
   id: string
@@ -518,6 +521,8 @@ interface BPProfile {
 
 function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
   const { t } = useTranslation()
+  // India-only fields (GST scheme, UPI) are hidden when the business country is another recognised country.
+  const showIndiaFields = !profile?.country || isIndiaCountry(profile.country) || !resolveCountryCode(profile.country)
   const [editing, setEditing] = useState(false)
   const [saving, setSaving] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -551,6 +556,7 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
     bankBranch: profile?.bankBranch ?? '',
     bankIfscCode: profile?.bankIfscCode ?? ''
   })
+  const taxField = useTaxNumberField(profile?.country, form.taxNumber, 'GST/VAT Number')
   const setProfile = useBusinessStore((s) => s.setProfile)
   const { error: toastError, success: toastSuccess } = useNotificationStore()
 
@@ -788,20 +794,21 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
               <input type="email" value={form.email} onChange={e => setForm(f => ({ ...f, email: e.target.value }))} className={inputCls} />
             </div>
             <div>
-              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">GST/VAT Number</label>
+              <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">{taxField.label}</label>
               <input value={form.taxNumber} onChange={e => setForm(f => ({ ...f, taxNumber: e.target.value }))} className={inputCls} />
+              {taxField.hint && <p className="text-sm text-slate-500 mt-1">{taxField.hint}</p>}
             </div>
-            <div>
+            {showIndiaFields && <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">GST Scheme</label>
               <Select value={form.gstScheme} onChange={e => setForm(f => ({ ...f, gstScheme: e.target.value }))}>
                 <option value="REGULAR">Regular</option>
                 <option value="COMPOSITION">Composition Scheme</option>
               </Select>
-            </div>
-            <div>
+            </div>}
+            {showIndiaFields && <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">UPI ID</label>
               <input value={form.upiId} onChange={e => setForm(f => ({ ...f, upiId: e.target.value }))} placeholder="yourname@upi" className={inputCls} />
-            </div>
+            </div>}
             <div>
               <label className="block text-sm font-medium text-slate-700 dark:text-slate-300 mb-1">Website</label>
               <input value={form.website} onChange={e => setForm(f => ({ ...f, website: e.target.value }))} placeholder="https://" className={inputCls} />
@@ -883,9 +890,11 @@ function BusinessProfileSection({ profile }: { profile: BPProfile | null }) {
             { label: 'Country', value: profile?.country },
             { label: 'Currency', value: profile?.currencyCode ? `${profile.currencySymbol} (${profile.currencyCode})` : undefined },
             { label: 'Tax Model', value: profile?.taxModel },
-            { label: 'GST/VAT Number', value: profile?.taxNumber },
-            { label: 'GST Scheme', value: profile?.gstScheme === 'COMPOSITION' ? 'Composition Scheme' : 'Regular' },
-            { label: 'UPI ID', value: profile?.upiId },
+            { label: taxField.label, value: profile?.taxNumber },
+            ...(showIndiaFields ? [
+              { label: 'GST Scheme', value: profile?.gstScheme === 'COMPOSITION' ? 'Composition Scheme' : 'Regular' },
+              { label: 'UPI ID', value: profile?.upiId }
+            ] : []),
             { label: 'Phone', value: profile?.phone },
             { label: 'Email', value: profile?.email },
             { label: 'Address', value: [profile?.address, profile?.city, profile?.state, profile?.postalCode].filter(Boolean).join(', ') || null },
@@ -934,13 +943,18 @@ function UsersSection() {
 
 interface TaxConfig {
   id: string; taxName: string; taxType: string; rate: number
-  country?: string | null; isDefault: boolean; isActive: boolean
+  country?: string | null; isDefault: boolean; isActive: boolean; isLegacy?: boolean
 }
 
 const TAX_TYPES = ['GST', 'VAT', 'SALES_TAX', 'CUSTOM', 'NONE'] as const
 
+interface TaxPresetStatus {
+  hasPreset: boolean; country: string; code: string | null; name: string | null; taxLabel: string | null; asOf: string | null
+  sources: string[]; notes: string[]; languageLock: 'en' | null; totalRates: number; missingRates: number
+}
+
 function TaxConfigurationSection() {
-  const { t } = useTranslation()
+  const { t, i18n } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [taxes, setTaxes] = useState<TaxConfig[]>([])
   const [loading, setLoading] = useState(true)
@@ -950,6 +964,19 @@ function TaxConfigurationSection() {
   const [deleting, setDeleting] = useState(false)
   const [saving, setSaving] = useState(false)
   const [form, setForm] = useState({ taxName: '', taxType: 'GST', rate: '', country: '', isDefault: false })
+  const [presetStatus, setPresetStatus] = useState<TaxPresetStatus | null>(null)
+  const [loadingPreset, setLoadingPreset] = useState(false)
+
+  // Country-specific tax text follows the language lock: English for a country whose language the app does not cover.
+  const lockedToEnglish = presetStatus?.languageLock === 'en'
+  const tt = (key: string, opts: Record<string, unknown> = {}) => t(key, lockedToEnglish ? { ...opts, lng: 'en' } : opts)
+
+  const loadPresetStatus = useCallback(async () => {
+    try {
+      const res = await window.api.tax.presetStatus()
+      if (res.success) setPresetStatus(res.data as TaxPresetStatus)
+    } catch { /* the button simply stays hidden */ }
+  }, [])
 
   const loadTaxes = useCallback(async () => {
     setLoading(true)
@@ -965,6 +992,29 @@ function TaxConfigurationSection() {
   }, [toastError])
 
   useEffect(() => { loadTaxes() }, [loadTaxes])
+  useEffect(() => { loadPresetStatus() }, [loadPresetStatus])
+
+  async function handleLoadPreset() {
+    if (!presetStatus?.name) return
+    setLoadingPreset(true)
+    try {
+      const res = await window.api.tax.loadPreset()
+      if (res.success) {
+        const added = (res.data as { added: number }).added
+        toastSuccess(t('settings.tax.createdTitle'), added > 0
+          ? tt('settings.tax.ratesLoaded', { count: added, country: presetStatus.name })
+          : tt('settings.tax.ratesUpToDate', { country: presetStatus.name }))
+        loadTaxes()
+        loadPresetStatus()
+      } else {
+        toastError(t('common.error'), t('settings.tax.loadRatesFailed'))
+      }
+    } catch {
+      toastError(t('common.error'), t('settings.tax.loadRatesFailed'))
+    } finally {
+      setLoadingPreset(false)
+    }
+  }
 
   function startEdit(tax: TaxConfig) {
     setEditId(tax.id)
@@ -1037,6 +1087,37 @@ function TaxConfigurationSection() {
         )}
       </div>
 
+      {/* Country presets: offered only for the business's own country */}
+      {presetStatus && (
+        <Card padding="md" className="space-y-2">
+          {presetStatus.hasPreset && presetStatus.name && presetStatus.totalRates > 0 ? (
+            <>
+              {presetStatus.missingRates > 0 && (
+                <Button size="md" onClick={handleLoadPreset} loading={loadingPreset}>
+                  {tt('settings.tax.loadRates', { country: presetStatus.name })}
+                </Button>
+              )}
+              <p className="text-sm text-slate-500 dark:text-slate-400">
+                {presetStatus.missingRates > 0
+                  ? tt('settings.tax.loadRatesHint', { country: presetStatus.name })
+                  : tt('settings.tax.ratesUpToDate', { country: presetStatus.name })}
+              </p>
+            </>
+          ) : presetStatus.hasPreset && presetStatus.name ? (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{tt('settings.tax.noTaxNote', { country: presetStatus.name })}</p>
+          ) : (
+            <p className="text-sm text-slate-500 dark:text-slate-400">{t('settings.tax.noPresetNote', { country: presetStatus.country || '-' })}</p>
+          )}
+          {presetStatus.hasPreset && presetStatus.asOf && (
+            <div className="text-xs text-slate-400 dark:text-slate-500 space-y-1">
+              <p>{tt('settings.tax.presetChecked', { date: presetStatus.asOf })}</p>
+              {lockedToEnglish && i18n.language !== 'en' && <p>{tt('settings.tax.englishOnlyNote')}</p>}
+              {presetStatus.notes.filter(n => !/^Tax rates change/.test(n)).map((n) => <p key={n}>{n}</p>)}
+            </div>
+          )}
+        </Card>
+      )}
+
       {/* Add / Edit form */}
       {(showForm || editId) && (
         <div className="bg-brand/5 border border-brand/20 rounded-lg p-4 space-y-4">
@@ -1052,7 +1133,7 @@ function TaxConfigurationSection() {
             </Select>
             <div>
               <label className="block text-sm font-semibold text-slate-600 mb-1.5">Rate (%) *</label>
-              <input type="number" min="0" max="100" step="0.5" value={form.rate}
+              <input type="number" min="0" max="100" step="any" value={form.rate}
                 onChange={(e) => setForm(f => ({ ...f, rate: e.target.value }))}
                 placeholder="e.g. 18" className="w-full h-11 px-4 rounded-lg border border-slate-200 text-base bg-white focus:outline-none focus:ring-2 focus:ring-brand" />
             </div>
@@ -1089,7 +1170,7 @@ function TaxConfigurationSection() {
         </Card>
       ) : (
         <div className="space-y-2">
-          {taxes.map((tax) => (
+          {taxes.filter(x => !x.isLegacy).map((tax) => (
             <Card key={tax.id} padding="none" hoverable className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50 dark:hover:bg-slate-800 transition-colors">
               <div className="flex-1 min-w-0">
                 <div className="flex items-center gap-2">
@@ -1111,6 +1192,24 @@ function TaxConfigurationSection() {
               </button>
             </Card>
           ))}
+          {taxes.some(x => x.isLegacy) && (
+            <div className="pt-3 space-y-2">
+              <p className="text-sm font-semibold text-slate-600">{t('settings.tax.olderRates')}</p>
+              <p className="text-sm text-slate-400">{t('settings.tax.olderRatesHint')}</p>
+              {taxes.filter(x => x.isLegacy).map((tax) => (
+                <Card key={tax.id} padding="none" className="flex items-center gap-3 px-4 py-3 opacity-80">
+                  <div className="flex-1 min-w-0">
+                    <p className="text-base font-semibold text-dark">{tax.taxName}</p>
+                    <p className="text-sm text-slate-400">{tax.taxType}{tax.country ? ` · ${tax.country}` : ''}</p>
+                  </div>
+                  <span className="text-base font-bold text-dark shrink-0">{tax.rate}%</span>
+                  <button onClick={() => setDeleteTarget(tax)} className="p-2.5 rounded-lg text-slate-400 hover:text-danger hover:bg-danger/10 transition-colors" title="Delete">
+                    <Trash2 size={16} />
+                  </button>
+                </Card>
+              ))}
+            </div>
+          )}
         </div>
       )}
 
@@ -1719,24 +1818,36 @@ const NUMBER_FORMATS = [
 
 function CurrencyLocaleSection() {
   const { t } = useTranslation()
-  const { profile, getSetting } = useBusinessStore()
+  const { profile, getSetting, settings, setSettings } = useBusinessStore()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [currencyCode, setCurrencyCode] = useState(profile?.currencyCode ?? 'INR')
+  // null = untouched: the shown value follows the chosen currency's default (1 for INR, none otherwise)
+  // and nothing is written, so switching currency never silently pins the wrong rule.
+  const [roundingChoice, setRoundingChoice] = useState<string | null>(null)
+  const [inclTaxChoice, setInclTaxChoice] = useState<string | null>(null)
   const [numberFormat, setNumberFormat] = useState(getSetting('number_format', 'IN'))
   const [decimalPlaces, setDecimalPlaces] = useState(getSetting('decimal_places', '2'))
   const [saving, setSaving] = useState(false)
 
   const selected = CURRENCIES.find(c => c.code === currencyCode)
+  const roundingRule = roundingChoice ?? resolveRoundingRule(getSetting(ROUNDING_RULE_SETTING_KEY, ''), currencyCode)
+  const pricesIncludeTax = inclTaxChoice ?? (resolvePricesIncludeTax(getSetting(PRICES_INCLUDE_TAX_SETTING_KEY, '')) ? 'true' : 'false')
 
   async function handleSave() {
     setSaving(true)
     try {
-      const [profileRes, fmtRes, decRes] = await Promise.all([
+      const [profileRes, fmtRes, decRes, roundRes, inclRes] = await Promise.all([
         api.businessProfile.update({ currencyCode, currencySymbol: selected?.symbol ?? currencyCode }),
         api.settings.set({ key: 'number_format', value: numberFormat }),
-        api.settings.set({ key: 'decimal_places', value: decimalPlaces })
+        api.settings.set({ key: 'decimal_places', value: decimalPlaces }),
+        roundingChoice !== null ? api.settings.set({ key: ROUNDING_RULE_SETTING_KEY, value: roundingChoice }) : Promise.resolve({ success: true }),
+        inclTaxChoice !== null ? api.settings.set({ key: PRICES_INCLUDE_TAX_SETTING_KEY, value: inclTaxChoice }) : Promise.resolve({ success: true })
       ])
-      if (profileRes.success && fmtRes.success && decRes.success) toastSuccess(t('settings.currencyLocale.saved'))
+      const nextSettings: Record<string, string> = { ...settings }
+      if (roundingChoice !== null && roundRes.success) nextSettings[ROUNDING_RULE_SETTING_KEY] = roundingChoice
+      if (inclTaxChoice !== null && inclRes.success) nextSettings[PRICES_INCLUDE_TAX_SETTING_KEY] = inclTaxChoice
+      setSettings(nextSettings)
+      if (profileRes.success && fmtRes.success && decRes.success && roundRes.success && inclRes.success) toastSuccess(t('settings.currencyLocale.saved'))
       else toastError(t('settings.currencyLocale.saveFailed'))
     } catch {
       toastError(t('settings.currencyLocale.saveFailed'))
@@ -1782,6 +1893,33 @@ function CurrencyLocaleSection() {
           <option value="2">2 (e.g. {selected?.symbol}1,000.00)</option>
           <option value="3">3 (e.g. {selected?.symbol}1,000.000)</option>
         </Select>
+
+        <div>
+          <Select
+            label={t('settings.currencyLocale.roundingLabel')}
+            value={roundingRule}
+            onChange={e => setRoundingChoice(e.target.value)}
+          >
+            <option value="NONE">{t('settings.currencyLocale.roundingNone')}</option>
+            <option value="0.05">{t('settings.currencyLocale.rounding005')}</option>
+            <option value="0.10">{t('settings.currencyLocale.rounding010')}</option>
+            <option value="0.50">{t('settings.currencyLocale.rounding050')}</option>
+            <option value="1">{t('settings.currencyLocale.rounding1')}</option>
+          </Select>
+          <p className="text-xs text-slate-500 mt-1">{t('settings.currencyLocale.roundingHelp')}</p>
+        </div>
+
+        <div>
+          <Select
+            label={t('settings.currencyLocale.pricesIncludeTaxLabel')}
+            value={pricesIncludeTax}
+            onChange={e => setInclTaxChoice(e.target.value)}
+          >
+            <option value="false">{t('settings.currencyLocale.pricesIncludeTaxOff')}</option>
+            <option value="true">{t('settings.currencyLocale.pricesIncludeTaxOn')}</option>
+          </Select>
+          <p className="text-xs text-slate-500 mt-1">{t('settings.currencyLocale.pricesIncludeTaxHelp')}</p>
+        </div>
       </div>
 
       <div className="bg-slate-50 rounded-xl border border-slate-200 px-4 py-3">
@@ -3438,7 +3576,7 @@ function AiAssistantSection() {
   return (
     <div className="max-w-xl space-y-6">
       <div>
-        <h3 className="text-base font-semibold text-dark dark:text-slate-100">AI Assistant</h3>
+        <h3 className="text-base font-semibold text-dark dark:text-slate-100">Ask Sarang (AI Assistant)</h3>
         <p className="text-sm text-slate-500 mt-1">Ask simple questions about your sales, inventory, customers, suppliers, and profit — answered entirely on this device. No internet connection is used, ever.</p>
       </div>
 
@@ -3446,7 +3584,7 @@ function AiAssistantSection() {
         <div className="flex items-center justify-between px-5 py-4">
           <div className="pe-4">
             <p className="text-sm font-semibold text-dark dark:text-slate-100">Enable AI Assistant</p>
-            <p className="text-xs text-slate-400 mt-0.5">Adds "Ask Sarang" to the sidebar. Off by default — nothing changes until you turn this on.</p>
+            <p className="text-xs text-slate-400 mt-0.5">Ask Sarang is always in the sidebar and on the Dashboard. Turn this on to let it answer questions; nothing is processed until you do.</p>
           </div>
           <button
             onClick={() => toggle(!on)}

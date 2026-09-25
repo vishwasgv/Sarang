@@ -1,5 +1,6 @@
 import { getPrisma } from '../database/db'
 import { roundCurrency } from './currency.service'
+import { roundMoney } from '../../shared/utils/money'
 import { logAction } from './audit.service'
 import { parseLocalDateStart, parseLocalDateEnd } from '../utils/date.util'
 import type { CreatePricingSchemePayload, UpdatePricingSchemePayload, EvaluateCartPayload } from '../validation/pricing-scheme.validation'
@@ -132,7 +133,7 @@ export const pricingSchemeService = {
 
           if (scheme.ruleType === 'BUY_X_GET_Y_FREE' && scheme.buyQuantity && scheme.freeQuantity) {
             const timesEarned = Math.floor(line.quantity / scheme.buyQuantity)
-            const freeQty = roundCurrency(timesEarned * scheme.freeQuantity)
+            const freeQty = roundMoney(timesEarned * scheme.freeQuantity, 2)
             if (freeQty > 0) {
               focLines.push({ productId: line.productId, quantity: freeQty, schemeId: scheme.id, schemeName: scheme.name })
             }

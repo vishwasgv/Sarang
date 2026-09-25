@@ -7,6 +7,9 @@ export const CreateQuotationSchema = z.object({
   notes: z.string().optional(),
   // Phase 63 — Estimate → auto-create Retainer Invoice on accept.
   retainerType: z.enum(['FIXED_FEE', 'HOURLY_BUCKET', 'DELIVERABLE_BASED']).optional(),
+  // Unit prices on this quotation already include tax.
+  pricesIncludeTax: z.boolean().optional(),
+  gstType: z.enum(['CGST_SGST', 'IGST', 'GST']).optional(),
   items: z.array(z.object({
     productId: z.string().optional(),
     productName: z.string().min(1, 'Product name is required'),
@@ -15,6 +18,7 @@ export const CreateQuotationSchema = z.object({
     unitPrice: z.number().nonnegative('Unit price cannot be negative').finite(),
     discount: z.number().nonnegative('Discount cannot be negative').max(100, 'Discount cannot exceed 100%').finite().optional(),
     taxRate: z.number().nonnegative('Tax rate cannot be negative').finite().optional(),
+    hsnCode: z.string().max(20).optional(),
   })).min(1, 'At least one item is required'),
 })
 

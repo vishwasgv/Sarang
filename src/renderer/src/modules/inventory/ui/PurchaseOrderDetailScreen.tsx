@@ -12,6 +12,8 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { formatDate } from '@shared/utils/locale.util'
 import { formatCurrency } from '@shared/utils/currency.util'
+import { splitTaxLines, taxLinesText } from '@shared/utils/tax.util'
+import { getCurrencyDecimals } from '@money'
 import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
@@ -23,7 +25,7 @@ interface Product { id: string; productName: string; sku?: string | null; unit: 
 // assumed it was always present — a real crash (ErrorBoundary triggered)
 // on any PO carrying even one service line, not a rare edge case.
 interface POItem {
-  id: string; quantity: number; unitCost: number; taxRate: number; total: number
+  id: string; quantity: number; unitCost: number; taxRate: number; taxAmount?: number; total: number
   product: Product | null
   serviceDescription?: string | null
   serviceCategory?: { id: string; categoryName: string } | null
@@ -39,7 +41,7 @@ const LANDED_COST_TYPES = ['FREIGHT', 'DUTY', 'HANDLING', 'OTHER'] as const
 interface PurchaseOrder {
   id: string; poNumber: string; status: string
   orderDate: string; expectedDate?: string | null; notes?: string | null
-  subtotal: number; taxAmount: number; totalAmount: number
+  subtotal: number; taxAmount: number; totalAmount: number; pricesIncludeTax?: boolean; gstType?: string | null
   supplier: Supplier; items: POItem[]
   // Real gap found+fixed 2026-08-12 (post-phase completeness audit): the
   // backend has captured and returned this since Task #3's own build
@@ -68,6 +70,8 @@ export function PurchaseOrderDetailScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
+  const taxModelDoc = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const decimalsDoc = getCurrencyDecimals(useBusinessStore(s => s.profile?.currencyCode))
   const [po, setPO] = useState<PurchaseOrder | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -223,7 +227,10 @@ export function PurchaseOrderDetailScreen() {
 
   function buildShareWhatsAppMessage(): string {
     if (!po) return ''
-    return t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, amount: formatCurrency(po.totalAmount) })
+    const base = t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypePurchaseOrder'), number: po.poNumber, amount: formatCurrency(po.totalAmount) })
+    const taxText = taxLinesText(splitTaxLines(taxModelDoc, po.taxAmount, po.gstType, decimalsDoc, po.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))), formatCurrency)
+    const withTax = taxText ? `${base} ${t('billing.shareTaxLines', { lines: taxText })}` : base
+    return po.pricesIncludeTax ? `${withTax} ${t('billing.pricesIncludeTaxShareNote')}` : withTax
   }
 
   function buildShareEmailSubject(): string {
@@ -432,10 +439,12 @@ export function PurchaseOrderDetailScreen() {
               <span>{t('billing.subtotal')}</span>
               <span>{formatCurrency(po.subtotal)}</span>
             </div>
-            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
-              <span>{t('billing.tax')}</span>
-              <span>{formatCurrency(po.taxAmount)}</span>
-            </div>
+            {splitTaxLines(taxModelDoc, po.taxAmount, po.gstType, decimalsDoc, po.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))).map(line => (
+              <div key={line.label} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
+                <span>{line.label}</span>
+                <span>{formatCurrency(line.amount)}</span>
+              </div>
+            ))}
             <div className="flex justify-between text-sm font-bold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
               <span>{formatCurrency(po.totalAmount)}</span>

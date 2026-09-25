@@ -9,22 +9,24 @@ import { Button } from '@shared/ui/atoms/Button'
 import { Card } from '@shared/ui/molecules/Card'
 import { Select } from '@shared/ui/atoms/Select'
 import { cn } from '@shared/utils/cn'
+import { useMoneyContext } from '@shared/utils/money-context'
+import { computeDocumentTotals, convertPriceMode } from '@money'
+import { PricesIncludeTaxToggle } from '@shared/ui/molecules/PricesIncludeTaxToggle'
+import { GstTypeSelector } from '@shared/ui/molecules/GstTypeSelector'
+import { OffSlabRateWarning } from '@shared/ui/molecules/OffSlabRateWarning'
+import { useGstTypeChoice } from '@shared/utils/gst-type-choice'
+import { resolvePartyState } from '../../../../../shared/utils/gst-presentation'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 
 interface LineItem {
   productId?: string; productName: string; sku?: string
   quantity: number; unitPrice: number; discount: number; taxRate: number
 }
 
-interface Customer { id: string; customerName: string }
+interface Customer { id: string; customerName: string; state?: string | null; taxNumber?: string | null }
 interface ProductResult { id: string; productName: string; sku?: string | null; sellingPrice: number; taxRate: number }
 
-function calcLine(item: LineItem) {
-  const base = item.quantity * item.unitPrice
-  const disc = base * (item.discount / 100)
-  const taxable = base - disc
-  const tax = taxable * (item.taxRate / 100)
-  return taxable + tax
-}
 
 function ProductSearchCell({ value, placeholder, onSelect }: {
   value: string
@@ -84,7 +86,7 @@ function ProductSearchCell({ value, placeholder, onSelect }: {
                 <p className="font-medium text-dark dark:text-slate-100">{p.productName}</p>
                 {p.sku && <p className="text-xs text-slate-400">{p.sku}</p>}
               </div>
-              <span className="text-xs text-brand font-semibold shrink-0 ms-2">₹{p.sellingPrice.toFixed(2)}</span>
+              <span className="text-xs text-brand font-semibold shrink-0 ms-2">{formatCurrency(p.sellingPrice)}</span>
             </button>
           ))}
         </div>
@@ -116,6 +118,8 @@ export function QuotationFormScreen() {
   ])
   const [customers, setCustomers] = useState<Customer[]>([])
   const [selectedCustomerId, setSelectedCustomerId] = useState('')
+  const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const gstChoice = useGstTypeChoice(resolvePartyState(customers.find(c => c.id === selectedCustomerId)?.state, customers.find(c => c.id === selectedCustomerId)?.taxNumber))
   const [saving, setSaving] = useState(false)
 
   useEffect(() => {
@@ -136,7 +140,7 @@ export function QuotationFormScreen() {
   function selectProduct(index: number, product: ProductResult | null, typedName: string) {
     if (product) {
       setItems(prev => prev.map((item, i) => i === index
-        ? { ...item, productId: product.id, productName: product.productName, sku: product.sku ?? undefined, unitPrice: product.sellingPrice, taxRate: product.taxRate }
+        ? { ...item, productId: product.id, productName: product.productName, sku: product.sku ?? undefined, unitPrice: pricesIncludeTax === moneyCtx.pricesIncludeTaxDefault ? product.sellingPrice : convertPriceMode(product.sellingPrice, product.taxRate, pricesIncludeTax, moneyCtx.decimals), taxRate: product.taxRate }
         : item))
     } else {
       setItems(prev => prev.map((item, i) => i === index ? { ...item, productId: undefined, productName: typedName } : item))
@@ -151,9 +155,23 @@ export function QuotationFormScreen() {
     setItems(prev => prev.filter((_, i) => i !== index))
   }
 
-  const subtotal = items.reduce((s, item) => s + item.quantity * item.unitPrice, 0)
-  const discountTotal = items.reduce((s, item) => s + item.quantity * item.unitPrice * item.discount / 100, 0)
-  const total = items.reduce((s, item) => s + calcLine(item), 0)
+  // Same shared module quotation.service.ts runs on save, over exactly the rows that get saved
+  // (blank-name rows are dropped by handleSave), so the total shown is the total stored.
+  const moneyCtx = useMoneyContext()
+  const [inclTaxChoice, setInclTaxChoice] = useState<boolean | null>(null)
+  const pricesIncludeTax = inclTaxChoice ?? moneyCtx.pricesIncludeTaxDefault
+  // Flipping the switch re-expresses every entered price in the other mode, so the customer's price does not change.
+  function changePriceMode(next: boolean) {
+    setItems(prev => prev.map(i => ({ ...i, unitPrice: convertPriceMode(i.unitPrice, i.taxRate, next, moneyCtx.decimals) })))
+    setInclTaxChoice(next)
+  }
+  const computed = computeDocumentTotals(
+    items.filter(i => i.productName.trim()).map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountPercent: i.discount, taxRate: i.taxRate })),
+    { decimals: moneyCtx.decimals, pricesIncludeTax }
+  )
+  const subtotal = computed.subtotal
+  const discountTotal = computed.discountAmount
+  const total = computed.totalAmount
 
   async function handleSave() {
     if (items.every(i => !i.productName.trim())) {
@@ -168,6 +186,8 @@ export function QuotationFormScreen() {
         customerName: selectedCustomerId ? undefined : customerName || undefined,
         validUntil: validUntil || undefined,
         retainerType: retainerType || undefined,
+        pricesIncludeTax,
+        gstType: gstChoice.isGst ? gstChoice.gstType : undefined,
         notes: notes || undefined,
         items: validItems.map(i => ({
           productId: i.productId,
@@ -236,8 +256,10 @@ export function QuotationFormScreen() {
 
       <Card padding="lg" className="space-y-3">
         <h2 className="text-sm font-semibold text-slate-500 uppercase tracking-wide">{t('billing.items', { count: items.length })}</h2>
+        <PricesIncludeTaxToggle checked={pricesIncludeTax} onChange={changePriceMode} />
+        {gstChoice.isGst && <GstTypeSelector value={gstChoice.gstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto} />}
         <div className={cn('grid gap-2 px-2 py-1', 'grid-cols-[2fr_80px_100px_70px_70px_32px]')}>
-          {[t('billing.product'), t('billing.qty'), t('billing.rate'), 'Disc%', 'Tax%', ''].map(h => (
+          {[t('billing.product'), t('billing.qty'), `${t('billing.rate')} ${pricesIncludeTax ? t('billing.priceInclTax') : t('billing.priceExclTax')}`, 'Disc%', 'Tax%', ''].map(h => (
             <span key={h} className="text-xs font-semibold text-slate-400 uppercase">{h}</span>
           ))}
         </div>
@@ -316,6 +338,7 @@ export function QuotationFormScreen() {
         <button onClick={addItem} className="flex items-center gap-1.5 text-sm text-brand font-medium hover:underline mt-1">
           <Plus size={14} /> {t('quotations.addItem')}
         </button>
+        <OffSlabRateWarning rates={items.filter(i => i.productName.trim()).map(i => i.taxRate)} />
       </Card>
 
       <Card padding="lg" className="space-y-4">
@@ -327,15 +350,20 @@ export function QuotationFormScreen() {
       <div className="bg-slate-50 dark:bg-slate-800/50 rounded-xl p-4 flex items-center justify-between">
         <div className="space-y-0.5">
           <div className="flex justify-between gap-8 text-sm text-slate-500">
-            <span>{t('billing.subtotal')}</span><span>{sym}{subtotal.toFixed(2)}</span>
+            <span>{t('billing.subtotal')}</span><span>{sym}{subtotal.toFixed(moneyCtx.decimals)}</span>
           </div>
           {discountTotal > 0 && (
             <div className="flex justify-between gap-8 text-sm text-slate-500">
-              <span>{t('billing.discount')}</span><span>−{sym}{discountTotal.toFixed(2)}</span>
+              <span>{t('billing.discount')}</span><span>−{sym}{discountTotal.toFixed(moneyCtx.decimals)}</span>
             </div>
           )}
+          {splitTaxLines(taxModel, computed.taxAmount, gstChoice.gstType, moneyCtx.decimals, computed.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))).map(line => (
+            <div key={line.label} className="flex justify-between gap-8 text-sm text-slate-500">
+              <span>{line.label}</span><span>{sym}{line.amount.toFixed(moneyCtx.decimals)}</span>
+            </div>
+          ))}
           <div className="flex justify-between gap-8 text-base font-bold text-dark dark:text-slate-100">
-            <span>{t('common.total')}</span><span>{sym}{total.toFixed(2)}</span>
+            <span>{t('common.total')}</span><span>{sym}{total.toFixed(moneyCtx.decimals)}</span>
           </div>
         </div>
         <Button size="md" onClick={handleSave} loading={saving}>

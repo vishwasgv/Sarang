@@ -253,7 +253,6 @@ export async function generateTimeEntryInvoice(entryIds: string[]) {
       const result = await billingService.createInvoice({
         customerId: clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items,
         notes: `Professional fees — ${entries.length} time ${entries.length === 1 ? 'entry' : 'entries'}`,
         referenceNumber: uniqueIds[0].slice(0, 12),
@@ -321,7 +320,6 @@ export async function generateInvoiceForServiceProject(payload: { serviceProject
     const result = await billingService.createInvoice({
       customerId: project.clientId,
       paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
       items: [{ productId: product.id, quantity, unitPrice, variantInfo: description.slice(0, 100) }],
       notes: description,
       referenceNumber: project.id.slice(0, 12)

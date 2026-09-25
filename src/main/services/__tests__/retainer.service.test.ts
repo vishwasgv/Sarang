@@ -459,3 +459,39 @@ describe('retainer.service.getRetainerHoursUsage', () => {
     expect(res.success).toBe(false)
   })
 })
+
+// Row 3.14 — a retainer keeps the pricing mode of the quotation it came from and its invoices follow it.
+describe('retainer.service — pricing mode carried to invoices', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  function dbFor(retainer: ReturnType<typeof makeRetainer>) {
+    return {
+      retainerAgreement: { findUnique: vi.fn().mockResolvedValue(retainer), updateMany: vi.fn().mockResolvedValue({ count: 1 }), update: vi.fn().mockResolvedValue({}) },
+      product: { findFirst: vi.fn().mockResolvedValue({ id: 'prod-consulting' }), create: vi.fn() },
+      auditLog: { create: vi.fn().mockResolvedValue({}) },
+    }
+  }
+
+  it.each([[true], [false]])('invoices with pricesIncludeTax=%s when the retainer was created in that mode', async (mode) => {
+    vi.mocked(getPrisma).mockReturnValue(dbFor(makeRetainer({ lastInvoicedPeriod: null, pricesIncludeTax: mode })) as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+    await generateInvoiceForRetainer('ret-abc123', '2026-07')
+    expect(vi.mocked(billingService.createInvoice).mock.calls[0][0]).toMatchObject({ pricesIncludeTax: mode })
+  })
+
+  it('leaves the mode to the business default for a retainer with no stored mode', async () => {
+    vi.mocked(getPrisma).mockReturnValue(dbFor(makeRetainer({ lastInvoicedPeriod: null, pricesIncludeTax: null })) as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
+    await generateInvoiceForRetainer('ret-abc123', '2026-07')
+    expect(vi.mocked(billingService.createInvoice).mock.calls[0][0]).not.toHaveProperty('pricesIncludeTax')
+  })
+
+  it('stores the pricing mode given at creation', async () => {
+    const db = makeMockDb(null)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    await createRetainer({ clientId: 'cust-1', title: 'T', monthlyAmount: 11800, startDate: '2026-07-01', pricesIncludeTax: true })
+    expect(db.retainerAgreement.create.mock.calls[0][0].data.pricesIncludeTax).toBe(true)
+    await createRetainer({ clientId: 'cust-1', title: 'T', monthlyAmount: 10000, startDate: '2026-07-01' })
+    expect(db.retainerAgreement.create.mock.calls[1][0].data.pricesIncludeTax).toBeNull()
+  })
+})

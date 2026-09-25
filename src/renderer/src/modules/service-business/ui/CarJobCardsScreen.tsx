@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { cn } from '@shared/utils/cn'
 import { useNotificationStore } from '@app/store/notification.store'
 import { toLocalISODate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 
 const api = window.api
 
@@ -541,7 +542,7 @@ export default function CarJobCardsScreen() {
                       <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
                         {svcItems.length > 0 && <span>{svcItems.length} service item(s)</span>}
                         {prtItems.length > 0 && <span>{prtItems.length} part(s)</span>}
-                        {total > 0 && <span className="font-medium text-gray-700 dark:text-slate-300">Total: ₹{total.toFixed(2)}</span>}
+                        {total > 0 && <span className="font-medium text-gray-700 dark:text-slate-300">Total: {formatCurrency(total)}</span>}
                         {card.estimatedDelivery && <span>Est. delivery: {dateSlice(card.estimatedDelivery)}</span>}
                       </div>
                     </div>
@@ -599,13 +600,13 @@ export default function CarJobCardsScreen() {
                                 <tr key={i} className="border-t border-gray-50">
                                   <td className="py-1">{si.name}</td>
                                   <td className="text-end py-1">{si.quantity}</td>
-                                  <td className="text-end py-1">₹{si.unitPrice.toFixed(2)}</td>
-                                  <td className="text-end py-1 font-medium">₹{(si.quantity * si.unitPrice).toFixed(2)}</td>
+                                  <td className="text-end py-1">{formatCurrency(si.unitPrice)}</td>
+                                  <td className="text-end py-1 font-medium">{formatCurrency((si.quantity * si.unitPrice))}</td>
                                 </tr>
                               ))}
                               <tr className="border-t border-gray-200 font-semibold dark:border-slate-700">
                                 <td colSpan={3} className="py-1 text-end text-gray-600 dark:text-slate-400">Labor Total</td>
-                                <td className="text-end py-1">₹{labor.toFixed(2)}</td>
+                                <td className="text-end py-1">{formatCurrency(labor)}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -622,13 +623,13 @@ export default function CarJobCardsScreen() {
                                   <td className="py-1">{pi.name}</td>
                                   <td className="py-1 text-gray-400 dark:text-slate-500">{pi.partNumber || '—'}</td>
                                   <td className="text-end py-1">{pi.quantity}</td>
-                                  <td className="text-end py-1">₹{pi.unitPrice.toFixed(2)}</td>
-                                  <td className="text-end py-1 font-medium">₹{(pi.quantity * pi.unitPrice).toFixed(2)}</td>
+                                  <td className="text-end py-1">{formatCurrency(pi.unitPrice)}</td>
+                                  <td className="text-end py-1 font-medium">{formatCurrency((pi.quantity * pi.unitPrice))}</td>
                                 </tr>
                               ))}
                               <tr className="border-t border-gray-200 font-semibold dark:border-slate-700">
                                 <td colSpan={4} className="py-1 text-end text-gray-600 dark:text-slate-400">Parts Total</td>
-                                <td className="text-end py-1">₹{parts.toFixed(2)}</td>
+                                <td className="text-end py-1">{formatCurrency(parts)}</td>
                               </tr>
                             </tbody>
                           </table>
@@ -641,7 +642,7 @@ export default function CarJobCardsScreen() {
                         </div>
                       )}
                       <div className="col-span-2 text-end text-sm font-semibold text-gray-800 dark:text-slate-200">
-                        Grand Total: ₹{total.toFixed(2)} (excl. GST)
+                        Grand Total: {formatCurrency(total)} (excl. GST)
                       </div>
                     </div>
                   )}
@@ -744,7 +745,7 @@ export default function CarJobCardsScreen() {
                     return (
                       <div className="grid grid-cols-3 gap-2 mb-3">
                         <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-center">
-                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">₹{lifetimeTotal.toFixed(2)}</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{formatCurrency(lifetimeTotal)}</div>
                           <div className="text-[11px] text-gray-500 dark:text-slate-400">Lifetime Spend</div>
                         </div>
                         <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-center">
@@ -752,7 +753,7 @@ export default function CarJobCardsScreen() {
                           <div className="text-[11px] text-gray-500 dark:text-slate-400">Visits</div>
                         </div>
                         <div className="rounded-lg border border-gray-200 dark:border-slate-700 px-3 py-2 text-center">
-                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">₹{(lifetimeTotal / visitCount).toFixed(2)}</div>
+                          <div className="text-sm font-semibold text-gray-900 dark:text-slate-100">{formatCurrency((lifetimeTotal / visitCount))}</div>
                           <div className="text-[11px] text-gray-500 dark:text-slate-400">Avg. per Visit</div>
                         </div>
                       </div>
@@ -770,7 +771,7 @@ export default function CarJobCardsScreen() {
                           <span>{dateSlice(job.createdAt)}</span>
                           {job.kmIn != null && <span>KM In: {job.kmIn}</span>}
                           {job.kmOut != null && <span>KM Out: {job.kmOut}</span>}
-                          {total > 0 && <span className="font-medium text-gray-700 dark:text-slate-300">Total: ₹{total.toFixed(2)}</span>}
+                          {total > 0 && <span className="font-medium text-gray-700 dark:text-slate-300">Total: {formatCurrency(total)}</span>}
                         </div>
                       </div>
                     )
@@ -890,7 +891,7 @@ export default function CarJobCardsScreen() {
                         <button onClick={() => removeServiceItem(idx)} className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"><X size={14} /></button>
                       </div>
                     ))}
-                    <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Labor Total: ₹{laborTotal.toFixed(2)}</div>
+                    <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Labor Total: {formatCurrency(laborTotal)}</div>
                   </div>
                 )}
               </div>
@@ -926,7 +927,7 @@ export default function CarJobCardsScreen() {
                           className="w-full text-start px-3 py-2 text-xs hover:bg-orange-50 dark:hover:bg-slate-700 flex items-center justify-between gap-2"
                         >
                           <span className="text-gray-800 dark:text-slate-200">{p.productName}{p.sku ? ` (${p.sku})` : ''}</span>
-                          <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">₹{p.sellingPrice.toFixed(2)} · stock {p.inventory?.quantity ?? 0}</span>
+                          <span className="text-gray-500 dark:text-slate-400 whitespace-nowrap">{formatCurrency(p.sellingPrice)} · stock {p.inventory?.quantity ?? 0}</span>
                         </button>
                       ))}
                     </div>
@@ -956,7 +957,7 @@ export default function CarJobCardsScreen() {
                         <button onClick={() => removePartItem(idx)} className="text-red-400 dark:text-red-500 hover:text-red-600 dark:hover:text-red-400"><X size={14} /></button>
                       </div>
                     ))}
-                    <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Parts Total: ₹{partsTotal.toFixed(2)}</div>
+                    <div className="text-end text-xs font-medium text-gray-700 dark:text-slate-300">Parts Total: {formatCurrency(partsTotal)}</div>
                   </div>
                 )}
                 <div className="flex items-center justify-end gap-2 mt-2">
@@ -966,7 +967,7 @@ export default function CarJobCardsScreen() {
               </div>
               {(form.serviceItems.length > 0 || form.partsItems.length > 0) && (
                 <div className="text-end text-sm font-semibold text-gray-800 border-t border-gray-100 pt-2 dark:border-slate-800 dark:text-slate-200">
-                  Grand Total: ₹{(laborTotal + partsTotal).toFixed(2)} (excl. GST)
+                  Grand Total: {formatCurrency((laborTotal + partsTotal))} (excl. GST)
                 </div>
               )}
 

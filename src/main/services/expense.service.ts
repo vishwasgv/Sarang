@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { parseLocalDateStart, toLocalDateOnlyIso } from '../utils/date.util'
 import { sumCurrency, roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { assertNotLocked } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
@@ -132,6 +133,7 @@ export async function listExpenses(params?: {
 }
 
 export async function createExpense(payload: ExpensePayload, userId?: string) {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
 
@@ -192,6 +194,7 @@ export async function createExpense(payload: ExpensePayload, userId?: string) {
 }
 
 export async function updateExpense(payload: UpdateExpensePayload, userId?: string) {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
 
@@ -288,6 +291,7 @@ export async function deleteExpense(id: string, userId?: string) {
 }
 
 export async function getExpenseSummary(dateFrom: string, dateTo: string) {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const from = new Date(dateFrom + 'T00:00:00')

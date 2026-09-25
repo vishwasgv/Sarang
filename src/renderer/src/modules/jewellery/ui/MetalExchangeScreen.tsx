@@ -11,6 +11,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface MetalExchange {
   id: string
@@ -126,7 +127,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
       })
       if (res.success) {
         const data = res.data as MetalExchange
-        toastSuccess(t('jewellery.exchangeRecorded'), t('jewellery.exchangeRecordedDesc', { number: data.exchangeNumber, amount: `${sym}${data.valueGiven.toFixed(2)}` }))
+        toastSuccess(t('jewellery.exchangeRecorded'), t('jewellery.exchangeRecordedDesc', { number: data.exchangeNumber, amount: `${sym}${moneyFixed(data.valueGiven)}` }))
         setShowForm(false)
         resetForm()
         await load()
@@ -216,7 +217,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
         <Card padding="md" className="space-y-3 border-brand/40">
           <p className="text-sm font-semibold text-dark">{t('jewellery.markAppliedTitle', { number: linkTarget.exchangeNumber })}</p>
           <Input label={t('jewellery.invoiceNumber')} placeholder={t('jewellery.invoiceNumberPlaceholder')} value={linkInvoiceNumber} onChange={(e) => setLinkInvoiceNumber(e.target.value)} />
-          <p className="text-xs text-slate-400">{t('jewellery.linkHint', { amount: `${sym}${linkTarget.valueGiven.toFixed(2)}` })}</p>
+          <p className="text-xs text-slate-400">{t('jewellery.linkHint', { amount: `${sym}${moneyFixed(linkTarget.valueGiven)}` })}</p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => setLinkTarget(null)} disabled={linking}>{t('jewellery.cancel')}</Button>
             <Button size="sm" onClick={() => void handleLink()} loading={linking}>{t('jewellery.link')}</Button>
@@ -253,7 +254,7 @@ export function MetalExchangeScreen(): React.JSX.Element {
                       const fineness = purityToFineness(x.purity)
                       return fineness !== null ? <span>{t('jewellery.pureEquivalent', { weight: (x.netWeight * fineness).toFixed(3) })}</span> : null
                     })()}
-                    <span className="font-semibold text-dark dark:text-slate-100">{sym}{x.valueGiven.toFixed(2)} {t('jewellery.credit')}</span>
+                    <span className="font-semibold text-dark dark:text-slate-100">{sym}{moneyFixed(x.valueGiven)} {t('jewellery.credit')}</span>
                     <span>{new Date(x.createdAt).toLocaleDateString()}</span>
                   </div>
                 </div>

@@ -1,6 +1,6 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
 import { formatDate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
@@ -139,7 +139,7 @@ export default function ShipmentsScreen() {
 
   const selectedCarrier = carriers.find(c => c.id === form.carrierId)
   const suggestedFreight = selectedCarrier?.ratePerKg && form.weight
-    ? (selectedCarrier.ratePerKg * parseFloat(form.weight)).toFixed(2) : null
+    ? moneyFixed(selectedCarrier.ratePerKg * parseFloat(form.weight)) : null
 
   const addItem = () => setItems(prev => [...prev, { ...EMPTY_ITEM }])
   const removeItem = (idx: number) => setItems(prev => prev.filter((_, i) => i !== idx))

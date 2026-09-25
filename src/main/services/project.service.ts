@@ -347,7 +347,6 @@ export async function generateProjectInvoice(id: string, userId?: string) {
     const result = await billingService.createInvoice({
       customerId: project.customerId,
       paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
       items: [{ productId: product.id, quantity: 1, unitPrice: project.estimatedAmount }],
       notes: `Project ${project.projectNumber} — ${project.title}`,
       referenceNumber: project.projectNumber,

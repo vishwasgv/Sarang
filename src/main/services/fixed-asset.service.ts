@@ -4,6 +4,7 @@ import { logAction } from './audit.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService } from './journal-entry.service'
 import { roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { ServiceError } from '../errors/service-error'
 import type { CreateFixedAssetPayload, RunDepreciationPayload, DisposeFixedAssetPayload } from '../validation/fixed-asset.validation'
 
@@ -97,6 +98,7 @@ export const fixedAssetService = {
   },
 
   async runDepreciation(payload: RunDepreciationPayload, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     try {
       const periodStart = parseLocalDateStart(payload.periodStart)
@@ -170,6 +172,7 @@ export const fixedAssetService = {
   // folded into the two accounts this phase's 13-account seed already has,
   // a deliberate simplification flagged here rather than silently assumed.
   async disposeAsset(payload: DisposeFixedAssetPayload, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     try {
       const asset = await db.fixedAsset.findUnique({ where: { id: payload.id } })

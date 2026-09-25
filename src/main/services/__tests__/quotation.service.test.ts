@@ -660,3 +660,30 @@ describe('quotationService.convertToRetainer', () => {
     expect(db.quotation.update).not.toHaveBeenCalled()
   })
 })
+
+// Row 3.14 — the retainer takes the quotation's pricing mode and an amount in that mode.
+describe('quotationService.convertToRetainer — pricing mode', () => {
+  function dbWith(quotation: Record<string, unknown>) {
+    return {
+      quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', retainerType: 'FIXED_FEE', status: 'DRAFT', notes: null, ...quotation }), update: vi.fn().mockResolvedValue({}) },
+      retainerAgreement: { findFirst: vi.fn().mockResolvedValue(null) }
+    }
+  }
+  async function run(quotation: Record<string, unknown>) {
+    vi.mocked(getPrisma).mockReturnValue(dbWith(quotation) as never)
+    vi.mocked(createRetainer).mockResolvedValue({ success: true, data: { id: 'ret-1' } } as never)
+    vi.mocked(generateInvoiceForRetainer).mockResolvedValue({ success: true, data: { invoiceId: 'inv-1', period: '2026-09' } } as never)
+    await quotationService.convertToRetainer('qt-1', 'user-1')
+    return vi.mocked(createRetainer).mock.calls.at(-1)![0] as { monthlyAmount: number; pricesIncludeTax?: boolean }
+  }
+
+  it('an inclusive quotation gives an inclusive retainer for the payable total', async () => {
+    const call = await run({ pricesIncludeTax: true, subtotal: 10000, discountAmount: 0, taxAmount: 1800, totalAmount: 11800 })
+    expect(call).toMatchObject({ monthlyAmount: 11800, pricesIncludeTax: true })
+  })
+
+  it('an exclusive quotation gives an exclusive retainer for the taxable amount, so invoicing adds the tax once', async () => {
+    const call = await run({ pricesIncludeTax: false, subtotal: 10500, discountAmount: 500, taxAmount: 1800, totalAmount: 11800 })
+    expect(call).toMatchObject({ monthlyAmount: 10000, pricesIncludeTax: false })
+  })
+})

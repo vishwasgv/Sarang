@@ -1,5 +1,8 @@
 import { getPrisma } from './db'
 import { seedDefaultTemplates } from '../services/industry-template.service'
+import { refreshIndiaGstSlabs, addMissingIndiaSplitRows } from '../services/india-gst-slabs.service'
+import { isIndiaCountry } from '../../shared/data/tax-presets'
+import { backfillLineTaxCategories } from '../services/tax-category-backfill.service'
 import { seedDefaultLeaveTypes } from '../services/hr.service'
 
 // All roles and permissions from PERMISSIONS_MATRIX.md
@@ -837,19 +840,6 @@ const DEFAULT_EXPENSE_CATEGORIES = [
   'Office Supplies', 'Bank Charges', 'Miscellaneous'
 ]
 
-// GST slabs for India — both CGST and SGST components
-const DEFAULT_GST_CONFIGS = [
-  { taxName: 'GST Exempt', taxType: 'GST', rate: 0 },
-  { taxName: 'CGST @ 2.5%', taxType: 'CGST', rate: 2.5 },
-  { taxName: 'SGST @ 2.5%', taxType: 'SGST', rate: 2.5 },
-  { taxName: 'CGST @ 6%', taxType: 'CGST', rate: 6 },
-  { taxName: 'SGST @ 6%', taxType: 'SGST', rate: 6 },
-  { taxName: 'CGST @ 9%', taxType: 'CGST', rate: 9 },
-  { taxName: 'SGST @ 9%', taxType: 'SGST', rate: 9 },
-  { taxName: 'CGST @ 14%', taxType: 'CGST', rate: 14 },
-  { taxName: 'SGST @ 14%', taxType: 'SGST', rate: 14 }
-]
-
 export async function seedDefaultData(): Promise<void> {
   const db = getPrisma()
 
@@ -899,13 +889,13 @@ export async function seedDefaultData(): Promise<void> {
     }
   }
 
-  // Seed default GST tax configurations (idempotent)
-  for (const cfg of DEFAULT_GST_CONFIGS) {
-    const existing = await db.taxConfiguration.findFirst({ where: { taxName: cfg.taxName, taxType: cfg.taxType } })
-    if (!existing) {
-      await db.taxConfiguration.create({ data: { ...cfg, country: 'IN', isActive: true } })
-    }
-  }
+  // India only: the CGST/SGST rows and the current GST slabs are created for a business whose country is India and
+  // for no other country (a fresh install has no business yet, so setup creates them). Withdrawn 12 and 28 percent
+  // rows are marked as older rates.
+  const seedProfile = await db.businessProfile.findFirst({ select: { country: true } })
+  if (seedProfile && isIndiaCountry(seedProfile.country)) await addMissingIndiaSplitRows(db)
+  await refreshIndiaGstSlabs()
+  await backfillLineTaxCategories().catch(() => { /* one-time, retried on the next launch */ })
 
   // Seed default leave types (idempotent)
   await seedDefaultLeaveTypes()
@@ -926,4 +916,9 @@ export async function seedDefaultData(): Promise<void> {
   // no-op on a fresh/small install; keeps disk usage bounded on a long-lived one.
   const { pruneOldAuditLogs } = await import('../services/audit.service')
   await pruneOldAuditLogs()
+
+  // Every launch: learn the business currency's decimals so amounts rounded without an explicit
+  // precision (ledgers, reports, payments) use the real minor unit (3 for KWD, 0 for JPY).
+  const { getBusinessCurrencyDecimals } = await import('../services/settings.service')
+  await getBusinessCurrencyDecimals()
 }

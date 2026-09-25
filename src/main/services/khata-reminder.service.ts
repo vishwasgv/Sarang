@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { buildReminderWhatsAppLink } from './notification-queue.service'
 import { renderMessageTemplate } from './message-template.service'
+import { roundCurrency, moneyEpsilon, getActiveCurrencyDecimals } from './currency.service'
 
 // 2026-09 §12 — Grocery/Kirana item 3: Khata (credit) auto-reminder. Reuses
 // the exact buildWhatsAppLink primitive already proven by
@@ -45,7 +46,7 @@ async function listKhataReminderCandidates(): Promise<{ success: boolean; data?:
     for (const c of customers) {
       const entries = ledgerByCustomer.get(c.id) ?? []
       const outstanding = entries.reduce((s, e) => s + e.debitAmount - e.creditAmount, 0)
-      if (outstanding <= 0.01) continue
+      if (outstanding <= moneyEpsilon()) continue
 
       const oldestDebit = entries.filter(e => e.debitAmount > 0).sort((a, b) => a.createdAt.getTime() - b.createdAt.getTime())[0]
       const daysOverdue = oldestDebit ? Math.floor((now.getTime() - oldestDebit.createdAt.getTime()) / 86400000) : 0
@@ -62,7 +63,7 @@ async function listKhataReminderCandidates(): Promise<{ success: boolean; data?:
 
       candidates.push({
         customerId: c.id, customerName: c.customerName, phone: c.phone,
-        outstanding: Math.round(outstanding * 100) / 100, daysOverdue, eligibleForReminder, ineligibleReason
+        outstanding: roundCurrency(outstanding), daysOverdue, eligibleForReminder, ineligibleReason
       })
     }
 
@@ -89,10 +90,10 @@ async function buildKhataReminderLink(customerId: string): Promise<{ success: bo
       db.businessProfile.findFirst({ select: { currencySymbol: true } })
     ])
     const outstanding = ledger.reduce((s, e) => s + e.debitAmount - e.creditAmount, 0)
-    if (outstanding <= 0.01) return { success: false, error: { code: 'KHATA-003', message: 'This customer has no outstanding balance.' } }
+    if (outstanding <= moneyEpsilon()) return { success: false, error: { code: 'KHATA-003', message: 'This customer has no outstanding balance.' } }
 
     const sym = profile?.currencySymbol ?? '₹'
-    const message = await renderMessageTemplate('KHATA_BALANCE_REMINDER', { customerName: customer.customerName, outstandingAmount: `${sym}${outstanding.toFixed(2)}` })
+    const message = await renderMessageTemplate('KHATA_BALANCE_REMINDER', { customerName: customer.customerName, outstandingAmount: `${sym}${outstanding.toFixed(getActiveCurrencyDecimals())}` })
     const link = await buildReminderWhatsAppLink(customer.phone, message)
     await db.customer.update({ where: { id: customerId }, data: { lastKhataReminderSentAt: new Date() } })
     return { success: true, data: link }

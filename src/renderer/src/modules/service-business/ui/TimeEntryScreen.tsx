@@ -6,6 +6,7 @@ import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
+import { roundToCurrency } from '@shared/utils/currency.util'
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 
@@ -314,7 +315,7 @@ export default function TimeEntryScreen(): React.JSX.Element {
   const unbilledAmt = kpiEntries.filter((e) => !e.isBilled).reduce((s, e) => s + Number(e.amount), 0)
 
   const previewAmt = formHours && formRate
-    ? Math.round(Number(formHours) * Number(formRate) * 100) / 100
+    ? roundToCurrency(Number(formHours) * Number(formRate))
     : null
 
   const hasProjects = projects.length > 0

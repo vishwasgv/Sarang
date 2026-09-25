@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { checkSupplierUniqueness, validateSupplierFormats, normaliseSupplierIdentifiers } from './supplier-checks'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -98,11 +99,13 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
   try {
     const db = getPrisma()
 
-    // S001: Phone unique when provided
-    if (payload.phone) {
-      const phoneExists = await db.supplier.findFirst({ where: { phone: payload.phone, isActive: true } })
-      if (phoneExists) return { success: false, error: { code: 'SUP-002', message: 'A supplier with this phone number already exists.' } }
-    }
+    normaliseSupplierIdentifiers(payload)
+    const formatError = await validateSupplierFormats(payload)
+    if (formatError) return formatError
+    // One real-world supplier = one record: phone, GSTIN, email and name+city
+    // are all checked against active AND archived suppliers.
+    const duplicate = await checkSupplierUniqueness(payload)
+    if (duplicate) return duplicate
 
     // Same fix as customer.service.ts's createCustomer: a plain count()+1
     // collides with an existing supplierCode as soon as any supplier is
@@ -177,11 +180,23 @@ export async function updateSupplier(payload: UpdateSupplierPayload): Promise<Ap
     const existing = await db.supplier.findUnique({ where: { id: payload.id } })
     if (!existing) return { success: false, error: { code: 'SUP-001', message: 'Supplier not found.' } }
 
-    // S001: Phone unique (exclude self)
-    if (payload.phone && payload.phone !== existing.phone) {
-      const phoneExists = await db.supplier.findFirst({ where: { phone: payload.phone, isActive: true, id: { not: payload.id } } })
-      if (phoneExists) return { success: false, error: { code: 'SUP-002', message: 'A supplier with this phone number already exists.' } }
+    normaliseSupplierIdentifiers(payload)
+    // Only the fields this edit actually changes are re-checked, so an old
+    // record with a legacy value can still be edited for something else.
+    const changed = {
+      phone: payload.phone && payload.phone !== existing.phone ? payload.phone : null,
+      email: payload.email && payload.email !== existing.email ? payload.email : null,
+      taxNumber: payload.taxNumber && payload.taxNumber !== existing.taxNumber ? payload.taxNumber : null,
+      panNumber: payload.panNumber && payload.panNumber !== existing.panNumber ? payload.panNumber : null,
+      bankIfscCode: payload.bankIfscCode && payload.bankIfscCode !== existing.bankIfscCode ? payload.bankIfscCode : null,
+      supplierName: payload.supplierName && (payload.supplierName !== existing.supplierName || (payload.city ?? existing.city) !== existing.city) ? payload.supplierName : null,
+      city: payload.city ?? existing.city,
+      country: payload.country ?? existing.country
     }
+    const formatError = await validateSupplierFormats(changed)
+    if (formatError) return formatError
+    const duplicate = await checkSupplierUniqueness(changed, payload.id)
+    if (duplicate) return duplicate
 
     const updated = await db.supplier.update({
       where: { id: payload.id },

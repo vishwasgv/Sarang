@@ -8,6 +8,7 @@ import { CustomerPicker } from '@shared/ui/molecules/CustomerPicker'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useNotificationStore } from '@app/store/notification.store'
 import { toLocalISODate } from '@shared/utils/locale.util'
+import { formatCurrency } from '@shared/utils/currency.util'
 
 const api = window.api
 
@@ -630,7 +631,7 @@ export default function PestControlScreen() {
                           <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{c.propertyAddress}</div>
                           <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
                             <span>{c.client.customerName}{c.client.phone ? ` · ${c.client.phone}` : ''}</span>
-                            <span>Value: ₹{Number(c.contractValue).toFixed(2)}</span>
+                            <span>Value: {formatCurrency(Number(c.contractValue))}</span>
                             <span>From: {dateSlice(c.startDate)}</span>
                             {c.endDate && <span>To: {dateSlice(c.endDate)}</span>}
                             {c._count?.jobSheets != null && <span>{c._count.jobSheets} job sheet(s)</span>}
@@ -738,7 +739,7 @@ export default function PestControlScreen() {
                               <div>{sheet.treatmentType}</div>
                               {areas.length > 0 && <div className="text-xs text-gray-400 dark:text-slate-500">{areas.slice(0, 2).join(', ')}{areas.length > 2 ? '...' : ''}</div>}
                             </td>
-                            <td className="px-4 py-3 font-medium">₹{Number(sheet.jobAmount).toFixed(2)}</td>
+                            <td className="px-4 py-3 font-medium">{formatCurrency(Number(sheet.jobAmount))}</td>
                             <td className="px-4 py-3">
                               <Badge variant={JOB_STATUS_VARIANT[sheet.status] ?? 'neutral'} size="sm">{sheet.status}</Badge>
                               {sheet.clientSignature && <div className="text-xs text-green-600 dark:text-green-400 mt-0.5">✓ Signed</div>}

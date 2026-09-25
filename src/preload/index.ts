@@ -142,6 +142,7 @@ const api: IpcChannels = {
     list: (p) => invoke('bills:list', p),
     get: (id) => invoke('bills:get', id),
     create: (p) => invoke('bills:create', p),
+    update: (p) => invoke('bills:update', p),
     void: (p) => invoke('bills:void', p),
     print: (id) => invoke('bills:print', id)
   },
@@ -331,6 +332,8 @@ const api: IpcChannels = {
   },
   tax: {
     list: () => invoke('tax:list'),
+    presetStatus: () => invoke('tax:presetStatus'),
+    loadPreset: () => invoke('tax:loadPreset'),
     create: (p) => invoke('tax:create', p),
     update: (p) => invoke('tax:update', p),
     delete: (id) => invoke('tax:delete', id)
@@ -348,6 +351,10 @@ const api: IpcChannels = {
     profitAndLoss: (p) => invoke('reports:profitAndLoss', p),
     cashBook: (p) => invoke('reports:cashBook', p),
     trialBalance: (p) => invoke('reports:trialBalance', p),
+    balanceSheet: (p) => invoke('reports:balanceSheet', p),
+    generalLedger: (p) => invoke('reports:generalLedger', p),
+    dayBook: (p) => invoke('reports:dayBook', p),
+    cashFlowStatement: (p) => invoke('reports:cashFlowStatement', p),
     costCentreTreemap: (p) => invoke('reports:costCentreTreemap', p),
     budgetVsActual: (p) => invoke('reports:budgetVsActual', p),
     statutoryComplianceSummary: (p) => invoke('reports:statutoryComplianceSummary', p),

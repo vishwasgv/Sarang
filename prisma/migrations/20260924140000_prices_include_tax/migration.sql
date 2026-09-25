@@ -1,0 +1,7 @@
+ALTER TABLE "Invoice" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Quotation" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "SalesOrder" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "PurchaseOrder" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "Bill" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "CreditNote" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE "DebitNote" ADD COLUMN "pricesIncludeTax" BOOLEAN NOT NULL DEFAULT false;

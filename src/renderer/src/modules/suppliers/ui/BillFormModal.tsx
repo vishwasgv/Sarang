@@ -1,4 +1,14 @@
 import React, { useEffect, useState } from 'react'
+import { useMoneyContext } from '@shared/utils/money-context'
+import { computeDocumentTotals, convertPriceMode } from '@money'
+import { PricesIncludeTaxToggle } from '@shared/ui/molecules/PricesIncludeTaxToggle'
+import { GstTypeSelector } from '@shared/ui/molecules/GstTypeSelector'
+import { OffSlabRateWarning } from '@shared/ui/molecules/OffSlabRateWarning'
+import { useGstTypeChoice } from '@shared/utils/gst-type-choice'
+import { resolvePartyState } from '../../../../../shared/utils/gst-presentation'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { useBusinessStore } from '@app/store/business.store'
+import { isGstType } from '@gst'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -35,24 +45,49 @@ const schema = z.object({
   dueDate: z.string().optional(),
   notes: z.string().max(500).optional(),
   isReverseCharge: z.boolean().default(false),
+  pricesIncludeTax: z.boolean(),
   costCentreId: z.string().optional(),
   items: z.array(itemSchema).min(1, 'Add at least one item')
 })
 
 type FormValues = z.infer<typeof schema>
 
-interface Supplier { id: string; supplierName: string; supplierCode: string }
+interface Supplier { id: string; supplierName: string; supplierCode: string; state?: string | null; taxNumber?: string | null }
 interface ExpenseCategory { id: string; categoryName: string }
 interface CostCentre { id: string; name: string }
+
+// The shape of an existing bill as returned by bills:get, used to pre-fill the
+// form when an OPEN, unpaid bill is being edited.
+export interface EditableBill {
+  id: string; billNumber: string; purchaseOrderId?: string | null
+  supplier: { id: string }
+  billDate: string; dueDate?: string | null; notes?: string | null
+  isReverseCharge?: boolean; pricesIncludeTax?: boolean; gstType?: string | null; costCentreId?: string | null
+  foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null
+  landedCosts?: { costType: string; amount: number; allocationMethod: string }[]
+  items: {
+    product: { id: string } | null; serviceDescription: string | null; serviceCategory: { id: string } | null
+    quantity: number; unitCost: number; discountAmount: number; taxRate: number
+  }[]
+}
+
+// Local calendar date (YYYY-MM-DD) from a stored timestamp, avoiding the
+// off-by-one that toISOString() causes in timezones ahead of UTC.
+function toLocalDateInput(iso?: string | null): string {
+  if (!iso) return ''
+  const d = new Date(iso)
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+}
 
 interface BillFormModalProps {
   open: boolean
   onClose: () => void
   onSaved: (billId: string) => void
   defaultSupplierId?: string
+  editBill?: EditableBill | null
 }
 
-export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: BillFormModalProps) {
+export function BillFormModal({ open, onClose, onSaved, defaultSupplierId, editBill }: BillFormModalProps) {
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const [suppliers, setSuppliers] = useState<Supplier[]>([])
@@ -76,13 +111,19 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
 
   const emptyItem = { lineType: 'PRODUCT' as const, productId: '', serviceDescription: '', serviceCategoryId: '', quantity: 1, unitCost: 0, discountAmount: 0, taxRate: 0 }
 
+  const moneyCtx = useMoneyContext()
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, costCentreId: '', items: [emptyItem] }
+    defaultValues: { supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, costCentreId: '', items: [emptyItem] }
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
   const watchedItems = watch('items')
+  const pricesIncludeTax = watch('pricesIncludeTax')
+  const watchedSupplierId = watch('supplierId')
+  const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  // A bill is presented by the supplier's state against the business state; an edited bill keeps its stored choice.
+  const gstChoice = useGstTypeChoice(resolvePartyState(suppliers.find(s => s.id === watchedSupplierId)?.state, suppliers.find(s => s.id === watchedSupplierId)?.taxNumber))
 
   async function loadSuppliers() {
     const sRes = await window.api.suppliers.list({ limit: 200 })
@@ -96,9 +137,35 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
 
   useEffect(() => {
     if (!open) return
-    reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, costCentreId: '', items: [emptyItem] })
-    setLandedCostRows([])
-    setForeignCurrencyEnabled(false); setForeignCurrencyCode(''); setForeignExchangeRate('')
+    if (editBill && isGstType(editBill.gstType)) gstChoice.setGstType(editBill.gstType)
+    else gstChoice.reset()
+    if (editBill) {
+      reset({
+        supplierId: editBill.supplier.id,
+        billDate: toLocalDateInput(editBill.billDate),
+        dueDate: toLocalDateInput(editBill.dueDate),
+        notes: editBill.notes ?? '',
+        isReverseCharge: !!editBill.isReverseCharge,
+        pricesIncludeTax: !!editBill.pricesIncludeTax,
+        costCentreId: editBill.costCentreId ?? '',
+        items: editBill.items.map(i => ({
+          lineType: i.product ? 'PRODUCT' as const : 'SERVICE' as const,
+          productId: i.product?.id ?? '',
+          serviceDescription: i.serviceDescription ?? '',
+          serviceCategoryId: i.serviceCategory?.id ?? '',
+          quantity: i.quantity, unitCost: i.unitCost, discountAmount: i.discountAmount, taxRate: i.taxRate
+        }))
+      })
+      setLandedCostRows((editBill.landedCosts ?? []).map(l => ({ costType: l.costType, amount: String(l.amount), allocationMethod: l.allocationMethod === 'BY_QUANTITY' ? 'BY_QUANTITY' as const : 'BY_VALUE' as const })))
+      const hasForeign = !!(editBill.foreignCurrencyCode && editBill.foreignExchangeRate)
+      setForeignCurrencyEnabled(hasForeign)
+      setForeignCurrencyCode(hasForeign ? editBill.foreignCurrencyCode ?? '' : '')
+      setForeignExchangeRate(hasForeign ? String(editBill.foreignExchangeRate) : '')
+    } else {
+      reset({ supplierId: defaultSupplierId ?? '', billDate: '', dueDate: '', notes: '', isReverseCharge: false, pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, costCentreId: '', items: [emptyItem] })
+      setLandedCostRows([])
+      setForeignCurrencyEnabled(false); setForeignCurrencyCode(''); setForeignExchangeRate('')
+    }
     async function loadOptions() {
       setLoadingData(true)
       try {
@@ -117,7 +184,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
     }
     loadOptions()
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [open, defaultSupplierId, reset])
+  }, [open, defaultSupplierId, reset, editBill])
 
   async function handleSupplierCreated(newSupplier?: { id: string; supplierName: string }) {
     setSupplierFormOpen(false)
@@ -129,18 +196,31 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
     const previousProductId = watchedItems[index]?.productId
     onChange(product.id)
     if (product.id !== previousProductId) {
-      setValue(`items.${index}.unitCost`, product.costPrice ?? 0)
+      // Product cost price is kept tax-exclusive; express it in this bill's mode.
+      setValue(`items.${index}.unitCost`, pricesIncludeTax ? convertPriceMode(product.costPrice ?? 0, product.taxRate ?? 0, true, moneyCtx.decimals) : (product.costPrice ?? 0))
+      setValue(`items.${index}.taxRate`, product.taxRate ?? 0)
     }
   }
 
-  function lineTotal(item: FormValues['items'][number]) {
-    const base = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0)
-    const taxable = Math.max(0, base - (Number(item.discountAmount) || 0))
-    return taxable + taxable * ((Number(item.taxRate) || 0) / 100)
+  // Same shared module bill.service.ts runs on save (src/shared/utils/money.ts), including the
+  // reverse-charge rule: under RCM the tax is self-assessed and NOT part of the amount payable.
+  // Flipping the switch re-expresses every entered cost and discount in the other mode, so the price agreed does not change.
+  function changePriceMode(next: boolean) {
+    watchedItems.forEach((it, idx) => {
+      const rate = Number(it.taxRate) || 0
+      setValue(`items.${idx}.unitCost`, convertPriceMode(Number(it.unitCost) || 0, rate, next, moneyCtx.decimals))
+      setValue(`items.${idx}.discountAmount`, convertPriceMode(Number(it.discountAmount) || 0, rate, next, moneyCtx.decimals))
+    })
+    setValue('pricesIncludeTax', next)
   }
-
-  const subtotal = watchedItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitCost) || 0), 0)
-  const totalAmount = watchedItems.reduce((sum, item) => sum + lineTotal(item), 0)
+  const billTotals = computeDocumentTotals(
+    watchedItems.map(i => ({ quantity: Number(i.quantity) || 0, unitPrice: Number(i.unitCost) || 0, discountAmount: Number(i.discountAmount) || 0, taxRate: Number(i.taxRate) || 0 })),
+    { decimals: moneyCtx.decimals, excludeTaxFromTotal: watch('isReverseCharge') === true, pricesIncludeTax }
+  )
+  const subtotal = billTotals.subtotal
+  const totalAmount = billTotals.totalAmount
+  const billDiscount = billTotals.discountAmount
+  const billTax = billTotals.taxAmount
 
   function addLandedCostRow() {
     setLandedCostRows(prev => [...prev, { costType: 'FREIGHT', amount: '', allocationMethod: 'BY_VALUE' }])
@@ -158,11 +238,14 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
         .filter(r => parseFloat(r.amount) > 0)
         .map(r => ({ costType: r.costType, amount: parseFloat(r.amount), allocationMethod: r.allocationMethod }))
       const payload = {
+        ...(editBill?.purchaseOrderId ? { purchaseOrderId: editBill.purchaseOrderId } : {}),
         supplierId: values.supplierId,
         billDate: values.billDate || undefined,
         dueDate: values.dueDate || undefined,
         notes: values.notes || undefined,
         isReverseCharge: values.isReverseCharge,
+        pricesIncludeTax: values.pricesIncludeTax,
+        gstType: gstChoice.isGst ? gstChoice.gstType : undefined,
         costCentreId: values.costCentreId || undefined,
         items: values.items.map(item => ({
           productId: item.lineType === 'PRODUCT' ? item.productId : undefined,
@@ -177,13 +260,15 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
         foreignCurrencyCode: foreignCurrencyEnabled && foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 ? foreignCurrencyCode.trim() : undefined,
         foreignExchangeRate: foreignCurrencyEnabled && foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 ? Number(foreignExchangeRate) : undefined
       }
-      const res = await window.api.bills.create(payload)
+      const res = editBill
+        ? await window.api.bills.update({ id: editBill.id, ...payload })
+        : await window.api.bills.create(payload)
       if (res.success) {
         const bill = res.data as { id: string; billNumber: string }
-        toastSuccess(t('bills.recordBill'), bill.billNumber)
+        toastSuccess(editBill ? t('bills.editBill') : t('bills.recordBill'), bill.billNumber)
         onSaved(bill.id)
       } else {
-        toastError(t('common.error'), t('bills.toasts.createFailed'))
+        toastError(t('common.error'), res.error?.message ?? t('bills.toasts.createFailed'))
       }
     } catch {
       toastError(t('common.error'), t('bills.toasts.createFailed'))
@@ -194,7 +279,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
     <Modal
       open={open}
       onClose={onClose}
-      title={t('bills.recordBill')}
+      title={editBill ? `${t('bills.editBill')} ${editBill.billNumber}` : t('bills.recordBill')}
       size="xl"
       footer={
         <>
@@ -232,6 +317,9 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
             <Input label={t('bills.billDate')} type="date" {...register('billDate')} />
             <Input label={t('bills.dueDate')} type="date" {...register('dueDate')} />
           </div>
+
+          <PricesIncludeTaxToggle checked={pricesIncludeTax} onChange={changePriceMode} />
+          {gstChoice.isGst && <GstTypeSelector value={gstChoice.gstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto} />}
 
           {/* Line items */}
           <div>
@@ -297,7 +385,7 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
                       </div>
                       <input type="number" min="1" step="1" placeholder={t('bills.quantity')} {...register(`items.${index}.quantity`)}
                         className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
-                      <input type="number" min="0" step="0.01" placeholder={t('bills.unitCost')} {...register(`items.${index}.unitCost`)}
+                      <input type="number" min="0" step="0.01" placeholder={`${t('bills.unitCost')} ${pricesIncludeTax ? t('billing.priceInclTax') : t('billing.priceExclTax')}`} {...register(`items.${index}.unitCost`)}
                         className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
                       <input type="number" min="0" step="0.01" placeholder={t('bills.discount')} {...register(`items.${index}.discountAmount`)}
                         className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
@@ -394,14 +482,27 @@ export function BillFormModal({ open, onClose, onSaved, defaultSupplierId }: Bil
             ))}
           </div>
 
+          <OffSlabRateWarning rates={watchedItems.map(i => Number(i.taxRate) || 0)} />
           <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-1.5 text-sm">
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
               <span>{t('billing.subtotal')}</span>
-              <span>{subtotal.toFixed(2)}</span>
+              <span>{subtotal.toFixed(moneyCtx.decimals)}</span>
             </div>
+            {billDiscount > 0 && (
+              <div className="flex justify-between text-slate-600 dark:text-slate-300">
+                <span>{t('billing.discount')}</span>
+                <span>- {billDiscount.toFixed(moneyCtx.decimals)}</span>
+              </div>
+            )}
+            {splitTaxLines(taxModel, billTax, gstChoice.gstType, moneyCtx.decimals, billTotals.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))).map(line => (
+              <div key={line.label} className="flex justify-between text-slate-600 dark:text-slate-300">
+                <span>{line.label}</span>
+                <span>{line.amount.toFixed(moneyCtx.decimals)}</span>
+              </div>
+            ))}
             <div className="flex justify-between font-semibold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
-              <span>{totalAmount.toFixed(2)}</span>
+              <span>{totalAmount.toFixed(moneyCtx.decimals)}</span>
             </div>
           </div>
 

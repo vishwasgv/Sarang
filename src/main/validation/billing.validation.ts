@@ -7,6 +7,7 @@ const InvoiceItemSchema = z.object({
   unitPrice: z.number().min(0, 'Unit price cannot be negative'),
   discountAmount: z.number().min(0).default(0),
   taxRate: z.number().min(0).max(100).optional(),
+  taxCategory: z.enum(['STANDARD', 'REDUCED', 'ZERO_RATED', 'EXEMPT', 'NIL_RATED', 'OUT_OF_SCOPE']).optional(),
   variantId: z.string().optional(),
   variantInfo: z.string().max(100).optional(),
   serialId: z.string().optional(),
@@ -58,9 +59,12 @@ export const CreateInvoiceSchema = z.object({
   paymentMethod: z.enum(['CASH', 'UPI', 'CARD', 'WALLET', 'CREDIT', 'SPLIT']),
   items: z.array(InvoiceItemSchema).min(1, 'At least one item is required'),
   globalDiscount: z.number().min(0).default(0),
+  // unitPrice/discountAmount/globalDiscount are tax-inclusive amounts (omitted = tax-exclusive).
+  pricesIncludeTax: z.boolean().optional(),
   notes: z.string().max(500).optional(),
   referenceNumber: z.string().max(100).optional(),
-  gstType: z.enum(['CGST_SGST', 'IGST']).optional().default('CGST_SGST'),
+  // Omitted: the backend picks it from the place of supply (business state against the buyer's state).
+  gstType: z.enum(['CGST_SGST', 'IGST', 'GST']).optional(),
   buyerState: z.string().max(50).optional(),
   // Phase 58 §2 — Jewellery old-metal exchange, applied ATOMICALLY as part of
   // this same invoice-creation transaction (see billing.service.ts) instead

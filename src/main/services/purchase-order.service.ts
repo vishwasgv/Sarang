@@ -3,6 +3,8 @@ import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.service'
+import { computeDocumentTotals, sumMoney, unitAmount } from '../../shared/utils/money'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -13,6 +15,7 @@ import { getLandedCostPerUnitForPO } from './landed-cost.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService } from './journal-entry.service'
 import { ServiceError } from '../errors/service-error'
+import { resolveDocumentGstType } from './gst-type.util'
 import type { CreatePOPayload } from '../validation/purchase-order.validation'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -70,7 +73,7 @@ function roundUpToCartonMultiple(quantity: number, sellByPack: boolean, unitsPer
 // (receiving vs. billing) is the one that actually triggers it, decided by
 // the same existingBill-guard the caller already uses for SupplierLedger.
 async function postPOJournalEntry(tx: TxClient, po: { id: string; poNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean }): Promise<void> {
-  const grossExpense = roundCurrency(po.totalAmount + (po.isReverseCharge ? po.taxAmount : 0))
+  const grossExpense = roundCurrency(po.totalAmount + (po.isReverseCharge ? po.taxAmount : 0), 3)
   if (grossExpense <= 0) return
   const [expenseAccount, apAccount] = await Promise.all([
     chartOfAccountsService.getSystemAccountByCode('6000', tx),
@@ -139,13 +142,14 @@ export const purchaseOrderService = {
     // calculateLineTotal (no discount on a PO line) and summed via
     // sumCurrency, exactly mirroring every other invoice-shaped total in
     // this codebase.
-    const lineRows = payload.items.map(item => ({
-      item,
-      ...calculateLineTotal(item.quantity, item.unitCost, 0, item.taxRate ?? 0)
-    }))
-    const subtotal = sumCurrency(lineRows.map(r => r.subtotal))
-    const taxAmount = sumCurrency(lineRows.map(r => r.taxAmount))
-    const totalAmount = roundCurrency(subtotal + taxAmount)
+    const decimals = await getBusinessCurrencyDecimals()
+    const poTotals = computeDocumentTotals(
+      payload.items.map(i => ({ quantity: i.quantity, unitPrice: i.unitCost, taxRate: i.taxRate ?? 0 })),
+      { decimals, pricesIncludeTax: payload.pricesIncludeTax === true, excludeTaxFromTotal: payload.isReverseCharge === true }
+    )
+    const lineRows = payload.items.map((item, idx) => ({ item, taxAmount: poTotals.lines[idx].tax, lineTotal: poTotals.lines[idx].total }))
+    const { subtotal, taxAmount, totalAmount } = poTotals
+    const gstType = await resolveDocumentGstType(payload.gstType, supplier.state)
 
     // Phase 62 — Transaction Locking. POs always order at "now" (no
     // backdating field exists), same reasoning as billing.service.ts's own
@@ -171,6 +175,8 @@ export const purchaseOrderService = {
           subtotal,
           taxAmount,
           totalAmount,
+          pricesIncludeTax: payload.pricesIncludeTax === true,
+          gstType,
           isReverseCharge: payload.isReverseCharge,
           dropShipToCustomerId: payload.dropShipToCustomerId || null,
           sourceSalesOrderId: payload.sourceSalesOrderId || null,
@@ -489,8 +495,12 @@ export const purchaseOrderService = {
         // every line's effectiveUnitCost equals its own unitCost exactly —
         // zero behavior change for the common case.
         const productLines = po.items.filter((item): item is typeof item & { productId: string } => item.productId !== null)
+        // Tax paid on a purchase is not part of stock cost: an inclusive PO's cost basis is the stored line
+        // taxable value (total - tax) per unit, never the entered tax-inclusive unitCost.
+        const stockUnitCost = (item: { quantity: number; unitCost: number; total: number; taxAmount: number }) =>
+          po.pricesIncludeTax && item.quantity > 0 ? unitAmount(sumMoney([item.total, -item.taxAmount], 3), item.quantity) : item.unitCost
         const landedCostPerUnit = await getLandedCostPerUnitForPO(
-          tx, po.id, productLines.map(item => ({ productId: item.productId, quantity: item.quantity, unitCost: item.unitCost }))
+          tx, po.id, productLines.map(item => ({ productId: item.productId, quantity: item.quantity, unitCost: stockUnitCost(item) }))
         )
 
         // Update inventory for each PO item — average cost recalculated.
@@ -509,7 +519,7 @@ export const purchaseOrderService = {
         // receipt is skipped.
         if (!po.dropShipToCustomerId) {
           for (const item of productLines) {
-            const effectiveUnitCost = item.unitCost + (landedCostPerUnit.get(item.productId) ?? 0)
+            const effectiveUnitCost = stockUnitCost(item) + (landedCostPerUnit.get(item.productId) ?? 0)
             // Phase 64 — the ProductCostHistory row ("from where the goods are
             // being bought, at what price," same raw material bill.service.ts's
             // createBill writes for a billed product line) is now written by

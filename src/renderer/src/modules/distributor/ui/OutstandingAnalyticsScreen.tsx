@@ -10,6 +10,7 @@ import { SkeletonCard } from '@shared/ui/Skeleton'
 import { Card } from '@shared/ui/molecules/Card'
 import { KpiCard } from '@shared/ui/molecules/KpiCard'
 import { useNotificationStore } from '@app/store/notification.store'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface OutstandingCustomer {
   id: string
@@ -189,7 +190,7 @@ export function OutstandingAnalyticsScreen() {
                     {c.creditLimit > 0 ? `${sym}${c.creditLimit.toFixed(0)}` : '—'}
                   </div>
                   <div className={cn('col-span-2 text-end text-sm font-semibold', isOver ? 'text-danger' : 'text-dark')}>
-                    {sym}{c.outstandingBalance.toFixed(2)}
+                    {sym}{moneyFixed(c.outstandingBalance)}
                   </div>
                   <div className="col-span-1 text-end text-xs font-medium">
                     {aging && aging.days90plus > 0.01 ? (
@@ -204,7 +205,7 @@ export function OutstandingAnalyticsScreen() {
           </div>
           <div className="px-5 py-3 border-t border-slate-100 dark:border-slate-800 flex justify-between text-sm font-semibold">
             <span className="text-slate-500 dark:text-slate-400">{t('common.total')}</span>
-            <span className="text-dark dark:text-slate-100">{sym}{totalOutstanding.toFixed(2)}</span>
+            <span className="text-dark dark:text-slate-100">{sym}{moneyFixed(totalOutstanding)}</span>
           </div>
         </Card>
       )}

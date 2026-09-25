@@ -1,4 +1,13 @@
 import React, { useEffect, useState } from 'react'
+import { useMoneyContext } from '@shared/utils/money-context'
+import { computeDocumentTotals, convertPriceMode } from '@money'
+import { PricesIncludeTaxToggle } from '@shared/ui/molecules/PricesIncludeTaxToggle'
+import { GstTypeSelector } from '@shared/ui/molecules/GstTypeSelector'
+import { OffSlabRateWarning } from '@shared/ui/molecules/OffSlabRateWarning'
+import { useGstTypeChoice } from '@shared/utils/gst-type-choice'
+import { resolvePartyState } from '../../../../../shared/utils/gst-presentation'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { useBusinessStore } from '@app/store/business.store'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -24,12 +33,13 @@ const schema = z.object({
   expectedDate: z.string().optional(),
   notes: z.string().max(500).optional(),
   dropShipToCustomerId: z.string().optional(),
+  pricesIncludeTax: z.boolean(),
   items: z.array(itemSchema).min(1, 'Add at least one item')
 })
 
 type FormValues = z.infer<typeof schema>
 
-interface Supplier { id: string; supplierName: string; supplierCode: string; priceListId?: string | null }
+interface Supplier { id: string; supplierName: string; supplierCode: string; priceListId?: string | null; state?: string | null; taxNumber?: string | null }
 interface Customer { id: string; customerName: string; customerCode: string }
 
 interface PurchaseOrderFormModalProps {
@@ -46,13 +56,19 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
   const [loadingData, setLoadingData] = useState(true)
   const [supplierFormOpen, setSupplierFormOpen] = useState(false)
 
+  const moneyCtx = useMoneyContext()
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { supplierId: '', expectedDate: '', notes: '', dropShipToCustomerId: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] }
+    defaultValues: { supplierId: '', expectedDate: '', notes: '', dropShipToCustomerId: '', pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] }
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
   const watchedItems = watch('items')
+  const pricesIncludeTax = watch('pricesIncludeTax')
+  const watchedSupplierId = watch('supplierId')
+  const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  // A purchase is presented by the supplier's state against the business state.
+  const gstChoice = useGstTypeChoice(resolvePartyState(suppliers.find(s => s.id === watchedSupplierId)?.state, suppliers.find(s => s.id === watchedSupplierId)?.taxNumber))
 
   async function loadSuppliers() {
     const sRes = await window.api.suppliers.list({ limit: 200 })
@@ -73,7 +89,8 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
 
   useEffect(() => {
     if (!open) return
-    reset({ supplierId: '', expectedDate: '', notes: '', dropShipToCustomerId: '', items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] })
+    gstChoice.reset()
+    reset({ supplierId: '', expectedDate: '', notes: '', dropShipToCustomerId: '', pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, items: [{ productId: '', quantity: 1, unitCost: 0, taxRate: 0 }] })
     async function loadOptions() {
       setLoadingData(true)
       try {
@@ -106,7 +123,9 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
     // auto-filled (or stale) cost in place when the product changes would
     // silently price the new line item at the old product's cost.
     if (productId !== previousProductId) {
-      setValue(`items.${index}.unitCost`, product.costPrice ?? 0)
+      // Product cost price is kept tax-exclusive; express it in this order's mode.
+      setValue(`items.${index}.unitCost`, pricesIncludeTax ? convertPriceMode(product.costPrice ?? 0, product.taxRate ?? 0, true, moneyCtx.decimals) : (product.costPrice ?? 0))
+      setValue(`items.${index}.taxRate`, product.taxRate ?? 0)
       // Phase 63 gap found+fixed during live audit (2026-08-12): this form
       // never called priceLists.resolve at all, so a supplier with an
       // assigned Price List never actually got their negotiated rate here —
@@ -128,19 +147,23 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
     }
   }
 
-  const subtotal = watchedItems.reduce((sum, item) => {
-    const base = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0)
-    return sum + base
-  }, 0)
-  const taxAmount = watchedItems.reduce((sum, item) => {
-    const base = (Number(item.quantity) || 0) * (Number(item.unitCost) || 0)
-    return sum + (base * ((Number(item.taxRate) || 0) / 100))
-  }, 0)
-  const totalAmount = subtotal + taxAmount
+  // Same shared module purchase-order.service.ts runs on save (src/shared/utils/money.ts).
+  // Flipping the switch re-expresses every entered cost in the other mode, so the price agreed does not change.
+  function changePriceMode(next: boolean) {
+    watchedItems.forEach((it, idx) => setValue(`items.${idx}.unitCost`, convertPriceMode(Number(it.unitCost) || 0, Number(it.taxRate) || 0, next, moneyCtx.decimals)))
+    setValue('pricesIncludeTax', next)
+  }
+  const poTotals = computeDocumentTotals(
+    watchedItems.map(i => ({ quantity: Number(i.quantity) || 0, unitPrice: Number(i.unitCost) || 0, taxRate: Number(i.taxRate) || 0 })),
+    { decimals: moneyCtx.decimals, pricesIncludeTax }
+  )
+  const subtotal = poTotals.subtotal
+  const taxAmount = poTotals.taxAmount
+  const totalAmount = poTotals.totalAmount
 
   async function onSubmit(values: FormValues) {
     try {
-      const payload = { ...values, dropShipToCustomerId: values.dropShipToCustomerId || undefined }
+      const payload = { ...values, dropShipToCustomerId: values.dropShipToCustomerId || undefined, gstType: gstChoice.isGst ? gstChoice.gstType : undefined }
       const res = await window.api.purchaseOrders.create(payload)
       if (res.success) {
         const po = res.data as { id: string; poNumber: string }
@@ -205,6 +228,9 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
             {customers.map(c => <option key={c.id} value={c.id}>{c.customerName} ({c.customerCode})</option>)}
           </Select>
 
+          <PricesIncludeTaxToggle checked={pricesIncludeTax} onChange={changePriceMode} />
+          {gstChoice.isGst && <GstTypeSelector value={gstChoice.gstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto} />}
+
           {/* Line items */}
           <div>
             <div className="flex items-center justify-between mb-2">
@@ -220,7 +246,7 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
               <div className="grid grid-cols-[2fr_1fr_1fr_1fr_auto] gap-2 px-2">
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.product')}</span>
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('billing.qty')}</span>
-                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('purchaseOrders.unitCost')}</span>
+                <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('purchaseOrders.unitCost')} {pricesIncludeTax ? t('billing.priceInclTax') : t('billing.priceExclTax')}</span>
                 <span className="text-xs font-medium text-slate-500 dark:text-slate-400">{t('purchaseOrders.taxPercent')}</span>
                 <span />
               </div>
@@ -268,18 +294,21 @@ export function PurchaseOrderFormModal({ open, onClose, onSaved }: PurchaseOrder
           </div>
 
           {/* Totals */}
+          <OffSlabRateWarning rates={watchedItems.map(i => Number(i.taxRate) || 0)} />
           <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-1.5 text-sm">
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
               <span>{t('common.subtotal')}</span>
-              <span>{subtotal.toFixed(2)}</span>
+              <span>{subtotal.toFixed(moneyCtx.decimals)}</span>
             </div>
-            <div className="flex justify-between text-slate-600 dark:text-slate-300">
-              <span>{t('common.tax')}</span>
-              <span>{taxAmount.toFixed(2)}</span>
-            </div>
+            {splitTaxLines(taxModel, taxAmount, gstChoice.gstType, moneyCtx.decimals, poTotals.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))).map(line => (
+              <div key={line.label} className="flex justify-between text-slate-600 dark:text-slate-300">
+                <span>{line.label}</span>
+                <span>{line.amount.toFixed(moneyCtx.decimals)}</span>
+              </div>
+            ))}
             <div className="flex justify-between font-semibold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
-              <span>{totalAmount.toFixed(2)}</span>
+              <span>{totalAmount.toFixed(moneyCtx.decimals)}</span>
             </div>
           </div>
 

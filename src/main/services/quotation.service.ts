@@ -9,9 +9,12 @@ import { explodeKitComponentsTx } from './kit.service'
 import { generateSONumber } from './sales-order.service'
 import { generateSequenceNumber } from './sequence.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
+import { computeDocumentTotals } from '../../shared/utils/money'
+import { resolveDocumentGstType, customerStateOf, lineTaxCategories } from './gst-type.util'
 import { ServiceError } from '../errors/service-error'
 import { getLicenseState } from './license.service'
 import { createRetainer, generateInvoiceForRetainer } from './retainer.service'
+import { getBusinessCurrencyDecimals, getInvoiceRoundingRule } from './settings.service'
 
 export interface CreateQuotationPayload {
   customerId?: string
@@ -23,6 +26,8 @@ export interface CreateQuotationPayload {
   // convertToRetainer() below instead of the normal one-shot
   // convertToInvoice() when accepted.
   retainerType?: 'FIXED_FEE' | 'HOURLY_BUCKET' | 'DELIVERABLE_BASED'
+  pricesIncludeTax?: boolean
+  gstType?: 'CGST_SGST' | 'IGST' | 'GST'
   items: Array<{
     productId?: string
     productName: string
@@ -31,6 +36,8 @@ export interface CreateQuotationPayload {
     unitPrice: number
     discount?: number
     taxRate?: number
+    // HSN/SAC; filled from the product when not given
+    hsnCode?: string
   }>
 }
 
@@ -56,20 +63,25 @@ export const quotationService = {
     const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
 
-    const lineRows = payload.items.map(item => {
-      const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
-      const discAmt = roundCurrency(lineGross * ((item.discount ?? 0) / 100), currencyDecimals)
-      const { taxAmount: lineTax, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, discAmt, item.taxRate ?? 0, currencyDecimals)
-      return { item, lineGross, discAmt, lineTax, lineTotal }
-    })
+    // Same shared module the quotation form runs on screen (src/shared/utils/money.ts).
+    const computed = computeDocumentTotals(
+      payload.items.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountPercent: i.discount ?? 0, taxRate: i.taxRate ?? 0 })),
+      { decimals: currencyDecimals, pricesIncludeTax: payload.pricesIncludeTax === true }
+    )
+    const { subtotal, discountAmount, taxAmount, totalAmount } = computed
+    const gstType = await resolveDocumentGstType(payload.gstType, await customerStateOf(payload.customerId))
 
-    const subtotal = sumCurrency(lineRows.map(r => r.lineGross), currencyDecimals)
-    const discountAmount = sumCurrency(lineRows.map(r => r.discAmt), currencyDecimals)
-    const taxAmount = sumCurrency(lineRows.map(r => r.lineTax), currencyDecimals)
-    const totalAmount = roundCurrency(subtotal - discountAmount + taxAmount, currencyDecimals)
-
-    const computedItems = lineRows.map(({ item, lineTotal }) => ({
-      ...item, discount: item.discount ?? 0, taxRate: item.taxRate ?? 0, lineTotal
+    const productIds = Array.from(new Set(payload.items.map(i => i.productId).filter((x): x is string => !!x)))
+    const hsnByProduct = new Map<string, string | null>()
+    if (productIds.length > 0) {
+      try {
+        const rows = await db.product.findMany({ where: { id: { in: productIds } }, select: { id: true, hsnCode: true } })
+        for (const r of rows) hsnByProduct.set(r.id, r.hsnCode ?? null)
+      } catch { /* the HSN is a snapshot convenience, never blocks a quotation */ }
+    }
+    const computedItems = payload.items.map((item, idx) => ({
+      ...item, discount: item.discount ?? 0, taxRate: item.taxRate ?? 0, lineTotal: computed.lines[idx].total,
+      hsnCode: item.hsnCode?.trim() || (item.productId ? hsnByProduct.get(item.productId) ?? null : null)
     }))
 
     // Number generation must happen inside the same transaction as the
@@ -100,6 +112,8 @@ export const quotationService = {
           taxAmount,
           discountAmount,
           totalAmount,
+          pricesIncludeTax: payload.pricesIncludeTax === true,
+          gstType,
           createdBy: userId,
           items: { create: computedItems }
         },
@@ -111,7 +125,26 @@ export const quotationService = {
     return { success: true, data: quotation }
   },
 
+  // A quotation whose valid-until date has passed and that was never accepted
+  // is marked EXPIRED. Runs whenever the list loads and on the hourly
+  // evaluator, so the Expired filter is real without any manual step.
+  async expireOverdue(): Promise<number> {
+    try {
+      const db = getPrisma()
+      const startOfToday = new Date()
+      startOfToday.setHours(0, 0, 0, 0)
+      const res = await db.quotation.updateMany({
+        where: { status: { in: ['DRAFT', 'SENT'] }, validUntil: { not: null, lt: startOfToday }, invoice: { is: null }, salesOrder: { is: null } },
+        data: { status: 'EXPIRED' }
+      })
+      return res.count
+    } catch {
+      return 0
+    }
+  },
+
   async list(params: { status?: string; customerId?: string; page?: number; limit?: number }) {
+    await this.expireOverdue()
     const db = getPrisma()
     const { status, customerId, page = 1, limit = 50 } = params
     const where = {
@@ -152,9 +185,13 @@ export const quotationService = {
 
   async updateStatus(payload: UpdateQuotationStatusPayload, userId: string) {
     const db = getPrisma()
+    // Re-opening a lapsed quotation (EXPIRED -> DRAFT/SENT) clears the old
+    // valid-until date; otherwise the next expiry pass would immediately
+    // mark it EXPIRED again.
+    const reopening = payload.status === 'DRAFT' || payload.status === 'SENT'
     const q = await db.quotation.update({
       where: { id: payload.id },
-      data: { status: payload.status }
+      data: reopening ? { status: payload.status, validUntil: null } : { status: payload.status }
     })
     await logAction({ userId, action: 'UPDATE_QUOTATION_STATUS', entityType: 'Quotation', entityId: q.id, newValue: `Status → ${payload.status}` })
     return { success: true, data: q }
@@ -181,6 +218,10 @@ export const quotationService = {
     const q = await db.quotation.findUnique({ where: { id }, include: { items: true, invoice: true, salesOrder: true } })
     if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }
     if (q.invoice) return { success: false, error: { code: 'QT-002', message: 'Quotation already converted to an invoice.' } }
+    if (q.status === 'EXPIRED') {
+      const when = q.validUntil ? q.validUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its valid-until date'
+      return { success: false, error: { code: 'QT-009', message: `This quotation expired on ${when}. Change its status back to Sent to re-open it, then convert.` } }
+    }
     // Phase 67 §9.1 — Universal Quote -> Order -> Invoice pipeline. Once a
     // Quotation has become a SalesOrder, billing must go through THAT
     // SalesOrder's own createInvoiceFromSalesOrder() (which tracks partial
@@ -191,16 +232,18 @@ export const quotationService = {
 
     const businessProfile = await db.businessProfile.findFirst({ select: { currencyCode: true } })
     const currencyDecimals = getCurrencyDecimals(businessProfile?.currencyCode)
+    // The same rounding rule a direct sale uses, so a converted invoice equals a directly created one.
+    const roundingRule = await getInvoiceRoundingRule(businessProfile?.currencyCode)
 
     // Resolve productId for each item: use linked product or find by name; fallback to a Misc product.
     // productType is carried through so only real STANDARD products get stock deducted below.
     const resolvedItems = await Promise.all(q.items.map(async (item) => {
       if (item.productId) {
-        const p = await db.product.findUnique({ where: { id: item.productId }, select: { productType: true, isKit: true } })
-        return { ...item, resolvedProductId: item.productId, resolvedProductType: p?.productType ?? 'STANDARD', resolvedIsKit: p?.isKit ?? false }
+        const p = await db.product.findUnique({ where: { id: item.productId }, select: { productType: true, isKit: true, hsnCode: true } })
+        return { ...item, hsnCode: item.hsnCode ?? p?.hsnCode ?? null, resolvedProductId: item.productId, resolvedProductType: p?.productType ?? 'STANDARD', resolvedIsKit: p?.isKit ?? false }
       }
       const byName = await db.product.findFirst({ where: { productName: item.productName, isActive: true } })
-      if (byName) return { ...item, resolvedProductId: byName.id, resolvedProductType: byName.productType, resolvedIsKit: byName.isKit }
+      if (byName) return { ...item, hsnCode: item.hsnCode ?? byName.hsnCode ?? null, resolvedProductId: byName.id, resolvedProductType: byName.productType, resolvedIsKit: byName.isKit }
       // No matching product — get or create a system Miscellaneous product
       let misc = await db.product.findFirst({ where: { productName: '__MISC_ITEM__' } })
       if (!misc) {
@@ -208,7 +251,7 @@ export const quotationService = {
           data: { productName: '__MISC_ITEM__', sellingPrice: 0, taxRate: 0, productType: 'SERVICE', unit: 'PCS', isActive: true }
         })
       }
-      return { ...item, resolvedProductId: misc.id, resolvedProductType: misc.productType, resolvedIsKit: false }
+      return { ...item, hsnCode: item.hsnCode ?? null, resolvedProductId: misc.id, resolvedProductType: misc.productType, resolvedIsKit: false }
     }))
 
     // A converted invoice always starts fully unpaid (the quotation never collected
@@ -230,16 +273,16 @@ export const quotationService = {
     // InvoiceItem.lineTotal rows. Fixed by computing line rows once here
     // (mirroring create()'s exact rounding order) and deriving the header
     // from summing them, exactly like createInvoice/splitInvoice do.
-    const invoiceLineRows = resolvedItems.map((item) => {
-      const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
-      const lineDiscountAmount = roundCurrency(lineGross * (item.discount / 100), currencyDecimals)
-      const { taxAmount: lineTaxAmount, lineTotal } = calculateLineTotal(item.quantity, item.unitPrice, lineDiscountAmount, item.taxRate, currencyDecimals)
-      return { item, lineGross, lineDiscountAmount, lineTaxAmount, lineTotal }
+    const invoiceComputed = computeDocumentTotals(
+      resolvedItems.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountPercent: i.discount, taxRate: i.taxRate })),
+      { decimals: currencyDecimals, pricesIncludeTax: q.pricesIncludeTax, roundingRule }
+    )
+    const invoiceCategories = await lineTaxCategories(resolvedItems.map(i => ({ productId: i.resolvedProductId, taxRate: i.taxRate })))
+    const invoiceLineRows = resolvedItems.map((item, idx) => {
+      const l = invoiceComputed.lines[idx]
+      return { taxCategory: invoiceCategories[idx], item, lineGross: l.gross, lineDiscountAmount: l.discountAmount, lineTaxAmount: l.tax, lineTotal: l.total }
     })
-    const invoiceSubtotal = sumCurrency(invoiceLineRows.map(r => r.lineGross), currencyDecimals)
-    const invoiceDiscountAmount = sumCurrency(invoiceLineRows.map(r => r.lineDiscountAmount), currencyDecimals)
-    const invoiceTaxAmount = sumCurrency(invoiceLineRows.map(r => r.lineTaxAmount), currencyDecimals)
-    const invoiceTotalAmount = roundCurrency(invoiceSubtotal - invoiceDiscountAmount + invoiceTaxAmount, currencyDecimals)
+    const { subtotal: invoiceSubtotal, discountAmount: invoiceDiscountAmount, taxAmount: invoiceTaxAmount, roundingAmount: invoiceRoundingAmount, totalAmount: invoiceTotalAmount } = invoiceComputed
 
     try {
       const invoice = await db.$transaction(async (tx) => {
@@ -278,24 +321,29 @@ export const quotationService = {
             subtotal: invoiceSubtotal,
             taxAmount: invoiceTaxAmount,
             discountAmount: invoiceDiscountAmount,
+            roundingAmount: invoiceRoundingAmount,
             totalAmount: invoiceTotalAmount,
+            pricesIncludeTax: q.pricesIncludeTax,
+            gstType: q.gstType,
             balanceAmount: invoiceTotalAmount,
             quotationId: q.id,
             createdById: userId
           }
         })
 
-        for (const { item, lineDiscountAmount, lineTaxAmount, lineTotal } of invoiceLineRows) {
+        for (const { item, lineDiscountAmount, lineTaxAmount, lineTotal, taxCategory } of invoiceLineRows) {
           await tx.invoiceItem.create({
             data: {
               invoiceId: inv.id,
               productId: item.resolvedProductId,
               productName: item.productName,
               productSku: item.sku ?? null,
+              hsnCode: item.hsnCode ?? null,
               quantity: item.quantity,
               unitPrice: item.unitPrice,
               discountAmount: lineDiscountAmount,
               taxRate: item.taxRate,
+              taxCategory,
               taxAmount: lineTaxAmount,
               lineTotal
             }
@@ -378,6 +426,10 @@ export const quotationService = {
     if (!q) return { success: false, error: { code: 'QT-001', message: 'Quotation not found.' } }
     if (q.invoice) return { success: false, error: { code: 'QT-002', message: 'Quotation already converted to an invoice.' } }
     if (q.salesOrder) return { success: false, error: { code: 'QT-008', message: 'Quotation already converted to a Sales Order.' } }
+    if (q.status === 'EXPIRED') {
+      const when = q.validUntil ? q.validUntil.toLocaleDateString('en-IN', { day: 'numeric', month: 'long', year: 'numeric' }) : 'its valid-until date'
+      return { success: false, error: { code: 'QT-009', message: `This quotation expired on ${when}. Change its status back to Sent to re-open it, then convert.` } }
+    }
     if (!q.customerId) return { success: false, error: { code: 'QT-007', message: 'A Sales Order requires a real customer, not a walk-in name.' } }
 
     const customer = await db.customer.findUnique({ where: { id: q.customerId } })
@@ -389,32 +441,50 @@ export const quotationService = {
 
     const resolvedItems = await Promise.all(q.items.map(async (item) => {
       if (item.productId) {
-        return { ...item, resolvedProductId: item.productId as string | null }
+        let productHsn: string | null = null
+        if (!item.hsnCode) {
+          try { productHsn = (await db.product.findUnique({ where: { id: item.productId }, select: { hsnCode: true } }))?.hsnCode ?? null } catch { /* HSN is a snapshot convenience */ }
+        }
+        return { ...item, hsnCode: item.hsnCode ?? productHsn, resolvedProductId: item.productId as string | null }
       }
       const byName = await db.product.findFirst({ where: { productName: item.productName, isActive: true } })
-      if (byName) return { ...item, resolvedProductId: byName.id }
+      if (byName) return { ...item, hsnCode: item.hsnCode ?? byName.hsnCode ?? null, resolvedProductId: byName.id }
       let misc = await db.product.findFirst({ where: { productName: '__MISC_ITEM__' } })
       if (!misc) {
         misc = await db.product.create({
           data: { productName: '__MISC_ITEM__', sellingPrice: 0, taxRate: 0, productType: 'SERVICE', unit: 'PCS', isActive: true }
         })
       }
-      return { ...item, resolvedProductId: misc.id }
+      return { ...item, hsnCode: item.hsnCode ?? null, resolvedProductId: misc.id }
     }))
 
-    const lineRows = resolvedItems.map((item) => {
+    // Inclusive quotations carry their exact computed line values across (the SO has no discount
+    // column, so a rounded effective unit price alone could drift a minor unit from the quotation).
+    const quoteComputed = q.pricesIncludeTax
+      ? computeDocumentTotals(
+          resolvedItems.map(i => ({ quantity: i.quantity, unitPrice: i.unitPrice, discountPercent: i.discount, taxRate: i.taxRate })),
+          { decimals: currencyDecimals, pricesIncludeTax: true }
+        )
+      : null
+    const lineRows = resolvedItems.map((item, idx) => {
       const lineGross = roundCurrency(item.quantity * item.unitPrice, currencyDecimals)
       const lineDiscountAmount = roundCurrency(lineGross * (item.discount / 100), currencyDecimals)
       // Effective net-of-discount unit price — the SalesOrder line's own
       // total (quantity * effectiveUnitPrice, taxed) reproduces the
       // quotation line's already-agreed total with no separate discount field.
       const effectiveUnitPrice = item.quantity > 0 ? roundCurrency((lineGross - lineDiscountAmount) / item.quantity, currencyDecimals) : item.unitPrice
+      if (quoteComputed) {
+        const l = quoteComputed.lines[idx]
+        return { item, effectiveUnitPrice, lineTaxAmount: l.tax, lineTotal: l.total }
+      }
       const { taxAmount: lineTaxAmount, lineTotal } = calculateLineTotal(item.quantity, effectiveUnitPrice, 0, item.taxRate, currencyDecimals)
       return { item, effectiveUnitPrice, lineTaxAmount, lineTotal }
     })
-    const soSubtotal = sumCurrency(lineRows.map(r => roundCurrency(r.item.quantity * r.effectiveUnitPrice, currencyDecimals)), currencyDecimals)
-    const soTaxAmount = sumCurrency(lineRows.map(r => r.lineTaxAmount), currencyDecimals)
-    const soTotalAmount = roundCurrency(soSubtotal + soTaxAmount, currencyDecimals)
+    const soSubtotal = quoteComputed
+      ? sumCurrency([quoteComputed.subtotal, -quoteComputed.discountAmount], currencyDecimals)
+      : sumCurrency(lineRows.map(r => roundCurrency(r.item.quantity * r.effectiveUnitPrice, currencyDecimals)), currencyDecimals)
+    const soTaxAmount = quoteComputed ? quoteComputed.taxAmount : sumCurrency(lineRows.map(r => r.lineTaxAmount), currencyDecimals)
+    const soTotalAmount = quoteComputed ? sumCurrency(lineRows.map(r => r.lineTotal), currencyDecimals) : roundCurrency(soSubtotal + soTaxAmount, currencyDecimals)
 
     try {
       const salesOrder = await db.$transaction(async (tx) => {
@@ -435,12 +505,15 @@ export const quotationService = {
             subtotal: soSubtotal,
             taxAmount: soTaxAmount,
             totalAmount: soTotalAmount,
+            pricesIncludeTax: q.pricesIncludeTax,
+            gstType: q.gstType,
             notes: q.notes ? `Converted from quotation ${q.quotationNumber}. ${q.notes}` : `Converted from quotation ${q.quotationNumber}.`,
             quotationId: q.id,
             createdById: userId,
             items: {
               create: lineRows.map(({ item, effectiveUnitPrice, lineTaxAmount, lineTotal }) => ({
                 productId: item.resolvedProductId,
+                hsnCode: item.hsnCode,
                 quantity: item.quantity,
                 unitPrice: effectiveUnitPrice,
                 taxRate: item.taxRate,
@@ -483,6 +556,7 @@ export const quotationService = {
     if (!q.customerId) return { success: false, error: { code: 'QT-005', message: 'A retainer engagement requires a real customer, not a walk-in name.' } }
 
     try {
+      const decimals = await getBusinessCurrencyDecimals()
       let retainerId: string
       const existingActive = await db.retainerAgreement.findFirst({ where: { clientId: q.customerId, status: 'ACTIVE' } })
       if (existingActive) {
@@ -492,7 +566,10 @@ export const quotationService = {
           clientId: q.customerId,
           title: `Retainer — ${q.quotationNumber}`,
           retainerType: q.retainerType,
-          monthlyAmount: q.totalAmount,
+          // Same mode as the quotation: an inclusive quote carries its payable total, an exclusive one its taxable
+          // amount (subtotal less discount) so retainer invoices add the tax once instead of taxing a total.
+          monthlyAmount: q.pricesIncludeTax || typeof q.subtotal !== 'number' ? q.totalAmount : roundCurrency(q.subtotal - (q.discountAmount ?? 0), decimals),
+          pricesIncludeTax: q.pricesIncludeTax === true,
           billingDay: new Date().getDate(),
           // toLocalISODate, not .toISOString().slice(0,10) — the latter is
           // the UTC calendar date, which can be a full day behind local

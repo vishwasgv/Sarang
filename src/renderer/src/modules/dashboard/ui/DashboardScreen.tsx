@@ -145,7 +145,7 @@ export function DashboardScreen() {
   const canViewInventory = hasPermission('analytics.viewInventory')
   const canViewProfit = hasPermission('analytics.viewProfit')
   const canViewExpenses = hasPermission('analytics.viewExpenses')
-  const canUseAi = isModuleEnabled('ai_assistant') && hasPermission('ai.query')
+  const canUseAi = hasPermission('ai.query')
 
   // Refs to avoid stale closures and double-fetch
   const periodRef = useRef<Period>('30d')

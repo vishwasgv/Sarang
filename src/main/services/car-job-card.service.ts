@@ -302,7 +302,6 @@ export async function generateCarJobInvoice(id: string) {
     const result = await billingService.createInvoice({
       customerId: card.clientId,
       paymentMethod: 'CREDIT',
-      gstType: 'CGST_SGST',
       items,
       notes: `Job Card ${card.jobNumber} — ${card.vehicleMake} ${card.vehicleModel} (${card.vehicleNumber})`,
       referenceNumber: card.jobNumber,

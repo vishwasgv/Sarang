@@ -10,10 +10,11 @@ import { useIndustryStore } from '@app/store/industry.store'
 import { api } from '@renderer/services/ipc-client'
 import { cn } from '@shared/utils/cn'
 import { Skeleton } from '@shared/ui/Skeleton'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
 import { formatDateTime, toLocalISODate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
-import { splitTaxLines } from '@shared/utils/tax.util'
+import { splitTaxLines, taxLinesText } from '@shared/utils/tax.util'
+import { getCurrencyDecimals } from '@shared/utils/currency.util'
 import { useAuthStore } from '@app/store/auth.store'
 import { Badge } from '@shared/ui/atoms/Badge'
 
@@ -55,6 +56,7 @@ interface Invoice {
   notes?: string | null
   ewayBillNumber?: string | null
   gstType?: string | null
+  pricesIncludeTax?: boolean
   // Phase 58 §2 — the dine-in table this invoice was opened for (restaurant
   // only; null for every other sale).
   tableId?: string | null
@@ -80,6 +82,7 @@ export function InvoiceDetailScreen() {
   const { t } = useTranslation()
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
   const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const currencyCode = useBusinessStore(s => s.profile?.currencyCode)
   const businessName = useBusinessStore(s => s.profile?.businessName ?? 'Business')
   const { id } = useParams<{ id: string }>()
   const navigate = useNavigate()
@@ -204,7 +207,7 @@ export function InvoiceDetailScreen() {
         remarks: paymentRemarks.trim() || undefined
       })
       if (res.success) {
-        toastSuccess(t('billing.invoiceSettledTitle'), t('billing.invoiceSettledMessage', { code: invoice.foreignCurrencyCode, amount: foreignAmount.toFixed(2), invoiceNumber: invoice.invoiceNumber }))
+        toastSuccess(t('billing.invoiceSettledTitle'), t('billing.invoiceSettledMessage', { code: invoice.foreignCurrencyCode, amount: moneyFixed(foreignAmount, invoice.foreignCurrencyCode), invoiceNumber: invoice.invoiceNumber }))
         setShowPaymentModal(false)
         setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
         loadInvoice()
@@ -453,7 +456,10 @@ export function InvoiceDetailScreen() {
 
   function buildShareWhatsAppMessage(): string {
     if (!invoice) return ''
-    return t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeInvoice'), number: invoice.invoiceNumber, amount: formatCurrency(invoice.totalAmount) })
+    const base = t('billing.shareWhatsAppMessage', { businessName, documentType: t('share.docTypeInvoice'), number: invoice.invoiceNumber, amount: formatCurrency(invoice.totalAmount) })
+    const taxText = taxLinesText(splitTaxLines(taxModel, invoice.taxAmount, invoice.gstType, getCurrencyDecimals(currencyCode), invoice.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount }))), formatCurrency)
+    const withTax = taxText ? `${base} ${t('billing.shareTaxLines', { lines: taxText })}` : base
+    return invoice.pricesIncludeTax ? `${withTax} ${t('billing.pricesIncludeTaxShareNote')}` : withTax
   }
 
   function buildShareEmailSubject(): string {
@@ -596,7 +602,7 @@ export function InvoiceDetailScreen() {
           <p className="text-xs font-semibold text-slate-400 uppercase mb-3">{t('billing.summary')}</p>
           <div className="flex justify-between text-sm text-slate-500"><span>{t('billing.subtotal')}</span><span>{formatCurrency(invoice.subtotal)}</span></div>
           {invoice.discountAmount > 0 && <div className="flex justify-between text-sm text-danger"><span>{t('billing.discount')}</span><span>– {formatCurrency(invoice.discountAmount)}</span></div>}
-          {splitTaxLines(taxModel, invoice.taxAmount, invoice.gstType).map(line => (
+          {splitTaxLines(taxModel, invoice.taxAmount, invoice.gstType, getCurrencyDecimals(currencyCode), invoice.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount }))).map(line => (
             <div key={line.label} className="flex justify-between text-sm text-slate-500">
               <span>{line.label}</span><span>{formatCurrency(line.amount)}</span>
             </div>
@@ -618,7 +624,7 @@ export function InvoiceDetailScreen() {
             <tr className="bg-slate-50 dark:bg-slate-800/60 border-b border-slate-100 dark:border-slate-700">
               <th className="text-start px-5 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.product')}</th>
               <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.qty')}</th>
-              <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.unitPrice')}</th>
+              <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.unitPrice')}{invoice.pricesIncludeTax ? ` ${t('billing.priceInclTax')}` : ''}</th>
               <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.discount')}</th>
               <th className="text-end px-4 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.tax')}</th>
               <th className="text-end px-5 py-2 text-xs font-semibold text-slate-500 uppercase">{t('billing.lineTotal')}</th>
@@ -709,7 +715,7 @@ export function InvoiceDetailScreen() {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('billing.invoiceNumber')}: <strong className="dark:text-slate-200">{invoice.invoiceNumber}</strong> · {t('billing.outstanding')}: <strong className="text-danger">{formatCurrency(invoice.balanceAmount)}</strong>
               {invoice.foreignCurrencyCode && invoice.foreignTotalAmount != null && (
-                <> · {invoice.foreignCurrencyCode} {invoice.foreignTotalAmount.toFixed(2)}</>
+                <> · {invoice.foreignCurrencyCode} {moneyFixed(invoice.foreignTotalAmount, invoice.foreignCurrencyCode)}</>
               )}
             </p>
 
@@ -742,7 +748,7 @@ export function InvoiceDetailScreen() {
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.foreignCurrency.amountReceived', { code: invoice.foreignCurrencyCode })}</label>
                   <input type="number" min="0.01" step="0.01" value={fxForeignAmount}
                     onChange={e => setFxForeignAmount(e.target.value)}
-                    placeholder={invoice.foreignTotalAmount?.toFixed(2)}
+                    placeholder={invoice.foreignTotalAmount == null ? undefined : moneyFixed(invoice.foreignTotalAmount, invoice.foreignCurrencyCode)}
                     className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
@@ -761,7 +767,7 @@ export function InvoiceDetailScreen() {
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('billing.amountLabel', { symbol: currSym })}</label>
                 <input type="number" min="0.01" step="0.01" value={paymentAmount}
                   onChange={e => setPaymentAmount(e.target.value)}
-                  placeholder={invoice.balanceAmount.toFixed(2)}
+                  placeholder={moneyFixed(invoice.balanceAmount)}
                   className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>

@@ -5,6 +5,7 @@ import { customerLedgerService } from './customer-ledger.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { roundCurrency, sumCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { startOfLocalDay } from '../utils/date.util'
 import { ServiceError } from '../errors/service-error'
 
@@ -35,6 +36,7 @@ export const creditInterestService = {
   // invoice, without posting anything. Used by the UI to show "you could
   // charge ₹X in interest" before an admin actually commits to it.
   async calculateInterest(customerId: string) {
+    await getBusinessCurrencyDecimals()
     try {
       const db = getPrisma()
       const profile = await db.businessProfile.findFirst({ select: { creditInterestEnabled: true, creditInterestRatePercent: true, creditInterestType: true } })
@@ -69,6 +71,7 @@ export const creditInterestService = {
   // Receivable, Credit Interest Income) — a real accrual, not just a number
   // shown on screen.
   async postInterestCharge(customerId: string, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     try {
       const preview = await this.calculateInterest(customerId)

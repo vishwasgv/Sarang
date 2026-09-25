@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { ServiceError } from '../errors/service-error'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -22,6 +23,7 @@ import type { CreateBankDepositPayload } from '../validation/bank-deposit.valida
 // into this slip's own GL posting would double it once it clears too.
 export const bankDepositService = {
   async createDeposit(payload: CreateBankDepositPayload, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     try {
       const account = await db.bankAccount.findUnique({ where: { id: payload.bankAccountId } })

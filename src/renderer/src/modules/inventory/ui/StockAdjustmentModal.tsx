@@ -8,6 +8,7 @@ import { Modal } from '@shared/ui/molecules/Modal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { useNotificationStore } from '@app/store/notification.store'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 const schema = z.object({
   // REAL BUG found+fixed (pre-launch audit): this mirrored the backend's own
@@ -129,7 +130,7 @@ export function StockAdjustmentModal({ open, inventoryItem, onClose, onSaved }: 
             <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5">
               {t('inventory.currentStockInline')} <span className="font-medium text-dark dark:text-slate-100">{inventoryItem.quantity} {inventoryItem.product.unit}</span>
               {inventoryItem.averageCost !== undefined && (
-                <span className="ms-2 text-slate-400">{t('inventory.avgCostLabel')} {inventoryItem.averageCost.toFixed(2)}</span>
+                <span className="ms-2 text-slate-400">{t('inventory.avgCostLabel')} {moneyFixed(inventoryItem.averageCost)}</span>
               )}
             </p>
           </div>

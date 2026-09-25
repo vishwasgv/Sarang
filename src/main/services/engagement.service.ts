@@ -285,7 +285,6 @@ export async function generateEngagementInvoice(engagementId: string, period?: s
       const result = await billingService.createInvoice({
         customerId: engagement.clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{
           productId: product.id,
           quantity: 1,

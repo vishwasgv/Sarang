@@ -1,11 +1,14 @@
 import { getPrisma } from '../database/db'
 import { INGREDIENT_DEDUCTION_REMARKS_PREFIX, getDishIngredientCostsBatch, getRecipeImpliedIngredientUsageBatch } from './restaurant.service'
-import { roundCurrency, sumCurrency } from './currency.service'
+import { roundCurrency, sumCurrency, getCurrencyDecimals, moneyEpsilon } from './currency.service'
+import { allocateGstHalves, classifyTaxHead, resolvePartyState, placeOfSupplyLabel, resolveLineTaxCategory, TAX_CATEGORIES, type TaxCategory, type TaxHeadClass } from '../../shared/utils/gst-presentation'
+import { computeDocumentTotals, roundMoney, storedLineTaxable } from '../../shared/utils/money'
 import { toLocalISODate, parseLocalDateStart, parseLocalDateEnd, startOfLocalDay } from '../utils/date.util'
 import { getProductCostsBatch } from './valuation.service'
 import { generateChronicRecallComplianceReport as generateChronicRecallComplianceReportImpl } from './chronic-condition-record.service'
 import { generateDentalRecallComplianceReport as generateDentalRecallComplianceReportImpl } from './recall-record.service'
 import { attendancePercentFor } from './coaching-progress.service'
+import { YEAR_END_SOURCE } from './financial-statements.service'
 
 // ─────────────────────────────────────────────────────────────────────────────
 // Types
@@ -47,11 +50,17 @@ export interface InventoryReport {
 
 export interface TaxReportRow { taxName: string; taxType: string; rate: number; taxableAmount: number; taxCollected: number; invoiceCount: number }
 
+/** Taxable value and tax by tax category and rate, for every supply including nil-rated and exempt ones. */
+export interface TaxCategoryRow { taxCategory: TaxCategory; rate: number; taxableAmount: number; taxCollected: number; invoiceCount: number }
+
 export interface TaxReport {
   dateFrom: string; dateTo: string
   summary: { totalTaxableAmount: number; totalTaxCollected: number }
   rows: TaxReportRow[]
   total: number
+  byCategory: TaxCategoryRow[]
+  /** Combined-GST documents with no known place of supply; filed as CGST + SGST. */
+  stateUnknownCount: number
 }
 
 export interface AgingBuckets { current: number; days1to30: number; days31to60: number; days61to90: number; days90plus: number }
@@ -157,6 +166,8 @@ export interface DiscountByProductRow { productName: string; discountGiven: numb
 export interface DiscountReport {
   dateFrom: string; dateTo: string
   summary: { totalDiscountGiven: number; discountedLineCount: number; totalLineCount: number; discountIncidencePercent: number; averageDiscountPercent: number }
+  /** Part of totalDiscountGiven that is an invoice-level discount, not attributable to a product (tax-exclusive). */
+  invoiceLevelDiscount: number
   byStaff: DiscountByStaffRow[]
   byProduct: DiscountByProductRow[]
   rows: DiscountReportRow[]
@@ -402,11 +413,110 @@ async function generateInventoryReport(params?: { categoryId?: string; lowStockO
   }
 }
 
+// ── GST tax-head classification shared by the Tax report, GSTR-1, HSN summary and GSTR-3B ──────────────
+// Reports classify by tax HEAD, never by how a document presents the tax. A document stored as CGST_SGST or
+// IGST is taken as stored; a combined GST document is decided from the place of supply (buyer state against
+// the business state), and one with no known state counts as CGST + SGST and is reported as a warning.
+// Every amount is held in integer minor units so the report totals equal the documents to the last unit.
+
+interface GstReportContext { businessState: string | null; decimals: number; factor: number }
+
+async function loadGstReportContext(db: ReturnType<typeof getPrisma>): Promise<GstReportContext> {
+  let state: string | null = null
+  let currency: string | null = null
+  try {
+    const p = await db.businessProfile.findFirst({ select: { state: true, taxNumber: true, currencyCode: true } })
+    state = resolvePartyState(p?.state, p?.taxNumber) || null
+    currency = p?.currencyCode ?? null
+  } catch { /* no profile: neutral defaults */ }
+  const decimals = getCurrencyDecimals(currency)
+  return { businessState: state, decimals, factor: 10 ** decimals }
+}
+
+// Credit notes that charged tax reduce the output tax of the period like a return of goods: each one is turned into a
+// return-shaped document (negative taxable value, tax as a positive magnitude) so the Tax report, GSTR-1 and GSTR-3B
+// classify and split it with exactly the code they use for invoices. A note without tax contributes nothing.
+interface NoteReportDoc {
+  id: string; invoiceNumber: string; invoiceDate: Date; invoiceType: 'RETURN'; gstType: string | null; buyerState: null
+  pricesIncludeTax: boolean; totalAmount: number; status: string
+  customer: { customerName: string; taxNumber: string | null; state: string | null } | null
+  items: Array<{ id: string; invoiceId: string; productName: string; hsnCode: null; taxRate: number; taxAmount: number; taxCategory: string; quantity: number; unitPrice: number; discountAmount: number; lineTotal: number; weightUnit: null; product: { unit: string } }>
+}
+
+async function loadCreditNoteReportDocs(db: ReturnType<typeof getPrisma>, from: Date, to: Date): Promise<NoteReportDoc[]> {
+  let notes: Array<any>
+  try {
+    notes = await db.creditNote.findMany({
+      where: { createdAt: { gte: from, lte: to }, taxApplied: true, taxAmount: { gt: 0 } },
+      include: { customer: { select: { customerName: true, taxNumber: true, state: true } }, items: true },
+      orderBy: { createdAt: 'asc' }
+    })
+  } catch {
+    return []
+  }
+  return notes.map((n) => {
+    const docId = `cn:${n.id}`
+    const lines: Array<{ rate: number; tax: number; taxable: number; name: string; qty: number; unit: number }> = n.items && n.items.length > 0
+      ? n.items.map((i: any) => ({ rate: Number(i.taxRate) || 0, tax: Number(i.taxAmount) || 0, taxable: roundMoney(i.lineTotal - i.taxAmount, 3), name: i.serviceDescription ?? 'Item', qty: i.quantity, unit: i.unitPrice }))
+      : [{ rate: Number(n.taxRate) || 0, tax: Number(n.taxAmount) || 0, taxable: roundMoney(n.amount - n.taxAmount, 3), name: 'Credit note', qty: 1, unit: n.amount }]
+    return {
+      id: docId, invoiceNumber: n.creditNoteNumber, invoiceDate: n.createdAt, invoiceType: 'RETURN' as const, gstType: n.gstType ?? null, buyerState: null,
+      pricesIncludeTax: n.pricesIncludeTax === true, totalAmount: -Math.abs(n.amount), status: 'ACTIVE',
+      customer: n.customer ? { customerName: n.customer.customerName, taxNumber: n.customer.taxNumber ?? null, state: n.customer.state ?? null } : null,
+      items: lines.map((l, k) => ({
+        id: `${docId}:${k}`, invoiceId: docId, productName: l.name, hsnCode: null, taxRate: l.rate, taxAmount: l.tax,
+        taxCategory: resolveLineTaxCategory('STANDARD', l.rate), quantity: l.qty, unitPrice: l.unit, discountAmount: 0, lineTotal: -Math.abs(l.taxable),
+        weightUnit: null, product: { unit: 'PCS' }
+      }))
+    }
+  })
+}
+
+interface HeadedLine {
+  taxRate: number
+  category: TaxCategory
+  taxable: number; tax: number; cgst: number; sgst: number; igst: number // signed minor units
+}
+
+interface HeadedInvoice { sign: 1 | -1; cls: TaxHeadClass; lines: HeadedLine[] }
+
+interface GstSourceItem { taxRate?: number | null; taxAmount: number; taxCategory?: string | null; quantity: number; unitPrice: number; discountAmount: number; lineTotal: number }
+
+/** One invoice's lines with their signed taxable value and tax split into CGST, SGST and IGST (minor units). */
+function headInvoiceLines(
+  inv: { gstType?: string | null; buyerState?: string | null; customer?: { state?: string | null; taxNumber?: string | null } | null; invoiceType?: string | null; pricesIncludeTax?: boolean | null },
+  items: GstSourceItem[],
+  ctx: GstReportContext
+): HeadedInvoice {
+  const sign: 1 | -1 = inv.invoiceType === 'RETURN' ? -1 : 1
+  const cls = classifyTaxHead(inv.gstType, ctx.businessState, resolvePartyState(inv.buyerState ?? inv.customer?.state, inv.customer?.taxNumber))
+  const halves = cls.head === 'CGST_SGST' ? allocateGstHalves(items.map(i => ({ taxRate: i.taxRate ?? 0, taxAmount: i.taxAmount })), ctx.decimals) : null
+  const f = ctx.factor
+  const lines = items.map((item, index): HeadedLine => {
+    const taxable = sign * Math.round(storedLineTaxable(item, { pricesIncludeTax: inv.pricesIncludeTax, isReturn: sign === -1 }) * f)
+    const tax = sign * Math.round(item.taxAmount * f)
+    const rate = item.taxRate ?? 0
+    return {
+      taxRate: rate, category: resolveLineTaxCategory(item.taxCategory, rate), taxable, tax,
+      cgst: halves ? sign * Math.round(halves[index].cgst * f) : 0,
+      sgst: halves ? sign * Math.round(halves[index].sgst * f) : 0,
+      igst: cls.head === 'IGST' ? tax : 0
+    }
+  })
+  return { sign, cls, lines }
+}
+
+/** A signed minor-unit amount split into two halves that add back to it exactly. */
+function halveMinor(m: number): [number, number] {
+  const first = Math.trunc(m / 2)
+  return [first, m - first]
+}
+
 // ─────────────────────────────────────────────────────────────────────────────
 // Tax Report
 // ─────────────────────────────────────────────────────────────────────────────
 
-/** Splits tax items by gstType: IGST rows go into igstRows, CGST_SGST rows into rows. Used for GST filing reconciliation.
+/** GST businesses get CGST and SGST rows (or IGST rows) per rate, classified by tax head; other tax models get one row per rate.
  *  The output is always a compact by-rate breakdown, so it always aggregates over every matching
  *  invoice item in range — capping the source rows would silently under-report tax collected. */
 async function generateTaxReport(params: { dateFrom: string; dateTo: string }): Promise<TaxReport> {
@@ -418,79 +528,106 @@ async function generateTaxReport(params: { dateFrom: string; dateTo: string }): 
   // Invoice-level totals (subtotal/taxAmount/totalAmount all -> 0) but
   // deliberately leaves its InvoiceItem rows untouched (see billing.service.ts's
   // splitInvoice comment) — a report reading Invoice.totalAmount is safe, but
-  // this one reads InvoiceItem.taxAmount/unitPrice directly, so excluding only
+  // this one reads InvoiceItem.taxAmount/lineTotal directly, so excluding only
   // CANCELLED left every split invoice's original (real, non-zero) line items
   // counted here AS WELL AS each of its child invoices' own line items,
   // double-counting taxable turnover and tax collected. Same fix applied to
   // every other GST-report/discount-report function in this file that reads
   // InvoiceItem fields directly (generateGSTR1, generateHSNSummaryReport,
   // generateGSTR3BPreview, generateDiscountReport).
-  const taxItemWhere = {
-    invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
-    taxRate: { not: 0 }
-  }
-
   const items = await db.invoiceItem.findMany({
-    where: taxItemWhere,
-    include: { invoice: { select: { invoiceDate: true, gstType: true, invoiceType: true } } }
+    where: { invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } } },
+    include: { invoice: { select: { invoiceDate: true, gstType: true, invoiceType: true, pricesIncludeTax: true, buyerState: true, customer: { select: { state: true, taxNumber: true } } } } }
   })
 
   const taxConfigs = await db.taxConfiguration.findMany({ where: { isActive: true } })
   const configMap = new Map(taxConfigs.map(t => [t.rate, t]))
 
-  // Separate CGST_SGST items from IGST items per rate
-  type RateData = { taxableAmount: number; taxCollected: number; invoiceIds: Set<string> }
-  const cgstSgstMap = new Map<number, RateData>()
-  const igstMap = new Map<number, RateData>()
-
-  const profile = await db.businessProfile.findFirst()
-  const isGST = profile?.taxModel === 'GST'
-
-  for (const item of items) {
-    const rate = item.taxRate ?? 0
-    if (!rate) continue
-    const isIgst = item.invoice.gstType === 'IGST'
-    const map = (isGST && isIgst) ? igstMap : cgstSgstMap
-    const existing = map.get(rate) ?? { taxableAmount: 0, taxCollected: 0, invoiceIds: new Set() }
-    // Return items store unitPrice/quantity/discountAmount/taxAmount as
-    // positive magnitudes (see generateSalesReport's totalDiscount comment
-    // above for why) — net them out here so a return correctly reduces
-    // taxable turnover and tax collected instead of adding to it.
-    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
-    const lineTotal = sign * (item.unitPrice * item.quantity - item.discountAmount)
-    existing.taxableAmount += lineTotal
-    existing.taxCollected += sign * item.taxAmount
-    existing.invoiceIds.add(item.invoiceId)
-    map.set(rate, existing)
-  }
-
-  const rows: TaxReportRow[] = []
-
-  for (const [rate, data] of Array.from(cgstSgstMap.entries()).sort((a, b) => a[0] - b[0])) {
-    const cfg = configMap.get(rate)
-    if (isGST && rate > 0) {
-      const halfRate = rate / 2
-      const halfTax = data.taxCollected / 2
-      const halfBase = data.taxableAmount / 2
-      rows.push({ taxName: `CGST @ ${halfRate}%`, taxType: 'CGST', rate: halfRate, taxableAmount: halfBase, taxCollected: halfTax, invoiceCount: data.invoiceIds.size })
-      rows.push({ taxName: `SGST @ ${halfRate}%`, taxType: 'SGST', rate: halfRate, taxableAmount: halfBase, taxCollected: halfTax, invoiceCount: data.invoiceIds.size })
-    } else {
-      rows.push({ taxName: cfg?.taxName ?? `${rate}% Tax`, taxType: cfg?.taxType ?? 'SALES_TAX', rate, taxableAmount: data.taxableAmount, taxCollected: data.taxCollected, invoiceCount: data.invoiceIds.size })
+  for (const note of await loadCreditNoteReportDocs(db, from, to)) {
+    for (const it of note.items) {
+      items.push({ ...it, invoice: { invoiceDate: note.invoiceDate, gstType: note.gstType, invoiceType: note.invoiceType, pricesIncludeTax: note.pricesIncludeTax, buyerState: null, customer: note.customer } } as never)
     }
   }
 
-  for (const [rate, data] of Array.from(igstMap.entries()).sort((a, b) => a[0] - b[0])) {
-    rows.push({ taxName: `IGST @ ${rate}%`, taxType: 'IGST', rate, taxableAmount: data.taxableAmount, taxCollected: data.taxCollected, invoiceCount: data.invoiceIds.size })
+  const profile = await db.businessProfile.findFirst()
+  const isGST = profile?.taxModel === 'GST'
+  const ctx = await loadGstReportContext(db)
+  const f = ctx.factor
+
+  // Lines are grouped per invoice so the CGST and SGST halves are exact per invoice and rate.
+  const byInvoice = new Map<string, typeof items>()
+  for (const item of items) {
+    const list = byInvoice.get(item.invoiceId) ?? []
+    list.push(item)
+    byInvoice.set(item.invoiceId, list)
   }
 
-  const allData = [...cgstSgstMap.values(), ...igstMap.values()]
-  const totalTaxableAmount = allData.reduce((s, r) => s + r.taxableAmount, 0)
-  const totalTaxCollected = allData.reduce((s, r) => s + r.taxCollected, 0)
+  type Bucket = { taxable: number; tax: number; cgst: number; sgst: number; invoiceIds: Set<string> }
+  const newBucket = (): Bucket => ({ taxable: 0, tax: 0, cgst: 0, sgst: 0, invoiceIds: new Set<string>() })
+  const splitMap = new Map<number, Bucket>() // CGST + SGST head, or every invoice for a non-GST tax model
+  const igstMap = new Map<number, Bucket>()
+  type CatData = { category: TaxCategory; rate: number; taxable: number; tax: number; invoiceIds: Set<string> }
+  const catMap = new Map<string, CatData>()
+  const unknownStateInvoices = new Set<string>()
+  let taxedLineCount = 0
+
+  for (const [invoiceId, invItems] of byInvoice) {
+    const head = headInvoiceLines(invItems[0].invoice, invItems, ctx)
+    if (isGST && head.cls.stateUnknown && invItems.some(i => (i.taxRate ?? 0) > 0)) unknownStateInvoices.add(invoiceId)
+    for (const line of head.lines) {
+      const ck = `${line.category}|${line.taxRate}`
+      const cat = catMap.get(ck) ?? { category: line.category, rate: line.taxRate, taxable: 0, tax: 0, invoiceIds: new Set<string>() }
+      cat.taxable += line.taxable
+      cat.tax += line.tax
+      cat.invoiceIds.add(invoiceId)
+      catMap.set(ck, cat)
+
+      if (!line.taxRate) continue
+      taxedLineCount += 1
+      const map = isGST && head.cls.head === 'IGST' ? igstMap : splitMap
+      const b = map.get(line.taxRate) ?? newBucket()
+      b.taxable += line.taxable
+      b.tax += line.tax
+      b.cgst += line.cgst
+      b.sgst += line.sgst
+      b.invoiceIds.add(invoiceId)
+      map.set(line.taxRate, b)
+    }
+  }
+
+  const n = (m: number) => m / f + 0
+  const rows: TaxReportRow[] = []
+
+  for (const [rate, b] of Array.from(splitMap.entries()).sort((a, c) => a[0] - c[0])) {
+    if (isGST) {
+      // Taxable value is shown half on each of the CGST and SGST rows, halved exactly so the two add back to the whole.
+      const [t1, t2] = halveMinor(b.taxable)
+      const halfRate = rate / 2
+      rows.push({ taxName: `CGST @ ${halfRate}%`, taxType: 'CGST', rate: halfRate, taxableAmount: n(t1), taxCollected: n(b.cgst), invoiceCount: b.invoiceIds.size })
+      rows.push({ taxName: `SGST @ ${halfRate}%`, taxType: 'SGST', rate: halfRate, taxableAmount: n(t2), taxCollected: n(b.sgst), invoiceCount: b.invoiceIds.size })
+    } else {
+      const cfg = configMap.get(rate)
+      rows.push({ taxName: cfg?.taxName ?? `${rate}% Tax`, taxType: cfg?.taxType ?? 'SALES_TAX', rate, taxableAmount: n(b.taxable), taxCollected: n(b.tax), invoiceCount: b.invoiceIds.size })
+    }
+  }
+  for (const [rate, b] of Array.from(igstMap.entries()).sort((a, c) => a[0] - c[0])) {
+    rows.push({ taxName: `IGST @ ${rate}%`, taxType: 'IGST', rate, taxableAmount: n(b.taxable), taxCollected: n(b.tax), invoiceCount: b.invoiceIds.size })
+  }
+
+  const all = [...splitMap.values(), ...igstMap.values()]
+  const totalTaxable = all.reduce((s, b) => s + b.taxable, 0)
+  const totalTax = all.reduce((s, b) => s + b.tax, 0)
+
+  const byCategory: TaxCategoryRow[] = Array.from(catMap.values())
+    .sort((a, b) => TAX_CATEGORIES.indexOf(a.category) - TAX_CATEGORIES.indexOf(b.category) || a.rate - b.rate)
+    .map(c => ({ taxCategory: c.category, rate: c.rate, taxableAmount: n(c.taxable), taxCollected: n(c.tax), invoiceCount: c.invoiceIds.size }))
 
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo,
-    summary: { totalTaxableAmount, totalTaxCollected },
-    rows, total: items.length
+    summary: { totalTaxableAmount: n(totalTaxable), totalTaxCollected: n(totalTax) },
+    rows, total: taxedLineCount,
+    byCategory,
+    stateUnknownCount: unknownStateInvoices.size
   }
 }
 
@@ -535,7 +672,7 @@ function computeAgingRows(
     if (ledgerEntries.length === 0) continue
 
     const outstanding = ledgerEntries.reduce((sum, x) => sum + x.debitAmount - x.creditAmount, 0)
-    if (outstanding <= 0.01) continue
+    if (outstanding <= moneyEpsilon()) continue
 
     let aging: AgingBuckets = { ...ZERO_AGING }
     let remaining = outstanding
@@ -1158,7 +1295,7 @@ async function generateCashBookReport(params: { dateFrom: string; dateTo: string
 // a negative number in either column.
 // ─────────────────────────────────────────────────────────────────────────────
 
-export interface TrialBalanceRow { account: string; debit: number; credit: number }
+export interface TrialBalanceRow { account: string; accountId?: string; accountType?: string; debit: number; credit: number }
 export interface TrialBalanceReport {
   dateFrom: string; dateTo: string; asOf: string
   rows: TrialBalanceRow[]
@@ -1171,13 +1308,29 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
   const db = getPrisma()
   const to = toDateEnd(params.dateTo)
 
-  const [accounts, lines] = await Promise.all([
+  const [accounts, allLines] = await Promise.all([
     db.chartOfAccounts.findMany({ where: { isActive: true }, orderBy: { accountCode: 'asc' } }),
     db.journalEntryLine.findMany({
       where: { journalEntry: { entryDate: { lte: to } } },
-      select: { accountId: true, debitAmount: true, creditAmount: true }
+      select: { accountId: true, debitAmount: true, creditAmount: true, journalEntry: { select: { entryDate: true, sourceType: true } } }
     })
   ])
+
+  // Year-end close posts one YEAR_END_OPENING entry that re-states every balance-sheet balance (P&L
+  // folded into Owner's Capital) while the old year's lines stay in the ledger. Once the report date
+  // is on/after that entry, the trial balance starts from the latest opening entry — the same basis
+  // financial-statements.service.ts's balancesAsOf() uses for the Balance Sheet — otherwise every
+  // carried-forward balance is counted twice (and the report still "balances", hiding it).
+  let openingStart = -Infinity
+  for (const l of allLines) {
+    if (l.journalEntry?.sourceType === YEAR_END_SOURCE) {
+      const t = l.journalEntry.entryDate.getTime()
+      if (t <= to.getTime() && t > openingStart) openingStart = t
+    }
+  }
+  const lines = openingStart === -Infinity
+    ? allLines
+    : allLines.filter((l) => !l.journalEntry || l.journalEntry.entryDate.getTime() >= openingStart)
 
   // Real bug found+fixed in the zero-logical-errors audit: these
   // per-account totals used to accumulate via plain `Map.get() + rawFloat`
@@ -1210,9 +1363,9 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
     const creditTotal = sumCurrency(creditLinesByAccount.get(acct.id) ?? [])
     if (debitTotal === 0 && creditTotal === 0) continue // never posted to — omit rather than pad with all-zero rows
     const net = roundCurrency(debitTotal - creditTotal)
-    if (Math.abs(net) < 0.005) continue // posted both ways but nets to zero — nothing to show
+    if (Math.abs(net) < moneyEpsilon() / 2) continue // posted both ways but nets to zero — nothing to show
     const account = `${acct.accountCode} — ${acct.accountName}`
-    rows.push(net > 0 ? { account, debit: net, credit: 0 } : { account, debit: 0, credit: -net })
+    rows.push(net > 0 ? { account, accountId: acct.id, accountType: acct.accountType, debit: net, credit: 0 } : { account, accountId: acct.id, accountType: acct.accountType, debit: 0, credit: -net })
   }
 
   const totalDebit = roundCurrency(sumCurrency(rows.map((r) => r.debit)))
@@ -1221,7 +1374,7 @@ async function generateTrialBalanceReport(params: { dateFrom: string; dateTo: st
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo, asOf: params.dateTo,
     rows, totalDebit, totalCredit,
-    balanced: Math.abs(totalDebit - totalCredit) < 0.01
+    balanced: Math.abs(totalDebit - totalCredit) < moneyEpsilon()
   }
 }
 
@@ -1635,11 +1788,11 @@ async function generatePaymentPerformanceReport(params: { dateFrom: string; date
   const rows: PaymentPerformanceRow[] = [...byCustomer.entries()].map(([customerId, e]) => ({
     customerId, customerName: e.customerName,
     paidInvoiceCount: e.daysList.length,
-    avgDaysToPay: e.daysList.length > 0 ? roundCurrency(e.daysList.reduce((a, b) => a + b, 0) / e.daysList.length) : null,
+    avgDaysToPay: e.daysList.length > 0 ? roundMoney(e.daysList.reduce((a, b) => a + b, 0) / e.daysList.length, 2) : null,
     outstandingInvoiceCount: e.outstandingCount, outstandingAmount: roundCurrency(e.outstandingAmount)
   })).sort((a, b) => (b.avgDaysToPay ?? -1) - (a.avgDaysToPay ?? -1))
 
-  const overallAvgDaysToPay = allDays.length > 0 ? roundCurrency(allDays.reduce((a, b) => a + b, 0) / allDays.length) : null
+  const overallAvgDaysToPay = allDays.length > 0 ? roundMoney(allDays.reduce((a, b) => a + b, 0) / allDays.length, 2) : null
 
   return { dateFrom: params.dateFrom, dateTo: params.dateTo, rows, overallAvgDaysToPay }
 }
@@ -1996,9 +2149,9 @@ async function generateRecipeWasteVarianceReport(params?: { dateFrom?: string; d
   const ingredientById = new Map(ingredients.map(p => [p.id, p]))
 
   const rows: RecipeWasteVarianceRow[] = ingredientIds.map(id => {
-    const implied = roundCurrency(impliedByIngredient.get(id) ?? 0)
-    const actual = roundCurrency(actualByIngredient.get(id) ?? 0)
-    const varianceQuantity = roundCurrency(actual - implied)
+    const implied = roundMoney(impliedByIngredient.get(id) ?? 0, 2)
+    const actual = roundMoney(actualByIngredient.get(id) ?? 0, 2)
+    const varianceQuantity = roundMoney(actual - implied, 2)
     return {
       ingredientProductId: id,
       ingredientName: ingredientById.get(id)?.productName ?? id,
@@ -3003,20 +3156,48 @@ export interface GSTR1B2CSRow {
   igstAmount: number; cgstAmount: number; sgstAmount: number
 }
 
+/** Nil-rated, exempt and non-GST outward supplies (the GSTR-1 table 8 groups), by inter-state and registered buyer. */
+export interface GSTR1NilExemptRow {
+  category: 'NIL_RATED' | 'EXEMPT' | 'OUT_OF_SCOPE'
+  interState: boolean; registered: boolean
+  taxableValue: number
+}
+
+/** A credit note that charged tax, to a registered buyer (the GSTR-1 credit/debit note register). */
+export interface GSTR1CreditNoteRow {
+  gstin: string; receiverName: string; noteNumber: string; noteDate: string
+  noteValue: number; placeOfSupply: string
+  taxableValue: number; igstAmount: number; cgstAmount: number; sgstAmount: number; rate: number
+}
+
 export interface GSTR1Report {
   period: string
   b2b: GSTR1B2BRow[]
+  /** Credit notes to registered buyers, as negative values; notes to unregistered buyers reduce the b2cs rows. */
+  cdnr: GSTR1CreditNoteRow[]
   b2cs: GSTR1B2CSRow[]
-  summary: { totalB2BValue: number; totalB2CSValue: number; totalIgst: number; totalCgst: number; totalSgst: number }
+  nilExempt: GSTR1NilExemptRow[]
+  summary: {
+    totalB2BValue: number; totalB2CSValue: number; totalIgst: number; totalCgst: number; totalSgst: number
+    totalNilRated: number; totalExempt: number; totalNonGst: number
+    /** Total value of the credit notes in `cdnr` (negative). The tax totals above are already net of every credit note. */
+    totalCdnrValue: number
+  }
+  /** Combined-GST documents with no known place of supply; filed as CGST + SGST. */
+  stateUnknownCount: number
 }
 
-/** Builds GSTR-1 return data: B2B (customer has GSTIN/taxNumber) vs B2CS (retail). IGST for inter-state, CGST+SGST for intra-state. */
+const NON_TAXABLE_CATEGORIES: readonly TaxCategory[] = ['NIL_RATED', 'EXEMPT', 'OUT_OF_SCOPE']
+
+/** Builds GSTR-1 return data: B2B (customer has GSTIN/taxNumber) vs B2CS (retail). IGST for inter-state, CGST+SGST for intra-state,
+ *  decided by tax head (see headInvoiceLines). Lines are reported per invoice and rate; nil-rated, exempt and non-GST lines
+ *  go to their own rows. */
 async function generateGSTR1(params: { dateFrom: string; dateTo: string }): Promise<GSTR1Report> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
-  // See generateTaxReport's taxItemWhere comment — SPLIT excluded too, not
+  // See generateTaxReport's comment — SPLIT excluded too, not
   // just CANCELLED, since this reads InvoiceItem fields directly and a SPLIT
   // parent's original items are left in place, un-zeroed.
   const invoices = await db.invoice.findMany({
@@ -3027,57 +3208,133 @@ async function generateGSTR1(params: { dateFrom: string; dateTo: string }): Prom
     },
     orderBy: { invoiceDate: 'asc' }
   })
+  const ctx = await loadGstReportContext(db)
+  const f = ctx.factor
+  const n = (m: number) => m / f + 0
 
-  const b2b: GSTR1B2BRow[] = []
-  const b2csMap = new Map<string, GSTR1B2CSRow>()
+  const b2b: Array<GSTR1B2BRow & { _invoiceId: string }> = []
+  const b2csMap = new Map<string, { placeOfSupply: string; rate: number; taxable: number; igst: number; cgst: number; sgst: number }>()
+  const nilMap = new Map<string, { category: GSTR1NilExemptRow['category']; interState: boolean; registered: boolean; taxable: number }>()
+  const b2bInvoiceValue = new Map<string, number>()
+  const unknownState = new Set<string>()
 
   for (const inv of invoices) {
-    const isIgst = inv.gstType === 'IGST'
-    const placeOfSupply = inv.buyerState ?? inv.customer?.state ?? 'Unknown'
-    // See generateSalesReport's totalDiscount comment — return items store
-    // positive-magnitude discountAmount/taxAmount, net them out here.
-    const sign = inv.invoiceType === 'RETURN' ? -1 : 1
+    const head = headInvoiceLines(inv, inv.items, ctx)
+    const placeOfSupply = placeOfSupplyLabel(inv.buyerState ?? inv.customer?.state, inv.customer?.taxNumber) || 'Unknown'
+    const registered = Boolean(inv.customer?.taxNumber)
+    const interState = head.cls.head === 'IGST'
+    if (head.cls.stateUnknown && inv.items.some(i => (i.taxRate ?? 0) > 0)) unknownState.add(inv.id)
 
-    for (const item of inv.items) {
-      const rate = item.taxRate ?? 0
-      const taxableValue = sign * (item.unitPrice * item.quantity - item.discountAmount)
-      const totalTax = sign * item.taxAmount
-      const igst = isIgst ? totalTax : 0
-      const cgst = isIgst ? 0 : totalTax / 2
-      const sgst = isIgst ? 0 : totalTax / 2
+    // One reporting line per rate for this invoice; lines of the same rate are added, in minor units.
+    const perRate = new Map<number, { taxable: number; igst: number; cgst: number; sgst: number }>()
+    for (const line of head.lines) {
+      if (NON_TAXABLE_CATEGORIES.includes(line.category)) {
+        const key = `${line.category}|${interState}|${registered}`
+        const nil = nilMap.get(key) ?? { category: line.category as GSTR1NilExemptRow['category'], interState, registered, taxable: 0 }
+        nil.taxable += line.taxable
+        nilMap.set(key, nil)
+        continue
+      }
+      const r = perRate.get(line.taxRate) ?? { taxable: 0, igst: 0, cgst: 0, sgst: 0 }
+      r.taxable += line.taxable
+      r.igst += line.igst
+      r.cgst += line.cgst
+      r.sgst += line.sgst
+      perRate.set(line.taxRate, r)
+    }
 
-      if (inv.customer?.taxNumber) {
+    for (const [rate, r] of perRate) {
+      if (registered) {
+        b2bInvoiceValue.set(inv.id, inv.totalAmount)
         b2b.push({
-          gstin: inv.customer.taxNumber,
-          receiverName: inv.customer.customerName,
+          _invoiceId: inv.id,
+          gstin: inv.customer!.taxNumber as string,
+          receiverName: inv.customer!.customerName,
           invoiceNumber: inv.invoiceNumber,
           invoiceDate: toLocalISODate(new Date(inv.invoiceDate)),
           invoiceValue: inv.totalAmount,
           placeOfSupply,
           reverseCharge: 'N',
-          taxableValue, igstAmount: igst, cgstAmount: cgst, sgstAmount: sgst, rate
+          taxableValue: n(r.taxable), igstAmount: n(r.igst), cgstAmount: n(r.cgst), sgstAmount: n(r.sgst), rate
         })
       } else {
-        const key = `${placeOfSupply}|${rate}|${isIgst ? 'IGST' : 'CGST_SGST'}`
-        const existing = b2csMap.get(key) ?? { placeOfSupply, rate, taxableValue: 0, igstAmount: 0, cgstAmount: 0, sgstAmount: 0 }
-        existing.taxableValue += taxableValue
-        existing.igstAmount += igst
-        existing.cgstAmount += cgst
-        existing.sgstAmount += sgst
+        const key = `${placeOfSupply}|${rate}|${interState ? 'IGST' : 'CGST_SGST'}`
+        const existing = b2csMap.get(key) ?? { placeOfSupply, rate, taxable: 0, igst: 0, cgst: 0, sgst: 0 }
+        existing.taxable += r.taxable
+        existing.igst += r.igst
+        existing.cgst += r.cgst
+        existing.sgst += r.sgst
         b2csMap.set(key, existing)
       }
     }
   }
 
-  const b2cs = Array.from(b2csMap.values())
-  const totalB2BValue = b2b.reduce((s, r) => s + r.invoiceValue, 0)
-  const totalB2CSValue = b2cs.reduce((s, r) => s + r.taxableValue, 0)
-  const totalIgst = [...b2b, ...b2cs].reduce((s, r) => s + r.igstAmount, 0)
-  const totalCgst = [...b2b, ...b2cs].reduce((s, r) => s + r.cgstAmount, 0)
-  const totalSgst = [...b2b, ...b2cs].reduce((s, r) => s + r.sgstAmount, 0)
+  // Credit notes that charged tax: registered buyers get their own register rows, unregistered buyers reduce the b2cs rows.
+  const cdnr: Array<GSTR1CreditNoteRow & { _minor: { taxable: number; igst: number; cgst: number; sgst: number } }> = []
+  const cdnrNoteValue = new Map<string, number>()
+  for (const note of await loadCreditNoteReportDocs(db, from, to)) {
+    const head = headInvoiceLines(note, note.items as never, ctx)
+    const placeOfSupply = placeOfSupplyLabel(note.customer?.state, note.customer?.taxNumber) || 'Unknown'
+    const registered = Boolean(note.customer?.taxNumber)
+    const interState = head.cls.head === 'IGST'
+    if (head.cls.stateUnknown) unknownState.add(note.id)
+    const perRate = new Map<number, { taxable: number; igst: number; cgst: number; sgst: number }>()
+    for (const line of head.lines) {
+      if (!line.taxRate) continue
+      const r = perRate.get(line.taxRate) ?? { taxable: 0, igst: 0, cgst: 0, sgst: 0 }
+      r.taxable += line.taxable; r.igst += line.igst; r.cgst += line.cgst; r.sgst += line.sgst
+      perRate.set(line.taxRate, r)
+    }
+    for (const [rate, r] of perRate) {
+      if (registered) {
+        cdnrNoteValue.set(note.id, note.totalAmount)
+        cdnr.push({
+          gstin: note.customer!.taxNumber as string, receiverName: note.customer!.customerName, noteNumber: note.invoiceNumber,
+          noteDate: toLocalISODate(new Date(note.invoiceDate)), noteValue: note.totalAmount, placeOfSupply,
+          taxableValue: n(r.taxable), igstAmount: n(r.igst), cgstAmount: n(r.cgst), sgstAmount: n(r.sgst), rate,
+          _minor: { taxable: r.taxable, igst: r.igst, cgst: r.cgst, sgst: r.sgst }
+        })
+      } else {
+        const key = `${placeOfSupply}|${rate}|${interState ? 'IGST' : 'CGST_SGST'}`
+        const existing = b2csMap.get(key) ?? { placeOfSupply, rate, taxable: 0, igst: 0, cgst: 0, sgst: 0 }
+        existing.taxable += r.taxable; existing.igst += r.igst; existing.cgst += r.cgst; existing.sgst += r.sgst
+        b2csMap.set(key, existing)
+      }
+    }
+  }
+
+  const b2cs: GSTR1B2CSRow[] = Array.from(b2csMap.values()).map(r => ({
+    placeOfSupply: r.placeOfSupply, rate: r.rate, taxableValue: n(r.taxable), igstAmount: n(r.igst), cgstAmount: n(r.cgst), sgstAmount: n(r.sgst)
+  }))
+  const nilExempt: GSTR1NilExemptRow[] = Array.from(nilMap.values())
+    .sort((a, b) => NON_TAXABLE_CATEGORIES.indexOf(a.category) - NON_TAXABLE_CATEGORIES.indexOf(b.category) || Number(a.interState) - Number(b.interState) || Number(a.registered) - Number(b.registered))
+    .map(r => ({ category: r.category, interState: r.interState, registered: r.registered, taxableValue: n(r.taxable) }))
+
+  // An invoice with several rates repeats its invoice value on each rate row (the portal layout), so it is counted once here.
+  const totalB2BValue = Array.from(b2bInvoiceValue.values()).reduce((s, v) => s + Math.round(v * f), 0)
+  const totalB2CSValue = Array.from(b2csMap.values()).reduce((s, r) => s + r.taxable, 0)
+  const sumB2B = (k: 'igstAmount' | 'cgstAmount' | 'sgstAmount') => b2b.reduce((s, r) => s + Math.round(r[k] * f), 0)
+  const sumB2CS = (k: 'igst' | 'cgst' | 'sgst') => Array.from(b2csMap.values()).reduce((s, r) => s + r[k], 0)
+  const sumCdnr = (k: 'igst' | 'cgst' | 'sgst') => cdnr.reduce((s, r) => s + r._minor[k], 0)
+  const nilTotal = (c: GSTR1NilExemptRow['category']) => Array.from(nilMap.values()).filter(r => r.category === c).reduce((s, r) => s + r.taxable, 0)
 
   const period = `${params.dateFrom} to ${params.dateTo}`
-  return { period, b2b, b2cs, summary: { totalB2BValue, totalB2CSValue, totalIgst, totalCgst, totalSgst } }
+  return {
+    period,
+    b2b: b2b.map(({ _invoiceId, ...row }) => row),
+    cdnr: cdnr.map(({ _minor, ...row }) => row),
+    b2cs,
+    nilExempt,
+    summary: {
+      totalB2BValue: n(totalB2BValue), totalB2CSValue: n(totalB2CSValue),
+      totalIgst: n(sumB2B('igstAmount') + sumB2CS('igst') + sumCdnr('igst')),
+      totalCgst: n(sumB2B('cgstAmount') + sumB2CS('cgst') + sumCdnr('cgst')),
+      totalSgst: n(sumB2B('sgstAmount') + sumB2CS('sgst') + sumCdnr('sgst')),
+      totalCdnrValue: n(Array.from(cdnrNoteValue.values()).reduce((s2, v) => s2 + Math.round(v * f), 0)),
+      totalNilRated: n(nilTotal('NIL_RATED')), totalExempt: n(nilTotal('EXEMPT')), totalNonGst: n(nilTotal('OUT_OF_SCOPE'))
+    },
+    stateUnknownCount: unknownState.size
+  }
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
@@ -3101,6 +3358,8 @@ export interface HSNSummaryReport {
   b2b: HSNSummaryRow[]
   b2c: HSNSummaryRow[]
   summary: { totalTaxableValue: number; totalTax: number; rowCount: number }
+  /** Combined-GST documents with no known place of supply; counted as CGST + SGST. */
+  stateUnknownCount: number
 }
 
 const NO_HSN_CODE = 'No HSN Code'
@@ -3110,21 +3369,25 @@ async function generateHSNSummaryReport(params: { dateFrom: string; dateTo: stri
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
-  // See generateTaxReport's taxItemWhere comment — SPLIT excluded too.
+  // See generateTaxReport's comment — SPLIT excluded too.
   const invoices = await db.invoice.findMany({
     where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     include: {
-      customer: { select: { taxNumber: true } },
+      customer: { select: { taxNumber: true, state: true } },
       items: { include: { product: { select: { unit: true } } } }
     },
     orderBy: { invoiceDate: 'asc' }
   })
+  const ctx = await loadGstReportContext(db)
+  const f = ctx.factor
+  const n = (m: number) => m / f + 0
 
-  const b2bMap = new Map<string, HSNSummaryRow>()
-  const b2cMap = new Map<string, HSNSummaryRow>()
+  type Acc = { hsnCode: string; description: string; uqc: string; qty: number; value: number; taxable: number; igst: number; cgst: number; sgst: number }
+  const b2bMap = new Map<string, Acc>()
+  const b2cMap = new Map<string, Acc>()
+  const unknownState = new Set<string>()
 
   for (const inv of invoices) {
-    const isIgst = inv.gstType === 'IGST'
     const isB2B = Boolean(inv.customer?.taxNumber)
     const target = isB2B ? b2bMap : b2cMap
     // See generateSalesReport's totalDiscount comment — return items store
@@ -3132,42 +3395,42 @@ async function generateHSNSummaryReport(params: { dateFrom: string; dateTo: stri
     // here (matching analytics.service.ts's existing quantity-netting
     // convention, applied here to taxableValue/tax/quantity together for
     // this report's own internal consistency).
-    const sign = inv.invoiceType === 'RETURN' ? -1 : 1
+    const head = headInvoiceLines(inv, inv.items, ctx)
+    if (head.cls.stateUnknown && inv.items.some(i => (i.taxRate ?? 0) > 0)) unknownState.add(inv.id)
 
-    for (const item of inv.items) {
+    inv.items.forEach((item, idx) => {
+      const line = head.lines[idx]
       const hsnCode = item.hsnCode?.trim() || NO_HSN_CODE
-      const rate = item.taxRate ?? 0
-      const key = `${hsnCode}|${rate}`
-      const taxableValue = sign * (item.unitPrice * item.quantity - item.discountAmount)
-      const totalTax = sign * item.taxAmount
-      const igst = isIgst ? totalTax : 0
-      const cgst = isIgst ? 0 : totalTax / 2
-      const sgst = isIgst ? 0 : totalTax / 2
-
+      const key = `${hsnCode}|${line.taxRate}`
       const existing = target.get(key) ?? {
         hsnCode, description: item.productName || '—', uqc: item.weightUnit || item.product.unit || 'PCS',
-        totalQuantity: 0, totalValue: 0, taxableValue: 0, igstAmount: 0, cgstAmount: 0, sgstAmount: 0
+        qty: 0, value: 0, taxable: 0, igst: 0, cgst: 0, sgst: 0
       }
-      existing.totalQuantity += sign * item.quantity
-      existing.totalValue += item.lineTotal
-      existing.taxableValue += taxableValue
-      existing.igstAmount += igst
-      existing.cgstAmount += cgst
-      existing.sgstAmount += sgst
+      existing.qty += head.sign * item.quantity
+      existing.value += line.taxable + line.tax
+      existing.taxable += line.taxable
+      existing.igst += line.igst
+      existing.cgst += line.cgst
+      existing.sgst += line.sgst
       target.set(key, existing)
-    }
+    })
   }
 
-  const b2b = Array.from(b2bMap.values())
-  const b2c = Array.from(b2cMap.values())
-  const allRows = [...b2b, ...b2c]
-  const totalTaxableValue = allRows.reduce((s, r) => s + r.taxableValue, 0)
-  const totalTax = allRows.reduce((s, r) => s + r.igstAmount + r.cgstAmount + r.sgstAmount, 0)
+  const toRow = (a: Acc): HSNSummaryRow => ({
+    hsnCode: a.hsnCode, description: a.description, uqc: a.uqc,
+    totalQuantity: a.qty, totalValue: n(a.value), taxableValue: n(a.taxable),
+    igstAmount: n(a.igst), cgstAmount: n(a.cgst), sgstAmount: n(a.sgst)
+  })
+  const accs = [...b2bMap.values(), ...b2cMap.values()]
+  const totalTaxableValue = accs.reduce((s, a) => s + a.taxable, 0)
+  const totalTax = accs.reduce((s, a) => s + a.igst + a.cgst + a.sgst, 0)
 
   return {
     period: `${params.dateFrom} to ${params.dateTo}`,
-    b2b, b2c,
-    summary: { totalTaxableValue, totalTax, rowCount: allRows.length }
+    b2b: Array.from(b2bMap.values()).map(toRow),
+    b2c: Array.from(b2cMap.values()).map(toRow),
+    summary: { totalTaxableValue: n(totalTaxableValue), totalTax: n(totalTax), rowCount: accs.length },
+    stateUnknownCount: unknownState.size
   }
 }
 
@@ -3262,6 +3525,8 @@ export interface GSTR3BPreview {
   }
   table32: GSTR3BStateRow[]
   notes: string[]
+  /** Combined-GST documents with no known place of supply; filed as CGST + SGST. */
+  stateUnknownCount: number
 }
 
 // Computed from the exact same underlying invoice data GSTR-1 itself is built
@@ -3275,7 +3540,7 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
   const to = toDateEnd(params.dateTo)
 
   const [invoices, rcmBills, rcmExpenses] = await Promise.all([
-    // See generateTaxReport's taxItemWhere comment — SPLIT excluded too.
+    // See generateTaxReport's comment — SPLIT excluded too.
     db.invoice.findMany({
       where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
       include: { customer: { select: { taxNumber: true, state: true } }, items: true },
@@ -3292,6 +3557,10 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
       select: { amount: true }
     })
   ])
+  const ctx = await loadGstReportContext(db)
+  const f = ctx.factor
+  const n = (m: number) => m / f + 0
+  invoices.push(...(await loadCreditNoteReportDocs(db, from, to)) as never[])
 
   const table31d = {
     taxableValue: roundCurrency(
@@ -3302,35 +3571,37 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
   }
 
   let taxableOutwardSupplies = 0
+  let zeroRatedSupplies = 0
   let exemptNilNonGstSupplies = 0
   let igstTotal = 0, cgstTotal = 0, sgstTotal = 0
-  const stateMap = new Map<string, GSTR3BStateRow>()
+  const stateMap = new Map<string, { state: string; taxable: number; igst: number }>()
+  const unknownState = new Set<string>()
 
   for (const inv of invoices) {
-    const isIgst = inv.gstType === 'IGST'
     const isB2B = Boolean(inv.customer?.taxNumber)
-    const placeOfSupply = inv.buyerState ?? inv.customer?.state ?? 'Unknown'
+    const placeOfSupply = placeOfSupplyLabel(inv.buyerState ?? inv.customer?.state, inv.customer?.taxNumber) || 'Unknown'
     // See generateSalesReport's totalDiscount comment — return items store
     // positive-magnitude discountAmount/taxAmount, net them out here.
-    const sign = inv.invoiceType === 'RETURN' ? -1 : 1
+    const head = headInvoiceLines(inv, inv.items, ctx)
+    if (head.cls.stateUnknown && inv.items.some(i => (i.taxRate ?? 0) > 0)) unknownState.add(inv.id)
 
-    for (const item of inv.items) {
-      const taxableValue = sign * (item.unitPrice * item.quantity - item.discountAmount)
-      if ((item.taxRate ?? 0) === 0) {
-        exemptNilNonGstSupplies += taxableValue
+    for (const line of head.lines) {
+      if (line.taxRate === 0) {
+        if (line.category === 'ZERO_RATED') zeroRatedSupplies += line.taxable
+        else exemptNilNonGstSupplies += line.taxable
         continue
       }
-      taxableOutwardSupplies += taxableValue
-      const totalTax = sign * item.taxAmount
-      if (isIgst) igstTotal += totalTax
-      else { cgstTotal += totalTax / 2; sgstTotal += totalTax / 2 }
+      taxableOutwardSupplies += line.taxable
+      igstTotal += line.igst
+      cgstTotal += line.cgst
+      sgstTotal += line.sgst
 
       // Table 3.2 — inter-state supplies to unregistered persons/composition
       // dealers only (same B2CS scope generateGSTR1 already uses for this split)
-      if (!isB2B && isIgst) {
-        const existing = stateMap.get(placeOfSupply) ?? { state: placeOfSupply, taxableValue: 0, igstAmount: 0 }
-        existing.taxableValue += taxableValue
-        existing.igstAmount += totalTax
+      if (!isB2B && head.cls.head === 'IGST') {
+        const existing = stateMap.get(placeOfSupply) ?? { state: placeOfSupply, taxable: 0, igst: 0 }
+        existing.taxable += line.taxable
+        existing.igst += line.igst
         stateMap.set(placeOfSupply, existing)
       }
     }
@@ -3339,20 +3610,21 @@ async function generateGSTR3BPreview(params: { dateFrom: string; dateTo: string 
   return {
     period: `${params.dateFrom} to ${params.dateTo}`,
     table31: {
-      taxableOutwardSupplies,
-      zeroRatedSupplies: 0, // this app has no export/SEZ invoice concept today — not fabricated
-      exemptNilNonGstSupplies,
-      taxAmount: { igst: igstTotal, cgst: cgstTotal, sgst: sgstTotal }
+      taxableOutwardSupplies: n(taxableOutwardSupplies),
+      zeroRatedSupplies: n(zeroRatedSupplies),
+      exemptNilNonGstSupplies: n(exemptNilNonGstSupplies),
+      taxAmount: { igst: n(igstTotal), cgst: n(cgstTotal), sgst: n(sgstTotal) }
     },
     table31d,
-    table32: Array.from(stateMap.values()),
+    table32: Array.from(stateMap.values()).map(s => ({ state: s.state, taxableValue: n(s.taxable), igstAmount: n(s.igst) })),
     notes: [
       ...(table31d.expenseTaxNotComputable
         ? ['One or more reverse-charge Expenses in this period have no separate tax-rate/amount field — their full amount is included in Table 3.1(d) taxable value, but not in its tax total. Check those manually.']
         : []),
       'Input Tax Credit (Table 4) is not covered by this report — Sarang does not track purchase-side GST input credit.',
       'Table 5 (composition/exempt inward supplies from unregistered persons) is not tracked by Sarang.'
-    ]
+    ],
+    stateUnknownCount: unknownState.size
   }
 }
 
@@ -3651,21 +3923,29 @@ export interface OrderVolumeReport {
 // Discounts & Bargained Pricing Report
 // ─────────────────────────────────────────────────────────────────────────────
 
+// Discount is reported tax-exclusive, the same basis as the Sales report header: what the buyer was
+// given off the tax-exclusive value, whether the document was priced with or without tax. It covers every
+// line discount plus the invoice-level (global) discount, so the total equals the sum of the invoices'
+// stored discount amounts. Line rows carry the line discounts; the invoice-level part cannot be attributed
+// to a product, so it is reported separately and included in the total and in the per-staff figures.
 async function generateDiscountReport(params: { dateFrom: string; dateTo: string }): Promise<DiscountReport> {
   const db = getPrisma()
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
-  // See generateTaxReport's taxItemWhere comment — SPLIT excluded too.
+  // See generateTaxReport's comment — SPLIT excluded too.
   const invoices = await db.invoice.findMany({
     where: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     include: {
       customer: { select: { customerName: true } },
       createdBy: { select: { fullName: true } },
-      items: { select: { productName: true, quantity: true, unitPrice: true, discountAmount: true } }
+      items: { select: { productName: true, quantity: true, unitPrice: true, discountAmount: true, taxRate: true } }
     },
     orderBy: { invoiceDate: 'asc' }
   })
+  const ctx = await loadGstReportContext(db)
+  const f = ctx.factor
+  const n = (m: number) => m / f + 0
 
   // A RETURN invoice's item-level discountAmount is stored as a positive
   // magnitude, same sign-correction idiom as generateSalesReport's
@@ -3673,36 +3953,55 @@ async function generateDiscountReport(params: { dateFrom: string; dateTo: string
   // if it were an additional sale's discount rather than reversing one.
   const sign = (inv: (typeof invoices)[number]) => (inv.invoiceType === 'RETURN' ? -1 : 1)
 
-  let totalDiscountGiven = 0
+  let lineDiscountMinor = 0
+  let invoiceLevelMinor = 0
   let discountedLineCount = 0
   let totalLineCount = 0
   let discountPercentSum = 0
-  const staffMap = new Map<string, DiscountByStaffRow>()
-  const productMap = new Map<string, DiscountByProductRow>()
+  const staffMap = new Map<string, { staffName: string; discount: number; lineCount: number }>()
+  const productMap = new Map<string, { productName: string; discount: number; lineCount: number }>()
   const rows: DiscountReportRow[] = []
 
   for (const inv of invoices) {
     const staffName = inv.createdBy?.fullName ?? 'Unknown'
+    const s = sign(inv)
+    const inclusive = inv.pricesIncludeTax === true
+    let invoiceLineMinor = 0
+
     for (const item of inv.items) {
       totalLineCount += 1
       if (item.discountAmount <= 0) continue
 
-      const s = sign(inv)
-      const discount = s * item.discountAmount
-      const lineGross = item.quantity * item.unitPrice
-      const discountPercent = lineGross > 0 ? (item.discountAmount / lineGross) * 100 : 0
+      // Tax-exclusive gross and discount of the line. An inclusive sale holds its prices and discount with tax
+      // inside, so both are taken back to the tax-exclusive value; a return line's discount is already exclusive.
+      let lineGross = item.quantity * item.unitPrice
+      let exDiscount = item.discountAmount
+      if (inclusive) {
+        if (s === -1) {
+          exDiscount = 0
+        } else {
+          const l = computeDocumentTotals([{ quantity: item.quantity, unitPrice: item.unitPrice, discountAmount: item.discountAmount, taxRate: item.taxRate ?? 0 }], { decimals: ctx.decimals, pricesIncludeTax: true }).lines[0]
+          lineGross = l.gross
+          exDiscount = roundMoney(l.gross - l.taxable, ctx.decimals)
+        }
+      }
+      if (exDiscount <= 0) continue
 
-      totalDiscountGiven += discount
+      const discountMinor = s * Math.round(exDiscount * f)
+      const discountPercent = lineGross > 0 ? (exDiscount / lineGross) * 100 : 0
+
+      lineDiscountMinor += discountMinor
+      invoiceLineMinor += discountMinor
       discountedLineCount += 1
       discountPercentSum += discountPercent
 
-      const staffRow = staffMap.get(staffName) ?? { staffName, discountGiven: 0, lineCount: 0 }
-      staffRow.discountGiven += discount
+      const staffRow = staffMap.get(staffName) ?? { staffName, discount: 0, lineCount: 0 }
+      staffRow.discount += discountMinor
       staffRow.lineCount += 1
       staffMap.set(staffName, staffRow)
 
-      const productRow = productMap.get(item.productName) ?? { productName: item.productName, discountGiven: 0, lineCount: 0 }
-      productRow.discountGiven += discount
+      const productRow = productMap.get(item.productName) ?? { productName: item.productName, discount: 0, lineCount: 0 }
+      productRow.discount += discountMinor
       productRow.lineCount += 1
       productMap.set(item.productName, productRow)
 
@@ -3713,10 +4012,21 @@ async function generateDiscountReport(params: { dateFrom: string; dateTo: string
         productName: item.productName,
         quantity: item.quantity,
         lineGross,
-        discountAmount: discount,
-        discountPercent: roundCurrency(discountPercent),
+        discountAmount: n(discountMinor),
+        discountPercent: roundMoney(discountPercent, 2),
         staffName: inv.createdBy?.fullName ?? null
       })
+    }
+
+    // The invoice's stored (tax-exclusive) discount less what its line discounts explain is the invoice-level discount.
+    if (typeof inv.discountAmount === 'number') {
+      const rest = s * Math.round(inv.discountAmount * f) - invoiceLineMinor
+      if (rest !== 0) {
+        invoiceLevelMinor += rest
+        const staffRow = staffMap.get(staffName) ?? { staffName, discount: 0, lineCount: 0 }
+        staffRow.discount += rest
+        staffMap.set(staffName, staffRow)
+      }
     }
   }
 
@@ -3726,13 +4036,14 @@ async function generateDiscountReport(params: { dateFrom: string; dateTo: string
   return {
     dateFrom: params.dateFrom, dateTo: params.dateTo,
     summary: {
-      totalDiscountGiven: roundCurrency(totalDiscountGiven),
+      totalDiscountGiven: n(lineDiscountMinor + invoiceLevelMinor),
       discountedLineCount, totalLineCount,
-      discountIncidencePercent: roundCurrency(discountIncidencePercent),
-      averageDiscountPercent: roundCurrency(averageDiscountPercent)
+      discountIncidencePercent: roundMoney(discountIncidencePercent, 2),
+      averageDiscountPercent: roundMoney(averageDiscountPercent, 2)
     },
-    byStaff: Array.from(staffMap.values()).sort((a, b) => b.discountGiven - a.discountGiven),
-    byProduct: Array.from(productMap.values()).sort((a, b) => b.discountGiven - a.discountGiven),
+    invoiceLevelDiscount: n(invoiceLevelMinor),
+    byStaff: Array.from(staffMap.values()).map(r => ({ staffName: r.staffName, discountGiven: n(r.discount), lineCount: r.lineCount })).sort((a, b) => b.discountGiven - a.discountGiven),
+    byProduct: Array.from(productMap.values()).map(r => ({ productName: r.productName, discountGiven: n(r.discount), lineCount: r.lineCount })).sort((a, b) => b.discountGiven - a.discountGiven),
     rows,
     total: rows.length
   }
@@ -10287,7 +10598,7 @@ async function generateVehicleServiceDueReport(): Promise<VehicleServiceDueRepor
 
   return {
     rows,
-    summary: { dueSoonCount: rows.filter(r => r.isDueSoon).length, totalFleetKm: roundCurrency(vehicles.reduce((s, v) => s + v.currentOdometer, 0)) }
+    summary: { dueSoonCount: rows.filter(r => r.isDueSoon).length, totalFleetKm: roundMoney(vehicles.reduce((s, v) => s + v.currentOdometer, 0), 2) }
   }
 }
 

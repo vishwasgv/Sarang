@@ -8,7 +8,7 @@ Because it runs locally on ordinary hardware rather than in the cloud, answers c
 
 ## How to turn it on
 
-Ask Sarang is **off by default**. Turn it on from **Settings → Additional Business Features** (look for "AI Assistant"). Once enabled, an **Ask Sarang** entry appears in the sidebar, and a quick-ask box also appears on your Dashboard.
+**Ask Sarang** is always in the sidebar (top group, under Home) and at the top of the Dashboard, for every business type. The first time you open it, press **Turn on Ask Sarang**. If you typed a question in the Dashboard box first, Sarang answers it as soon as it is on. You can turn it off any time in **Settings → Ask Sarang (AI Assistant)**. Until you turn it on, nothing is processed.
 
 ## What you can ask
 

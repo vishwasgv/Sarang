@@ -1,3 +1,4 @@
+import { resolveDisplayDecimals } from '../../shared/utils/money'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
@@ -462,8 +463,9 @@ export async function generateWeightEmbeddedLabel(productId: string, weightGrams
 async function getDecimalPlaces(): Promise<number> {
   const db = getPrisma()
   const setting = await db.setting.findUnique({ where: { settingKey: 'decimal_places' } })
-  const parsed = parseInt(setting?.settingValue ?? '2', 10)
-  return isNaN(parsed) ? 2 : parsed
+  let currencyCode: string | null = null
+  try { currencyCode = (await db.businessProfile.findFirst({ select: { currencyCode: true } }))?.currencyCode ?? null } catch { /* fall back to the setting */ }
+  return resolveDisplayDecimals(currencyCode, setting?.settingValue)
 }
 
 // Pure function: quantity (already in the product's sellUnit, e.g. kg) × price-per-unit,

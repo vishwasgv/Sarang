@@ -370,3 +370,47 @@ describe('billingService.splitInvoice', () => {
     })
   })
 })
+
+describe('billingService.splitInvoice: invoice-level discount and stored proration (gap 3.27)', () => {
+  const discounted = {
+    pricesIncludeTax: false,
+    subtotal: 760, discountAmount: 76, taxAmount: 34.2, roundingAmount: -0.2, totalAmount: 718,
+    items: [
+      { id: 'item-1', productId: 'prod-1', productName: 'Butter Chicken', productSku: null, hsnCode: null, quantity: 2, unitPrice: 300, discountAmount: 0, taxRate: 5, taxAmount: 27, lineTotal: 567, variantId: null, variantInfo: null, weightUnit: null },
+      { id: 'item-2', productId: 'prod-2', productName: 'Naan', productSku: null, hsnCode: null, quantity: 4, unitPrice: 40, discountAmount: 0, taxRate: 5, taxAmount: 7.2, lineTotal: 151.2, variantId: null, variantInfo: null, weightUnit: null },
+    ],
+  }
+
+  it('keeps the invoice-level discount share in each part', async () => {
+    const db = makeDb(discounted)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await billingService.splitInvoice({
+      invoiceId: 'inv-1',
+      splits: [
+        { allocations: [{ invoiceItemId: 'item-1', quantity: 2 }] },
+        { allocations: [{ invoiceItemId: 'item-2', quantity: 4 }] },
+      ],
+    })
+    expect(res.success).toBe(true)
+    const created = vi.mocked(db.invoice.create).mock.calls.map((c: any) => c[0].data)
+    expect(created[0]).toMatchObject({ subtotal: 600, discountAmount: 60, taxAmount: 27, totalAmount: 567 })
+    expect(created[1]).toMatchObject({ subtotal: 160, discountAmount: 16, taxAmount: 7.2, totalAmount: 151 })
+    const items = vi.mocked(db.invoiceItem.create).mock.calls.map((c: any) => c[0].data)
+    expect(items[0]).toMatchObject({ taxAmount: 27, lineTotal: 567 })
+  })
+
+  it('a shared line splits its stored taxable and tax and the last piece takes the remainder', async () => {
+    const db = makeDb({ ...discounted, items: [{ ...discounted.items[0], quantity: 3, unitPrice: 100, taxAmount: 1.33, lineTotal: 26.67 + 1.33 }] })
+    db.invoice.findUnique = vi.fn().mockResolvedValue(makeOriginalInvoice({ ...discounted, items: [{ ...discounted.items[0], quantity: 3, unitPrice: 100, taxAmount: 1.33, lineTotal: 28 }] }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    await billingService.splitInvoice({
+      invoiceId: 'inv-1',
+      splits: [1, 1, 1].map(quantity => ({ allocations: [{ invoiceItemId: 'item-1', quantity }] })),
+    })
+    const items = vi.mocked(db.invoiceItem.create).mock.calls.map((c: any) => c[0].data)
+    const taxSum = Math.round(items.reduce((a: number, i: any) => a + i.taxAmount, 0) * 100) / 100
+    const totalSum = Math.round(items.reduce((a: number, i: any) => a + i.lineTotal, 0) * 100) / 100
+    expect(taxSum).toBe(1.33)
+    expect(totalSum).toBe(28)
+  })
+})

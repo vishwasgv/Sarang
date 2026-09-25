@@ -9,6 +9,7 @@ import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface MetalRate {
   id: string
@@ -149,7 +150,7 @@ export function MetalRatesScreen(): React.JSX.Element {
               <div key={r.id} className="grid grid-cols-12 gap-4 px-5 py-3.5 items-center">
                 <div className="col-span-3 text-sm font-medium text-dark dark:text-slate-100">{r.metalType}</div>
                 <div className="col-span-3 text-sm text-slate-600 dark:text-slate-300">{r.purity}</div>
-                <div className="col-span-3 text-end text-sm font-semibold text-dark dark:text-slate-100">{sym}{r.ratePerGram.toFixed(2)}</div>
+                <div className="col-span-3 text-end text-sm font-semibold text-dark dark:text-slate-100">{sym}{moneyFixed(r.ratePerGram)}</div>
                 <div className="col-span-2 text-end text-xs text-slate-400">{new Date(r.updatedAt).toLocaleDateString()}</div>
                 <div className="col-span-1 text-end">
                   {canManage && (

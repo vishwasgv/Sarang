@@ -10,7 +10,7 @@ import { Select } from '@shared/ui/atoms/Select'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
 import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
@@ -378,7 +378,7 @@ export function ExpensesScreen() {
                   value={formData.mileageKm}
                   onChange={e => {
                     const km = e.target.value
-                    setFormData(d => ({ ...d, mileageKm: km, amount: km && d.mileageRatePerKm ? String((parseFloat(km) * parseFloat(d.mileageRatePerKm)).toFixed(2)) : d.amount }))
+                    setFormData(d => ({ ...d, mileageKm: km, amount: km && d.mileageRatePerKm ? moneyFixed(parseFloat(km) * parseFloat(d.mileageRatePerKm)) : d.amount }))
                   }}
                   placeholder="0"
                 />
@@ -388,7 +388,7 @@ export function ExpensesScreen() {
                   value={formData.mileageRatePerKm}
                   onChange={e => {
                     const rate = e.target.value
-                    setFormData(d => ({ ...d, mileageRatePerKm: rate, amount: rate && d.mileageKm ? String((parseFloat(d.mileageKm) * parseFloat(rate)).toFixed(2)) : d.amount }))
+                    setFormData(d => ({ ...d, mileageRatePerKm: rate, amount: rate && d.mileageKm ? moneyFixed(parseFloat(d.mileageKm) * parseFloat(rate)) : d.amount }))
                   }}
                   placeholder="0.00"
                 />

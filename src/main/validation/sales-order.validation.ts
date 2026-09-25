@@ -18,6 +18,9 @@ export const CreateSalesOrderSchema = z.object({
   customerId: z.string().min(1, 'Customer is required'),
   expectedDate: z.string().optional(),
   notes: z.string().max(500).optional(),
+  // Unit prices on this order already include tax.
+  pricesIncludeTax: z.boolean().optional(),
+  gstType: z.enum(['CGST_SGST', 'IGST', 'GST']).optional(),
   items: z.array(SOItemSchema).min(1, 'At least one item is required'),
 })
 

@@ -8,7 +8,7 @@ import { useIndustryStore } from '@app/store/industry.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { DocumentPanel } from '@renderer/modules/documents/ui/DocumentPanel'
 import { formatDate } from '@shared/utils/locale.util'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
 import { Card } from '@shared/ui/molecules/Card'
 import { Badge } from '@shared/ui/atoms/Badge'
 import { Button } from '@shared/ui/atoms/Button'
@@ -387,7 +387,7 @@ export function CustomerDetailScreen() {
             <CreditCard size={14} className="text-slate-400 shrink-0" />
             <span className="text-sm text-slate-600 dark:text-slate-300">{t('customers.creditLimit')}</span>
             <span className="ms-auto text-sm font-semibold text-dark dark:text-slate-100">
-              {customer.creditLimit > 0 ? customer.creditLimit.toFixed(2) : '—'}
+              {customer.creditLimit > 0 ? moneyFixed(customer.creditLimit) : '—'}
             </span>
           </div>
           {customer.creditLimit > 0 && creditRisk && (
@@ -400,7 +400,7 @@ export function CustomerDetailScreen() {
                 {t(`customers.creditRisk.tier.${creditRisk.riskTier}`)}
               </Badge>
               <span className="ms-auto text-sm font-semibold text-dark dark:text-slate-100">
-                {creditRisk.effectiveCreditLimit.toFixed(2)}
+                {moneyFixed(creditRisk.effectiveCreditLimit)}
               </span>
             </div>
           )}
@@ -413,7 +413,7 @@ export function CustomerDetailScreen() {
               )}
               <span className="text-sm text-slate-600 dark:text-slate-300">{t('customers.outstanding')}</span>
               <span className={`ms-auto text-sm font-semibold ${outstanding > 0 ? 'text-danger' : 'text-success'}`}>
-                {outstanding.toFixed(2)}
+                {moneyFixed(outstanding)}
               </span>
             </div>
           )}
@@ -436,7 +436,7 @@ export function CustomerDetailScreen() {
             </div>
             {outstanding !== 0 && (
               <div className={`text-sm font-bold px-3 py-1 rounded-lg ${outstanding > 0 ? 'bg-danger/10 text-danger' : 'bg-success/10 text-success'}`}>
-                {outstanding > 0 ? t('customers.owes') : t('customers.advance')}: {Math.abs(outstanding).toFixed(2)}
+                {outstanding > 0 ? t('customers.owes') : t('customers.advance')}: {moneyFixed(Math.abs(outstanding))}
               </div>
             )}
           </div>
@@ -477,13 +477,13 @@ export function CustomerDetailScreen() {
                       </td>
                       <td className="px-5 py-3 text-slate-700 dark:text-slate-300">{entry.remarks ?? entry.referenceType}</td>
                       <td className="px-5 py-3 text-end text-danger font-medium">
-                        {entry.debitAmount > 0 ? entry.debitAmount.toFixed(2) : '—'}
+                        {entry.debitAmount > 0 ? moneyFixed(entry.debitAmount) : '—'}
                       </td>
                       <td className="px-5 py-3 text-end text-success font-medium">
-                        {entry.creditAmount > 0 ? entry.creditAmount.toFixed(2) : '—'}
+                        {entry.creditAmount > 0 ? moneyFixed(entry.creditAmount) : '—'}
                       </td>
                       <td className={`px-5 py-3 text-end font-semibold ${entry.balance > 0 ? 'text-danger' : entry.balance < 0 ? 'text-success' : 'text-slate-500 dark:text-slate-400'}`}>
-                        {entry.balance.toFixed(2)}
+                        {moneyFixed(entry.balance)}
                       </td>
                       {canPostInterest && (
                         <td className="px-5 py-3 text-end">

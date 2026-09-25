@@ -92,6 +92,7 @@ export async function createExchange(
         isFreeOfCost: false
       }],
       globalDiscount: 0,
+      pricesIncludeTax: original.pricesIncludeTax,
       notes: `Exchange for invoice ${original.invoiceNumber} (return ${returnRes.data.invoiceNumber}). Reason: ${payload.reason.trim()}`
     }, userId)
 

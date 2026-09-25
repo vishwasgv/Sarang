@@ -1,6 +1,6 @@
 # Data Import Wizard
 
-Open **Import** from the sidebar to bulk-load Products, Customers, Suppliers, Inventory (opening stock), or Opening Balances from a CSV or Excel (.xlsx) file — useful when switching to Sarang from another system or a spreadsheet, instead of typing hundreds of records in one at a time.
+Open **Import Data** (Reports & Data group) from the sidebar to bulk-load Products, Customers, Suppliers, Inventory (opening stock), or Opening Balances from a CSV or Excel (.xlsx) file — useful when switching to Sarang from another system or a spreadsheet, instead of typing hundreds of records in one at a time.
 
 ## Step 1 — Choose a module
 

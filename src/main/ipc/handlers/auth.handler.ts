@@ -8,6 +8,7 @@ import { LoginSchema, ChangePasswordSchema, ResetPasswordWithRecoveryCodeSchema,
 import { SetupPayloadSchema } from '../../validation/setup.validation'
 import { BusinessProfileUpdateSchema } from '../../validation/business-profile.validation'
 import { unlink } from 'fs/promises'
+import { getBusinessCurrencyDecimals } from '../../services/settings.service'
 import { isValidLogoPath } from '../../utils/logo-path'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
@@ -108,6 +109,7 @@ export function register(handle: HandleFn): void {
     const existing = await db.businessProfile.findFirst()
     if (!existing) return { success: false, error: { code: 'SYS-001', message: 'Business profile not found.' } }
     const updated = await db.businessProfile.update({ where: { id: existing.id }, data: parsed.data })
+    if (parsed.data.currencyCode) await getBusinessCurrencyDecimals()
     // Logo replaced or removed — delete the now-orphaned file rather than leaving it in userData/logos/ forever.
     if ('logoPath' in parsed.data && existing.logoPath && existing.logoPath !== parsed.data.logoPath) {
       await unlink(existing.logoPath).catch(() => {})

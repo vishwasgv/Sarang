@@ -11,6 +11,7 @@ import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface ServiceContract {
   id: string; contractNumber: string; customerId: string
@@ -151,7 +152,7 @@ export function ServiceContractsScreen(): React.JSX.Element {
       {invoiceTarget && (
         <Card padding="md" className="space-y-3 border-brand/40">
           <p className="text-sm font-semibold text-dark">{t('service.generateContractInvoiceTitle', { number: invoiceTarget.contractNumber })}</p>
-          <p className="text-xs text-slate-400">{t('service.generateContractInvoiceHint', { amount: `${sym}${invoiceTarget.contractValue.toFixed(2)}` })}</p>
+          <p className="text-xs text-slate-400">{t('service.generateContractInvoiceHint', { amount: `${sym}${moneyFixed(invoiceTarget.contractValue)}` })}</p>
           <div className="flex justify-end gap-2">
             <Button variant="secondary" size="sm" onClick={() => setInvoiceTarget(null)} disabled={invoicing}>{t('jewellery.cancel')}</Button>
             <Button size="sm" onClick={() => void handleGenerateInvoice()} loading={invoicing}>{t('service.generateInvoice')}</Button>
@@ -179,7 +180,7 @@ export function ServiceContractsScreen(): React.JSX.Element {
                   </div>
                   <div className="text-sm text-gray-800 mt-1 dark:text-slate-200">{c.customer.customerName}</div>
                   <div className="text-xs text-gray-500 mt-0.5 flex items-center gap-3 flex-wrap dark:text-slate-400">
-                    <span className="font-semibold text-dark dark:text-slate-100">{sym}{c.contractValue.toFixed(2)}</span>
+                    <span className="font-semibold text-dark dark:text-slate-100">{sym}{moneyFixed(c.contractValue)}</span>
                     <span>{formatDate(c.startDate)}{c.endDate ? ` – ${formatDate(c.endDate)}` : ''}</span>
                     {c.lastInvoicedPeriod && <span>{t('service.lastInvoicedFor', { period: c.lastInvoicedPeriod })}</span>}
                   </div>

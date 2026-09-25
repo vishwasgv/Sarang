@@ -330,7 +330,6 @@ export async function generateShootInvoice(id: string) {
       const result = await billingService.createInvoice({
         customerId: booking.clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [
           { productId: product.id, quantity: 1, unitPrice: Number(booking.finalAmount) },
           ...addOnLineItems,

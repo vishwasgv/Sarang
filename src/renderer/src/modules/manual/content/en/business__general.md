@@ -6,7 +6,7 @@ Choosing **General** as your business type doesn't turn on any industry-specific
 
 Because General's default template includes the Logistics modules, you get **Fleet**, **Carriers**, **Shipments**, **GRN**, **Delivery Challan**, **Freight Ledger**, and **Logistics Analytics** for tracking your own delivery vehicles and supplier shipments — see the Logistics screens under those names in the sidebar.
 
-## Custom Documents
+## Document Builder (Custom Documents)
 
 If your business needs to keep a register or log that Sarang doesn't already have a screen for — a Visitor Register, a Complaint Log, a Maintenance Book, anything at all — go to **Custom Documents** and create a new document type with whatever name fits. Once created, click **Manage Fields** on it to define exactly the fields you want to capture (text, number, date, or a dropdown list of your own options) — the same field-builder used for adding extra fields to Invoices, Customers, Suppliers, Products, and Expenses elsewhere in Sarang, just applied to a document type entirely of your own making. From there, **New Entry** logs a dated record with those fields filled in, and every entry is listed, editable, and deletable right there. You can define as many document types as you need, each with its own independent set of fields.
 

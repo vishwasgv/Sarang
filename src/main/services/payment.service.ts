@@ -4,7 +4,8 @@ import { customerLedgerService } from './customer-ledger.service'
 import { logAction } from './audit.service'
 import { ServiceError } from '../errors/service-error'
 import { releaseTablesForInvoiceTx } from './restaurant.service'
-import { roundCurrency } from './currency.service'
+import { roundCurrency, moneyEpsilon } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
@@ -57,6 +58,7 @@ async function recordForeignCurrencySettlement(
   userId?: string
 ) {
   const db = getPrisma()
+  const dp = await getBusinessCurrencyDecimals()
   try {
     const payment = await db.$transaction(async (tx) => {
       const invoice = await tx.invoice.findUnique({ where: { id: payload.invoiceId } })
@@ -71,7 +73,7 @@ async function recordForeignCurrencySettlement(
       const resolvedPaymentDate = payload.paymentDate ? parsePaymentDate(payload.paymentDate) : new Date()
       await assertNotLockedOrThrow(tx, resolvedPaymentDate)
 
-      const computedBaseAmount = roundCurrency(payload.foreignAmount * payload.settlementRate)
+      const computedBaseAmount = roundCurrency(payload.foreignAmount * payload.settlementRate, dp)
       const appliedAmount = Math.min(computedBaseAmount, balanceBefore)
 
       const pmt = await tx.payment.create({
@@ -100,7 +102,7 @@ async function recordForeignCurrencySettlement(
       // a write-off is still considered "paid" for that purpose.
       await tx.invoice.update({
         where: { id: payload.invoiceId },
-        data: { paidAmount: roundCurrency(invoice.paidAmount + balanceBefore), balanceAmount: 0, paymentStatus: 'PAID' }
+        data: { paidAmount: roundCurrency(invoice.paidAmount + balanceBefore, dp), balanceAmount: 0, paymentStatus: 'PAID' }
       })
 
       if (invoice.customerId) {
@@ -116,8 +118,8 @@ async function recordForeignCurrencySettlement(
 
       await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: appliedAmount })
 
-      const gainLoss = roundCurrency(computedBaseAmount - balanceBefore)
-      if (Math.abs(gainLoss) >= 0.01) {
+      const gainLoss = roundCurrency(computedBaseAmount - balanceBefore, dp)
+      if (Math.abs(gainLoss) >= Math.pow(10, -dp) - 1e-12) {
         const fxAccount = await chartOfAccountsService.getOrCreateSystemAccountByCode('4200', tx)
         const isGain = gainLoss > 0
         const magnitude = Math.abs(gainLoss)
@@ -180,6 +182,7 @@ export const paymentService = {
   // RULE PM005: records only — never verifies or processes
   async recordPayment(payload: RecordPaymentPayload, userId?: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     try {
       const payment = await db.$transaction(async (tx) => {
@@ -198,8 +201,8 @@ export const paymentService = {
           throw new ServiceError('PM-002', 'This invoice is already fully paid.')
         }
         // RULE PM002: payment cannot exceed outstanding balance
-        if (payload.amount > invoice.balanceAmount + 0.01) { // small tolerance for floating point
-          throw new ServiceError('PM-003', `Payment amount (${payload.amount.toFixed(2)}) exceeds outstanding balance (${invoice.balanceAmount.toFixed(2)}).`)
+        if (payload.amount > invoice.balanceAmount + moneyEpsilon(dp)) { // small tolerance for floating point
+          throw new ServiceError('PM-003', `Payment amount (${payload.amount.toFixed(dp)}) exceeds outstanding balance (${invoice.balanceAmount.toFixed(dp)}).`)
         }
 
         await assertNotLockedOrThrow(tx, payload.paymentDate ? parsePaymentDate(payload.paymentDate) : new Date())
@@ -225,9 +228,9 @@ export const paymentService = {
         // this scope's own audit brief calls out for special scrutiny.
         // Routed through roundCurrency, matching every other money
         // computation in this file's sibling services.
-        const newPaidAmount = roundCurrency(invoice.paidAmount + payload.amount)
-        const newBalance = roundCurrency(invoice.balanceAmount - payload.amount)
-        const newPaymentStatus = newBalance <= 0.01 ? 'PAID' : 'PARTIAL'
+        const newPaidAmount = roundCurrency(invoice.paidAmount + payload.amount, dp)
+        const newBalance = roundCurrency(invoice.balanceAmount - payload.amount, dp)
+        const newPaymentStatus = newBalance <= moneyEpsilon(dp) ? 'PAID' : 'PARTIAL'
 
         await tx.invoice.update({
           where: { id: payload.invoiceId },
@@ -276,6 +279,7 @@ export const paymentService = {
   // Atomic split payment — both legs commit or both fail (fixes silent partial failure)
   async recordSplitPayment(payload: RecordSplitPaymentPayload, userId?: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     try {
       const payments = await db.$transaction(async (tx) => {
@@ -290,9 +294,9 @@ export const paymentService = {
           throw new ServiceError('PM-002', 'This invoice is already fully paid.')
         }
 
-        const splitTotal = roundCurrency(payload.legs.reduce((s, l) => s + l.amount, 0))
-        if (Math.abs(splitTotal - invoice.balanceAmount) > 0.05) {
-          throw new ServiceError('PM-007', `Split total ${splitTotal.toFixed(2)} must equal outstanding balance ${invoice.balanceAmount.toFixed(2)}.`)
+        const splitTotal = roundCurrency(payload.legs.reduce((s, l) => s + l.amount, 0), dp)
+        if (Math.abs(splitTotal - invoice.balanceAmount) > (dp >= 3 ? 0.005 : 0.05)) {
+          throw new ServiceError('PM-007', `Split total ${splitTotal.toFixed(dp)} must equal outstanding balance ${invoice.balanceAmount.toFixed(dp)}.`)
         }
 
         const created = []
@@ -336,7 +340,7 @@ export const paymentService = {
         await tx.invoice.update({
           where: { id: payload.invoiceId },
           data: {
-            paidAmount: roundCurrency(invoice.paidAmount + invoice.balanceAmount),
+            paidAmount: roundCurrency(invoice.paidAmount + invoice.balanceAmount, dp),
             balanceAmount: 0,
             paymentStatus: 'PAID'
           }
@@ -362,6 +366,7 @@ export const paymentService = {
   // RULE PM004: reversal requires audit log
   async reversePayment(payload: ReversePaymentPayload, userId?: string) {
     const db = getPrisma()
+    const dp = await getBusinessCurrencyDecimals()
 
     try {
       await db.$transaction(async (tx) => {
@@ -396,16 +401,16 @@ export const paymentService = {
           if (fxEntry) {
             const arAccount = await chartOfAccountsService.getSystemAccountByCode('1100', tx)
             const arLine = fxEntry.lines.find((l) => l.accountId === arAccount.id && l.creditAmount > 0)
-            if (arLine) restoreAmount = roundCurrency(restoreAmount + arLine.creditAmount)
+            if (arLine) restoreAmount = roundCurrency(restoreAmount + arLine.creditAmount, dp)
             await reverseEntryBySourceTx(tx, 'REALIZED_FX_GAIN_LOSS', payment.id, `Payment reversed: ${payload.reason} (Invoice ${payment.invoice.invoiceNumber})`, userId)
           }
         }
 
         await tx.payment.update({ where: { id: payload.paymentId }, data: { isReversed: true, reversalReason: payload.reason } })
 
-        const newPaidAmount = Math.max(0, roundCurrency(payment.invoice.paidAmount - restoreAmount))
-        const newBalance = roundCurrency(payment.invoice.balanceAmount + restoreAmount)
-        const newPaymentStatus = newPaidAmount <= 0.01 ? 'UNPAID' : 'PARTIAL'
+        const newPaidAmount = Math.max(0, roundCurrency(payment.invoice.paidAmount - restoreAmount, dp))
+        const newBalance = roundCurrency(payment.invoice.balanceAmount + restoreAmount, dp)
+        const newPaymentStatus = newPaidAmount <= moneyEpsilon(dp) ? 'UNPAID' : 'PARTIAL'
 
         await tx.invoice.update({
           where: { id: payment.invoiceId },

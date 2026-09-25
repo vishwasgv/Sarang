@@ -356,7 +356,7 @@ describe('reportService.generateTaxReport', () => {
     db.businessProfile.findFirst = vi.fn().mockResolvedValue(null)
     db.invoiceItem.findMany = vi.fn().mockResolvedValue([
       makeInvoiceItem({ taxRate: 18, unitPrice: 500, quantity: 2, discountAmount: 0, taxAmount: 180, invoice: { invoiceDate: new Date(), gstType: 'CGST_SGST', invoiceType: 'RETAIL' } }),
-      makeInvoiceItem({ id: 'item-return', taxRate: 18, unitPrice: 500, quantity: 2, discountAmount: 0, taxAmount: 180, invoice: { invoiceDate: new Date(), gstType: 'CGST_SGST', invoiceType: 'RETURN' } })
+      makeInvoiceItem({ id: 'item-return', invoiceId: 'inv-return', taxRate: 18, unitPrice: 500, quantity: 2, discountAmount: 0, taxAmount: 180, lineTotal: -1000, invoice: { invoiceDate: new Date(), gstType: 'CGST_SGST', invoiceType: 'RETURN' } })
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
@@ -444,13 +444,13 @@ describe('reportService.generateGSTR1', () => {
       makeInvoice({
         customer: { customerName: 'Retail', taxNumber: null, state: 'Gujarat' },
         gstType: 'CGST_SGST',
-        items: [{ taxRate: 5, taxAmount: 50, quantity: 1, unitPrice: 1000, discountAmount: 0, invoiceId: 'inv-1' }]
+        items: [{ taxRate: 5, taxAmount: 50, quantity: 1, unitPrice: 1000, discountAmount: 0, lineTotal: 1050, invoiceId: 'inv-1' }]
       }),
       makeInvoice({
         id: 'inv-return', invoiceNumber: 'RET-000001', invoiceType: 'RETURN',
         customer: { customerName: 'Retail', taxNumber: null, state: 'Gujarat' },
         gstType: 'CGST_SGST',
-        items: [{ taxRate: 5, taxAmount: 50, quantity: 1, unitPrice: 1000, discountAmount: 0, invoiceId: 'inv-return' }]
+        items: [{ taxRate: 5, taxAmount: 50, quantity: 1, unitPrice: 1000, discountAmount: 0, lineTotal: -1000, invoiceId: 'inv-return' }]
       })
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -528,7 +528,7 @@ describe('reportService.generateHSNSummaryReport', () => {
       }),
       makeInvoice({
         id: 'inv-return', invoiceNumber: 'RET-000001', invoiceType: 'RETURN', customer: null,
-        items: [{ hsnCode: '1006', taxRate: 5, taxAmount: 50, quantity: 2, unitPrice: 500, discountAmount: 0, lineTotal: -1050, productName: 'Rice', weightUnit: null, product: { unit: 'KG' }, invoiceId: 'inv-return' }]
+        items: [{ hsnCode: '1006', taxRate: 5, taxAmount: 50, quantity: 2, unitPrice: 500, discountAmount: 0, lineTotal: -1000, productName: 'Rice', weightUnit: null, product: { unit: 'KG' }, invoiceId: 'inv-return' }]
       })
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -581,8 +581,8 @@ describe('reportService.generateGSTR3BPreview', () => {
       makeInvoice({
         customer: { taxNumber: null, state: 'Maharashtra' },
         items: [
-          { taxRate: 18, taxAmount: 90, quantity: 1, unitPrice: 500, discountAmount: 0, invoiceId: 'inv-1' },
-          { taxRate: 0, taxAmount: 0, quantity: 1, unitPrice: 200, discountAmount: 0, invoiceId: 'inv-1' }
+          { taxRate: 18, taxAmount: 90, quantity: 1, unitPrice: 500, discountAmount: 0, lineTotal: 590, invoiceId: 'inv-1' },
+          { taxRate: 0, taxAmount: 0, quantity: 1, unitPrice: 200, discountAmount: 0, lineTotal: 200, invoiceId: 'inv-1' }
         ]
       })
     ])
@@ -662,12 +662,12 @@ describe('reportService.generateGSTR3BPreview', () => {
     db.invoice.findMany = vi.fn().mockResolvedValue([
       makeInvoice({
         customer: { taxNumber: null, state: 'Maharashtra' },
-        items: [{ taxRate: 18, taxAmount: 90, quantity: 1, unitPrice: 500, discountAmount: 0, invoiceId: 'inv-1' }]
+        items: [{ taxRate: 18, taxAmount: 90, quantity: 1, unitPrice: 500, discountAmount: 0, lineTotal: 590, invoiceId: 'inv-1' }]
       }),
       makeInvoice({
         id: 'inv-return', invoiceNumber: 'RET-000001', invoiceType: 'RETURN',
         customer: { taxNumber: null, state: 'Maharashtra' },
-        items: [{ taxRate: 18, taxAmount: 90, quantity: 1, unitPrice: 500, discountAmount: 0, invoiceId: 'inv-return' }]
+        items: [{ taxRate: 18, taxAmount: 90, quantity: 1, unitPrice: 500, discountAmount: 0, lineTotal: -500, invoiceId: 'inv-return' }]
       })
     ])
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -3413,6 +3413,22 @@ describe('reportService.generateTrialBalanceReport', () => {
     expect(byAccount['1100 — Accounts Receivable'].debit).toBe(500)
     // UNUSED had no postings at all — omitted, not shown as an all-zero row.
     expect(byAccount['6100 — Depreciation Expense']).toBeUndefined()
+  })
+
+  it('tags each row with its chart-of-accounts type so the report chart can group by account type', async () => {
+    const db = makeDb({
+      chartOfAccounts: { findMany: vi.fn().mockResolvedValue([CASH, REVENUE]) },
+      journalEntryLine: { findMany: vi.fn().mockResolvedValue([
+        { accountId: CASH.id, debitAmount: 700, creditAmount: 0 },
+        { accountId: REVENUE.id, debitAmount: 0, creditAmount: 700 },
+      ]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateTrialBalanceReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    expect(result.rows.find(r => r.accountId === CASH.id)?.accountType).toBe('ASSET')
+    expect(result.rows.find(r => r.accountId === REVENUE.id)?.accountType).toBe('INCOME')
   })
 
   it('produces an empty, balanced trial balance when the GL has no postings at all', async () => {

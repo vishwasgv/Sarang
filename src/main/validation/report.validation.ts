@@ -36,6 +36,21 @@ export const CashBookReportSchema = DateRangeSchema.extend({
 
 export const TrialBalanceReportSchema = DateRangeSchema
 
+export const BalanceSheetReportSchema = z.object({
+  asOf: z.string().min(1, 'As-of date is required'),
+  compareAsOf: z.string().min(1).optional()
+})
+
+export const GeneralLedgerReportSchema = DateRangeSchema.extend({
+  accountId: z.string().min(1, 'Account is required')
+})
+
+export const DayBookReportSchema = DateRangeSchema.extend({
+  voucherType: z.enum(['ALL', 'SALES', 'PURCHASE', 'RECEIPT', 'PAYMENT', 'EXPENSE', 'JOURNAL', 'OTHER']).optional()
+})
+
+export const CashFlowStatementReportSchema = DateRangeSchema
+
 // Phase 65 — Reporting Tags / Cost & Profit Centres.
 export const CostCentreTreemapReportSchema = DateRangeSchema
 

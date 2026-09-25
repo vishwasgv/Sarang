@@ -10,6 +10,7 @@ import { CustomerFormModal } from './CustomerFormModal'
 import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { usePatientNoun } from '@shared/hooks/usePatientNoun'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface Customer {
   id: string; customerCode: string; customerName: string
@@ -102,7 +103,7 @@ export function CustomersScreen() {
       header: t('customers.creditLimit'),
       cell: ({ getValue }) => {
         const v = getValue() as number
-        return <span className="text-sm text-slate-600">{v > 0 ? v.toFixed(2) : '—'}</span>
+        return <span className="text-sm text-slate-600">{v > 0 ? moneyFixed(v) : '—'}</span>
       }
     },
     {

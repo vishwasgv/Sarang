@@ -10,6 +10,7 @@ import { StockAdjustmentModal } from './StockAdjustmentModal'
 import { useAuthStore } from '@app/store/auth.store'
 import { useNotificationStore } from '@app/store/notification.store'
 import { cn } from '@shared/utils/cn'
+import { moneyFixed } from '@shared/utils/currency.util'
 
 interface Category { id: string; name: string }
 interface InventoryItem {
@@ -178,7 +179,7 @@ export function InventoryScreen() {
       header: t('products.costPrice'),
       cell: ({ getValue }) => {
         const v = getValue() as number
-        return <span className="text-sm text-slate-700 dark:text-slate-300">{v > 0 ? v.toFixed(2) : '—'}</span>
+        return <span className="text-sm text-slate-700 dark:text-slate-300">{v > 0 ? moneyFixed(v) : '—'}</span>
       }
     },
     {
@@ -186,7 +187,7 @@ export function InventoryScreen() {
       header: t('common.total'),
       cell: ({ row }) => {
         const val = row.original.quantity * row.original.averageCost
-        return <span className="text-sm font-medium text-dark dark:text-slate-100">{val > 0 ? val.toFixed(2) : '—'}</span>
+        return <span className="text-sm font-medium text-dark dark:text-slate-100">{val > 0 ? moneyFixed(val) : '—'}</span>
       }
     },
     {

@@ -722,3 +722,84 @@ describe('printService.generatePurchaseOrderHtml — drop-shipment', () => {
     expect(html).toContain('Site survey fee')
   })
 })
+
+describe('quotation print shows the HSN/SAC of its lines (row 3.21)', () => {
+  const base = { quotationNumber: 'QT-1', customerName: 'C', subtotal: 100, discountAmount: 0, taxAmount: 0, totalAmount: 100, notes: null }
+  it('adds an HSN/SAC column with the code when any line has one', async () => {
+    const html = await printService.generateQuotationHtml({ ...base, items: [{ productName: 'Rice', hsnCode: '1006', quantity: 1, unitPrice: 100, discount: 0, taxRate: 0, lineTotal: 100 }] } as never, { businessName: 'B', currencySymbol: '₹' } as never)
+    expect(html).toContain('<th>HSN/SAC</th>')
+    expect(html).toContain('<td>1006</td>')
+  })
+  it('adds no column when no line has a code', async () => {
+    const html = await printService.generateQuotationHtml({ ...base, items: [{ productName: 'Rice', quantity: 1, unitPrice: 100, discount: 0, taxRate: 0, lineTotal: 100 }] } as never, { businessName: 'B', currencySymbol: '₹' } as never)
+    expect(html).not.toContain('HSN/SAC')
+  })
+})
+
+// Row 3.20 — credit and debit notes print their line items, the tax of the stored presentation, the pricing-mode note
+// and the linked document number, at A4 and receipt widths; a note without tax prints no tax lines.
+describe('credit and debit note prints (row 3.20)', () => {
+  const profile = { businessName: 'B', currencySymbol: '₹', currencyCode: 'INR', taxModel: 'GST' } as never
+  const items = [
+    { productName: 'Rice 5kg', quantity: 2, unitPrice: 500, taxRate: 18, taxAmount: 152.54, lineTotal: 1000 },
+    { serviceDescription: 'Handling', quantity: 1, unitPrice: 100, taxRate: 18, taxAmount: 15.25, lineTotal: 100 }
+  ]
+  const taxed = { amount: 1100, taxApplied: true, taxAmount: 167.79, pricesIncludeTax: true, items }
+  const untaxed = { amount: 1000, taxApplied: false, taxAmount: 0, pricesIncludeTax: false, items: [{ productName: 'Rice 5kg', quantity: 2, unitPrice: 500, taxRate: 18, taxAmount: 0, lineTotal: 1000 }] }
+  const cn = (extra: object) => ({ creditNoteNumber: 'CN-00001', createdAt: new Date('2026-09-01'), reason: 'Return', customer: { customerName: 'Ramesh' }, invoice: { invoiceNumber: 'INV-2026-000007', invoiceDate: new Date('2026-08-20') }, ...extra }) as never
+  const dn = (extra: object) => ({ debitNoteNumber: 'DN-00001', createdAt: new Date('2026-09-01'), reason: 'Damaged', supplier: { supplierName: 'Mehta' }, purchaseOrder: { poNumber: 'PO-00009', orderDate: new Date('2026-08-20') }, ...extra }) as never
+
+  it('itemised credit note: lines, taxable value, CGST + SGST, inclusive note and the invoice number (A4 and both receipt widths)', async () => {
+    const a4 = await printService.generateCreditNoteHtml(cn({ ...taxed, gstType: 'CGST_SGST' }), profile)
+    const r80 = await printService.generateCreditNoteReceiptHtml(cn({ ...taxed, gstType: 'CGST_SGST' }), profile, '80mm')
+    const r58 = await printService.generateCreditNoteReceiptHtml(cn({ ...taxed, gstType: 'CGST_SGST' }), profile, '58mm')
+    for (const html of [a4, r80, r58]) {
+      expect(html).toContain('Rice 5kg')
+      expect(html).toContain('Handling')
+      expect(html).toContain('Taxable value')
+      expect(html).toContain('>CGST<')
+      expect(html).toContain('>SGST<')
+      expect(html).toContain('Amounts include tax.')
+      expect(html).toContain('INV-2026-000007')
+      expect(html).toContain('1,100.00')
+    }
+    expect(a4).toContain('Unit Price (incl. tax)')
+  })
+
+  it('the tax lines follow the stored presentation: IGST, or one GST line, with the same tax', async () => {
+    const igst = await printService.generateCreditNoteHtml(cn({ ...taxed, gstType: 'IGST' }), profile)
+    expect(igst).toContain('>IGST<')
+    expect(igst).not.toContain('>CGST<')
+    const single = await printService.generateDebitNoteHtml(dn({ ...taxed, gstType: 'GST' }), profile)
+    expect(single).toContain('>GST<')
+    expect(single).not.toContain('>SGST<')
+    expect(single).toContain('167.79')
+    expect(single).toContain('PO-00009')
+  })
+
+  it('a note that skipped tax prints no tax lines and no pricing note, only its total, whatever the line rates say', async () => {
+    for (const html of [
+      await printService.generateCreditNoteHtml(cn({ ...untaxed, gstType: 'CGST_SGST' }), profile),
+      await printService.generateCreditNoteReceiptHtml(cn({ ...untaxed, gstType: 'IGST' }), profile),
+      await printService.generateDebitNoteHtml(dn({ ...untaxed, gstType: 'GST' }), profile),
+      await printService.generateDebitNoteReceiptHtml(dn({ ...untaxed, gstType: 'CGST_SGST' }), profile, '58mm')
+    ]) {
+      expect(html).not.toContain('Taxable value')
+      expect(html).not.toMatch(/>(CGST|SGST|IGST|GST)</)
+      expect(html).not.toContain('Amounts include tax.')
+      expect(html).not.toContain('Amounts are before tax.')
+      expect(html).toContain('1,000.00')
+    }
+  })
+
+  it('a plain-amount note with tax shows taxable value, tax and total; an old note with no tax fields still prints its amount', async () => {
+    const plain = await printService.generateCreditNoteHtml(cn({ amount: 1180, taxApplied: true, taxRate: 18, taxAmount: 180, pricesIncludeTax: false, gstType: 'CGST_SGST', items: [] }), profile)
+    expect(plain).toContain('Taxable value')
+    expect(plain).toContain('1,000.00')
+    expect(plain).toContain('Amounts are before tax.')
+    expect(plain).toContain('90.00')
+    const legacy = await printService.generateDebitNoteHtml(dn({ amount: 500 }), profile)
+    expect(legacy).toContain('500.00')
+    expect(legacy).not.toContain('Taxable value')
+  })
+})

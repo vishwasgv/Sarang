@@ -11,11 +11,12 @@ import { getPrisma } from '../../database/db'
 import { createReturn, getTodayReturnsSummary, listReturns } from '../returns.service'
 import { customerLedgerService } from '../customer-ledger.service'
 import { getLicenseState } from '../license.service'
+import { computeDocumentTotals } from '../../../shared/utils/money'
 
 const ORIGINAL_INVOICE_ID = 'inv-orig-1'
 
 function makeOriginalInvoice(overrides: Record<string, unknown> = {}) {
-  return {
+  const base = {
     id: ORIGINAL_INVOICE_ID,
     invoiceNumber: 'INV-000001',
     invoiceType: 'RETAIL',
@@ -30,6 +31,15 @@ function makeOriginalInvoice(overrides: Record<string, unknown> = {}) {
     ],
     ...overrides
   }
+  // Real invoice lines always carry their stored tax and tax-inclusive line total (what the sale computed);
+  // derive them the same way for fixtures that only give price, quantity, discount and rate.
+  const inv = base as { items: Array<Record<string, any>>; pricesIncludeTax?: boolean }
+  inv.items = inv.items.map(it => {
+    if (it.lineTotal !== undefined) return it
+    const t = computeDocumentTotals([{ quantity: it.quantity, unitPrice: it.unitPrice, discountAmount: it.discountAmount, taxRate: it.taxRate }], { pricesIncludeTax: inv.pricesIncludeTax === true }).lines[0]
+    return { ...it, taxAmount: t.tax, lineTotal: t.total }
+  })
+  return base
 }
 
 function makeMockDb(opts: { original?: Record<string, unknown>; priorReturns?: unknown[]; originalBalance?: number; variants?: Array<{ id: string; stockQty: number }> } = {}) {

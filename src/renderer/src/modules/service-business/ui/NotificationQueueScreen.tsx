@@ -235,8 +235,12 @@ export function NotificationQueueScreen() {
                           <ExternalLink size={14} />
                         </button>
                       )}
+                      {item.status === 'PENDING' && !item.whatsappLink && (
+                        <span className="text-xs text-slate-400 me-1">No phone number, so this can't be sent</span>
+                      )}
                       {item.status === 'PENDING' && (
                         <>
+                          {item.whatsappLink && (
                           <button
                             onClick={() => handleMarkSent(item.id)}
                             className="p-1.5 text-slate-400 hover:text-success rounded-lg hover:bg-success/5 transition-colors"
@@ -244,6 +248,7 @@ export function NotificationQueueScreen() {
                           >
                             <CheckCircle2 size={14} />
                           </button>
+                          )}
                           <button
                             onClick={() => handleDismiss(item.id)}
                             className="p-1.5 text-slate-400 hover:text-danger rounded-lg hover:bg-danger/5 transition-colors"

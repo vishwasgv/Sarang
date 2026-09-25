@@ -17,5 +17,5 @@
     },
     "types": ["node"]
   },
-  "include": ["src/main/**/*", "src/main/**/*.json", "src/preload/**/*", "electron.vite.config.ts", "vitest.config.ts"]
+  "include": ["src/main/**/*", "src/shared/utils/money.ts", "src/shared/utils/gst-presentation.ts", "src/shared/data/tax-presets.ts", "src/renderer/src/shared/utils/cart-totals.util.ts", "src/renderer/src/shared/utils/tax.util.ts", "src/renderer/src/shared/utils/off-slab-rate.util.ts", "src/renderer/src/shared/utils/money-context.util.ts", "src/main/**/*.json", "src/preload/**/*", "electron.vite.config.ts", "vitest.config.ts"]
 }

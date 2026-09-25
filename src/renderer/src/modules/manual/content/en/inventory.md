@@ -12,7 +12,7 @@ Open **Products** from the sidebar to see your full product list, filterable by 
 - **Opening Quantity** — the stock count to start with when the product is first created.
 - An optional **product image**.
 
-**Categories** are managed from the **Category** button on the Products screen, letting you group products for filtering and reporting.
+**Categories** are managed from the **Category** button on the Products screen (add, rename, sub-categories, archive), and you can also create one while adding a product using **+ Add new category**. They group products for filtering and reporting.
 
 Some product types are opt-in and only shown when the matching feature is turned on for your business (from **Settings → Additional Business Features** or your business type's own template): sell-by-weight/loose billing, size/color variants, rentable items, and jewellery metal pricing. These are opt-in per product — turning on a feature doesn't force every product into that mode. Batch/expiry tracking, serial/IMEI tracking, and other business-type-specific stock behaviors are covered in the relevant business-type chapter, not here.
 
@@ -36,6 +36,10 @@ A purchase order moves through a fixed lifecycle:
 4. A Draft or Approved PO can instead be **cancelled**, with a reason.
 
 A purchase order can be **printed** or exported/shared as a PDF at any stage, laid out with your business details, the supplier's details, and the full line-item list — the same **WhatsApp** and **Email** share buttons described in the *Billing & Documents* chapter's "Sharing documents via WhatsApp and Email" section work here too, sending the PO straight to your supplier.
+
+## Goods Received Notes (GRN)
+
+**GRN** (Purchases group, when Logistics is on) records a delivery. Every line has a **product** dropdown. A line linked to a product adds to that product's stock when the GRN is **Posted**. A line left as *Not in catalog* is only a paper record and shows an *unlinked* tag; it never changes stock. Use **+ Create product "..." and link** on the line to add a new item and link it in one step, then set its selling price in Products. Posting a GRN that has unlinked lines shows a warning first. A posted GRN cannot be edited; reverse it and enter it again. *Guide: Buying From Suppliers* explains the whole flow.
 
 ## Low-stock visibility
 

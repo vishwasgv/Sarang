@@ -371,7 +371,6 @@ export async function generateMembershipInvoice(membershipId: string) {
       const result = await billingService.createInvoice({
         customerId: membership.clientId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{
           productId: product.id,
           quantity: 1,

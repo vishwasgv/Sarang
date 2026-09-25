@@ -1,4 +1,5 @@
 import * as taxService from '../../services/tax.service'
+import * as taxPresetService from '../../services/tax-preset.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { CreateTaxSchema, UpdateTaxSchema } from '../../validation/tax.validation'
 
@@ -15,6 +16,17 @@ export function register(handle: HandleFn): void {
   handle('tax:list', async () => {
     const deny = requireSession(); if (deny) return deny
     return taxService.listTaxConfigurations()
+  })
+
+  // The country is never taken from the caller: both act on the business's own country only.
+  handle('tax:presetStatus', async () => {
+    const deny = requireSession(); if (deny) return deny
+    return taxPresetService.getTaxPresetStatus()
+  })
+
+  handle('tax:loadPreset', async () => {
+    const deny = await requirePermission('settings.modifyTax'); if (deny) return deny
+    return taxPresetService.loadTaxPresetForBusiness()
   })
 
   handle('tax:create', async (payload) => {

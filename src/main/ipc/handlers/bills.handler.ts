@@ -6,7 +6,7 @@ import { printService } from '../../services/print.service'
 import { requirePermission } from '../permission-guard'
 import { getCurrentSession } from '../../services/auth.service'
 import { getPrisma } from '../../database/db'
-import { CreateBillSchema, VoidBillSchema } from '../../validation/bill.validation'
+import { CreateBillSchema, VoidBillSchema, EditBillSchema } from '../../validation/bill.validation'
 
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
@@ -34,6 +34,14 @@ export function register(handle: HandleFn): void {
     const parsed = CreateBillSchema.safeParse(payload)
     if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
     return billService.createBill(parsed.data, getCurrentSession()?.userId)
+  })
+
+  handle('bills:update', async (payload) => {
+    const deny = await requirePermission('bills.create'); if (deny) return deny
+    const parsed = EditBillSchema.safeParse(payload)
+    if (!parsed.success) return { success: false, error: { code: 'VAL-001', message: parsed.error.errors[0]?.message ?? 'Invalid payload.' } }
+    const { id, ...rest } = parsed.data
+    return billService.editBill(id, rest, getCurrentSession()?.userId)
   })
 
   handle('bills:void', async (payload) => {

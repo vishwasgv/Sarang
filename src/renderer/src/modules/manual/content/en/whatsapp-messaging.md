@@ -1,5 +1,7 @@
 # WhatsApp Messaging & Reminders
 
+> New here? *Guide: Reminders and Alerts* explains the difference between the bell alerts (for you) and WhatsApp Reminders (for your customers), with the timing rules for appointment reminders.
+
 Sarang can prepare WhatsApp messages for your customers — appointment reminders, payment-overdue notices, membership/contract renewals, and more, across every business type — and hand them to WhatsApp ready to send. Sarang never sends a message automatically: it always opens your own WhatsApp (Desktop or Web) with the message pre-filled, and you click **Send** yourself. This is the same "you're always in control" approach used by the Share via WhatsApp buttons on Invoices and other documents (see **Billing & Documents**).
 
 There are three related places this shows up, covered below: the **WhatsApp Reminders** queue, the **Message Templates** editor, and sending an ad-hoc message from a **Customer's** own page.

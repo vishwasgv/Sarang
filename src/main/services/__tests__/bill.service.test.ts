@@ -65,7 +65,7 @@ function makeDb(overrides: Record<string, unknown> = {}) {
     // existing void test's assertion (a credit IS posted) keeps passing
     // without every other test needing to know about this table.
     supplierLedger: { findFirst: vi.fn().mockResolvedValue({ id: 'sl-1' }) },
-    productCostHistory: { create: vi.fn().mockResolvedValue({}) },
+    productCostHistory: { create: vi.fn().mockResolvedValue({}), deleteMany: vi.fn().mockResolvedValue({ count: 0 }) },
     setting: {
       findUnique: vi.fn(async () => settingRow),
       update: vi.fn(async ({ data }: { data: { settingValue: string } }) => { settingRow = settingRow ? { ...settingRow, settingValue: data.settingValue } : null; return settingRow }),

@@ -28,11 +28,12 @@ interface Bill {
 const STATUS_VARIANT: Record<string, 'neutral' | 'brand' | 'success' | 'danger' | 'warning'> = {
   OPEN: 'warning',
   PARTIALLY_PAID: 'brand',
+  OVERDUE: 'danger',
   PAID: 'success',
   VOID: 'danger'
 }
 
-const BILL_STATUSES = ['ALL', 'OPEN', 'PARTIALLY_PAID', 'PAID', 'VOID']
+const BILL_STATUSES = ['ALL', 'OPEN', 'PARTIALLY_PAID', 'OVERDUE', 'PAID', 'VOID']
 
 export function BillsScreen() {
   const { t } = useTranslation()
@@ -122,9 +123,17 @@ export function BillsScreen() {
     {
       accessorKey: 'status',
       header: () => t('bills.statusColumn'),
-      cell: ({ getValue }) => {
+      cell: ({ row, getValue }) => {
         const s = getValue() as string
-        return <Badge variant={STATUS_VARIANT[s] ?? 'neutral'} size="sm">{s.replace(/_/g, ' ')}</Badge>
+        const due = (row.original as { dueDate?: string | null }).dueDate
+        const startOfToday = new Date(); startOfToday.setHours(0, 0, 0, 0)
+        const overdue = (s === 'OPEN' || s === 'PARTIALLY_PAID') && !!due && new Date(due) < startOfToday
+        return (
+          <div className="flex items-center gap-1.5">
+            <Badge variant={STATUS_VARIANT[s] ?? 'neutral'} size="sm">{s.replace(/_/g, ' ')}</Badge>
+            {overdue && <Badge variant="danger" size="sm">OVERDUE</Badge>}
+          </div>
+        )
       }
     }
   ]

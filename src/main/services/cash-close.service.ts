@@ -2,6 +2,7 @@ import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { toLocalISODate, parseLocalDateStart } from '../utils/date.util'
 import { sumCurrency, roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 
 function startOfDay(d: Date): Date {
   const s = new Date(d); s.setHours(0, 0, 0, 0); return s
@@ -12,6 +13,7 @@ function endOfDay(d: Date): Date {
 
 export const cashCloseService = {
   async getDrawerSummary(date?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     // BUG FOUND 2026-07-22: new Date(date) on an explicit "YYYY-MM-DD" input
     // parses as UTC midnight, then startOfDay's setHours(0,0,0,0) re-anchors
@@ -56,6 +58,7 @@ export const cashCloseService = {
   },
 
   async create(payload: { date: string; actualCash: number; notes?: string }, userId?: string) {
+    await getBusinessCurrencyDecimals()
     const db = getPrisma()
     // BUG FOUND 2026-07-22: same UTC-vs-local parsing issue as
     // getDrawerSummary above.

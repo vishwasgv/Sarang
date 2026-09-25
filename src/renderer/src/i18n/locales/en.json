@@ -12,9 +12,9 @@
     "pricingSchemes": "Pricing Schemes",
     "priceMarkdowns": "Price Markdowns",
     "loyaltyProgram": "Loyalty Program",
-    "customDocuments": "Custom Documents",
+    "customDocuments": "Document Builder",
     "recurringProfiles": "Recurring Profiles",
-    "locations": "Locations",
+    "locations": "Stock Locations",
     "costCentres": "Cost Centres",
     "serviceCombos": "Service Combos",
     "budgets": "Budgets",
@@ -27,14 +27,14 @@
     "manual": "Manual",
     "about": "About",
     "cashClose": "Cash Close",
-    "returns": "Returns",
-    "checkIn": "Check-In",
+    "returns": "Sales Returns",
+    "checkIn": "Customer Check-In",
     "customOrders": "Custom Orders",
     "cateringEvents": "Catering Events",
     "vehicleFleet": "Vehicle Fleet",
     "tourPackages": "Tour Packages",
     "tripBookings": "Trip Bookings",
-    "import": "Import",
+    "import": "Import Data",
     "auditLog": "Audit Log",
     "manufacturing": "Manufacturing",
     "service": "Service",
@@ -42,14 +42,14 @@
     "billOfMaterials": "Bill of Materials",
     "productionOrders": "Production Orders",
     "finishedGoods": "Finished Goods",
-    "vendors": "Vendors",
+    "vendors": "Raw Material Suppliers",
     "dispatch": "Dispatch",
     "projects": "Projects",
     "jobCards": "Job Cards",
     "tickets": "Service Tickets",
     "workTracking": "Work Tracking",
     "employees": "Employees",
-    "attendance": "Attendance",
+    "attendance": "Staff Attendance",
     "leave": "Leave",
     "payroll": "Payroll",
     "quotations": "Quotations",
@@ -168,6 +168,7 @@
     "country": "Country",
     "taxNumber": "Tax Number",
     "taxNumberPlaceholder": "GST / PAN / VAT",
+    "taxNumberCheck": "This does not look like a valid {{label}}. Please check it.",
     "priceList": "Price List",
     "phonePlaceholder": "+91 98765 43210",
     "streetAddressPlaceholder": "Street address",
@@ -518,6 +519,32 @@
       "addToCart": "Add to Cart",
       "required": "Patient name and doctor name are required."
     },
+    "pricesIncludeTax": "Prices include tax",
+    "priceInclTax": "(incl. tax)",
+    "priceExclTax": "(excl. tax)",
+    "pricesIncludeTaxHint": "Prices you enter already contain tax. Tax is worked out from each price instead of being added on top.",
+    "pricesExcludeTaxHint": "Prices you enter are before tax. Tax is added on top.",
+    "pricesIncludeTaxShareNote": "Prices include tax.",
+    "taxShownAs": "Tax shown as",
+    "shareTaxLines": "Tax: {{lines}}.",
+    "taxCategoryLabel": "Tax category",
+    "taxCategoryStandard": "Standard rate",
+    "taxCategoryReduced": "Reduced rate",
+    "taxCategoryZeroRated": "Zero-rated",
+    "taxCategoryExempt": "Exempt",
+    "taxCategoryNilRated": "Nil-rated",
+    "taxCategoryOutOfScope": "Outside GST (non-GST supply)",
+    "taxCategoryHint": "Nil-rated, exempt and non-GST supplies are reported on their own rows in the GST returns.",
+    "olderRatesShort": "Older rates",
+    "taxShownCgstSgst": "CGST + SGST",
+    "taxShownIgst": "IGST",
+    "taxShownGst": "GST",
+    "taxShownAutoHint": "Chosen from the buyer's state. Only the way tax is shown changes; the tax amount and the total stay the same.",
+    "taxShownSameAmountHint": "Only the way tax is shown changes. The tax amount and the total stay the same in all three.",
+    "buyerStateOptional": "Buyer's state (optional, sets the tax shown automatically)",
+    "offSlabRate": "{{rate}}% is not one of your saved tax rates. Check it before saving.",
+    "unitPriceInclTax": "Unit price (incl. tax)",
+    "unitPriceExclTax": "Unit price (excl. tax)",
     "shareWhatsAppMessage": "{{businessName}}: {{documentType}} {{number}} — Total {{amount}}. The detailed document is attached as a file.",
     "shareEmailSubject": "{{documentType}} {{number}} from {{businessName}}",
     "shareEmailBody": "Dear Sir/Madam,\n\nPlease find the {{documentType}} {{number}} from {{businessName}} attached, for a total amount of {{amount}}.\n\nThank you.\n\n{{businessName}}",
@@ -844,6 +871,9 @@
       },
       "costPriceRequired": "Cost Price *",
       "sellingPriceRequired": "Selling Price *",
+      "costPriceBeforeTax": "Cost price (before tax) *",
+      "sellingPriceBeforeTax": "Selling price (before tax) *",
+      "sellingPriceInclTax": "Selling price (incl. tax) *",
       "taxRatePercentLabel": "Tax Rate %",
       "applyTaxRateTitle": "Apply {{taxName}} ({{rate}}%)",
       "sellLooseByWeight": "Sell this product loose / by weight",
@@ -1514,6 +1544,7 @@
       "colType": "Type",
       "colSource": "Source",
       "colStatus": "Status",
+      "viewLedger": "Ledger",
       "noAccountsYet": "No accounts yet",
       "system": "System",
       "custom": "Custom",
@@ -1783,7 +1814,8 @@
     }
   },
   "bills": {
-    "title": "Bills",
+    "editBill": "Edit bill",
+    "title": "Supplier Bills",
     "subtitle": "{{count}} bills — what you owe your suppliers",
     "recordBill": "Record Bill",
     "billNumber": "Bill #",
@@ -1814,7 +1846,7 @@
     "internalNotes": "Internal notes…",
     "notesOptional": "Notes (optional)",
     "paid": "Paid",
-    "paymentsMade": "Payments Made",
+    "paymentsMade": "Supplier Payments",
     "noPaymentsYet": "No payments recorded against this bill yet.",
     "recordPayment": "Record Payment",
     "outstanding": "Outstanding",
@@ -2076,7 +2108,7 @@
     "couldNotRedeem": "Could not redeem the reward."
   },
   "customDocuments": {
-    "title": "Custom Documents",
+    "title": "Document Builder",
     "subtitle": "Define your own registers and logs — fields, entries, all yours",
     "newType": "New Document Type",
     "editType": "Edit Document Type",
@@ -2153,7 +2185,7 @@
     "couldNotLoadFormData": "Could not load form data. Please try again."
   },
   "locations": {
-    "title": "Locations",
+    "title": "Stock Locations",
     "subtitle": "{{count}} locations — where stock physically sits, for businesses that operate more than one storage point",
     "name": "Name",
     "address": "Address",
@@ -2325,7 +2357,7 @@
     "couldNotReject": "Could not reject this step."
   },
   "supplierPayments": {
-    "title": "Payments Made",
+    "title": "Supplier Payments",
     "subtitle": "{{count}} total payments to suppliers",
     "searchPlaceholder": "Search bill, supplier, or reference…",
     "noPaymentsFiltered": "No payments match these filters.",
@@ -2433,6 +2465,86 @@
       "hotel": "Hotel",
       "distributor": "Distributor"
     },
+    "fs": {
+      "asOfDate": "As of date",
+      "compareWith": "Compare with",
+      "account": "Account",
+      "selectAccount": "Select an account",
+      "pickAccountFirst": "Choose an account to view its ledger.",
+      "voucherType": "Voucher type",
+      "allVouchers": "All vouchers",
+      "voucherTypes": {
+        "SALES": "Sales",
+        "PURCHASE": "Purchase",
+        "RECEIPT": "Receipt",
+        "PAYMENT": "Payment",
+        "EXPENSE": "Expense",
+        "JOURNAL": "Journal",
+        "OTHER": "Other"
+      },
+      "bs": {
+        "totalAssets": "Total Assets",
+        "totalLiabilities": "Total Liabilities",
+        "totalEquity": "Total Equity",
+        "liabilitiesAndEquity": "Liabilities + Equity",
+        "currentProfit": "Current Period Profit",
+        "checkLine": "Assets = Liabilities + Equity",
+        "difference": "Difference",
+        "change": "Change",
+        "chartTitle": "Assets vs Liabilities + Equity",
+        "assets": "Assets",
+        "liabilities": "Liabilities",
+        "equity": "Equity",
+        "group": {
+          "currentAssets": "Current Assets",
+          "fixedAssets": "Fixed Assets",
+          "currentLiabilities": "Current Liabilities",
+          "longTermLiabilities": "Loans and Long-term Liabilities",
+          "equity": "Equity"
+        }
+      },
+      "gl": {
+        "entryNo": "Entry No.",
+        "source": "Source document",
+        "narration": "Narration",
+        "totalDebit": "Total Debit",
+        "totalCredit": "Total Credit",
+        "carryForward": "Balance carried forward from year-end close",
+        "reversed": "Reversed",
+        "runningBalance": "Running balance",
+        "debitSide": "Balances are shown on the debit side",
+        "creditSide": "Balances are shown on the credit side",
+        "openDocument": "Open"
+      },
+      "db": {
+        "vouchers": "Vouchers",
+        "days": "Days",
+        "voucher": "Voucher",
+        "particulars": "Particulars",
+        "dailyTotal": "Daily total",
+        "dayTotal": "Day total",
+        "truncated": "Showing the first {{count}} vouchers. Narrow the date range or pick a voucher type to see the rest.",
+        "byType": "By voucher type"
+      },
+      "cf": {
+        "operating": "Cash from Operating Activities",
+        "investing": "Cash from Investing Activities",
+        "financing": "Cash from Financing Activities",
+        "netProfit": "Net profit for the period",
+        "depreciation": "Add back: depreciation",
+        "depreciationInvesting": "Depreciation already added back above",
+        "netChange": "Net Change in Cash",
+        "openingCash": "Opening Cash",
+        "closingCash": "Closing Cash",
+        "ledgerCash": "Cash and bank per ledger",
+        "reconciled": "Reconciled to cash and bank accounts",
+        "notReconciled": "Does not match cash and bank accounts",
+        "chartTitle": "Cash movement",
+        "cashAccounts": "Cash and bank accounts",
+        "section": "Section",
+        "item": "Item"
+      }
+    },
     "defs": {
       "discounts": {
         "label": "Discounts Report",
@@ -2517,6 +2629,22 @@
       "trialBalance": {
         "label": "Trial Balance",
         "description": "Debit and credit totals for Cash, Receivables, Payables, Revenue, Tax, COGS, and Expenses — ready to hand to an accountant"
+      },
+      "balanceSheet": {
+        "label": "Balance Sheet",
+        "description": "What the business owns and owes on a date, with the owner's equity and current profit, optionally compared with an earlier date"
+      },
+      "generalLedger": {
+        "label": "General Ledger",
+        "description": "Every posting in one account with opening, running and closing balance and the document it came from"
+      },
+      "dayBook": {
+        "label": "Day Book",
+        "description": "All vouchers and journal entries by date, filterable by type, with debit and credit totals for each day"
+      },
+      "cashFlowStatement": {
+        "label": "Cash Flow Statement",
+        "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
       },
       "audit": {
         "label": "Audit Log Report",
@@ -3242,6 +3370,10 @@
       "totalCgst": "Total CGST",
       "totalSgst": "Total SGST",
       "totalIgst": "Total IGST",
+      "nilRatedValue": "Nil-rated supplies",
+      "exemptValue": "Exempt supplies",
+      "nonGstValue": "Non-GST supplies",
+      "invoiceLevelDiscount": "Invoice-level discount",
       "invoicesSuffix_one": "{{count}} invoice",
       "invoicesSuffix_other": "{{count}} invoices",
       "groupsSuffix_one": "{{count}} group",
@@ -3448,6 +3580,108 @@
       "d61to90Short": "61-90",
       "d90plusShort": "90+"
     },
+    "chart": {
+      "noData": "No data available to chart for this selection.",
+      "count": "Count",
+      "other": "Other",
+      "unknown": "Not recorded",
+      "stage": "Stage",
+      "funnelTooltip": "{{value}} ({{percent}}% of the first stage)",
+      "heatLow": "Fewer",
+      "heatHigh": "More",
+      "heatNone": "None",
+      "heatHint": "Hover over a cell to see its exact value.",
+      "rate": "Tax rate",
+      "taxableValue": "Taxable value",
+      "tax": "Tax",
+      "b2b": "B2B",
+      "b2c": "B2C",
+      "gstr1Title": "Taxable Value by Tax Rate (B2B vs B2C)",
+      "taxHead": "Tax head",
+      "outward": "Outward supplies",
+      "reverseCharge": "Reverse-charge inward",
+      "gstr3bHeadTitle": "Outward Tax by Tax Head",
+      "gstr3bCompareTitle": "Outward Supplies vs Reverse-Charge Inward",
+      "hsnTitle": "Top 10 HSN Codes by Taxable Value",
+      "hsnCode": "HSN code",
+      "tbTitle": "Debit vs Credit by Account Type",
+      "accountType": "Account type",
+      "accountTypes": {
+        "ASSET": "Asset",
+        "LIABILITY": "Liability",
+        "EQUITY": "Equity",
+        "INCOME": "Income",
+        "EXPENSE": "Expense",
+        "OTHER": "Other"
+      },
+      "categoryMixTitle": "Revenue Share by Category",
+      "khataTitle": "Outstanding Exposure by Risk Tier",
+      "riskTier": "Risk tier",
+      "outstanding": "Outstanding",
+      "riskTiers": {
+        "LOW": "Low",
+        "MEDIUM": "Medium",
+        "HIGH": "High"
+      },
+      "trends": {
+        "RISING": "Rising",
+        "STABLE": "Stable",
+        "FALLING": "Falling"
+      },
+      "auditTitle": "Audit Actions per Day (loaded records)",
+      "day": "Day",
+      "actions": "Actions",
+      "backupSizeTitle": "Backup Size per Week",
+      "backupCountTitle": "Backups per Week",
+      "week": "Week starting",
+      "sizeMb": "Size (MB)",
+      "backups": "Backups",
+      "complianceStatusTitle": "Open Tasks by Status",
+      "complianceMonthTitle": "Open Tasks by Due Month",
+      "overdue": "Overdue",
+      "dueSoon": "Due within 7 days",
+      "pendingLater": "Pending (due later)",
+      "month": "Month",
+      "tasks": "Tasks",
+      "docTitle": "Documents Issued by Type",
+      "docType": "Document type",
+      "documents": "Documents",
+      "activeDocs": "Issued",
+      "cancelledDocs": "Cancelled",
+      "fittingTitle": "Missed Attach Sales by Fitting",
+      "fitting": "Fitting",
+      "missedPairings": "Missed pairings",
+      "hallmarkStatusTitle": "Hallmark Status",
+      "hallmarkByMetalTitle": "Hallmark Status by Metal",
+      "metal": "Metal",
+      "hotelArrivalsTitle": "Arrivals per Day",
+      "hotelIdTitle": "Guests by ID Type",
+      "arrivals": "Arrivals",
+      "idType": "ID type",
+      "mrpProductTitle": "MRP Violations by Product",
+      "mrpTrendTitle": "MRP Violations per Day",
+      "violations": "Violations",
+      "product": "Product",
+      "h1xTitle": "Schedule H1/X Entries per Day",
+      "entries": "Entries",
+      "rxComplete": "Prescription details complete",
+      "rxMissing": "Prescription details missing",
+      "seasonHeatTitle": "Season Windows by Month",
+      "seasonReorderTitle": "Low or Out-of-Stock Products by Reorder-By Month",
+      "activeSeasons": "Active seasons",
+      "lowStockProducts": "Low or out-of-stock products",
+      "sizeStockOutTitle": "Stock-Outs by Size",
+      "size": "Size",
+      "outOfStock": "Out of stock",
+      "lowStock": "Low stock",
+      "vehicleWeekTitle": "Vehicles Due for Service by Week",
+      "vehicleTypeTitle": "Vehicles Due by Vehicle Type",
+      "vehiclesDue": "Vehicles due",
+      "styleCount": "Number of styles",
+      "recallOnTimeTitle": "On-Time vs Late by Category",
+      "late": "Late",
+      "noDate": "No date (distance-based)"
+    },
     "section": {
       "untaggedNote": "Untagged: {{revenue}} revenue and {{expense}} expense from transactions with no cost centre set.",
       "topDiscountedProducts": "Top Discounted Products",
@@ -3474,6 +3708,13 @@
       "b2csHeading": "B2CS — Retail Summary (walk-in / non-GSTIN customers)",
       "gstr1Period": "GSTR-1 data for period: {{period}}",
       "gstr1Disclaimer": "This report is for reference only. Verify with a CA before filing on the GST portal.",
+      "stateUnknown_one": "{{count}} document has no state; classified as CGST + SGST",
+      "stateUnknown_other": "{{count}} documents have no state; classified as CGST + SGST",
+      "nilExemptHeading": "Nil-rated, exempt and non-GST supplies",
+      "byCategoryHeading": "By tax category and rate",
+      "nilRatedLabel": "Nil-rated",
+      "exemptLabel": "Exempt",
+      "nonGstLabel": "Non-GST",
       "hsnDisclaimer": "This report is for reference only — HSN codes must be selected from the government portal's own list when filing. Verify with a CA before filing.",
       "hsnB2BHeading": "B2B — Business Invoices (GSTIN customers)",
       "hsnB2CHeading": "B2C — Retail Summary (walk-in / non-GSTIN customers)",
@@ -3801,6 +4042,10 @@
       "actualCost": "Actual Cost",
       "receivedDate": "Received Date",
       "taxName": "Tax Name",
+      "taxCategory": "Tax category",
+      "supplyKind": "Supply",
+      "interStateCol": "Inter-state",
+      "registeredBuyer": "Registered buyer",
       "ratePercent": "Rate %",
       "taxableAmount": "Taxable Amount",
       "invoiceCount": "Invoice Count",
@@ -4593,7 +4838,7 @@
     }
   },
   "returns": {
-    "title": "Returns",
+    "title": "Sales Returns",
     "newReturn": "New Return",
     "returnDate": "Return Date",
     "originalInvoice": "Original Invoice",
@@ -5043,6 +5288,19 @@
     },
     "tax": {
       "loadFailed": "Failed to load tax rates.",
+      "olderRates": "Older rates (before 22 Sep 2025)",
+      "olderRatesHint": "These rates were withdrawn on 22 September 2025. Old documents keep them; nothing is recalculated.",
+      "loadRates": "Load tax rates for {{country}}",
+      "loadRatesHint": "Adds the {{country}} rates that are missing from your list. Rates you already have are never changed or removed, and old documents are never touched.",
+      "ratesLoaded": "{{count}} tax rates added for {{country}}.",
+      "ratesUpToDate": "All {{country}} tax rates are already in your list.",
+      "loadRatesFailed": "Could not load the tax rates.",
+      "noPresetNote": "There are no ready-made tax rates for {{country}}. Add your rates manually with Add Tax.",
+      "noTaxNote": "{{country}} has no sales tax or VAT at present. Add a rate manually if that changes.",
+      "presetChecked": "Rates checked on {{date}}. Tax rates change: confirm them with your accountant or the tax authority.",
+      "englishOnlyNote": "Tax names and notes for this country are shown in English.",
+      "currentRates": "Current rates",
+      "taxCategory": "Tax category",
       "validationTitle": "Validation Error",
       "validationMessage": "Please enter a valid name and rate (0–100).",
       "updatedTitle": "Tax Updated",
@@ -5087,7 +5345,18 @@
     },
     "currencyLocale": {
       "saved": "Currency & locale settings saved",
-      "saveFailed": "Failed to save settings"
+      "saveFailed": "Failed to save settings",
+      "roundingLabel": "Invoice total rounding",
+      "roundingHelp": "Rounds the final invoice total to this step and shows the difference as a Rounding line. Applies to new invoices only; saved invoices never change.",
+      "roundingNone": "No rounding (exact total)",
+      "rounding005": "Nearest 0.05",
+      "rounding010": "Nearest 0.10",
+      "rounding050": "Nearest 0.50",
+      "rounding1": "Nearest 1.00 (whole unit)",
+      "pricesIncludeTaxLabel": "Prices include tax",
+      "pricesIncludeTaxHelp": "Turn on if your shelf prices already contain tax (MRP style). New bills, quotations and orders start with this choice and you can change it on each document. Saved documents never change.",
+      "pricesIncludeTaxOn": "Yes, prices include tax",
+      "pricesIncludeTaxOff": "No, tax is added on top"
     },
     "print": {
       "typeSaved": "Print type saved",
@@ -5232,7 +5501,7 @@
     "comingSoon": "This chapter is being written and will be available soon.",
     "groupGettingStarted": "Getting Started",
     "groupUniversal": "Universal Features",
-    "groupAi": "AI Assistant",
+    "groupAi": "Ask Sarang",
     "groupBusiness": "Business Types",
     "exportFailed": "Could not export the manual."
   },
@@ -5348,7 +5617,7 @@
         "body": "Link a dish to the raw ingredients it uses, so every sale can automatically deduct stock. Set one up and see how it connects a menu item to your inventory."
       },
       "retailReturns": {
-        "title": "Returns",
+        "title": "Sales Returns",
         "body": "Process a customer return against a real past invoice — pick the invoice, choose what's being returned, and see the refund and stock adjustment happen automatically."
       },
       "distributorBulkOrder": {
@@ -5404,7 +5673,7 @@
         "body": "Track a shipment from your warehouse to its recipient, start to finish."
       },
       "vendorManagement": {
-        "title": "Vendors",
+        "title": "Raw Material Suppliers",
         "body": "Manage the suppliers your production line depends on for raw materials."
       },
       "productionAnalytics": {
@@ -5624,7 +5893,7 @@
         "body": "Group students into a batch (a class/section) with its own schedule."
       },
       "coachingAttendance": {
-        "title": "Attendance",
+        "title": "Student Attendance",
         "body": "Mark attendance for a batch, session by session."
       },
       "feeCollection": {
@@ -5692,7 +5961,7 @@
         "body": "Record what a supplier actually billed you — a purchase, a rent bill, professional fees, anything you owe — with or without a Purchase Order behind it. This is what makes your Purchase Register and payables aging correct."
       },
       "supplierPayments": {
-        "title": "Payments Made",
+        "title": "Supplier Payments",
         "body": "Every payment you've made to a supplier against a Bill, in one place — with reversal support if one was entered wrong."
       },
       "bankReconciliation": {
@@ -5728,7 +5997,7 @@
         "body": "Add your staff here — this is also where their login accounts and roles get set up."
       },
       "hrAttendance": {
-        "title": "Attendance",
+        "title": "Staff Attendance",
         "body": "Mark daily attendance for your staff — present, absent, or on leave."
       },
       "hrLeave": {
@@ -5760,7 +6029,7 @@
         "body": "Set how many visits earn a reward and what that reward is — a punch is added automatically to a customer's card on every qualifying sale, no extra step at checkout. Redeem here once they've earned it."
       },
       "customDocuments": {
-        "title": "Custom Documents",
+        "title": "Document Builder",
         "body": "Define your own registers — a Visitor Log, a Complaint Book, anything not already built in — with your own fields, then log dated entries against them."
       },
       "recurringProfiles": {
@@ -5772,7 +6041,7 @@
         "body": "Require sign-off before a large sales or purchase order is confirmed — set a threshold and an approver, and Sarang holds any order over that amount for approval instead of confirming it immediately."
       },
       "locations": {
-        "title": "Locations",
+        "title": "Stock Locations",
         "body": "If you store stock in more than one place, add a second location here and try a Transfer Stock — everything still starts in one default location until you actually add another."
       },
       "costCentres": {
@@ -5861,7 +6130,7 @@
     "finishedGoods": "Finished Goods",
     "addStock": "Add Stock",
     "dispatchStock": "Dispatch",
-    "vendors": "Vendors",
+    "vendors": "Raw Material Suppliers",
     "addVendor": "Add Vendor",
     "vendorName": "Vendor Name",
     "noVendors": "No vendors yet",
@@ -6403,7 +6672,7 @@
     "statutoryNoRatesConfigured": "No statutory rates are configured yet — set them in Settings first.",
     "payslipDeductionDisclaimer": "Sarang never applies official government PF/ESI/Professional Tax/TDS rules automatically — \"Suggest from statutory rates\" only pre-fills from the rates you've entered in Settings, and every line here is yours to review, edit or remove before saving.",
     "confirmMarkPaid": "Mark this salary as paid? This creates an expense record and locks the payslip from further edits.",
-    "attendance": "Attendance",
+    "attendance": "Staff Attendance",
     "attendanceDesc": "Mark daily attendance for all employees.",
     "daily": "Daily",
     "monthly": "Monthly",
@@ -6536,7 +6805,15 @@
     "saveCreditNote": "Save Credit Note",
     "updateCreditNote": "Update Credit Note",
     "noCustomer": "No customer",
-    "refInvoice": "Ref: {{number}}"
+    "refInvoice": "Ref: {{number}}",
+    "addTax": "Add tax to this note",
+    "addTaxHint": "Off: the note has no tax and its total is the amount you enter.",
+    "taxRateLabel": "Tax rate %",
+    "taxRateHint": "Leave empty to use the rate of the linked invoice, or your default rate.",
+    "taxSkippedWarning": "The original invoice charged tax. Skipping tax here will not reverse the tax you charged.",
+    "amountBeforeTax": "Amount before tax",
+    "noteTotal": "Note total",
+    "amountEntered": "Amount entered"
   },
   "debitNotes": {
     "title": "Debit Notes",
@@ -6561,7 +6838,15 @@
     "saveDebitNote": "Save Debit Note",
     "updateDebitNote": "Update Debit Note",
     "noSupplier": "No supplier",
-    "refPO": "Ref: {{number}}"
+    "refPO": "Ref: {{number}}",
+    "addTax": "Add tax to this note",
+    "addTaxHint": "Off: the note has no tax and its total is the amount you enter.",
+    "taxRateLabel": "Tax rate %",
+    "taxRateHint": "Leave empty to use the rate of the linked purchase order, or your default rate.",
+    "taxSkippedWarning": "The original purchase order carried tax. Skipping tax here will not reverse the tax on it.",
+    "amountBeforeTax": "Amount before tax",
+    "noteTotal": "Note total",
+    "amountEntered": "Amount entered"
   },
   "share": {
     "whatsapp": "WhatsApp",
@@ -6827,6 +7112,10 @@
       "revertToDraftNote": "Saving will reset this GRN to DRAFT — it must be re-verified before posting.",
       "unlinkedWarning": "Not linked to a catalog product — won't affect Inventory when posted",
       "unlinked": "unlinked",
+      "postUnlinkedWarning": "{{count}} item(s) are not linked to a product and will NOT update your stock. Cancel and link them first, or post anyway.",
+      "createAndLink": "+ Create product \"{{name}}\" and link",
+      "createdProductTitle": "Product created",
+      "createdProductNotice": "\"{{name}}\" was added to Products at your cost price. Set its real selling price in Products before selling it.",
       "orderedHint": "Ordered {{qty}} {{unit}} · already received {{received}}",
       "orderedHintShort": "Ordered {{qty}} {{unit}}",
       "editGRNTitle": "Edit GRN",

@@ -1,7 +1,8 @@
 import React, { useEffect, useState, useCallback } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { useTranslation } from 'react-i18next'
-import { ArrowLeft, Receipt, PlusCircle, XCircle, RotateCcw, Printer } from 'lucide-react'
+import { ArrowLeft, Receipt, PlusCircle, XCircle, RotateCcw, Printer, Pencil } from 'lucide-react'
+import { BillFormModal, type EditableBill } from './BillFormModal'
 import { Button } from '@shared/ui/atoms/Button'
 import { Modal } from '@shared/ui/molecules/Modal'
 import { Card } from '@shared/ui/molecules/Card'
@@ -10,13 +11,15 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { useBusinessStore } from '@app/store/business.store'
 import { formatDate, formatDateTime } from '@shared/utils/locale.util'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { getCurrencyDecimals } from '@money'
 import { cn } from '@shared/utils/cn'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null; isMsmeRegistered?: boolean }
 interface Product { id: string; productName: string; sku?: string | null; unit: string }
 interface BillItem {
-  id: string; quantity: number; unitCost: number; discountAmount: number; taxRate: number; total: number
+  id: string; quantity: number; unitCost: number; discountAmount: number; taxRate: number; taxAmount?: number; total: number
   product: Product | null
   serviceDescription: string | null
   serviceCategory: { id: string; categoryName: string } | null
@@ -28,7 +31,7 @@ interface SupplierPaymentRow {
 interface Bill {
   id: string; billNumber: string; status: string
   billDate: string; dueDate?: string | null; notes?: string | null
-  subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number
+  subtotal: number; discountAmount: number; taxAmount: number; totalAmount: number; gstType?: string | null
   paidAmount: number; balanceAmount: number
   // 2026-09 — foreign-currency overlay, see Bill's own schema comment.
   foreignCurrencyCode?: string | null; foreignExchangeRate?: number | null; foreignTotalAmount?: number | null
@@ -54,6 +57,8 @@ export function BillDetailScreen() {
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { hasPermission } = useAuthStore()
   const currSym = useBusinessStore(s => s.profile?.currencySymbol ?? '₹')
+  const taxModelDoc = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const decimalsDoc = getCurrencyDecimals(useBusinessStore(s => s.profile?.currencyCode))
 
   const [bill, setBill] = useState<Bill | null>(null)
   const [loading, setLoading] = useState(true)
@@ -81,6 +86,7 @@ export function BillDetailScreen() {
   const [fxSettling, setFxSettling] = useState(false)
 
   const [voidOpen, setVoidOpen] = useState(false)
+  const [editOpen, setEditOpen] = useState(false)
   const [voidReason, setVoidReason] = useState('')
   const [voiding, setVoiding] = useState(false)
 
@@ -91,6 +97,7 @@ export function BillDetailScreen() {
   const canRecordPayment = hasPermission('supplierPayments.record')
   const canReversePayment = hasPermission('supplierPayments.reverse')
   const canVoid = hasPermission('bills.void')
+  const canEdit = hasPermission('bills.create')
   const [printing, setPrinting] = useState(false)
 
   const loadBill = useCallback(async () => {
@@ -178,7 +185,7 @@ export function BillDetailScreen() {
         remarks: paymentRemarks.trim() || undefined
       })
       if (res.success) {
-        toastSuccess(t('bills.toasts.billSettledTitle'), t('bills.toasts.billSettledDesc', { code: bill.foreignCurrencyCode, amount: foreignAmount.toFixed(2), billNumber: bill.billNumber }))
+        toastSuccess(t('bills.toasts.billSettledTitle'), t('bills.toasts.billSettledDesc', { code: bill.foreignCurrencyCode, amount: moneyFixed(foreignAmount, bill.foreignCurrencyCode), billNumber: bill.billNumber }))
         setShowPaymentModal(false)
         setFxSettlementMode(false); setFxForeignAmount(''); setFxSettlementRate(''); setPaymentRef(''); setPaymentRemarks('')
         loadBill()
@@ -282,8 +289,13 @@ export function BillDetailScreen() {
             <Printer size={14} className="me-1.5" /> {t('billing.print')}
           </Button>
           {bill.status !== 'VOID' && bill.balanceAmount > 0.01 && canRecordPayment && (
-            <Button size="sm" onClick={() => { setPaymentAmount(bill.balanceAmount.toFixed(2)); setShowPaymentModal(true) }}>
+            <Button size="sm" onClick={() => { setPaymentAmount(moneyFixed(bill.balanceAmount)); setShowPaymentModal(true) }}>
               <PlusCircle size={14} className="me-1.5" /> {t('bills.recordPayment')}
+            </Button>
+          )}
+          {bill.status === 'OPEN' && bill.paidAmount === 0 && canEdit && (
+            <Button variant="secondary" size="sm" onClick={() => setEditOpen(true)}>
+              <Pencil size={14} className="me-1.5" /> {t('bills.editBill')}
             </Button>
           )}
           {bill.status !== 'VOID' && canVoid && (
@@ -385,10 +397,12 @@ export function BillDetailScreen() {
                 <span>-{formatCurrency(bill.discountAmount)}</span>
               </div>
             )}
-            <div className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
-              <span>{t('billing.tax')}</span>
-              <span>{formatCurrency(bill.taxAmount)}</span>
-            </div>
+            {splitTaxLines(taxModelDoc, bill.taxAmount, bill.gstType, decimalsDoc, bill.items.map(i => ({ taxRate: i.taxRate, taxAmount: i.taxAmount ?? 0 }))).map(line => (
+              <div key={line.label} className="flex justify-between text-sm text-slate-600 dark:text-slate-300">
+                <span>{line.label}</span>
+                <span>{formatCurrency(line.amount)}</span>
+              </div>
+            ))}
             <div className="flex justify-between text-sm font-bold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
               <span>{formatCurrency(bill.totalAmount)}</span>
@@ -455,7 +469,7 @@ export function BillDetailScreen() {
             <p className="text-sm text-slate-500 dark:text-slate-400">
               {t('bills.billNumber')}: <strong className="dark:text-slate-200">{bill.billNumber}</strong> · {t('bills.outstanding')}: <strong className="text-danger">{formatCurrency(bill.balanceAmount)}</strong>
               {bill.foreignCurrencyCode && bill.foreignTotalAmount != null && (
-                <> · {bill.foreignCurrencyCode} {bill.foreignTotalAmount.toFixed(2)}</>
+                <> · {bill.foreignCurrencyCode} {moneyFixed(bill.foreignTotalAmount, bill.foreignCurrencyCode)}</>
               )}
             </p>
 
@@ -485,7 +499,7 @@ export function BillDetailScreen() {
                   <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.foreignCurrency.amountPaid', { code: bill.foreignCurrencyCode })}</label>
                   <input type="number" min="0.01" step="0.01" value={fxForeignAmount}
                     onChange={e => setFxForeignAmount(e.target.value)}
-                    placeholder={bill.foreignTotalAmount?.toFixed(2)}
+                    placeholder={bill.foreignTotalAmount == null ? undefined : moneyFixed(bill.foreignTotalAmount, bill.foreignCurrencyCode)}
                     className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                   />
                 </div>
@@ -504,7 +518,7 @@ export function BillDetailScreen() {
                 <label className="block text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-2">{t('bills.amountLabel', { symbol: currSym })}</label>
                 <input type="number" min="0.01" step="0.01" value={paymentAmount}
                   onChange={e => setPaymentAmount(e.target.value)}
-                  placeholder={bill.balanceAmount.toFixed(2)}
+                  placeholder={moneyFixed(bill.balanceAmount)}
                   className="w-full h-10 px-3 rounded-xl border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand"
                 />
               </div>
@@ -578,6 +592,12 @@ export function BillDetailScreen() {
       )}
 
       {/* Void dialog */}
+      <BillFormModal
+        open={editOpen}
+        onClose={() => setEditOpen(false)}
+        editBill={bill as unknown as EditableBill}
+        onSaved={() => { setEditOpen(false); void loadBill() }}
+      />
       <Modal
         open={voidOpen}
         onClose={() => { setVoidOpen(false); setVoidReason('') }}

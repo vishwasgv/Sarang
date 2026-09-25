@@ -1,4 +1,13 @@
 import React, { useEffect, useState } from 'react'
+import { useMoneyContext } from '@shared/utils/money-context'
+import { computeDocumentTotals, convertPriceMode } from '@money'
+import { PricesIncludeTaxToggle } from '@shared/ui/molecules/PricesIncludeTaxToggle'
+import { GstTypeSelector } from '@shared/ui/molecules/GstTypeSelector'
+import { OffSlabRateWarning } from '@shared/ui/molecules/OffSlabRateWarning'
+import { useGstTypeChoice } from '@shared/utils/gst-type-choice'
+import { resolvePartyState } from '../../../../../shared/utils/gst-presentation'
+import { splitTaxLines } from '@shared/utils/tax.util'
+import { useBusinessStore } from '@app/store/business.store'
 import { useForm, useFieldArray, Controller } from 'react-hook-form'
 import { zodResolver } from '@hookform/resolvers/zod'
 import { z } from 'zod'
@@ -32,12 +41,13 @@ const schema = z.object({
   customerId: z.string().min(1, 'Select a customer'),
   expectedDate: z.string().optional(),
   notes: z.string().max(500).optional(),
+  pricesIncludeTax: z.boolean(),
   items: z.array(itemSchema).min(1, 'Add at least one item')
 })
 
 type FormValues = z.infer<typeof schema>
 
-interface Customer { id: string; customerName: string; customerCode: string }
+interface Customer { id: string; customerName: string; customerCode: string; state?: string | null; taxNumber?: string | null }
 interface ExpenseCategory { id: string; categoryName: string }
 
 interface SalesOrderFormModalProps {
@@ -57,13 +67,18 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
 
   const emptyItem = { lineType: 'PRODUCT' as const, productId: '', serviceDescription: '', serviceCategoryId: '', quantity: 1, unitPrice: 0, taxRate: 0 }
 
+  const moneyCtx = useMoneyContext()
   const { control, register, handleSubmit, watch, reset, setValue, formState: { errors, isSubmitting } } = useForm<FormValues>({
     resolver: zodResolver(schema),
-    defaultValues: { customerId: defaultCustomerId ?? '', expectedDate: '', notes: '', items: [emptyItem] }
+    defaultValues: { customerId: defaultCustomerId ?? '', expectedDate: '', notes: '', pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, items: [emptyItem] }
   })
 
   const { fields, append, remove } = useFieldArray({ control, name: 'items' })
   const watchedItems = watch('items')
+  const pricesIncludeTax = watch('pricesIncludeTax')
+  const customerId = watch('customerId')
+  const taxModel = useBusinessStore(s => s.profile?.taxModel ?? 'NONE')
+  const gstChoice = useGstTypeChoice(resolvePartyState(customers.find(c => c.id === customerId)?.state, customers.find(c => c.id === customerId)?.taxNumber))
 
   async function loadCustomers() {
     const cRes = await window.api.customers.list({ limit: 200 })
@@ -77,7 +92,8 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
 
   useEffect(() => {
     if (!open) return
-    reset({ customerId: defaultCustomerId ?? '', expectedDate: '', notes: '', items: [emptyItem] })
+    gstChoice.reset()
+    reset({ customerId: defaultCustomerId ?? '', expectedDate: '', notes: '', pricesIncludeTax: moneyCtx.pricesIncludeTaxDefault, items: [emptyItem] })
     async function loadOptions() {
       setLoadingData(true)
       try {
@@ -106,17 +122,26 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
     const previousProductId = watchedItems[index]?.productId
     onChange(product.id)
     if (product.id !== previousProductId) {
-      setValue(`items.${index}.unitPrice`, product.sellingPrice ?? 0)
+      // Catalogue selling prices are kept in the business's default mode.
+      const price = product.sellingPrice ?? 0
+      setValue(`items.${index}.unitPrice`, pricesIncludeTax === moneyCtx.pricesIncludeTaxDefault ? price : convertPriceMode(price, product.taxRate ?? 0, pricesIncludeTax, moneyCtx.decimals))
+      setValue(`items.${index}.taxRate`, product.taxRate ?? 0)
     }
   }
 
-  function lineTotal(item: FormValues['items'][number]) {
-    const base = (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0)
-    return base + base * ((Number(item.taxRate) || 0) / 100)
+  // Same shared module sales-order.service.ts runs on save (src/shared/utils/money.ts).
+  // Flipping the switch re-expresses every entered price in the other mode, so the customer's price does not change.
+  function changePriceMode(next: boolean) {
+    watchedItems.forEach((it, idx) => setValue(`items.${idx}.unitPrice`, convertPriceMode(Number(it.unitPrice) || 0, Number(it.taxRate) || 0, next, moneyCtx.decimals)))
+    setValue('pricesIncludeTax', next)
   }
-
-  const subtotal = watchedItems.reduce((sum, item) => sum + (Number(item.quantity) || 0) * (Number(item.unitPrice) || 0), 0)
-  const totalAmount = watchedItems.reduce((sum, item) => sum + lineTotal(item), 0)
+  const soTotals = computeDocumentTotals(
+    watchedItems.map(i => ({ quantity: Number(i.quantity) || 0, unitPrice: Number(i.unitPrice) || 0, taxRate: Number(i.taxRate) || 0 })),
+    { decimals: moneyCtx.decimals, pricesIncludeTax }
+  )
+  const subtotal = soTotals.subtotal
+  const taxAmount = soTotals.taxAmount
+  const totalAmount = soTotals.totalAmount
 
   async function onSubmit(values: FormValues) {
     try {
@@ -124,6 +149,8 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
         customerId: values.customerId,
         expectedDate: values.expectedDate || undefined,
         notes: values.notes || undefined,
+        pricesIncludeTax: values.pricesIncludeTax,
+        gstType: gstChoice.isGst ? gstChoice.gstType : undefined,
         items: values.items.map(item => ({
           productId: item.lineType === 'PRODUCT' ? item.productId : undefined,
           serviceDescription: item.lineType === 'SERVICE' ? item.serviceDescription : undefined,
@@ -187,6 +214,9 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
             </div>
             <Input label={t('salesOrders.expectedDate')} type="date" {...register('expectedDate')} />
           </div>
+
+          <PricesIncludeTaxToggle checked={pricesIncludeTax} onChange={changePriceMode} />
+          {gstChoice.isGst && <GstTypeSelector value={gstChoice.gstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto} />}
 
           {/* Line items */}
           <div>
@@ -252,7 +282,7 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
                       </div>
                       <input type="number" min="1" step="1" placeholder={t('bills.quantity')} {...register(`items.${index}.quantity`)}
                         className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
-                      <input type="number" min="0" step="0.01" placeholder={t('salesOrders.unitPrice')} {...register(`items.${index}.unitPrice`)}
+                      <input type="number" min="0" step="0.01" placeholder={`${t('salesOrders.unitPrice')} ${pricesIncludeTax ? t('billing.priceInclTax') : t('billing.priceExclTax')}`} {...register(`items.${index}.unitPrice`)}
                         className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
                       <input type="number" min="0" max="100" step="0.5" placeholder={t('bills.taxPercent')} {...register(`items.${index}.taxRate`)}
                         className="w-full h-8 px-2 rounded border border-slate-200 dark:border-slate-700 text-sm bg-white dark:bg-slate-900 focus:outline-none focus:ring-2 focus:ring-brand" />
@@ -264,14 +294,21 @@ export function SalesOrderFormModal({ open, onClose, onSaved, defaultCustomerId 
             </div>
           </div>
 
+          <OffSlabRateWarning rates={watchedItems.map(i => Number(i.taxRate) || 0)} />
           <div className="bg-slate-50 dark:bg-slate-800 rounded-lg p-4 space-y-1.5 text-sm">
             <div className="flex justify-between text-slate-600 dark:text-slate-300">
               <span>{t('billing.subtotal')}</span>
-              <span>{subtotal.toFixed(2)}</span>
+              <span>{subtotal.toFixed(moneyCtx.decimals)}</span>
             </div>
+            {splitTaxLines(taxModel, taxAmount, gstChoice.gstType, moneyCtx.decimals, soTotals.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))).map(line => (
+              <div key={line.label} className="flex justify-between text-slate-600 dark:text-slate-300">
+                <span>{line.label}</span>
+                <span>{line.amount.toFixed(moneyCtx.decimals)}</span>
+              </div>
+            ))}
             <div className="flex justify-between font-semibold text-dark dark:text-slate-100 border-t border-slate-200 dark:border-slate-700 pt-1.5 mt-1.5">
               <span>{t('common.total')}</span>
-              <span>{totalAmount.toFixed(2)}</span>
+              <span>{totalAmount.toFixed(moneyCtx.decimals)}</span>
             </div>
           </div>
 

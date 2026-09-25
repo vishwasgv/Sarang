@@ -6,6 +6,7 @@ export async function createNotification(params: {
   title: string
   message: string
   notificationType: 'INFO' | 'WARNING' | 'ERROR' | 'SUCCESS'
+  actionPath?: string
 }): Promise<void> {
   try {
     const db = getPrisma()
@@ -13,7 +14,8 @@ export async function createNotification(params: {
       data: {
         title: params.title,
         message: params.message,
-        notificationType: params.notificationType
+        notificationType: params.notificationType,
+        actionPath: params.actionPath ?? null
       }
     })
     // R15: Push real-time event to renderer so notification badge updates immediately

@@ -18,7 +18,7 @@ import {
   Barcode, Droplet, Droplets, Syringe, Award, CalendarClock, Boxes, Gem, Repeat, HardHat, Tent,
   Hotel, BedDouble, Sparkles, HelpCircle, Tag, Sprout, Receipt,
   BookText, Wallet, Lock, ShieldCheck, ShieldAlert, Gift, MapPin, Building2, PiggyBank, Cake, Bus,
-  MessageSquareText,
+  MessageSquareText, ChevronDown,
   type LucideIcon
 } from 'lucide-react'
 import { useUiStore } from '@app/store/ui.store'
@@ -48,7 +48,7 @@ export const NAV_ITEMS: NavItem[] = [
   // business type), English-only (no i18nKey — same convention as other
   // languageLock:'en'-adjacent additions), fixed placement per
   // AI_ASSISTANT_MASTER_PROMPT.md Section 5.1.
-  { label: 'Ask Sarang', path: '/ai-assistant', icon: Sparkles, permissionKey: 'ai.query', requiredModule: 'ai_assistant' },
+  { label: 'Ask Sarang', path: '/ai-assistant', icon: Sparkles, permissionKey: 'ai.query' },
   { label: 'Billing', i18nKey: 'nav.billing', path: '/billing', icon: ShoppingCart, permissionKey: 'billing.view' },
   { label: 'Quotations', i18nKey: 'nav.quotations', path: '/billing/quotations', icon: FileText, permissionKey: 'billing.view' },
   { label: 'Credit Notes', i18nKey: 'nav.creditNotes', path: '/billing/credit-notes', icon: MinusCircle, permissionKey: 'billing.view' },
@@ -58,13 +58,13 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'KOT', path: '/restaurant/kot', icon: Ticket, permissionKey: 'restaurant.viewKOT', requiredModule: 'kot' },
   { label: 'Recipes', path: '/restaurant/recipes', icon: BookOpen, permissionKey: 'restaurant.manageRecipes', requiredModule: 'recipes' },
   // Retail-only items
-  { label: 'Returns', i18nKey: 'nav.returns', path: '/returns', icon: RotateCcw, permissionKey: 'billing.createInvoice', requiredModule: 'returns' },
+  { label: 'Sales Returns', i18nKey: 'nav.returns', path: '/returns', icon: RotateCcw, permissionKey: 'billing.createInvoice', requiredModule: 'returns' },
   // 2026-09 — universal visit check-in/check-out (any business type opts in
   // from Settings → Business Features), same "toggle-able for anyone" shape
   // as Returns above — properly localized (unlike GYM_STUDIO's own English-
   // locked nav items) since a RETAIL/GENERAL business enabling this stays
   // fully multi-language.
-  { label: 'Check-In', i18nKey: 'nav.checkIn', path: '/attendance/checkin', icon: UserCheck, permissionKey: 'billing.view', requiredModule: 'customer_checkin' },
+  { label: 'Customer Check-In', i18nKey: 'nav.checkIn', path: '/attendance/checkin', icon: UserCheck, permissionKey: 'billing.view', requiredModule: 'customer_checkin' },
   // Distributor-only items
   { label: 'Bulk Orders', path: '/distributor/bulk-order', icon: PackagePlus, permissionKey: 'billing.createInvoice', requiredModule: 'bulk_orders' },
   { label: 'Outstanding', path: '/distributor/outstanding', icon: Activity, permissionKey: 'customers.view', requiredModule: 'outstanding_analytics' },
@@ -88,7 +88,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Production', path: '/manufacturing/production', icon: Factory, permissionKey: 'inventory.view', requiredModule: 'production_orders' },
   { label: 'Finished Goods', path: '/manufacturing/finished-goods', icon: PackageCheck, permissionKey: 'inventory.view', requiredModule: 'finished_goods' },
   { label: 'Dispatch', path: '/manufacturing/dispatch', icon: Send, permissionKey: 'inventory.view', requiredModule: 'dispatch_tracking' },
-  { label: 'Vendors', path: '/manufacturing/vendors', icon: Store, permissionKey: 'suppliers.view', requiredModule: 'vendor_management' },
+  { label: 'Raw Material Suppliers', path: '/manufacturing/vendors', icon: Store, permissionKey: 'suppliers.view', requiredModule: 'vendor_management' },
   { label: 'Production Analytics', path: '/manufacturing/analytics', icon: BarChart2, permissionKey: 'reports.sales', requiredModule: 'production_analytics' },
   // Phase 37 — Logistics & Supply Chain
   { label: 'Fleet', i18nKey: 'nav.fleet', path: '/logistics/fleet', icon: Truck, permissionKey: 'logistics.view', requiredModule: 'logistics_fleet' },
@@ -187,7 +187,7 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 26 — Physio
   { label: 'Session Packs', path: '/physio/session-packs', icon: Package, permissionKey: 'billing.view', requiredModule: 'session_packs' },
   // Phase 27 — Salon, Gym, Driving School
-  { label: 'Commission', path: '/commission', icon: DollarSign, permissionKey: 'hr.view', requiredModule: 'staff_commission' },
+  { label: 'Staff Commission', path: '/commission', icon: DollarSign, permissionKey: 'hr.view', requiredModule: 'staff_commission' },
   { label: 'Memberships', path: '/gym/memberships', icon: Dumbbell, permissionKey: 'billing.view', requiredModule: 'memberships' },
   { label: 'Group Classes', path: '/gym/classes', icon: Layers, permissionKey: 'billing.view', requiredModule: 'batch_classes' },
   { label: 'Workout Log', path: '/gym/workouts', icon: Activity, permissionKey: 'billing.view', requiredModule: 'workout_tracking' },
@@ -210,7 +210,7 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 31 — Coaching Institute
   { label: 'Students', path: '/coaching/students', icon: GraduationCap, permissionKey: 'billing.view', requiredModule: 'student_profiles' },
   { label: 'Batches', path: '/coaching/batches', icon: BookOpen, permissionKey: 'billing.view', requiredModule: 'coaching_batches' },
-  { label: 'Attendance', path: '/coaching/attendance', icon: CalendarCheck, permissionKey: 'billing.view', requiredModule: 'coaching_attendance' },
+  { label: 'Student Attendance', path: '/coaching/attendance', icon: CalendarCheck, permissionKey: 'billing.view', requiredModule: 'coaching_attendance' },
   { label: 'Fee Collection', path: '/coaching/fees', icon: Banknote, permissionKey: 'billing.view', requiredModule: 'coaching_fees' },
   { label: 'Performances', path: '/coaching/performances', icon: Music, permissionKey: 'billing.view', requiredModule: 'coaching_performances' },
   { label: 'Test Scores', path: '/coaching/test-scores', icon: Award, permissionKey: 'billing.view', requiredModule: 'coaching_performances' },
@@ -225,14 +225,14 @@ export const NAV_ITEMS: NavItem[] = [
   // Phase 34 — Placement Agency
   { label: 'Placement', path: '/placement/candidates', icon: UsersRound, permissionKey: 'billing.view', requiredModule: 'placement_agency' },
   { label: 'Employees', i18nKey: 'nav.employees', path: '/hr/employees', icon: UserCog, permissionKey: 'hr.view' },
-  { label: 'Attendance', i18nKey: 'nav.attendance', path: '/hr/attendance', icon: CalendarCheck, permissionKey: 'hr.attendance' },
+  { label: 'Staff Attendance', i18nKey: 'nav.attendance', path: '/hr/attendance', icon: CalendarCheck, permissionKey: 'hr.attendance' },
   { label: 'Leave', i18nKey: 'nav.leave', path: '/hr/leave', icon: CalendarOff, permissionKey: 'hr.view' },
   { label: 'Payroll', i18nKey: 'nav.payroll', path: '/hr/payroll', icon: Banknote, permissionKey: 'hr.view' },
   { label: 'Products', i18nKey: 'nav.products', path: '/products', icon: Package, permissionKey: 'products.view' },
   { label: 'Inventory', i18nKey: 'nav.inventory', path: '/inventory', icon: Warehouse, permissionKey: 'inventory.view' },
   // Phase 64 — multi-location stock. Always in the nav (not module-gated) —
   // a single-location install just sees one row and never needs to act on it.
-  { label: 'Locations', i18nKey: 'nav.locations', path: '/locations', icon: MapPin, permissionKey: 'locations.view' },
+  { label: 'Stock Locations', i18nKey: 'nav.locations', path: '/locations', icon: MapPin, permissionKey: 'locations.view' },
   // Phase 65 — Reporting Tags / Cost & Profit Centres + Budgets. Always in
   // the nav (not module-gated), same reasoning as Locations above — invisible
   // in practice until an owner creates at least one cost centre/budget.
@@ -249,12 +249,12 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Price Markdowns', i18nKey: 'nav.priceMarkdowns', path: '/pricing/markdowns', icon: Clock, permissionKey: 'priceMarkdowns.view', requiredModule: 'price_markdowns' },
   { label: 'Loyalty Program', i18nKey: 'nav.loyaltyProgram', path: '/pricing/loyalty', icon: Award, permissionKey: 'loyaltyProgram.view', requiredModule: 'loyalty_program' },
   // Phase 67 §9.1 — General: Custom Document Builder.
-  { label: 'Custom Documents', i18nKey: 'nav.customDocuments', path: '/custom-documents', icon: FileStack, permissionKey: 'customDocuments.view', requiredModule: 'custom_documents' },
+  { label: 'Document Builder', i18nKey: 'nav.customDocuments', path: '/custom-documents', icon: FileStack, permissionKey: 'customDocuments.view', requiredModule: 'custom_documents' },
   { label: 'Recurring Profiles', i18nKey: 'nav.recurringProfiles', path: '/recurring-profiles', icon: Repeat, permissionKey: 'recurringProfiles.view' },
   { label: 'Approval Workflows', i18nKey: 'nav.approvalWorkflows', path: '/approval-workflows', icon: ShieldCheck, permissionKey: 'approvalWorkflows.view' },
   // Phase 61 — Bills (AP: what we owe a supplier) + Payments Made.
-  { label: 'Bills', i18nKey: 'bills.title', path: '/bills', icon: Receipt, permissionKey: 'bills.view' },
-  { label: 'Payments Made', i18nKey: 'supplierPayments.title', path: '/supplier-payments', icon: Banknote, permissionKey: 'supplierPayments.view' },
+  { label: 'Supplier Bills', i18nKey: 'bills.title', path: '/bills', icon: Receipt, permissionKey: 'bills.view' },
+  { label: 'Supplier Payments', i18nKey: 'supplierPayments.title', path: '/supplier-payments', icon: Banknote, permissionKey: 'supplierPayments.view' },
   // Phase 62 — Banking, Ledger & Compliance Backbone. English-label-only
   // for now (no i18nKey), same deliberate scope-fork convention this file
   // already uses elsewhere (e.g. Phase 38's "Print Labels") — full 13-
@@ -273,7 +273,7 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'Expenses', i18nKey: 'nav.expenses', path: '/expenses', icon: DollarSign, permissionKey: 'expenses.view' },
   { label: 'Reports', i18nKey: 'nav.reports', path: '/reports', icon: BarChart3, permissionKey: 'reports.sales' },
   { label: 'Documents', i18nKey: 'nav.documents', path: '/documents', icon: Paperclip, permissionKey: 'documents.view' },
-  { label: 'Import', i18nKey: 'nav.import', path: '/import', icon: Upload, permissionKey: 'import.execute' },
+  { label: 'Import Data', i18nKey: 'nav.import', path: '/import', icon: Upload, permissionKey: 'import.execute' },
   { label: 'Backup', i18nKey: 'nav.backup', path: '/backup', icon: HardDrive, permissionKey: 'backup.view' },
   { label: 'Audit Log', i18nKey: 'nav.auditLog', path: '/audit', icon: ScrollText, permissionKey: 'audit.view' },
   { label: 'Settings', i18nKey: 'nav.settings', path: '/settings', icon: Settings, permissionKey: 'settings.view' },
@@ -283,11 +283,102 @@ export const NAV_ITEMS: NavItem[] = [
   { label: 'About', i18nKey: 'nav.about', path: '/about', icon: Info }
 ]
 
+
+// ── Module groups ────────────────────────────────────────────────────────
+// Every screen belongs to one umbrella so an owner finds all purchasing
+// screens under Purchases, all selling screens under Sales, and so on.
+// NAV_ITEMS itself stays a flat list (the tour generator reads it); the
+// grouping is applied here at render time from each item's path.
+type NavGroupId =
+  | 'home' | 'sales' | 'purchases' | 'inventory' | 'accounting' | 'people'
+  | 'messages' | 'logistics' | 'manufacturing' | 'tools' | 'data' | 'settings'
+
+interface NavGroupDef { id: NavGroupId; label: string; icon: LucideIcon; defaultOpen: boolean }
+
+const NAV_GROUPS: NavGroupDef[] = [
+  { id: 'home', label: 'Home', icon: LayoutDashboard, defaultOpen: true },
+  { id: 'sales', label: 'Sales', icon: ShoppingCart, defaultOpen: true },
+  { id: 'purchases', label: 'Purchases', icon: PackagePlus, defaultOpen: true },
+  { id: 'inventory', label: 'Inventory', icon: Warehouse, defaultOpen: true },
+  { id: 'tools', label: 'Business Tools', icon: Briefcase, defaultOpen: true },
+  { id: 'accounting', label: 'Accounting', icon: Landmark, defaultOpen: false },
+  { id: 'people', label: 'People & Payroll', icon: UsersRound, defaultOpen: false },
+  { id: 'messages', label: 'Reminders & Messages', icon: MessageSquareText, defaultOpen: false },
+  { id: 'logistics', label: 'Logistics', icon: Truck, defaultOpen: false },
+  { id: 'manufacturing', label: 'Manufacturing', icon: Factory, defaultOpen: false },
+  { id: 'data', label: 'Reports & Data', icon: BarChart3, defaultOpen: false },
+  { id: 'settings', label: 'Settings & Help', icon: Settings, defaultOpen: false }
+]
+
+const PATH_GROUP: Record<string, NavGroupId> = {
+  '/': 'home', '/ai-assistant': 'home',
+  '/billing': 'sales', '/billing/quotations': 'sales', '/sales-orders': 'sales', '/returns': 'sales',
+  '/billing/credit-notes': 'sales', '/customers': 'sales', '/pricing/price-lists': 'sales',
+  '/pricing/schemes': 'sales', '/pricing/markdowns': 'sales', '/pricing/loyalty': 'sales',
+  '/suppliers': 'purchases', '/purchase-orders': 'purchases', '/logistics/grn': 'purchases',
+  '/bills': 'purchases', '/supplier-payments': 'purchases', '/billing/debit-notes': 'purchases',
+  '/products': 'inventory', '/inventory': 'inventory', '/locations': 'inventory',
+  '/products/print-labels': 'inventory', '/pharmacy/batches': 'inventory', '/electronics/serials': 'inventory',
+  '/expenses': 'accounting', '/cash-close': 'accounting', '/accounting/chart-of-accounts': 'accounting',
+  '/accounting/journal-entries': 'accounting', '/accounting/bank-accounts': 'accounting',
+  '/accounting/post-dated-cheques': 'accounting', '/accounting/bank-deposits': 'accounting',
+  '/accounting/fixed-assets': 'accounting', '/accounting/ledger-settings': 'accounting',
+  '/cost-centres': 'accounting', '/budgets': 'accounting', '/recurring-profiles': 'accounting',
+  '/approval-workflows': 'accounting',
+  '/hr/employees': 'people', '/hr/attendance': 'people', '/hr/leave': 'people', '/hr/payroll': 'people',
+  '/commission': 'people',
+  '/service-notifications': 'messages', '/message-templates': 'messages',
+  '/reports': 'data', '/documents': 'data', '/import': 'data', '/backup': 'data', '/audit': 'data',
+  '/settings': 'settings', '/manual': 'settings', '/about': 'settings'
+}
+
+function groupOf(item: NavItem): NavGroupId {
+  const mapped = PATH_GROUP[item.path]
+  if (mapped) return mapped
+  if (item.path.startsWith('/logistics/')) return 'logistics'
+  if (item.path.startsWith('/manufacturing/')) return 'manufacturing'
+  return 'tools'
+}
+
+const GROUPS_STORAGE_KEY = 'sarang_sidebar_groups'
+
+function loadOpenGroups(): Record<string, boolean> {
+  try {
+    const raw = localStorage.getItem(GROUPS_STORAGE_KEY)
+    return raw ? (JSON.parse(raw) as Record<string, boolean>) : {}
+  } catch {
+    return {}
+  }
+}
+
 export function Sidebar() {
   const { sidebarCollapsed, toggleSidebar } = useUiStore()
   const profile = useBusinessStore((s) => s.profile)
   const { isModuleEnabled } = useIndustryStore()
   const { hasPermission } = useAuthStore()
+  const location = useLocation()
+  const [openGroups, setOpenGroups] = React.useState<Record<string, boolean>>(loadOpenGroups)
+
+  const visibleItems = NAV_ITEMS.filter((item) => {
+    if (item.requiredModule && !isModuleEnabled(item.requiredModule as Parameters<typeof isModuleEnabled>[0])) return false
+    if (item.permissionKey && !hasPermission(item.permissionKey)) return false
+    return true
+  })
+
+  // The single highlighted item is the visible one with the longest path that
+  // prefixes the current URL, so Billing no longer lights up alongside
+  // Quotations when the owner is on /billing/quotations.
+  const activePath = visibleItems
+    .filter((i) => (i.path === '/' ? location.pathname === '/' : location.pathname === i.path || location.pathname.startsWith(i.path + '/')))
+    .sort((x, y) => y.path.length - x.path.length)[0]?.path
+
+  function toggleGroup(id: string, currentlyOpen: boolean) {
+    setOpenGroups((prev) => {
+      const next = { ...prev, [id]: !currentlyOpen }
+      try { localStorage.setItem(GROUPS_STORAGE_KEY, JSON.stringify(next)) } catch { /* storage unavailable */ }
+      return next
+    })
+  }
 
   return (
     <motion.aside
@@ -316,17 +407,39 @@ export function Sidebar() {
         </AnimatePresence>
       </div>
 
-      {/* Navigation */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {NAV_ITEMS
-          .filter(item => {
-            if (item.requiredModule && !isModuleEnabled(item.requiredModule as Parameters<typeof isModuleEnabled>[0])) return false
-            if (item.permissionKey && !hasPermission(item.permissionKey)) return false
-            return true
-          })
-          .map((item) => (
-            <SidebarLink key={item.path} item={item} collapsed={sidebarCollapsed} />
-          ))}
+      {/* Navigation - grouped by module */}
+      <nav className="flex-1 overflow-y-auto py-3 px-2">
+        {NAV_GROUPS.map((group) => {
+          const items = visibleItems.filter((item) => groupOf(item) === group.id)
+          if (items.length === 0) return null
+          const isHome = group.id === 'home'
+          const containsActive = items.some((i) => i.path === activePath)
+          const stored = openGroups[group.id]
+          const open = isHome || containsActive || (stored ?? group.defaultOpen)
+          return (
+            <div key={group.id} className={cn(!isHome && 'mt-2', sidebarCollapsed && !isHome && 'pt-2 border-t border-slate-800')}>
+              {!sidebarCollapsed && !isHome && (
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(group.id, open)}
+                  className="w-full flex items-center gap-2 px-3 py-2 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-300 transition-colors"
+                  aria-expanded={open}
+                >
+                  <group.icon size={14} className="shrink-0" />
+                  <span className="flex-1 text-start truncate">{group.label}</span>
+                  <ChevronDown size={14} className={cn('shrink-0 transition-transform', !open && '-rotate-90')} />
+                </button>
+              )}
+              {(open || sidebarCollapsed) && (
+                <div className="space-y-0.5">
+                  {items.map((item) => (
+                    <SidebarLink key={item.path} item={item} collapsed={sidebarCollapsed} active={item.path === activePath} />
+                  ))}
+                </div>
+              )}
+            </div>
+          )
+        })}
       </nav>
 
       {/* Aszurex branding */}
@@ -359,11 +472,10 @@ export function Sidebar() {
   )
 }
 
-function SidebarLink({ item, collapsed }: { item: NavItem; collapsed: boolean }) {
-  const location = useLocation()
+function SidebarLink({ item, collapsed, active }: { item: NavItem; collapsed: boolean; active: boolean }) {
   const { t } = useTranslation()
   const { isDoctorVertical, plural: patientNounPlural } = usePatientNoun()
-  const isActive = item.path === '/' ? location.pathname === '/' : location.pathname.startsWith(item.path)
+  const isActive = active
   // Customer → Patient, clinic verticals only (see usePatientNoun.ts).
   const displayLabel = item.path === '/customers' && isDoctorVertical
     ? patientNounPlural

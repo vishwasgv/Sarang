@@ -672,7 +672,6 @@ export async function generateDrivingSessionInvoice(sessionId: string) {
       const result = await billingService.createInvoice({
         customerId: session.learnerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{ productId: product.id, quantity: 1, unitPrice: Number(session.sessionFee) }],
         notes: `Driving lesson — session #${session.sessionNumber}`,
         referenceNumber: sessionId.slice(0, 12),
@@ -865,7 +864,6 @@ export async function generateDrivingPackageInvoice(enrollmentId: string) {
       const result = await billingService.createInvoice({
         customerId: enrollment.learnerId,
         paymentMethod: 'CREDIT',
-        gstType: 'CGST_SGST',
         items: [{ productId: product.id, quantity: 1, unitPrice: Number(enrollment.package.price) }],
         notes: `Driving package: ${enrollment.package.packageName} (${enrollment.package.totalSessions} sessions)`,
         referenceNumber: enrollmentId.slice(0, 12),

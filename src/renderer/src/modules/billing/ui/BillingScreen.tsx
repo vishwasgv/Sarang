@@ -9,11 +9,18 @@ import { useNotificationStore } from '@app/store/notification.store'
 import { useIndustryStore } from '@app/store/industry.store'
 import { useAuthStore } from '@app/store/auth.store'
 import { cn } from '@shared/utils/cn'
-import { formatCurrency } from '@shared/utils/currency.util'
+import { formatCurrency, moneyFixed, roundToCurrency } from '@shared/utils/currency.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { splitTaxLines } from '@shared/utils/tax.util'
+import { useMoneyContext, type MoneyContext } from '@shared/utils/money-context'
+import { convertPriceMode, roundMoney } from '@money'
+import { computeCartTotals } from '@shared/utils/cart-totals.util'
 import { CustomFieldsEditor } from '@shared/ui/molecules/CustomFieldsEditor'
 import { DietMark } from '@shared/ui/atoms/DietMark'
+import { GstTypeSelector } from '@shared/ui/molecules/GstTypeSelector'
+import { useGstTypeChoice } from '@shared/utils/gst-type-choice'
+import { resolvePartyState } from '../../../../../shared/utils/gst-presentation'
+import { isGstType, type GstType } from '@gst'
 
 interface Product {
   id: string; productName: string; sku?: string | null; barcode?: string | null
@@ -29,7 +36,7 @@ interface Product {
   category?: { id: string; name: string } | null
   foodType?: string | null
 }
-interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; priceListId?: string | null }
+interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; priceListId?: string | null; taxExempt?: boolean | null; state?: string | null; taxNumber?: string | null }
 interface HeldSaleSummary {
   id: string; label: string | null; customerId: string | null; customerName: string | null
   itemCount: number; totalAmount: number; createdAt: string
@@ -125,18 +132,8 @@ const ORDER_CHANNELS = [
   { value: 'OTHER', label: 'Other App' }
 ] as const
 
-function computeTotals(items: CartItem[], globalDiscount: number) {
-  const subtotal = items.reduce((s, i) => s + i.quantity * i.unitPrice, 0)
-  const totalLineDiscount = items.reduce((s, i) => s + i.discountAmount, 0)
-  const discountAmount = totalLineDiscount + globalDiscount
-  const taxAmount = items.reduce((s, i) => {
-    const taxable = (i.quantity * i.unitPrice) - i.discountAmount
-    return s + taxable * (i.taxRate / 100)
-  }, 0)
-  const rawTotal = subtotal - discountAmount + taxAmount
-  const roundingAmount = Math.round(rawTotal) - rawTotal
-  const totalAmount = rawTotal + roundingAmount
-  return { subtotal, discountAmount, taxAmount, roundingAmount, totalAmount }
+function computeTotals(items: CartItem[], globalDiscount: number, ctx: MoneyContext, customerTaxExempt = false, pricesIncludeTax = false) {
+  return computeCartTotals(items, globalDiscount, ctx, customerTaxExempt, pricesIncludeTax)
 }
 
 export function BillingScreen() {
@@ -223,6 +220,8 @@ export function BillingScreen() {
   const [addingService, setAddingService] = useState(false)
   const [customer, setCustomer] = useState<Customer | null>(null)
   const [globalDiscount, setGlobalDiscount] = useState(0)
+  // null = follow the business default (Settings → Currency & Locale); locked while the cart has lines.
+  const [inclTaxChoice, setInclTaxChoice] = useState<boolean | null>(null)
   // Phase 58 §2 — Jewellery old-metal exchange, applied atomically via
   // billing.service.ts's createInvoice (metalExchangeId), replacing the old
   // "type the same number into globalDiscount, then separately link"
@@ -330,12 +329,10 @@ export function BillingScreen() {
   const [splitCash, setSplitCash] = useState('')
   const [splitUpi, setSplitUpi] = useState('')
 
-  // GST inter-state sale — captured but previously never surfaced in the UI,
-  // so every invoice silently defaulted to CGST_SGST regardless of reality,
-  // and an actual inter-state sale would print legally-incorrect CGST/SGST
-  // lines instead of a single IGST line.
-  const [isInterState, setIsInterState] = useState(false)
+  // How GST is shown on this invoice: CGST + SGST, IGST or one GST line. Follows the buyer's state
+  // (typed here, else the customer's saved state) until the cashier picks one. Never changes an amount.
   const [buyerState, setBuyerState] = useState('')
+  const gstChoice = useGstTypeChoice(resolvePartyState(buyerState.trim() || customer?.state, customer?.taxNumber))
 
   // Variant picker state (clothing/footwear)
   const [variantPickProduct, setVariantPickProduct] = useState<Product | null>(null)
@@ -402,7 +399,10 @@ export function BillingScreen() {
   // + the exchange's valueGiven), so what the cashier sees before submit is
   // what actually gets charged.
   const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0) + (selectedTradeIn?.tradeInValue ?? 0)
-  const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount), [cart, effectiveGlobalDiscount])
+  const moneyCtx = useMoneyContext()
+  const pricesIncludeTax = inclTaxChoice ?? moneyCtx.pricesIncludeTaxDefault
+  const customerTaxExempt = customer?.taxExempt === true
+  const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax), [cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax])
 
   // Debounced — cart edits (quantity +/-) fire in quick succession while
   // UPI stays selected; without this every keystroke-equivalent click would
@@ -463,7 +463,7 @@ export function BillingScreen() {
     setCart(prev => prev.map(i => {
       if (i.productId !== s.productId || i.isFreeOfCost) return i
       const lineGross = i.quantity * i.unitPrice
-      return { ...i, discountAmount: Math.round(lineGross * (s.discountPercent / 100) * 100) / 100, schemeId: s.schemeId }
+      return { ...i, discountAmount: roundToCurrency(lineGross * (s.discountPercent / 100)), schemeId: s.schemeId }
     }))
     setDismissedSchemeIds(prev => new Set(prev).add(s.schemeId))
   }
@@ -573,7 +573,7 @@ export function BillingScreen() {
     if (cart.length === 0) { toastError(t('common.error'), t('billing.emptyCartCannotHold')); return }
     setHolding(true)
     try {
-      const snapshot = { cart, customer, globalDiscount, paymentMethod, notes, referenceNumber, ewayBillNumber, isInterState, buyerState }
+      const snapshot = { cart, customer, globalDiscount, pricesIncludeTax, paymentMethod, notes, referenceNumber, ewayBillNumber, gstType: gstChoice.isAuto ? undefined : gstChoice.gstType, buyerState }
       const res = await window.api.heldSale.hold({
         cartJson: JSON.stringify(snapshot), itemCount: cart.length, totalAmount: totals.totalAmount,
         label: holdLabel.trim() || undefined, customerId: customer?.id,
@@ -581,7 +581,7 @@ export function BillingScreen() {
       if (res.success) {
         toastSuccess(t('billing.holdSaleSuccess'), '')
         setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber('')
-        setIsInterState(false); setBuyerState('')
+        gstChoice.reset(); setBuyerState('')
         setShowHoldModal(false); setHoldLabel('')
       } else {
         toastError(t('common.error'), t('billing.holdSaleFailedMessage'))
@@ -608,13 +608,18 @@ export function BillingScreen() {
       const res = await window.api.heldSale.resume({ id })
       if (res.success && res.data) {
         const snapshot = JSON.parse((res.data as { cartJson: string }).cartJson) as {
-          cart: CartItem[]; customer: Customer | null; globalDiscount: number; paymentMethod: PaymentMethod
-          notes: string; referenceNumber: string; ewayBillNumber?: string; isInterState: boolean; buyerState: string
+          cart: CartItem[]; customer: Customer | null; globalDiscount: number; pricesIncludeTax?: boolean; paymentMethod: PaymentMethod
+          notes: string; referenceNumber: string; ewayBillNumber?: string; gstType?: GstType; isInterState?: boolean; buyerState: string
         }
         setCart(snapshot.cart); setCustomer(snapshot.customer); setGlobalDiscount(snapshot.globalDiscount)
+        setInclTaxChoice(snapshot.pricesIncludeTax ?? false)
         setPaymentMethod(snapshot.paymentMethod); setNotes(snapshot.notes); setReferenceNumber(snapshot.referenceNumber)
         setEwayBillNumber(snapshot.ewayBillNumber ?? '')
-        setIsInterState(snapshot.isInterState); setBuyerState(snapshot.buyerState)
+        setBuyerState(snapshot.buyerState)
+        // Sales held before the three-way choice stored only an inter-state flag.
+        if (isGstType(snapshot.gstType)) gstChoice.setGstType(snapshot.gstType)
+        else if (snapshot.isInterState) gstChoice.setGstType('IGST')
+        else gstChoice.reset()
         setShowResumeModal(false)
       } else {
         toastError(t('common.error'), t('billing.resumeSaleFailedMessage'))
@@ -932,6 +937,12 @@ export function BillingScreen() {
     }
   }
 
+  // Catalogue selling prices are kept in the business's default mode; convert when this bill uses the other one.
+  function catalogueUnitPrice(price: number, taxRate: number): number {
+    if (pricesIncludeTax === moneyCtx.pricesIncludeTaxDefault) return price
+    return convertPriceMode(price, (customerTaxExempt || moneyCtx.compositionScheme) ? 0 : taxRate, pricesIncludeTax, moneyCtx.decimals)
+  }
+
   function addToCartDirect(product: Product, variant?: VariantRecord, serial?: SerialRecord, rxDetail?: { patientName: string; doctorName: string; date?: string }) {
     const variantId = variant?.id
     const variantInfo = variant ? [variant.size, variant.width, variant.color].filter(Boolean).join(' / ') || undefined : undefined
@@ -979,7 +990,7 @@ export function BillingScreen() {
         unit: isLoose ? product.weightUnit! : isLengthSold ? product.lengthUnit! : product.unit,
         productType: product.productType,
         quantity: 1,
-        unitPrice: isLoose ? product.pricePerWeightUnit! : isLengthSold ? product.pricePerLengthUnit! : isJewellery ? 0 : product.sellingPrice + (variant?.additionalPrice ?? 0),
+        unitPrice: isLoose ? product.pricePerWeightUnit! : isLengthSold ? product.pricePerLengthUnit! : isJewellery ? 0 : catalogueUnitPrice(product.sellingPrice + (variant?.additionalPrice ?? 0), product.taxRate ?? 0),
         discountAmount: 0,
         taxRate: product.taxRate ?? 0,
         availableQty: variant ? variant.stockQty : (product.inventory?.quantity ?? 0),
@@ -1085,12 +1096,12 @@ export function BillingScreen() {
       // 51922.619999999995 — the exact bug class metal-exchange.service.ts's
       // valueGiven was already fixed for (see its own comment), never
       // propagated back to this mirrored client-side formula.
-      const metalValue = Math.round(netWeight * rate.ratePerGram * 100) / 100
+      const metalValue = roundToCurrency(netWeight * rate.ratePerGram)
       let makingCharge = 0
       if (product.makingChargeType === 'FIXED') makingCharge = product.makingChargeValue ?? 0
-      else if (product.makingChargeType === 'PER_GRAM') makingCharge = Math.round((product.makingChargeValue ?? 0) * netWeight * 100) / 100
-      else if (product.makingChargeType === 'PERCENTAGE') makingCharge = Math.round(metalValue * ((product.makingChargeValue ?? 0) / 100) * 100) / 100
-      const unitPrice = Math.round((metalValue + makingCharge) * 100) / 100
+      else if (product.makingChargeType === 'PER_GRAM') makingCharge = roundToCurrency((product.makingChargeValue ?? 0) * netWeight)
+      else if (product.makingChargeType === 'PERCENTAGE') makingCharge = roundToCurrency(metalValue * ((product.makingChargeValue ?? 0) / 100))
+      const unitPrice = roundToCurrency((metalValue + makingCharge))
       setCart(prev => prev.map(i => (i.serialId ?? i.variantId ?? i.productId) === cartKey
         ? {
             ...i, unitPrice,
@@ -1132,7 +1143,7 @@ export function BillingScreen() {
       const makingCharge = Math.max(0, newMakingCharge)
       return {
         ...i,
-        unitPrice: Math.round((i.jewelleryDetail.metalValue + makingCharge) * 100) / 100,
+        unitPrice: roundToCurrency((i.jewelleryDetail.metalValue + makingCharge)),
         jewelleryDetail: { ...i.jewelleryDetail, makingCharge, makingChargeOverridden: true }
       }
     }))
@@ -1288,8 +1299,8 @@ export function BillingScreen() {
       const cash = parseFloat(splitCash) || 0
       const upi = parseFloat(splitUpi) || 0
       if (cash <= 0 && upi <= 0) { toastError(t('billing.splitPayment'), t('billing.splitPayment')); return }
-      const total = computeTotals(cart, effectiveGlobalDiscount).totalAmount
-      if (Math.abs(cash + upi - total) > 0.05) {
+      const total = computeTotals(cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax).totalAmount
+      if (roundMoney(cash + upi - total, moneyCtx.decimals) !== 0) {
         toastError(t('billing.splitPayment'), t('billing.splitPaymentMismatchMessage', { cash: formatCurrency(cash), upi: formatCurrency(upi), total: formatCurrency(total) }))
         return
       }
@@ -1350,12 +1361,13 @@ export function BillingScreen() {
           schemeId: i.schemeId
         })),
         globalDiscount,
+        pricesIncludeTax,
         notes: notes.trim() || undefined,
         referenceNumber: referenceNumber.trim() || undefined,
         ewayBillNumber: ewayBillNumber.trim() || undefined,
         costCentreId: costCentreId || undefined,
         customFields: customFieldValues,
-        gstType: taxModel === 'GST' && isInterState ? 'IGST' : 'CGST_SGST',
+        gstType: taxModel === 'GST' ? gstChoice.gstType : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
         metalExchangeId: selectedExchange?.id,
         furnitureTradeInId: selectedTradeIn?.id,
@@ -1423,7 +1435,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, isInterState, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
+  }, [cart, customer, moneyCtx, customerTaxExempt, pricesIncludeTax, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, splitCash, splitUpi, taxModel, gstChoice.gstType, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -1719,7 +1731,7 @@ export function BillingScreen() {
                 <span />
               </div>
 
-              {cart.map(item => {
+              {cart.map((item, cartIdx) => {
                 // Phase 63 — a scheme-sourced free line shares its productId
                 // with the paying line it came from (see evaluateCart's own
                 // comment: BUY_X_GET_Y_FREE always rewards the SAME
@@ -1746,9 +1758,8 @@ export function BillingScreen() {
                   )
                 }
                 const ck = item.serialId ?? item.variantId ?? item.productId
-                const taxable = (item.quantity * item.unitPrice) - item.discountAmount
-                const lineTax = taxable * (item.taxRate / 100)
-                const lineTotal = taxable + lineTax
+                // The line as it will be stored: after its own discount AND its share of the invoice-level discount.
+                const lineTotal = totals.lines[cartIdx]?.total ?? 0
                 return (
                   <div key={ck} className="bg-white rounded-xl border border-slate-100 px-3 py-3 grid grid-cols-[2fr_120px_100px_100px_36px] gap-2 items-center">
                     <div>
@@ -1796,7 +1807,7 @@ export function BillingScreen() {
                         </div>
                       )}
                       <div className="flex items-center gap-3 mt-1.5">
-                        <span className="text-xs text-slate-400">{formatCurrency(item.unitPrice)}/{item.unit}</span>
+                        <span className="text-xs text-slate-400">{formatCurrency(item.unitPrice)}/{item.unit} {pricesIncludeTax ? t('billing.priceInclTax') : t('billing.priceExclTax')}</span>
                         {item.taxRate > 0 && <span className="text-xs text-slate-400">Tax {item.taxRate}%</span>}
                         <div className="flex items-center gap-1">
                           <button
@@ -2070,23 +2081,16 @@ export function BillingScreen() {
             </div>
           )}
 
-          {/* GST type — only meaningful under the GST tax model; determines whether
-              tax prints as CGST+SGST (intra-state) or a single IGST line (inter-state) */}
+          {/* Tax shown as: CGST + SGST, IGST or one GST line. Only the presentation changes; the amounts are identical. */}
           {taxModel === 'GST' && (
             <div className="space-y-2">
-              <label className="flex items-center gap-2 text-sm text-slate-600 cursor-pointer">
-                <input type="checkbox" checked={isInterState} onChange={e => setIsInterState(e.target.checked)}
-                  className="w-4 h-4 rounded border-slate-300 text-brand focus:ring-brand" />
-                Inter-State Sale (IGST)
-              </label>
-              {isInterState && (
-                <input
-                  value={buyerState}
-                  onChange={e => setBuyerState(e.target.value)}
-                  placeholder="Buyer's state (optional, for the invoice)"
-                  className="w-full h-9 px-3 rounded-xl border border-slate-200 text-sm bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
-                />
-              )}
+              <GstTypeSelector value={gstChoice.gstType} onChange={gstChoice.setGstType} isAuto={gstChoice.isAuto} />
+              <input
+                value={buyerState}
+                onChange={e => setBuyerState(e.target.value)}
+                placeholder={t('billing.buyerStateOptional')}
+                className="w-full h-12 px-3 rounded-xl border border-slate-200 text-base bg-white focus:outline-none focus:ring-2 focus:ring-brand text-slate-700 placeholder-slate-400"
+              />
             </div>
           )}
 
@@ -2254,8 +2258,8 @@ export function BillingScreen() {
                     onChange={e => {
                       setSplitCash(e.target.value)
                       const cash = parseFloat(e.target.value) || 0
-                      const remaining = Math.max(0, computeTotals(cart, effectiveGlobalDiscount).totalAmount - cash)
-                      setSplitUpi(remaining > 0 ? remaining.toFixed(2) : '')
+                      const remaining = Math.max(0, computeTotals(cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax).totalAmount - cash)
+                      setSplitUpi(remaining > 0 ? remaining.toFixed(moneyCtx.decimals) : '')
                     }}
                     placeholder="0.00"
                     className="w-full h-8 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
@@ -2268,8 +2272,8 @@ export function BillingScreen() {
                     onChange={e => {
                       setSplitUpi(e.target.value)
                       const upi = parseFloat(e.target.value) || 0
-                      const remaining = Math.max(0, computeTotals(cart, effectiveGlobalDiscount).totalAmount - upi)
-                      setSplitCash(remaining > 0 ? remaining.toFixed(2) : '')
+                      const remaining = Math.max(0, computeTotals(cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax).totalAmount - upi)
+                      setSplitCash(remaining > 0 ? remaining.toFixed(moneyCtx.decimals) : '')
                     }}
                     placeholder="0.00"
                     className="w-full h-8 px-2 rounded-lg border border-slate-200 text-sm focus:outline-none focus:ring-1 focus:ring-brand"
@@ -2279,10 +2283,10 @@ export function BillingScreen() {
               {(() => {
                 const cash = parseFloat(splitCash) || 0
                 const upi = parseFloat(splitUpi) || 0
-                const total = computeTotals(cart, effectiveGlobalDiscount).totalAmount
-                const diff = Math.abs(cash + upi - total)
-                return diff > 0.05 && (cash + upi) > 0 ? (
-                  <p className="text-xs text-danger">Remaining: {formatCurrency(total - cash - upi)}</p>
+                const total = computeTotals(cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax).totalAmount
+                const diff = Math.abs(roundMoney(cash + upi - total, moneyCtx.decimals))
+                return diff > 0 && (cash + upi) > 0 ? (
+                  <p className="text-xs text-danger">Remaining: {formatCurrency(roundMoney(total - cash - upi, moneyCtx.decimals))}</p>
                 ) : null
               })()}
             </div>
@@ -2428,7 +2432,7 @@ export function BillingScreen() {
                 />
                 {foreignCurrencyCode.trim() && Number(foreignExchangeRate) > 0 && (
                   <p className="col-span-2 text-xs text-slate-500">
-                    {t('billing.foreignCurrency.preview', { code: foreignCurrencyCode.trim(), amount: (totals.totalAmount / Number(foreignExchangeRate)).toFixed(2) })}
+                    {t('billing.foreignCurrency.preview', { code: foreignCurrencyCode.trim(), amount: moneyFixed(totals.totalAmount / Number(foreignExchangeRate), foreignCurrencyCode.trim()) })}
                   </p>
                 )}
               </div>
@@ -2482,6 +2486,17 @@ export function BillingScreen() {
 
         {/* Totals + Submit */}
         <div className="border-t border-slate-100 dark:border-slate-700 p-6 bg-slate-50 dark:bg-slate-800/50 space-y-2">
+          <label className="flex items-center gap-3 min-h-[44px] text-sm text-dark cursor-pointer">
+            <input
+              type="checkbox"
+              className="w-5 h-5"
+              checked={pricesIncludeTax}
+              disabled={cart.length > 0}
+              onChange={e => setInclTaxChoice(e.target.checked)}
+            />
+            <span>{t('billing.pricesIncludeTax')}</span>
+          </label>
+          <p className="text-xs text-slate-400 -mt-1">{pricesIncludeTax ? t('billing.pricesIncludeTaxHint') : t('billing.pricesExcludeTaxHint')}</p>
           <div className="flex justify-between text-sm text-slate-500">
             <span>{t('billing.subtotal')}</span><span>{formatCurrency(totals.subtotal)}</span>
           </div>
@@ -2490,7 +2505,7 @@ export function BillingScreen() {
               <span>{t('billing.discount')}</span><span>– {formatCurrency(totals.discountAmount)}</span>
             </div>
           )}
-          {splitTaxLines(taxModel, totals.taxAmount, isInterState ? 'IGST' : 'CGST_SGST').map(line => (
+          {splitTaxLines(taxModel, totals.taxAmount, gstChoice.gstType, moneyCtx.decimals, totals.lines.map(l => ({ taxRate: l.taxRate, taxAmount: l.tax }))).map(line => (
             <div key={line.label} className="flex justify-between text-sm text-slate-500">
               <span>{line.label}</span><span>{formatCurrency(line.amount)}</span>
             </div>
@@ -2517,7 +2532,7 @@ export function BillingScreen() {
           </Button>
 
           <button
-            onClick={() => { setCart([]); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setTrialMode(false); setTriedVariantIds([]); setIsInterState(false); setBuyerState('') }}
+            onClick={() => { setCart([]); setInclTaxChoice(null); setCustomer(null); setGlobalDiscount(0); setPaymentMethod('CASH'); setNotes(''); setReferenceNumber(''); setEwayBillNumber(''); setDiscountMode({}); setSplitCash(''); setSplitUpi(''); setAreaCalc({}); setVariantPickProduct(null); setVariantPickList([]); setTrialMode(false); setTriedVariantIds([]); gstChoice.reset(); setBuyerState('') }}
             className="w-full text-xs text-slate-400 hover:text-danger transition-colors py-1"
           >
             {t('billing.clearCart')}

@@ -3,6 +3,7 @@ import { logAction } from './audit.service'
 import { getMonthlySummaries } from './hr.service'
 import type { Allowance } from './hr.service'
 import { roundCurrency } from './currency.service'
+import { getBusinessCurrencyDecimals } from './settings.service'
 import { postExpenseJournalEntry } from './expense.service'
 
 // Deliberately owner-configurable deductions (name+amount pairs), not computed
@@ -97,6 +98,7 @@ export async function listPayrollForPeriod(payload: { year: number; month: numbe
 // @@unique([employeeId, periodYear, periodMonth]) constraint is the real
 // backstop against a race duplicating a row.
 export async function generatePayrollForPeriod(payload: { year: number; month: number }): Result<{ created: number; skipped: number }> {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const summariesRes = await getMonthlySummaries({ year: payload.year, month: payload.month })
@@ -151,6 +153,7 @@ export async function generatePayrollForPeriod(payload: { year: number; month: n
 // VisitNote.isFinalized / Quotation status locking mutable documents
 // elsewhere in this app).
 export async function updateSalaryPayment(payload: { id: string; deductions: DeductionLine[]; notes?: string }): Result<SalaryPaymentRecord> {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const existing = await db.salaryPayment.findUnique({ where: { id: payload.id } })
@@ -200,6 +203,7 @@ export async function updateSalaryPayment(payload: { id: string; deductions: Ded
 // Creates the real Expense row this audit flagged as missing — payroll is
 // now visible to Expense Report / P&L instead of an invisible parallel ledger.
 export async function markSalaryPaid(payload: { id: string; paymentMethod: string; paidDate?: string; userId?: string }): Result<SalaryPaymentRecord> {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const result = await db.$transaction(async (tx) => {
@@ -275,6 +279,7 @@ export async function getSalaryPayment(id: string): Result<SalaryPaymentRecord> 
 // (null/0) simply produces no suggestion for that head, rather than a
 // misleading ₹0 line implying "nothing owed."
 export async function suggestStatutoryDeductions(payload: { salaryPaymentId: string }): Result<{ suggestions: DeductionLine[] }> {
+  await getBusinessCurrencyDecimals()
   try {
     const db = getPrisma()
     const record = await db.salaryPayment.findUnique({ where: { id: payload.salaryPaymentId } })
