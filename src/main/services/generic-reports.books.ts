@@ -347,6 +347,46 @@ async function salesReturnRegister(p: GenericReportParams): Promise<GenericRepor
   }
 }
 
+// ── TDS receivable (tax customers kept back) ─────────────────────────────────────────────────────────────
+async function tdsReceivable(p: GenericReportParams): Promise<GenericReport> {
+  const db = getPrisma()
+  const decimals = await decimalsOf()
+  const payments = await db.payment.findMany({
+    where: { paymentMethod: 'TDS', isReversed: false, paymentDate: { gte: parseLocalDateStart(p.dateFrom), lte: parseLocalDateEnd(p.dateTo) } },
+    include: { invoice: { select: { invoiceNumber: true } }, customer: { select: { customerName: true, taxNumber: true } } },
+    orderBy: { paymentDate: 'asc' }
+  })
+  const rows: Row[] = payments.map((x) => ({
+    date: toLocalISODate(x.paymentDate), customer: x.customer?.customerName ?? '', taxNumber: x.customer?.taxNumber ?? '',
+    invoice: x.invoice?.invoiceNumber ?? '', reference: x.referenceNumber ?? '', amount: x.amount
+  }))
+  const total = sumMoney(rows.map((r) => Number(r.amount)), decimals)
+  const byCustomer = new Map<string, number[]>()
+  for (const r of rows) { const k = String(r.customer); byCustomer.set(k, [...(byCustomer.get(k) ?? []), Number(r.amount)]) }
+  const chartRows: Row[] = [...byCustomer.entries()].map(([customer, v]) => ({ customer, amount: sumMoney(v, decimals) })).sort((a, b) => Number(b.amount) - Number(a.amount))
+  return {
+    id: 'tdsReceivable', dateFrom: p.dateFrom, dateTo: p.dateTo, decimals,
+    summary: [
+      { labelKey: 'tdsReceivable.total', type: 'money', value: total },
+      { labelKey: 'tdsReceivable.entries', type: 'number', value: rows.length },
+      { labelKey: 'tdsReceivable.customers', type: 'number', value: byCustomer.size }
+    ],
+    columns: [
+      { key: 'date', labelKey: 'tdsReceivable.date', type: 'date' },
+      { key: 'customer', labelKey: 'tdsReceivable.customer', type: 'text' },
+      { key: 'taxNumber', labelKey: 'tdsReceivable.taxNumber', type: 'text' },
+      { key: 'invoice', labelKey: 'tdsReceivable.invoice', type: 'text' },
+      { key: 'reference', labelKey: 'tdsReceivable.reference', type: 'text' },
+      { key: 'amount', labelKey: 'tdsReceivable.amount', type: 'money' }
+    ],
+    rows,
+    totals: { date: null, customer: '', taxNumber: '', invoice: '', reference: '', amount: total },
+    chart: { type: 'bar', titleKey: 'tdsReceivable.chart', xKey: 'customer', series: [{ key: 'amount', labelKey: 'tdsReceivable.amount', money: true }], limit: 10 },
+    chartRows,
+    notes: ['tdsReceivable.note']
+  }
+}
+
 // ── Profit by cost category ───────────────────────────────────────────────────────────────────────────
 async function costCategoryProfit(p: GenericReportParams): Promise<GenericReport> {
   const db = getPrisma()
@@ -395,6 +435,7 @@ async function costCategoryProfit(p: GenericReportParams): Promise<GenericReport
 }
 
 export const BOOKS_REPORTS: Record<string, GenericReportDefinition> = {
+  tdsReceivable: { permission: 'reports.financial', run: tdsReceivable },
   costCategoryProfit: { permission: 'analytics.viewProfit', run: costCategoryProfit },
   fundFlow: { permission: 'analytics.viewProfit', run: fundFlow },
   bankBook: { permission: 'reports.financial', run: bankBook },

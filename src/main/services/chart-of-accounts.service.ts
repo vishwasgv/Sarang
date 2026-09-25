@@ -13,6 +13,8 @@ const SYSTEM_ACCOUNTS: Array<{ accountCode: string; accountName: string; account
   { accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET' },
   { accountCode: '1200', accountName: 'Inventory', accountType: 'ASSET' },
   { accountCode: '1300', accountName: 'Input Tax Credit', accountType: 'ASSET' },
+  // Tax a customer kept back when paying us (TDS certificate to be received); cleared against income tax later.
+  { accountCode: '1310', accountName: 'TDS Receivable', accountType: 'ASSET' },
   { accountCode: '1500', accountName: 'Fixed Assets', accountType: 'ASSET' },
   { accountCode: '2000', accountName: 'Accounts Payable', accountType: 'LIABILITY' },
   { accountCode: '2100', accountName: 'Tax Payable', accountType: 'LIABILITY' },

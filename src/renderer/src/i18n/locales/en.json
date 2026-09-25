@@ -513,6 +513,8 @@
     "batchExpiresIn": "expires in {{days}}d",
     "addTipOrServiceCharge": "Add Tip / Service Charge",
     "addCharge": "Add Charge",
+    "tdsDeducted": "TDS deducted",
+    "tdsDeductedHint": "Use this when the customer paid you less because they kept back income tax (TDS). The amount is recorded as tax you will get credit for, not as money received.",
     "giveFree": "Give free",
     "chargeKindLabel": "Type of charge",
     "chargeTaxRateLabel": "Tax rate on this charge (%)",
@@ -2896,6 +2898,9 @@
         "expenses": {
           "vendorNote": "Expenses with no vendor entered are listed together as Not assigned."
         },
+        "tdsReceivable": {
+          "note": "Record TDS from the invoice page (payment method: TDS deducted). Match these with the certificates your customers give you and with your tax statement."
+        },
         "costCategory": {
           "note": "Entries with no cost centre, or a cost centre with no category, are shown as Not assigned."
         },
@@ -3110,6 +3115,18 @@
         "quantity": "Quantity moved",
         "direction": "Direction",
         "chart": "Quantity transferred by day"
+      },
+      "tdsReceivable": {
+        "total": "TDS kept back",
+        "entries": "Entries",
+        "customers": "Customers",
+        "date": "Date",
+        "customer": "Customer",
+        "taxNumber": "Tax number",
+        "invoice": "Invoice",
+        "reference": "Reference",
+        "amount": "TDS amount",
+        "chart": "TDS kept back by customer"
       },
       "costCategory": {
         "category": "Category",
@@ -3535,6 +3552,10 @@
       "bankReconciliationSummary": {
         "label": "Bank Reconciliation Summary",
         "description": "For each bank account, how many statement lines are matched with your books and how many are still open"
+      },
+      "tdsReceivable": {
+        "label": "TDS Receivable",
+        "description": "Tax your customers kept back when paying you (TDS), by customer and invoice, to match against their certificates and your tax statement"
       },
       "costCategoryProfit": {
         "label": "Profit by Cost Category",

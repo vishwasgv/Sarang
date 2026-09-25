@@ -181,13 +181,15 @@ export function InvoiceDetailScreen() {
     if (!amount || amount <= 0) { toastError(t('billing.invalidAmountTitle'), t('billing.enterValidPaymentAmount')); return }
     setRecordingPayment(true)
     try {
-      const res = await window.api.payments.record({
-        invoiceId: invoice.id,
-        paymentMethod,
-        amount,
-        referenceNumber: paymentRef.trim() || undefined,
-        remarks: paymentRemarks.trim() || undefined
-      })
+      const res = paymentMethod === 'TDS'
+        ? await window.api.payments.recordTds({ invoiceId: invoice.id, amount, referenceNumber: paymentRef.trim() || undefined, remarks: paymentRemarks.trim() || undefined })
+        : await window.api.payments.record({
+            invoiceId: invoice.id,
+            paymentMethod,
+            amount,
+            referenceNumber: paymentRef.trim() || undefined,
+            remarks: paymentRemarks.trim() || undefined
+          })
       if (res.success) {
         toastSuccess(t('billing.paymentRecordedTitle'), t('billing.paymentRecordedMessage', { amount: formatCurrency(amount), invoiceNumber: invoice.invoiceNumber }))
         setShowPaymentModal(false)
@@ -763,13 +765,14 @@ export function InvoiceDetailScreen() {
               <div className="grid grid-cols-3 gap-2">
                 {/* CREDIT excluded — recording a payment asserts real money was
                     received, which CREDIT (deferred / no money yet) contradicts */}
-                {['CASH', 'UPI', 'CARD', 'WALLET'].map(m => (
+                {['CASH', 'UPI', 'CARD', 'WALLET', ...(fxSettlementMode ? [] : ['TDS'])].map(m => (
                   <button key={m} onClick={() => setPaymentMethod(m)}
                     className={cn('h-9 rounded-lg text-xs font-semibold border transition-colors', paymentMethod === m ? 'bg-brand text-white border-brand' : 'bg-white dark:bg-slate-800 text-slate-600 dark:text-slate-300 border-slate-200 dark:border-slate-700 hover:border-brand')}>
-                    {m}
+                    {m === 'TDS' ? t('billing.tdsDeducted') : m}
                   </button>
                 ))}
               </div>
+              {paymentMethod === 'TDS' && !fxSettlementMode && <p className="text-xs text-slate-400 mt-2">{t('billing.tdsDeductedHint')}</p>}
             </div>
             {fxSettlementMode ? (
               <div className="grid grid-cols-2 gap-2">

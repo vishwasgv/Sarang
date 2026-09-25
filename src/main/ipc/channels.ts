@@ -492,6 +492,7 @@ export interface IpcChannels {
   payments: {
     record: (payload: unknown) => Promise<ApiResponse>
     // 2026-09 — settling a foreign-currency Invoice in full, in its own currency.
+    recordTds: (payload: { invoiceId: string; amount: number; referenceNumber?: string; remarks?: string; paymentDate?: string }) => Promise<ApiResponse>
     recordForeignCurrencySettlement: (payload: { invoiceId: string; foreignAmount: number; settlementRate: number; paymentMethod: string; referenceNumber?: string; remarks?: string; paymentDate?: string }) => Promise<ApiResponse>
     recordSplit: (payload: { invoiceId: string; legs: { paymentMethod: string; amount: number; referenceNumber?: string }[] }) => Promise<ApiResponse>
     reverse: (payload: { paymentId: string; reason: string }) => Promise<ApiResponse>

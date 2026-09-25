@@ -15,14 +15,15 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 
 // Phase 62 — GL auto-posting: a customer payment moves cash in, reduces
 // what they owe. Debit Cash & Bank / Credit Accounts Receivable.
-async function postPaymentJournalEntry(tx: TxClient, params: { paymentId: string; invoiceNumber: string; amount: number }): Promise<void> {
+async function postPaymentJournalEntry(tx: TxClient, params: { paymentId: string; invoiceNumber: string; amount: number; tds?: boolean }): Promise<void> {
   if (params.amount <= 0) return
+  // A TDS deduction settles the invoice like a payment, but no money arrives: the tax kept back becomes a receivable from the tax department.
   const [cashAccount, arAccount] = await Promise.all([
-    chartOfAccountsService.getSystemAccountByCode('1000', tx),
+    params.tds ? chartOfAccountsService.getOrCreateSystemAccountByCode('1310', tx) : chartOfAccountsService.getSystemAccountByCode('1000', tx),
     chartOfAccountsService.getSystemAccountByCode('1100', tx)
   ])
   await journalEntryService.postSystemEntry(tx, {
-    sourceType: 'PAYMENT', sourceId: params.paymentId, narration: `Payment for Invoice ${params.invoiceNumber}`,
+    sourceType: 'PAYMENT', sourceId: params.paymentId, narration: params.tds ? `TDS deducted by customer on Invoice ${params.invoiceNumber}` : `Payment for Invoice ${params.invoiceNumber}`,
     lines: [
       { accountId: cashAccount.id, bankAccountId: null, debitAmount: params.amount, creditAmount: 0 },
       { accountId: arAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: params.amount }
@@ -180,7 +181,7 @@ export const paymentService = {
 
   // RULE PM001: amount > 0 enforced by Zod
   // RULE PM005: records only — never verifies or processes
-  async recordPayment(payload: RecordPaymentPayload, userId?: string) {
+  async recordPayment(payload: RecordPaymentPayload, userId?: string, opts?: { tds?: boolean }) {
     const db = getPrisma()
     const dp = await getBusinessCurrencyDecimals()
 
@@ -211,7 +212,7 @@ export const paymentService = {
           data: {
             invoiceId: payload.invoiceId,
             customerId: invoice.customerId ?? null,
-            paymentMethod: payload.paymentMethod,
+            paymentMethod: opts?.tds ? 'TDS' : payload.paymentMethod,
             amount: payload.amount,
             referenceNumber: payload.referenceNumber ?? null,
             remarks: payload.remarks ?? null,
@@ -257,12 +258,12 @@ export const paymentService = {
             referenceId: pmt.id,
             debitAmount: 0,
             creditAmount: payload.amount,
-            remarks: `Payment for Invoice ${invoice.invoiceNumber}`
+            remarks: opts?.tds ? `TDS deducted on Invoice ${invoice.invoiceNumber}` : `Payment for Invoice ${invoice.invoiceNumber}`
           }, tx)
         }
 
         // Phase 62 — GL auto-posting.
-        await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: payload.amount })
+        await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: payload.amount, tds: opts?.tds })
 
         return pmt
       })
@@ -274,6 +275,11 @@ export const paymentService = {
       const msg = err instanceof Error ? err.message : 'Failed to record payment.'
       return { success: false, error: { code: 'SYS-001', message: msg } }
     }
+  },
+
+  /** Records tax the customer kept back when paying (TDS): reduces the invoice balance without any money arriving. */
+  async recordTdsDeduction(payload: { invoiceId: string; amount: number; paymentDate?: string; remarks?: string; referenceNumber?: string }, userId?: string) {
+    return paymentService.recordPayment({ ...payload, paymentMethod: 'CASH' }, userId, { tds: true })
   },
 
   // Atomic split payment — both legs commit or both fail (fixes silent partial failure)

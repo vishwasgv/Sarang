@@ -539,3 +539,26 @@ describe('paymentService.recordForeignCurrencySettlement', () => {
     expect(journalCalls[0][0].data.sourceType).toBe('PAYMENT')
   })
 })
+
+describe('paymentService.recordTdsDeduction', () => {
+  it('settles the invoice with method TDS and debits TDS Receivable, not cash', async () => {
+    const db = makeMockDb()
+    db.chartOfAccounts.findUnique = vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `acc-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await paymentService.recordTdsDeduction({ invoiceId: 'inv-1', amount: 100 })
+
+    expect(res.success).toBe(true)
+    expect(db.payment.create.mock.calls[0][0].data.paymentMethod).toBe('TDS')
+    const lines = db.journalEntry.create.mock.calls[0][0].data.lines.create as Array<{ accountId: string; debitAmount: number; creditAmount: number }>
+    expect(lines.find((l) => l.debitAmount === 100)?.accountId).toBe('acc-1310')
+    expect(lines.find((l) => l.creditAmount === 100)?.accountId).toBe('acc-1100')
+    expect(lines.some((l) => l.accountId === 'acc-1000')).toBe(false)
+  })
+
+  it('cannot exceed the outstanding balance', async () => {
+    vi.mocked(getPrisma).mockReturnValue(makeMockDb({ balanceAmount: 50 }) as never)
+    const res = await paymentService.recordTdsDeduction({ invoiceId: 'inv-1', amount: 100 })
+    expect(res.success).toBe(false)
+  })
+})

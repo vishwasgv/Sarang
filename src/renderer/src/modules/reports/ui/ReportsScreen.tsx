@@ -1131,6 +1131,7 @@ const REPORT_DEF_META: { id: ReportType; icon: React.ReactNode; category: string
   { id: 'fundFlow', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'bankBook', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'bankReconciliationSummary', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
+  { id: 'tdsReceivable', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'reports.financial' },
   { id: 'costCategoryProfit', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'ratioAnalysis', icon: <BarChart3 size={18} />, category: 'finance', requiresDateRange: true, permission: 'analytics.viewProfit' },
   { id: 'yearOverYear', icon: <BarChart3 size={18} />, category: 'sales', requiresDateRange: true, permission: 'reports.sales' },

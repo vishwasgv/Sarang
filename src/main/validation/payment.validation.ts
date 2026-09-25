@@ -14,6 +14,15 @@ export const RecordPaymentSchema = z.object({
   paymentDate: z.string().optional(),
 })
 
+// Tax (TDS) the customer kept back when paying; settles part of the invoice without any money arriving.
+export const RecordTdsSchema = z.object({
+  invoiceId: z.string().min(1, 'Invoice ID is required'),
+  amount: z.number().positive('The TDS amount must be greater than zero'),
+  referenceNumber: z.string().max(100).optional(),
+  remarks: z.string().max(255).optional(),
+  paymentDate: z.string().optional(),
+})
+
 // 2026-09 — settling a foreign-currency invoice in full, in its own
 // currency. See payment.service.ts's recordForeignCurrencySettlement for
 // why this is a separate payload/schema from RecordPaymentSchema above.

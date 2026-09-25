@@ -411,6 +411,7 @@ const api: IpcChannels = {
   },
   payments: {
     record: (p) => invoke('payments:record', p),
+    recordTds: (p) => invoke('payments:recordTds', p),
     recordForeignCurrencySettlement: (p) => invoke('payments:recordForeignCurrencySettlement', p),
     recordSplit: (p) => invoke('payments:recordSplit', p),
     reverse: (p) => invoke('payments:reverse', p),
