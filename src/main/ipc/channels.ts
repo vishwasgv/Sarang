@@ -431,6 +431,8 @@ export interface IpcChannels {
     list: () => Promise<ApiResponse>
     presetStatus: () => Promise<ApiResponse>
     loadPreset: () => Promise<ApiResponse>
+    staleRates: () => Promise<ApiResponse>
+    deactivateStale: (payload: { ids: string[] }) => Promise<ApiResponse>
     create: (payload: unknown) => Promise<ApiResponse>
     update: (payload: unknown) => Promise<ApiResponse>
     delete: (id: string) => Promise<ApiResponse>

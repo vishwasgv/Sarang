@@ -1,3 +1,4 @@
+import { StaleRatesCard } from './StaleRatesCard'
 import React, { useState, useEffect, useCallback } from 'react'
 import {
   Building2, Users, Receipt, BadgeDollarSign, HardDrive,
@@ -1090,6 +1091,8 @@ function TaxConfigurationSection() {
           </Button>
         )}
       </div>
+
+      <StaleRatesCard onChanged={() => { loadTaxes(); loadPresetStatus() }} />
 
       {/* Country presets: offered only for the business's own country */}
       {presetStatus && (

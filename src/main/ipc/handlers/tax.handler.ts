@@ -1,5 +1,6 @@
 import * as taxService from '../../services/tax.service'
 import * as taxPresetService from '../../services/tax-preset.service'
+import * as staleRates from '../../services/tax-stale-rates.service'
 import { requirePermission, requireSession } from '../permission-guard'
 import { CreateTaxSchema, UpdateTaxSchema } from '../../validation/tax.validation'
 
@@ -22,6 +23,18 @@ export function register(handle: HandleFn): void {
   handle('tax:presetStatus', async () => {
     const deny = requireSession(); if (deny) return deny
     return taxPresetService.getTaxPresetStatus()
+  })
+
+  handle('tax:staleRates', async () => {
+    const deny = requireSession(); if (deny) return deny
+    return staleRates.listStaleSeededRates()
+  })
+
+  handle('tax:deactivateStale', async (payload) => {
+    const deny = await requirePermission('settings.modifyTax'); if (deny) return deny
+    const ids = (payload as { ids?: unknown } | undefined)?.ids
+    if (!Array.isArray(ids) || ids.some((x) => typeof x !== 'string')) return { success: false, error: { code: 'VAL-001', message: 'Choose the rates to turn off.' } }
+    return staleRates.deactivateStaleRates(ids as string[])
   })
 
   handle('tax:loadPreset', async () => {

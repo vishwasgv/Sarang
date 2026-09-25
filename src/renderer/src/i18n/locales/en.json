@@ -5512,6 +5512,13 @@
       "ratesLoaded": "{{count}} tax rates added for {{country}}.",
       "ratesUpToDate": "All {{country}} tax rates are already in your list.",
       "loadRatesFailed": "Could not load the tax rates.",
+      "stale": {
+        "title": "Rates from another country",
+        "help": "These rates were added automatically when Sarang was set up and do not belong to your country. Turn off the ones you do not use. Nothing is deleted and old documents keep their tax.",
+        "turnOff": "Turn off selected rates",
+        "done": "Rates turned off",
+        "failed": "Could not turn off the rates."
+      },
       "noPresetNote": "There are no ready-made tax rates for {{country}}. Add your rates manually with Add Tax.",
       "noTaxNote": "{{country}} has no sales tax or VAT at present. Add a rate manually if that changes.",
       "presetChecked": "Rates checked on {{date}}. Tax rates change: confirm them with your accountant or the tax authority.",
