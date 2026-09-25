@@ -6,7 +6,7 @@ import { registerAllIpcHandlers } from './ipc'
 import { initializeDatabase, closeDatabase } from './database/db'
 import { checkDatabaseIntegrity, createBackup } from './services/backup.service'
 import { quotationService } from './services/quotation.service'
-import { cleanupLegacyReferenceTokens } from './services/notification-queue.service'
+import { cleanupLegacyReferenceTokens, sweepReminderQueue } from './services/notification-queue.service'
 import { createNotification } from './services/notification.service'
 import { getPrisma } from './database/db'
 import { seedDefaultData } from './database/seed'
@@ -373,6 +373,7 @@ app.whenReady().then(async () => {
   priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
   quotationService.expireOverdue().catch(() => {})
   processDueReversals().catch(() => {})
+  sweepReminderQueue().catch(() => {})
   cleanupLegacyReferenceTokens().catch(() => {})
   setInterval(() => {
     checkAutoBackupReminder().catch(() => {})
@@ -383,6 +384,7 @@ app.whenReady().then(async () => {
     priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
     quotationService.expireOverdue().catch(() => {})
     processDueReversals().catch(() => {})
+    sweepReminderQueue().catch(() => {})
   }, 60 * 60 * 1000)
 
   // Usage-metrics tick — shorter cadence than the hour-ly evaluators above

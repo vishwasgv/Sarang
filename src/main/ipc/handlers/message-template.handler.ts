@@ -1,4 +1,5 @@
 import { requirePermission } from '../permission-guard'
+import { getPrisma } from '../../database/db'
 import * as svc from '../../services/message-template.service'
 import { buildReminderWhatsAppLink } from '../../services/notification-queue.service'
 import { MESSAGE_TEMPLATE_DEFAULTS_BY_KEY } from '../../services/message-template.defaults'
@@ -52,13 +53,17 @@ export function register(handle: HandleFn): void {
   // same "always in control" pattern as every other Share/Reminder button.
   handle('messageTemplates:buildSendLink', async (payload) => {
     const deny = await requirePermission('messageTemplates.view'); if (deny) return deny
-    const { key, phone, params } = (payload ?? {}) as { key?: string; phone?: string; params?: Record<string, string> }
+    const { key, phone, params, customerId } = (payload ?? {}) as { key?: string; phone?: string; params?: Record<string, string>; customerId?: string }
     if (typeof key !== 'string' || !key.trim()) {
       return { success: false, error: { code: 'VAL-001', message: 'Invalid payload.' } }
     }
     const def = MESSAGE_TEMPLATE_DEFAULTS_BY_KEY[key]
     if (!def || !def.sendable) {
       return { success: false, error: { code: 'MSGTPL-006', message: 'This template is not sendable to a customer.' } }
+    }
+    if (typeof customerId === 'string' && customerId && phone) {
+      const c = await getPrisma().customer.findUnique({ where: { id: customerId }, select: { doNotMessage: true } })
+      if (c?.doNotMessage) return { success: false, error: { code: 'MSGTPL-008', message: 'This customer asked not to be sent messages.' } }
     }
     const body = await svc.renderMessageTemplate(key, params ?? {})
     const trimmedPhone = typeof phone === 'string' ? phone.trim() : ''

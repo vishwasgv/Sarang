@@ -102,7 +102,7 @@ export function SendTemplateMessageModal({ customerId, customerName, customerPho
     if (!customerPhone) return
     setSending(true)
     try {
-      const res = await api.messageTemplates.buildSendLink({ key: selectedKey, phone: customerPhone, params })
+      const res = await api.messageTemplates.buildSendLink({ key: selectedKey, phone: customerPhone, params, customerId })
       if (res.success && (res.data as { link: string | null }).link) {
         window.open((res.data as { link: string }).link, '_blank')
         toastInfo(t('share.openingWhatsApp'))

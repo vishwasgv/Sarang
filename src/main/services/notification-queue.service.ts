@@ -31,6 +31,22 @@ const DIAL_CODES: Record<string, string> = {
   kenya: '254', ke: '254',
   nigeria: '234', ng: '234',
   ghana: '233', gh: '233',
+  // More countries (ISO name and code -> dial code) so local-format numbers get the right prefix.
+  ireland: '353', ie: '353', portugal: '351', pt: '351', netherlands: '31', nl: '31', belgium: '32', be: '32',
+  switzerland: '41', ch: '41', austria: '43', at: '43', sweden: '46', se: '46', norway: '47', no: '47', denmark: '45', dk: '45',
+  finland: '358', fi: '358', poland: '48', pl: '48', greece: '30', gr: '30', turkey: '90', tr: '90', 'türkiye': '90',
+  russia: '7', ru: '7', ukraine: '380', ua: '380', romania: '40', ro: '40', hungary: '36', hu: '36', 'czech republic': '420', czechia: '420', cz: '420',
+  israel: '972', il: '972', qatar: '974', qa: '974', kuwait: '965', kw: '965', oman: '968', om: '968', jordan: '962', jo: '962',
+  lebanon: '961', lb: '961', iraq: '964', iq: '964', iran: '98', ir: '98', egypt: '20', eg: '20', morocco: '212', ma: '212',
+  algeria: '213', dz: '213', tunisia: '216', tn: '216', ethiopia: '251', et: '251', tanzania: '255', tz: '255', uganda: '256', ug: '256',
+  zambia: '260', zm: '260', zimbabwe: '263', zw: '263', mozambique: '258', mz: '258', botswana: '267', bw: '267', namibia: '264', na: '264',
+  mauritius: '230', mu: '230', 'south korea': '82', korea: '82', kr: '82', vietnam: '84', vn: '84', 'hong kong': '852', hk: '852',
+  taiwan: '886', tw: '886', myanmar: '95', mm: '95', cambodia: '855', kh: '855', laos: '856', la: '856', afghanistan: '93', af: '93',
+  maldives: '960', mv: '960', bhutan: '975', bt: '975', mongolia: '976', mn: '976', kazakhstan: '7', kz: '7', uzbekistan: '998', uz: '998',
+  mexico: '52', mx: '52', brazil: '55', br: '55', argentina: '54', ar: '54', chile: '56', cl: '56', colombia: '57', co: '57',
+  peru: '51', pe: '51', venezuela: '58', ve: '58', ecuador: '593', ec: '593', uruguay: '598', uy: '598', 'costa rica': '506', cr: '506',
+  panama: '507', pa: '507', 'dominican republic': '1', jamaica: '1', jm: '1', 'trinidad and tobago': '1', tt: '1',
+  fiji: '679', fj: '679', 'papua new guinea': '675', pg: '675',
 }
 
 export async function buildWhatsAppLink(phone: string, message: string): Promise<string> {
@@ -81,8 +97,37 @@ export async function buildReminderWhatsAppLink(phone: string, message: string):
   return buildWhatsAppLink(phone, `${prefix}${message}`)
 }
 
+/** Digits needed before a number can plausibly be reached on WhatsApp. */
+const MIN_PHONE_DIGITS = 7
+
+/**
+ * Keeps the waiting list honest: reminders for a customer who asked not to be messaged are dismissed, and reminders
+ * that have a WhatsApp link but no usable phone number are marked FAILED so they are not counted as ready to send (internal notes with no link are left alone). Safe to run any time.
+ */
+export async function sweepReminderQueue(): Promise<{ dismissed: number; failed: number }> {
+  try {
+    const db = getPrisma()
+    const optedOut = await db.customer.findMany({ where: { doNotMessage: true }, select: { id: true } })
+    let dismissed = 0
+    if (optedOut.length > 0) {
+      dismissed = (await db.notificationQueue.updateMany({
+        where: { status: 'PENDING', customerId: { in: optedOut.map((c) => c.id) } },
+        data: { status: 'DISMISSED' }
+      })).count
+    }
+    const pending = await db.notificationQueue.findMany({ where: { status: 'PENDING', customerId: { not: null }, whatsappLink: { not: null } }, select: { id: true, customerPhone: true } })
+    const badIds = pending.filter((r) => (r.customerPhone ?? '').replace(/\D/g, '').length < MIN_PHONE_DIGITS).map((r) => r.id)
+    let failed = 0
+    if (badIds.length > 0) failed = (await db.notificationQueue.updateMany({ where: { id: { in: badIds } }, data: { status: 'FAILED' } })).count
+    return { dismissed, failed }
+  } catch {
+    return { dismissed: 0, failed: 0 }
+  }
+}
+
 export async function listNotifications(filters?: { status?: string; limit?: number }) {
   try {
+    await sweepReminderQueue()
     const db = getPrisma()
     const where: Record<string, unknown> = {}
     if (filters?.status) where.status = filters.status
@@ -106,6 +151,7 @@ export async function listNotifications(filters?: { status?: string; limit?: num
 
 export async function getUnsentCount() {
   try {
+    await sweepReminderQueue()
     const db = getPrisma()
     const count = await db.notificationQueue.count({ where: { status: 'PENDING', scheduledFor: { lte: new Date() } } })
     return { success: true, data: count }

@@ -1539,7 +1539,7 @@ export interface IpcChannels {
     update: (payload: { key: string; body: string }) => Promise<ApiResponse>
     reset: (payload: { key: string }) => Promise<ApiResponse>
     preview: (payload: { body: string }) => Promise<ApiResponse>
-    buildSendLink: (payload: { key: string; phone?: string | null; params: Record<string, string> }) => Promise<ApiResponse>
+    buildSendLink: (payload: { key: string; phone?: string | null; params: Record<string, string>; customerId?: string }) => Promise<ApiResponse>
   }
   // Phase 24 — Medical (GP + Specialist)
   visitNotes: {

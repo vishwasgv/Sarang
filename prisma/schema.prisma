@@ -997,6 +997,7 @@ model Customer {
   state                     String?
   country                   String?
   taxNumber                 String?
+  doNotMessage              Boolean   @default(false) // the customer asked not to be sent reminders or marketing messages
   taxExempt                 Boolean   @default(false) // Fresh-audit fix (2026-07-12): B2B reverse-charge / diplomatic / NGO exemption etc. — a real gap for international VAT/GST use, no way to zero tax on a customer's invoices before this
   taxExemptReason           String? // e.g. "Reverse charge — VAT Reg GB123456789" — printed on the invoice so it's not just a silent internal flag
   creditLimit               Float     @default(0)

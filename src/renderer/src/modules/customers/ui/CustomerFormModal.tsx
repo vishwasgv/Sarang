@@ -23,6 +23,7 @@ const schema = z.object({
   country: z.string().max(100).optional(),
   taxNumber: z.string().max(50).optional(),
   taxExempt: z.boolean().optional(),
+  doNotMessage: z.boolean().optional(),
   taxExemptReason: z.string().max(200).optional(),
   creditLimit: z.coerce.number().min(0).optional(),
   paymentTermsDays: z.union([z.literal(''), z.coerce.number().int().min(0).max(365)]).optional(),
@@ -65,7 +66,7 @@ type FormValues = z.infer<typeof schema>
 interface Customer {
   id: string; customerName: string; phone?: string | null; email?: string | null
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
-  taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null
+  taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null; doNotMessage?: boolean
   creditLimit?: number; paymentTermsDays?: number | null; customerClass?: string | null; notes?: string | null
   customerKind?: 'INDIVIDUAL' | 'BUSINESS'
   companyRegistrationNumber?: string | null; contactPersonName?: string | null
@@ -124,6 +125,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         country: customer?.country ?? '',
         taxNumber: customer?.taxNumber ?? '',
         taxExempt: customer?.taxExempt ?? false,
+        doNotMessage: customer?.doNotMessage ?? false,
         taxExemptReason: customer?.taxExemptReason ?? '',
         creditLimit: customer?.creditLimit ?? 0,
         paymentTermsDays: customer?.paymentTermsDays ?? '',
@@ -239,6 +241,11 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         )}
         <div className="rounded-lg border border-slate-200 dark:border-slate-700 p-3 space-y-2">
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 dark:text-slate-200">
+            <input type="checkbox" {...register('doNotMessage')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
+            {t('customers.doNotMessageLabel')}
+          </label>
+          <p className="text-xs text-slate-400">{t('customers.doNotMessageHint')}</p>
+          <label className="flex items-center gap-2 text-sm text-slate-700 dark:text-slate-200 cursor-pointer">
             <input type="checkbox" {...register('taxExempt')} className="h-4 w-4 rounded border-slate-300 text-brand focus:ring-brand" />
             {t('customers.taxExemptLabel')}
           </label>

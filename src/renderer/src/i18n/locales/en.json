@@ -993,6 +993,8 @@
     }
   },
   "customers": {
+    "doNotMessageLabel": "Do not send this customer messages",
+    "doNotMessageHint": "Tick this if the customer asked not to receive reminders or offers. Waiting reminders for them are removed and new ones are never offered for sending.",
     "title": "Customers",
     "addCustomer": "Add Customer",
     "customerName": "Customer Name",
