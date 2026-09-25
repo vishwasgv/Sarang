@@ -66,8 +66,11 @@ export interface Gstr9Report {
   notes: ('financialYearDates' | 'accountantCheck')[]
 }
 
-export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted' | 'gstr9Data'
-export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary', 'tdsDeducted', 'gstr9Data']
+export interface IrnRow { invoiceNumber: string; kind: 'INVOICE' | 'CREDIT_NOTE'; date: string; customer: string; gstin: string; total: number; irn: string; ackNo: string; ackDate: string }
+export interface IrnRegisterReport { dateFrom: string; dateTo: string; rows: IrnRow[]; counts: { withIrn: number; withoutIrn: number } }
+
+export type GstReportId = 'gstNetPayable' | 'purchaseGstRegister' | 'purchaseHsnSummary' | 'tdsDeducted' | 'gstr9Data' | 'irnRegister'
+export const GST_REPORT_IDS: GstReportId[] = ['gstNetPayable', 'purchaseGstRegister', 'purchaseHsnSummary', 'tdsDeducted', 'gstr9Data', 'irnRegister']
 
 type Fmt = (n: number) => string
 type Cell = string | number | null
@@ -580,6 +583,63 @@ export function Gstr9View({ data, fmt }: { data: Gstr9Report; fmt: Fmt }) {
   )
 }
 
+
+export function IrnRegisterView({ data, fmt }: { data: IrnRegisterReport; fmt: Fmt }) {
+  const { t } = useTranslation()
+  const chart = [
+    { name: t('reports.gst.irn.withIrn'), [t('reports.gst.irn.documents')]: data.counts.withIrn },
+    { name: t('reports.gst.irn.withoutIrn'), [t('reports.gst.irn.documents')]: data.counts.withoutIrn }
+  ]
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-2 gap-4">
+        <Card padding="md"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">{t('reports.gst.irn.withIrn')}</div><div className="text-xl font-bold text-dark dark:text-slate-100">{data.counts.withIrn}</div></Card>
+        <Card padding="md"><div className="text-xs font-semibold text-slate-400 uppercase mb-1">{t('reports.gst.irn.withoutIrn')}</div><div className="text-xl font-bold text-dark dark:text-slate-100">{data.counts.withoutIrn}</div></Card>
+      </div>
+      <div className={cn(PANEL, 'p-5')}>
+        <h3 className="text-sm font-semibold text-dark dark:text-slate-100 mb-4">{t('reports.gst.irn.chartTitle')}</h3>
+        <ResponsiveContainer width="100%" height={220}>
+          <BarChart data={chart}>
+            <CartesianGrid strokeDasharray="3 3" stroke="#f1f5f9" />
+            <XAxis dataKey="name" tick={TICK} tickLine={false} axisLine={false} />
+            <YAxis allowDecimals={false} tick={TICK} tickLine={false} axisLine={false} />
+            <Tooltip contentStyle={TOOLTIP_STYLE} />
+            <Bar dataKey={t('reports.gst.irn.documents')} fill={COLORS.brand} />
+          </BarChart>
+        </ResponsiveContainer>
+      </div>
+      <div className={cn(PANEL, 'overflow-x-auto')}>
+        {data.rows.length === 0 ? (
+          <p className="px-5 py-6 text-sm text-slate-500">{t('reports.gst.irn.noRows')}</p>
+        ) : (
+          <table className="w-full text-sm">
+            <thead>
+              <tr className="border-b border-slate-100 dark:border-slate-800 text-xs uppercase text-slate-400">
+                <th className="px-4 py-3 text-start">{t('common.date')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.document')}</th>
+                <th className="px-4 py-3 text-start">{t('reports.gst.irn.customer')}</th>
+                <th className="px-4 py-3 text-end">{t('common.total')}</th>
+                <th className="px-4 py-3 text-start">IRN</th>
+              </tr>
+            </thead>
+            <tbody>
+              {data.rows.map((r, i) => (
+                <tr key={`${r.invoiceNumber}-${i}`} className="border-b border-slate-50 dark:border-slate-800">
+                  <td className="px-4 py-2.5">{formatDate(r.date)}</td>
+                  <td className="px-4 py-2.5">{r.invoiceNumber}</td>
+                  <td className="px-4 py-2.5 text-slate-600 dark:text-slate-300">{r.customer}</td>
+                  <td className="px-4 py-2.5 text-end">{fmt(r.total)}</td>
+                  <td className="px-4 py-2.5 font-mono text-xs break-all">{r.irn || <Badge variant="warning">{t('reports.gst.irn.withoutIrn')}</Badge>}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
+      </div>
+    </div>
+  )
+}
+
 export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cur: string): { headers: string[]; rows: Cell[][] } {
   if (id === 'purchaseGstRegister') {
     const d = data as PurchaseRegisterReport
@@ -590,6 +650,13 @@ export function gstReportExport(id: GstReportId, data: unknown, t: TFunction, cu
         ...d.rows.map((r): Cell[] => [r.date, `${t(`reports.gst.register.kind.${r.kind}`)} ${r.number}${r.reverseCharge ? ` (${t('reports.gst.register.rcm')})` : ''}`, r.supplier, r.supplierGstin, r.taxable, r.cgst, r.sgst, r.igst, r.total]),
         [t('common.total'), '', '', '', d.totals.taxable, d.totals.cgst, d.totals.sgst, d.totals.igst, d.totals.total]
       ]
+    }
+  }
+  if (id === 'irnRegister') {
+    const d = data as IrnRegisterReport
+    return {
+      headers: [t('common.date'), t('reports.gst.document'), t('reports.gst.irn.customer'), 'GSTIN', `${t('common.total')} (${cur})`, 'IRN', t('einvoice.ackNo'), t('einvoice.ackDate')],
+      rows: d.rows.map((r): Cell[] => [r.date, r.invoiceNumber, r.customer, r.gstin, r.total, r.irn, r.ackNo, r.ackDate])
     }
   }
   if (id === 'gstr9Data') {
@@ -639,6 +706,13 @@ export function gstReportSummary(id: GstReportId, data: unknown, t: TFunction, f
       { label: t('reports.gst.register.total'), value: fmt(d.totals.total) }
     ]
   }
+  if (id === 'irnRegister') {
+    const d = data as IrnRegisterReport
+    return [
+      { label: t('reports.gst.irn.withIrn'), value: String(d.counts.withIrn) },
+      { label: t('reports.gst.irn.withoutIrn'), value: String(d.counts.withoutIrn) }
+    ]
+  }
   if (id === 'gstr9Data') {
     const d = data as Gstr9Report
     return [
@@ -670,6 +744,13 @@ export function gstReportCharts(id: GstReportId, data: unknown, t: TFunction): P
     const d = data as PurchaseRegisterReport
     if (d.byMonth.length === 0) return []
     return [{ type: 'bar', title: t('reports.gst.register.chartTitle'), valueIsCurrency: true, data: d.byMonth.map((m) => ({ label: m.month, value: m.taxable, color: COLORS.brand })) }]
+  }
+  if (id === 'irnRegister') {
+    const d = data as IrnRegisterReport
+    return [{ type: 'bar', title: t('reports.gst.irn.chartTitle'), data: [
+      { label: t('reports.gst.irn.withIrn'), value: d.counts.withIrn, color: COLORS.success },
+      { label: t('reports.gst.irn.withoutIrn'), value: d.counts.withoutIrn, color: COLORS.warning }
+    ] }]
   }
   if (id === 'gstr9Data') {
     const d = data as Gstr9Report

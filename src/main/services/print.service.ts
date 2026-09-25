@@ -376,6 +376,11 @@ interface Invoice {
   balanceAmount: number
   paymentStatus: string
   notes?: string | null
+  // E-invoice details the owner saved from the e-invoice portal.
+  irn?: string | null
+  irnAckNo?: string | null
+  irnAckDate?: Date | string | null
+  irnQr?: string | null
   gstType?: string | null
   // Unit prices/discounts on this document are tax-inclusive; the tax lines below are the tax contained in them.
   pricesIncludeTax?: boolean | null
@@ -503,6 +508,12 @@ export const printService = {
     // this file's convention for legally-relevant fields elsewhere, e.g.
     // the CGST/SGST breakdown above), not gated behind a template toggle.
     const showHsn = isGstModel
+    let irnBlock = ''
+    if (invoice.irn) {
+      const qrImg = invoice.irnQr ? await QRCode.toDataURL(invoice.irnQr, { width: 200, margin: 1 }).catch(() => '') : ''
+      const ack = [invoice.irnAckNo ? `Ack No: ${escHtml(invoice.irnAckNo)}` : '', invoice.irnAckDate ? `Ack Date: ${escHtml(new Date(invoice.irnAckDate).toISOString().slice(0, 10))}` : ''].filter(Boolean).join(' &nbsp; ')
+      irnBlock = `<div style="display:flex;gap:12px;align-items:center;font-size:10px;margin-bottom:12px">${qrImg ? `<img src="${qrImg}" style="width:80px;height:80px">` : ''}<div><div><strong>IRN:</strong> <span style="word-break:break-all">${escHtml(invoice.irn)}</span></div>${ack ? `<div>${ack}</div>` : ''}</div></div>`
+    }
     const inclusive = invoice.pricesIncludeTax === true
     // A return line stores its total as the negative tax-exclusive refund; an inclusive document shows the
     // tax-inclusive refund so the line agrees with the tax-inclusive unit price beside it.
@@ -663,6 +674,8 @@ export const printService = {
   </div>
 
   ${invoice.notes ? `<div class="notes-box">Note: ${escHtml(invoice.notes)}</div>` : ''}
+
+  ${irnBlock}
 
   <div class="totals">
     <div class="totals-table">

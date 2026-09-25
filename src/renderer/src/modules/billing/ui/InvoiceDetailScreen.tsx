@@ -1,3 +1,4 @@
+import { EInvoiceCard } from './EInvoiceCard'
 import React, { useState, useEffect } from 'react'
 import { useParams, useNavigate } from 'react-router-dom'
 import { ArrowLeft, Printer, XCircle, PlusCircle, RotateCcw, Receipt, UtensilsCrossed, Scissors, Truck } from 'lucide-react'
@@ -55,12 +56,13 @@ interface Invoice {
   dueDate?: string | null
   notes?: string | null
   ewayBillNumber?: string | null
+  irn?: string | null; irnAckNo?: string | null; irnAckDate?: string | null
   gstType?: string | null
   pricesIncludeTax?: boolean
   // Phase 58 §2 — the dine-in table this invoice was opened for (restaurant
   // only; null for every other sale).
   tableId?: string | null
-  customer: { id: string; customerName: string; phone?: string | null; email?: string | null; customerCode?: string | null } | null
+  customer: { id: string; customerName: string; phone?: string | null; email?: string | null; customerCode?: string | null; taxNumber?: string | null } | null
   createdBy: { id: string; fullName: string } | null
   items: InvoiceItem[]
   payments: Payment[]
@@ -700,6 +702,10 @@ export function InvoiceDetailScreen() {
           <p className="text-xs font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('billing.ewayBillNumber')}</p>
           <p className="text-sm text-slate-600 dark:text-slate-300">{invoice.ewayBillNumber}</p>
         </div>
+      )}
+
+      {invoice.customer?.taxNumber && invoice.status !== 'CANCELLED' && (
+        <EInvoiceCard invoice={invoice} onChanged={loadInvoice} />
       )}
 
       {/* Attached documents */}

@@ -280,6 +280,11 @@ const api: IpcChannels = {
     get: (p) => invoke('bankDeposits:get', p),
     listAvailableCheques: (p) => invoke('bankDeposits:listAvailableCheques', p)
   },
+  einvoice: {
+    exportJson: (p) => invoke('einvoice:exportJson', p),
+    saveIrn: (p) => invoke('einvoice:saveIrn', p),
+    clearIrn: (p) => invoke('einvoice:clearIrn', p)
+  },
   gstReturns: {
     exportGstr1: (p) => invoke('gstReturns:exportGstr1', p),
     exportGstr3b: (p) => invoke('gstReturns:exportGstr3b', p),
@@ -370,6 +375,7 @@ const api: IpcChannels = {
     purchaseHsnSummary: (p) => invoke('reports:purchaseHsnSummary', p),
     tdsDeducted: (p) => invoke('reports:tdsDeducted', p),
     gstr9Data: (p) => invoke('reports:gstr9Data', p),
+    irnRegister: (p) => invoke('reports:irnRegister', p),
     costCentreTreemap: (p) => invoke('reports:costCentreTreemap', p),
     budgetVsActual: (p) => invoke('reports:budgetVsActual', p),
     statutoryComplianceSummary: (p) => invoke('reports:statutoryComplianceSummary', p),

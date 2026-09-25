@@ -1665,6 +1665,11 @@ model Invoice {
   paymentStatus         String    @default("UNPAID")
   gstType               String    @default("CGST_SGST")
   buyerState            String?
+  // E-invoice: the IRN and acknowledgement the e-invoice portal returned, pasted in by the owner.
+  irn                   String?
+  irnAckNo              String?
+  irnAckDate            DateTime?
+  irnQr                 String?
   notes                 String?
   quotationId           String?   @unique
   originalInvoiceId     String? // Set only on invoiceType='RETURN' rows — real FK to the invoice being returned against, replacing the old notes-substring-match lookup
@@ -1780,6 +1785,7 @@ model Invoice {
   @@index([createdById])
   @@index([originalInvoiceId])
   @@index([tableId])
+  @@index([irn])
   @@index([splitFromInvoiceId])
   @@index([exchangeReturnId])
   @@index([costCentreId])

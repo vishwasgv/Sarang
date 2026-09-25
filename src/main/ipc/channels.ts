@@ -357,6 +357,11 @@ export interface IpcChannels {
     get: (payload: { id: string }) => Promise<ApiResponse>
     listAvailableCheques: (payload: { bankAccountId: string }) => Promise<ApiResponse>
   }
+  einvoice: {
+    exportJson: (payload: { invoiceId: string }) => Promise<ApiResponse>
+    saveIrn: (payload: { invoiceId: string; irn: string; ackNo?: string; ackDate?: string; signedQr?: string }) => Promise<ApiResponse>
+    clearIrn: (payload: { invoiceId: string }) => Promise<ApiResponse>
+  }
   gstReturns: {
     exportGstr1: (payload: { month: string }) => Promise<ApiResponse>
     exportGstr3b: (payload: { month: string }) => Promise<ApiResponse>
@@ -452,6 +457,7 @@ export interface IpcChannels {
     purchaseHsnSummary: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     tdsDeducted: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     gstr9Data: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
+    irnRegister: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     costCentreTreemap: (payload: { dateFrom: string; dateTo: string }) => Promise<ApiResponse>
     budgetVsActual: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>
     statutoryComplianceSummary: (payload: { periodYear: number; periodMonth: number }) => Promise<ApiResponse>

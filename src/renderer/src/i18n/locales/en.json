@@ -2473,6 +2473,23 @@
       "other": "Other"
     }
   },
+  "einvoice": {
+    "title": "E-invoice",
+    "hasIrn": "IRN saved",
+    "noIrn": "No IRN yet",
+    "steps": "1. Download the file. 2. Upload it on the e-invoice portal. 3. Paste the IRN and details the portal gives you below.",
+    "download": "Download e-invoice file",
+    "irn": "IRN",
+    "ackNo": "Acknowledgement number",
+    "ackDate": "Acknowledgement date",
+    "signedQr": "Signed QR text (optional)",
+    "saveIrn": "Save IRN",
+    "remove": "Remove IRN",
+    "fileSaved": "E-invoice file saved",
+    "irnSaved": "IRN saved",
+    "couldNotPrepare": "Could not prepare the e-invoice file.",
+    "couldNotSave": "Could not save the IRN."
+  },
   "reports": {
     "title": "Reports",
     "selectReport": "Select a report",
@@ -2554,6 +2571,14 @@
         "chartTitle": "Taxable value and tax by month",
         "noRows": "No purchases in this period.",
         "unknownState": "{{count}} document(s) have no known supplier state; their tax is shown as CGST + SGST."
+      },
+      "irn": {
+        "withIrn": "With IRN",
+        "withoutIrn": "No IRN yet",
+        "documents": "Documents",
+        "customer": "Customer",
+        "chartTitle": "Documents with and without an IRN",
+        "noRows": "No invoices to registered buyers in this period."
       },
       "gstr9": {
         "table": "Table",
@@ -2800,6 +2825,10 @@
       "cashFlowStatement": {
         "label": "Cash Flow Statement",
         "description": "Where cash came from and went: operating, investing and financing, from opening to closing cash"
+      },
+      "irnRegister": {
+        "label": "E-invoice IRN Register",
+        "description": "Invoices and credit notes to registered buyers with the IRN saved on each, and the ones still waiting for one"
       },
       "gstr9Data": {
         "label": "GSTR-9 Annual Data",
