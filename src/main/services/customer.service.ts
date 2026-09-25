@@ -4,7 +4,8 @@ import { logAction } from './audit.service'
 import { getCurrentSession } from './auth.service'
 import { generateSequenceNumber } from './sequence.service'
 import { customerLedgerService } from './customer-ledger.service'
-import { toLocalDateOnlyIso } from '../utils/date.util'
+import { toLocalDateOnlyIso, parseLocalDateStart } from '../utils/date.util'
+import { taxExemptionActive } from './tax-exemption.util'
 import { serializeCustomFieldValues } from './custom-field.service'
 import type { ApiResponse } from '../ipc/channels'
 import type { CreateCustomerPayload, UpdateCustomerPayload } from '../validation/customer.validation'
@@ -23,8 +24,14 @@ import type { CreateCustomerPayload, UpdateCustomerPayload } from '../validation
 // createdAt/updatedAt are left as-is: nothing in the renderer treats them as
 // date-only strings, only as display values via `new Date(x)`, which works
 // identically whether `x` is already a Date or an ISO string.
-function serializeCustomer<T extends { lastAgmDate?: Date | null }>(row: T): Omit<T, 'lastAgmDate'> & { lastAgmDate: string | null } {
-  return { ...row, lastAgmDate: row.lastAgmDate ? toLocalDateOnlyIso(row.lastAgmDate) : null }
+function serializeCustomer<T extends { lastAgmDate?: Date | null; taxExempt?: boolean | null; taxExemptExpiry?: Date | null }>(row: T): Omit<T, 'lastAgmDate' | 'taxExemptExpiry'> & { lastAgmDate: string | null; taxExemptExpiry: string | null; taxExemptExpired: boolean } {
+  return {
+    ...row,
+    lastAgmDate: row.lastAgmDate ? toLocalDateOnlyIso(row.lastAgmDate) : null,
+    taxExemptExpiry: row.taxExemptExpiry ? toLocalDateOnlyIso(row.taxExemptExpiry) : null,
+    // the box is ticked but the certificate has run out, so tax is charged again
+    taxExemptExpired: !!row.taxExempt && !taxExemptionActive(row)
+  }
 }
 
 export async function listCustomers(filters?: { page?: number; limit?: number; search?: string }): Promise<ApiResponse> {
@@ -197,6 +204,8 @@ export async function createCustomer(payload: CreateCustomerPayload): Promise<Ap
           taxExempt: payload.taxExempt ?? false,
           doNotMessage: payload.doNotMessage ?? false,
           taxExemptReason: payload.taxExempt ? (payload.taxExemptReason || null) : null,
+          taxExemptCertificate: payload.taxExempt ? (payload.taxExemptCertificate?.trim() || null) : null,
+          taxExemptExpiry: payload.taxExempt && payload.taxExemptExpiry ? parseLocalDateStart(payload.taxExemptExpiry) : null,
           creditLimit: payload.creditLimit ?? 0,
           paymentTermsDays: payload.paymentTermsDays ?? null,
           customerClass: payload.customerClass?.trim() || null,
@@ -256,6 +265,8 @@ export async function updateCustomer(payload: UpdateCustomerPayload): Promise<Ap
         taxNumber: payload.taxNumber,
         taxExempt: payload.taxExempt ?? false,
         taxExemptReason: payload.taxExempt ? (payload.taxExemptReason || null) : null,
+        taxExemptCertificate: payload.taxExempt ? (payload.taxExemptCertificate?.trim() || null) : null,
+        taxExemptExpiry: payload.taxExempt && payload.taxExemptExpiry ? parseLocalDateStart(payload.taxExemptExpiry) : null,
         creditLimit: payload.creditLimit ?? existing.creditLimit,
         paymentTermsDays: payload.paymentTermsDays === undefined ? existing.paymentTermsDays : payload.paymentTermsDays,
         customerClass: payload.customerClass?.trim() || null,

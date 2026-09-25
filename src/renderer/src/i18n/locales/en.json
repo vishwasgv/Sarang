@@ -513,6 +513,10 @@
     "batchExpiresIn": "expires in {{days}}d",
     "addTipOrServiceCharge": "Add Tip / Service Charge",
     "addCharge": "Add Charge",
+    "exportZeroRate": {
+      "title": "Export sale?",
+      "hint": "This customer is in another country. Tick to charge no tax on this sale (zero-rated export). Check the rules for your country and keep proof of export."
+    },
     "tdsDeducted": "TDS deducted",
     "tdsDeductedHint": "Use this when the customer paid you less because they kept back income tax (TDS). The amount is recorded as tax you will get credit for, not as money received.",
     "giveFree": "Give free",
@@ -1008,6 +1012,10 @@
     }
   },
   "customers": {
+    "taxExemptCertificateLabel": "Exemption certificate number",
+    "taxExemptExpiryLabel": "Certificate valid until (optional)",
+    "taxExemptExpiryHint": "After this date the customer is charged tax again until you update the certificate.",
+    "taxExemptExpiredWarning": "This certificate has expired, so tax is being charged. Update the date to exempt this customer again.",
     "doNotMessageLabel": "Do not send this customer messages",
     "doNotMessageHint": "Tick this if the customer asked not to receive reminders or offers. Waiting reminders for them are removed and new ones are never offered for sending.",
     "title": "Customers",

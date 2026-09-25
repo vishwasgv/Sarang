@@ -25,6 +25,8 @@ const schema = z.object({
   taxExempt: z.boolean().optional(),
   doNotMessage: z.boolean().optional(),
   taxExemptReason: z.string().max(200).optional(),
+  taxExemptCertificate: z.string().max(60).optional(),
+  taxExemptExpiry: z.string().max(10).optional(),
   creditLimit: z.coerce.number().min(0).optional(),
   paymentTermsDays: z.union([z.literal(''), z.coerce.number().int().min(0).max(365)]).optional(),
   // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text
@@ -66,7 +68,7 @@ type FormValues = z.infer<typeof schema>
 interface Customer {
   id: string; customerName: string; phone?: string | null; email?: string | null
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
-  taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null; doNotMessage?: boolean
+  taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null; taxExemptCertificate?: string | null; taxExemptExpiry?: string | null; taxExemptExpired?: boolean; doNotMessage?: boolean
   creditLimit?: number; paymentTermsDays?: number | null; customerClass?: string | null; notes?: string | null
   customerKind?: 'INDIVIDUAL' | 'BUSINESS'
   companyRegistrationNumber?: string | null; contactPersonName?: string | null
@@ -127,6 +129,8 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         taxExempt: customer?.taxExempt ?? false,
         doNotMessage: customer?.doNotMessage ?? false,
         taxExemptReason: customer?.taxExemptReason ?? '',
+        taxExemptCertificate: customer?.taxExemptCertificate ?? '',
+        taxExemptExpiry: customer?.taxExemptExpiry ?? '',
         creditLimit: customer?.creditLimit ?? 0,
         paymentTermsDays: customer?.paymentTermsDays ?? '',
         customerClass: customer?.customerClass ?? '',
@@ -251,7 +255,13 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
           </label>
           <p className="text-xs text-slate-400">{t('customers.taxExemptHint')}</p>
           {taxExempt && (
-            <Input label={t('customers.taxExemptReasonLabel')} placeholder={t('customers.taxExemptReasonPlaceholder')} {...register('taxExemptReason')} />
+            <>
+              <Input label={t('customers.taxExemptReasonLabel')} placeholder={t('customers.taxExemptReasonPlaceholder')} {...register('taxExemptReason')} />
+              <Input label={t('customers.taxExemptCertificateLabel')} {...register('taxExemptCertificate')} />
+              <Input label={t('customers.taxExemptExpiryLabel')} type="date" {...register('taxExemptExpiry')} />
+              <p className="text-xs text-slate-400">{t('customers.taxExemptExpiryHint')}</p>
+              {customer?.taxExemptExpired && <p className="text-xs text-danger">{t('customers.taxExemptExpiredWarning')}</p>}
+            </>
           )}
         </div>
         {hasPatientMedicalRecord && (

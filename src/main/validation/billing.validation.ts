@@ -61,6 +61,8 @@ export const CreateInvoiceSchema = z.object({
   globalDiscount: z.number().min(0).default(0),
   // unitPrice/discountAmount/globalDiscount are tax-inclusive amounts (omitted = tax-exclusive).
   pricesIncludeTax: z.boolean().optional(),
+  // The owner confirmed this sale is an export: tax is charged at zero and the line category is Zero rated.
+  exportZeroRated: z.boolean().optional(),
   notes: z.string().max(500).optional(),
   referenceNumber: z.string().max(100).optional(),
   // Omitted: the backend picks it from the place of supply (business state against the buyer's state).

@@ -1,4 +1,5 @@
-import { showIndiaFeatures } from '@taxpresets'
+import { showIndiaFeatures, resolveCountryCode } from '@taxpresets'
+
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useNavigate, useSearchParams } from 'react-router-dom'
@@ -37,7 +38,7 @@ interface Product {
   category?: { id: string; name: string } | null
   foodType?: string | null
 }
-interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; priceListId?: string | null; taxExempt?: boolean | null; state?: string | null; taxNumber?: string | null }
+interface Customer { id: string; customerName: string; phone?: string | null; customerCode?: string | null; priceListId?: string | null; taxExempt?: boolean | null; taxExemptExpired?: boolean; state?: string | null; country?: string | null; taxNumber?: string | null }
 interface HeldSaleSummary {
   id: string; label: string | null; customerId: string | null; customerName: string | null
   itemCount: number; totalAmount: number; createdAt: string
@@ -431,7 +432,13 @@ export function BillingScreen() {
   const effectiveGlobalDiscount = globalDiscount + (selectedExchange?.valueGiven ?? 0) + (selectedTradeIn?.tradeInValue ?? 0)
   const moneyCtx = useMoneyContext()
   const pricesIncludeTax = inclTaxChoice ?? moneyCtx.pricesIncludeTaxDefault
-  const customerTaxExempt = customer?.taxExempt === true
+  // A sale to a customer in another country is usually an export, taxed at zero; the seller confirms it here.
+  const [exportZeroRated, setExportZeroRated] = useState(false)
+  const customerCountryCode = resolveCountryCode(customer?.country)
+  const businessCountryCode = resolveCountryCode(businessCountry)
+  const isExportCandidate = !!customerCountryCode && !!businessCountryCode && customerCountryCode !== businessCountryCode && taxModel !== 'NONE' && !(customer?.taxExempt === true && !customer?.taxExemptExpired)
+  useEffect(() => { if (!isExportCandidate) setExportZeroRated(false) }, [isExportCandidate])
+  const customerTaxExempt = (customer?.taxExempt === true && !customer?.taxExemptExpired) || (isExportCandidate && exportZeroRated)
   const totals = useMemo(() => computeTotals(cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax), [cart, effectiveGlobalDiscount, moneyCtx, customerTaxExempt, pricesIncludeTax])
 
   // Debounced — cart edits (quantity +/-) fire in quick succession while
@@ -1416,6 +1423,7 @@ export function BillingScreen() {
         customFields: customFieldValues,
         gstType: taxModel === 'GST' ? gstChoice.gstType : 'CGST_SGST',
         buyerState: taxModel === 'GST' ? (buyerState.trim() || undefined) : undefined,
+        exportZeroRated: isExportCandidate && exportZeroRated ? true : undefined,
         metalExchangeId: selectedExchange?.id,
         furnitureTradeInId: selectedTradeIn?.id,
         dueDate: paymentMethod === 'CREDIT' && dueDate ? dueDate : undefined,
@@ -1482,7 +1490,7 @@ export function BillingScreen() {
     } finally {
       setSubmitting(false)
     }
-  }, [cart, customer, moneyCtx, customerTaxExempt, pricesIncludeTax, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, salespersonId, splitCash, splitUpi, taxModel, gstChoice.gstType, buyerState, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
+  }, [cart, customer, moneyCtx, customerTaxExempt, pricesIncludeTax, paymentMethod, globalDiscount, effectiveGlobalDiscount, selectedExchange, selectedTradeIn, dueDate, cropSeasonId, isAgriInputs, notes, referenceNumber, ewayBillNumber, salespersonId, splitCash, splitUpi, taxModel, gstChoice.gstType, buyerState, isExportCandidate, exportZeroRated, tableId, jobSiteAccountId, scheduledDeliveryEnabled, scheduledDeliveryDate, deliveryAddress, foreignCurrencyEnabled, foreignCurrencyCode, foreignExchangeRate, kotEnabled, orderChannel, navigate, toastSuccess, toastError])
 
   // F10 / Ctrl+Enter → confirm sale (declared after handleSubmit to avoid "used before assignment")
   useEffect(() => {
@@ -2463,6 +2471,14 @@ export function BillingScreen() {
           {/* 2026-09 — foreign-currency overlay: bill an overseas customer in
               their own currency while the underlying totalAmount/reports/GL
               stay entirely in the business's base currency. */}
+          {isExportCandidate && (
+            <label className="flex items-start gap-2 cursor-pointer rounded-xl border border-brand/30 bg-brand/5 px-3 py-2">
+              <input type="checkbox" checked={exportZeroRated} onChange={e => setExportZeroRated(e.target.checked)} className="w-4 h-4 mt-0.5 rounded border-slate-300 text-brand focus:ring-brand" />
+              <span className="text-xs text-slate-600">
+                <strong>{t('billing.exportZeroRate.title')}</strong> {t('billing.exportZeroRate.hint')}
+              </span>
+            </label>
+          )}
           <div>
             <label className="flex items-center gap-2 cursor-pointer mb-2">
               <input

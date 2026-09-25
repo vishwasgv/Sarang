@@ -1,4 +1,5 @@
 import { getPrisma } from '../database/db'
+import { taxExemptionActive } from './tax-exemption.util'
 import { parseLocalDateStart, addLocalDays } from '../utils/date.util'
 import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
@@ -297,10 +298,11 @@ export const billingService = {
     let customerTaxExempt = false
     let customerTaxExemptReason: string | null = null
     let customerState: string | null = null
+    const exportZeroRated = payload.exportZeroRated === true
     let customerTermsDays: number | null = null
     if (payload.customerId) {
-      const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptReason: true, state: true, taxNumber: true, paymentTermsDays: true } })
-      customerTaxExempt = exemptCheck?.taxExempt ?? false
+      const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptExpiry: true, taxExemptReason: true, state: true, taxNumber: true, paymentTermsDays: true } })
+      customerTaxExempt = exemptCheck ? taxExemptionActive(exemptCheck) : false
       customerTaxExemptReason = exemptCheck?.taxExemptReason ?? null
       customerState = exemptCheck ? resolvePartyState(exemptCheck.state, exemptCheck.taxNumber) || null : null
       customerTermsDays = exemptCheck?.paymentTermsDays ?? null
@@ -470,7 +472,7 @@ export const billingService = {
       // stock, still appears on Sales Register with zero revenue).
       const isFreeOfCost = item.isFreeOfCost === true
       const effectiveUnitPrice = isFreeOfCost ? 0 : item.unitPrice
-      const effectiveTaxRate = (customerTaxExempt || isCompositionScheme || isFreeOfCost) ? 0 : (item.taxRate ?? product.taxRate ?? 0)
+      const effectiveTaxRate = (customerTaxExempt || exportZeroRated || isCompositionScheme || isFreeOfCost) ? 0 : (item.taxRate ?? product.taxRate ?? 0)
       const lineDiscount = isFreeOfCost ? 0 : (item.discountAmount ?? 0)
       // Decimal-safe: subtotal/discount/tax/total are computed once via
       // Prisma.Decimal (see currency.service.ts) instead of chained float
@@ -488,7 +490,7 @@ export const billingService = {
         unitPrice: effectiveUnitPrice,
         discountAmount: lineDiscount,
         taxRate: effectiveTaxRate,
-        taxCategory: resolveLineTaxCategory(item.taxCategory ?? product.taxCategory, effectiveTaxRate),
+        taxCategory: exportZeroRated && !customerTaxExempt ? 'ZERO_RATED' : resolveLineTaxCategory(item.taxCategory ?? product.taxCategory, effectiveTaxRate),
         lineTaxable,
         lineTax,
         lineTotal,
@@ -671,7 +673,9 @@ export const billingService = {
             scheduledDeliveryDate: payload.scheduledDeliveryDate ? parseLocalDateStart(payload.scheduledDeliveryDate) : null,
             deliveryAddress: payload.deliveryAddress ?? null,
             deliveryStatus: payload.scheduledDeliveryDate ? 'SCHEDULED' : null,
-            notes: customerTaxExempt
+            notes: exportZeroRated && !customerTaxExempt
+              ? ['Export supply — zero-rated', payload.notes].filter(Boolean).join(' | ')
+              : customerTaxExempt
               ? [`Tax Exempt${customerTaxExemptReason ? ` — ${customerTaxExemptReason}` : ''}`, payload.notes].filter(Boolean).join(' | ')
               : (payload.notes ?? null),
             createdById: userId ?? null,

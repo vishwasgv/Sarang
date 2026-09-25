@@ -351,6 +351,41 @@ describe('billingService.createInvoice', () => {
     expect(itemCreateCall.data.taxAmount).toBe(0)
   })
 
+  it('zero-rates every line as an export when the seller confirms it, and says so on the invoice', async () => {
+    const db = makeMockDb({ taxRate: 18 })
+    db.customer.findUnique = vi.fn().mockResolvedValue({ taxExempt: false, taxExemptReason: null })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      customerId: 'cust-abroad',
+      exportZeroRated: true,
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 18 }],
+    })
+
+    expect(res.success).toBe(true)
+    const createCall = db.invoice.create.mock.calls[0][0]
+    expect(createCall.data.taxAmount).toBe(0)
+    expect(createCall.data.totalAmount).toBe(200)
+    expect(createCall.data.notes).toContain('Export supply')
+    expect(db.invoiceItem.create.mock.calls[0][0].data.taxCategory).toBe('ZERO_RATED')
+  })
+
+  it('an expired exemption certificate means tax is charged again', async () => {
+    const db = makeMockDb({ taxRate: 18 })
+    db.customer.findUnique = vi.fn().mockResolvedValue({ taxExempt: true, taxExemptExpiry: new Date(2020, 0, 1), taxExemptReason: 'Resale' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await billingService.createInvoice({
+      ...basePayload,
+      customerId: 'cust-expired',
+      items: [{ productId: 'prod-1', quantity: 2, unitPrice: 100, discountAmount: 0, taxRate: 18 }],
+    })
+
+    expect(res.success).toBe(true)
+    expect(db.invoice.create.mock.calls[0][0].data.taxAmount).toBeCloseTo(36, 2)
+  })
+
   it('applies normal tax when the customer is not tax-exempt', async () => {
     const db = makeMockDb({ taxRate: 18 })
     db.customer.findUnique = vi.fn().mockResolvedValue({ taxExempt: false, taxExemptReason: null })
