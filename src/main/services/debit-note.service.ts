@@ -138,7 +138,7 @@ export const debitNoteService = {
         }, tx)
       }
 
-      await postDebitNoteJournalTx(tx, { id: created.id, debitNoteNumber, amount: computedAmount })
+      await postDebitNoteJournalTx(tx, { id: created.id, debitNoteNumber, amount: computedAmount, taxAmount: noteTotals.taxAmount })
 
       return created
     })
@@ -245,7 +245,7 @@ export const debitNoteService = {
 
       if ((newAmount !== existing.amount || newTaxAmount !== existingTax) && await noteHasJournalTx(tx, 'DEBIT_NOTE', id)) {
         await reverseNoteJournalTx(tx, 'DEBIT_NOTE', id, `Debit Note ${existing.debitNoteNumber} edited`, userId)
-        await postDebitNoteJournalTx(tx, { id, debitNoteNumber: existing.debitNoteNumber, amount: newAmount })
+        await postDebitNoteJournalTx(tx, { id, debitNoteNumber: existing.debitNoteNumber, amount: newAmount, taxAmount: newTaxAmount })
       }
 
       if (ledgerAffected) {

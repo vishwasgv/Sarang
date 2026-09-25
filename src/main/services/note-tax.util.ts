@@ -1,6 +1,7 @@
 import { getPrisma } from '../database/db'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
+import { isInputTaxClaimable, loadPurchaseAccounts, debitNoteJournalLines } from './purchase-tax-journal.util'
 import { roundMoney } from '../../shared/utils/money'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -51,20 +52,16 @@ export async function postCreditNoteJournalTx(tx: TxClient, note: { id: string; 
   await journalEntryService.postSystemEntry(tx, { sourceType: 'CREDIT_NOTE', sourceId: note.id, narration: `Credit Note ${note.creditNoteNumber}`, lines })
 }
 
-// A debit note (vendor credit) reverses a purchase: Dr Accounts Payable (total), Cr Purchases (total). Bills post
-// their input tax inside the purchase cost, so the reversal takes the tax out of the same account.
-export async function postDebitNoteJournalTx(tx: TxClient, note: { id: string; debitNoteNumber: string; amount: number }): Promise<void> {
+// A debit note (vendor credit) reverses a purchase: Dr Accounts Payable (total), Cr Purchases (net) and
+// Cr Input Tax Credit (the tax, when input tax is claimable).
+export async function postDebitNoteJournalTx(tx: TxClient, note: { id: string; debitNoteNumber: string; amount: number; taxAmount?: number }): Promise<void> {
   if (!(note.amount > 0)) return
-  const [apAccount, expenseAccount] = await Promise.all([
-    chartOfAccountsService.getSystemAccountByCode('2000', tx),
-    chartOfAccountsService.getSystemAccountByCode('6000', tx)
-  ])
+  const tax = note.taxAmount && note.taxAmount > 0 ? note.taxAmount : 0
+  const claimable = await isInputTaxClaimable(tx)
+  const accounts = await loadPurchaseAccounts(tx, false, claimable && tax > 0)
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'DEBIT_NOTE', sourceId: note.id, narration: `Debit Note ${note.debitNoteNumber}`,
-    lines: [
-      { accountId: apAccount.id, bankAccountId: null, debitAmount: note.amount, creditAmount: 0 },
-      { accountId: expenseAccount.id, bankAccountId: null, debitAmount: 0, creditAmount: note.amount }
-    ]
+    lines: debitNoteJournalLines({ amount: note.amount, tax, claimable, accounts })
   })
 }
 

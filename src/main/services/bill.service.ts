@@ -12,6 +12,7 @@ import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
 import { allocateLandedCostAcrossLines } from './landed-cost.service'
 import { ServiceError } from '../errors/service-error'
+import { isInputTaxClaimable, loadPurchaseAccounts, purchaseJournalLines } from './purchase-tax-journal.util'
 import { resolveDocumentGstType, lineTaxCategories } from './gst-type.util'
 import type { CreateBillPayload } from '../validation/bill.validation'
 
@@ -33,25 +34,12 @@ type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction
 // still equals totalAmount + taxAmount either way, so this balances by
 // construction.
 async function postBillJournalEntry(tx: TxClient, bill: { id: string; billNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean; costCentreId?: string | null }): Promise<void> {
-  const grossExpense = roundCurrency(bill.totalAmount + (bill.isReverseCharge ? bill.taxAmount : 0), 3)
-  if (grossExpense <= 0) return
-  const [expenseAccount, apAccount] = await Promise.all([
-    chartOfAccountsService.getSystemAccountByCode('6000', tx),
-    chartOfAccountsService.getSystemAccountByCode('2000', tx)
-  ])
-  // Phase 65 — same "tag every line" convention as postInvoiceJournalEntry.
-  const costCentreId = bill.costCentreId ?? null
-  const lines = [{ accountId: expenseAccount.id, bankAccountId: null, costCentreId, debitAmount: grossExpense, creditAmount: 0 }]
-  if (bill.isReverseCharge && bill.taxAmount > 0) {
-    const taxPayableAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
-    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: bill.totalAmount })
-    lines.push({ accountId: taxPayableAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: bill.taxAmount })
-  } else {
-    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: bill.totalAmount })
-  }
+  if (bill.totalAmount + (bill.isReverseCharge ? bill.taxAmount : 0) <= 0) return
+  const claimable = await isInputTaxClaimable(tx)
+  const accounts = await loadPurchaseAccounts(tx, bill.isReverseCharge && bill.taxAmount > 0, claimable && bill.taxAmount > 0)
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'BILL', sourceId: bill.id, narration: `Bill ${bill.billNumber}`,
-    lines
+    lines: purchaseJournalLines({ total: bill.totalAmount, tax: bill.taxAmount, isReverseCharge: bill.isReverseCharge, claimable, accounts, costCentreId: bill.costCentreId ?? null })
   })
 }
 

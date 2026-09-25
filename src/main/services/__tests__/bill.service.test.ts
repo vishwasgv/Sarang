@@ -192,7 +192,7 @@ describe('billService.createBill', () => {
     )
   })
 
-  it('under RCM, posts a 3-line balanced JournalEntry: Debit Operating Expenses for the gross amount, Credit AP for the net (tax-exclusive) amount, Credit Tax Payable for the self-assessed tax', async () => {
+  it('under RCM, posts a 4-line balanced JournalEntry: Debit Operating Expenses for the net amount, Debit Input Tax Credit for the self-assessed tax, Credit AP for the net (tax-exclusive) amount, Credit Tax Payable for the self-assessed tax', async () => {
     const db = makeDb({
       chartOfAccounts: {
         findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => {
@@ -200,6 +200,7 @@ describe('billService.createBill', () => {
             '6000': { id: 'coa-expense', accountCode: '6000', accountName: 'Operating Expenses', accountType: 'EXPENSE', isActive: true },
             '2000': { id: 'coa-ap', accountCode: '2000', accountName: 'Accounts Payable', accountType: 'LIABILITY', isActive: true },
             '2100': { id: 'coa-tax', accountCode: '2100', accountName: 'Tax Payable', accountType: 'LIABILITY', isActive: true },
+            '1300': { id: 'coa-itc', accountCode: '1300', accountName: 'Input Tax Credit', accountType: 'ASSET', isActive: true },
           }
           return byCode[where.accountCode] ?? null
         })
@@ -213,9 +214,10 @@ describe('billService.createBill', () => {
     expect(res.success).toBe(true)
     const jeArgs = db.journalEntry.create.mock.calls[0][0]
     const lines = jeArgs.data.lines.create as Array<{ accountId: string; debitAmount: number; creditAmount: number }>
-    expect(lines).toHaveLength(3)
+    expect(lines).toHaveLength(4)
     expect(lines).toEqual(expect.arrayContaining([
-      expect.objectContaining({ accountId: 'coa-expense', debitAmount: 1180, creditAmount: 0 }), // 1000 + 180 gross
+      expect.objectContaining({ accountId: 'coa-expense', debitAmount: 1000, creditAmount: 0 }),
+      expect.objectContaining({ accountId: 'coa-itc', debitAmount: 180, creditAmount: 0 }),
       expect.objectContaining({ accountId: 'coa-ap', debitAmount: 0, creditAmount: 1000 }),
       expect.objectContaining({ accountId: 'coa-tax', debitAmount: 0, creditAmount: 180 }),
     ]))

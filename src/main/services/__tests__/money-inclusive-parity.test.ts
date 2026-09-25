@@ -412,6 +412,7 @@ describe('inclusive sales orders, purchase orders, bills, credit and debit notes
 
       const cnTx = {
         creditNote: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'cn', customer: null, invoice: null })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
       chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
       journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-1' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) },
         setting: seqSetting(),
@@ -434,6 +435,7 @@ describe('inclusive sales orders, purchase orders, bills, credit and debit notes
 
       const dnTx = {
         debitNote: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'dn', supplier: null, purchaseOrder: null })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
       chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
       journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-1' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) },
         setting: seqSetting(),
@@ -458,6 +460,7 @@ describe('inclusive sales orders, purchase orders, bills, credit and debit notes
   it('a plain-amount credit note never carries the flag; an exclusive linked invoice gives an exclusive note', async () => {
     const cnTx = {
       creditNote: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'cn', customer: null, invoice: null })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
       chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
       journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-1' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) },
       setting: seqSetting(), customerLedger: { aggregate: vi.fn().mockResolvedValue({ _sum: { debitAmount: 0, creditAmount: 0 } }), create: vi.fn() }, customer: { update: vi.fn() },
@@ -662,6 +665,7 @@ describe('purchase cost basis is tax-exclusive for inclusive documents', () => {
       items: [{ id: 'poi-1', productId: 'p', quantity: 10, unitCost: 118, taxRate: 18, taxAmount: 180, total: 1180 }]
     }
     const db = tx({
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
       purchaseOrder: { findUnique: vi.fn().mockResolvedValue(po), update: vi.fn().mockResolvedValue({ ...po, status: 'RECEIVED' }) },
       landedCostAllocation: { findMany: vi.fn().mockResolvedValue([]) },
       bill: { findFirst: vi.fn().mockResolvedValue(null) },

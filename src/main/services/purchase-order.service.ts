@@ -1,3 +1,4 @@
+import { isInputTaxClaimable, loadPurchaseAccounts, purchaseJournalLines } from './purchase-tax-journal.util'
 import { getPrisma } from '../database/db'
 import { parseLocalDateStart } from '../utils/date.util'
 import { inventoryService } from './inventory.service'
@@ -73,23 +74,12 @@ function roundUpToCartonMultiple(quantity: number, sellByPack: boolean, unitsPer
 // (receiving vs. billing) is the one that actually triggers it, decided by
 // the same existingBill-guard the caller already uses for SupplierLedger.
 async function postPOJournalEntry(tx: TxClient, po: { id: string; poNumber: string; totalAmount: number; taxAmount: number; isReverseCharge: boolean }): Promise<void> {
-  const grossExpense = roundCurrency(po.totalAmount + (po.isReverseCharge ? po.taxAmount : 0), 3)
-  if (grossExpense <= 0) return
-  const [expenseAccount, apAccount] = await Promise.all([
-    chartOfAccountsService.getSystemAccountByCode('6000', tx),
-    chartOfAccountsService.getSystemAccountByCode('2000', tx)
-  ])
-  const lines = [{ accountId: expenseAccount.id, bankAccountId: null, costCentreId: null, debitAmount: grossExpense, creditAmount: 0 }]
-  if (po.isReverseCharge && po.taxAmount > 0) {
-    const taxPayableAccount = await chartOfAccountsService.getSystemAccountByCode('2100', tx)
-    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: po.totalAmount })
-    lines.push({ accountId: taxPayableAccount.id, bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: po.taxAmount })
-  } else {
-    lines.push({ accountId: apAccount.id, bankAccountId: null, costCentreId: null, debitAmount: 0, creditAmount: po.totalAmount })
-  }
+  if (po.totalAmount + (po.isReverseCharge ? po.taxAmount : 0) <= 0) return
+  const claimable = await isInputTaxClaimable(tx)
+  const accounts = await loadPurchaseAccounts(tx, po.isReverseCharge && po.taxAmount > 0, claimable && po.taxAmount > 0)
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'PURCHASE_ORDER', sourceId: po.id, narration: `PO ${po.poNumber} received`,
-    lines
+    lines: purchaseJournalLines({ total: po.totalAmount, tax: po.taxAmount, isReverseCharge: po.isReverseCharge, claimable, accounts })
   })
 }
 

@@ -52,6 +52,7 @@ function makeWorld(opts: { currency: string; linked?: { balance: number; total: 
       create: vi.fn(async ({ data }: any) => { seq = { settingKey: data.settingKey, settingValue: data.settingValue }; return seq }),
       updateMany: vi.fn(async ({ data }: any) => { if (seq) seq = { ...seq, settingValue: data.settingValue }; return { count: 1 } })
     },
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
     chartOfAccounts: coa, journalEntry,
     creditNote: {
       findFirst: vi.fn().mockResolvedValue(null),
@@ -329,7 +330,8 @@ describe('debit note: one figure everywhere, tax on or off', () => {
       const lines = world.journals[0].lines
       expect(sumMoney(lines.map(l => l.debitAmount), 3), ctx).toBe(sumMoney(lines.map(l => l.creditAmount), 3))
       expect(lines.find(l => l.accountId === 'coa-2000')!.debitAmount, ctx).toBe(note.amount)
-      expect(lines.find(l => l.accountId === 'coa-6000')!.creditAmount, ctx).toBe(note.amount)
+      expect(lines.find(l => l.accountId === 'coa-6000')!.creditAmount, ctx).toBe(sumMoney([note.amount, -note.taxAmount], 3))
+      expect(lines.find(l => l.accountId === 'coa-1300')?.creditAmount ?? 0, ctx).toBe(note.taxAmount)
 
       const profile = { currencyCode: currency, currencySymbol: '#', taxModel: 'GST', businessName: 'B' }
       vi.mocked(getPrisma).mockReturnValue({ ...world.db, setting: { findMany: vi.fn().mockResolvedValue([]) } } as never)

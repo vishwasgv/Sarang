@@ -463,6 +463,7 @@ describe('credit and debit notes: form total == saved amount == oracle', () => {
 
       const cnTx = {
         creditNote: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'cn', customer: null, invoice: null })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
       chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
       journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-1' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) },
         setting: seqSetting(),
@@ -480,6 +481,7 @@ describe('credit and debit notes: form total == saved amount == oracle', () => {
 
       const dnTx = {
         debitNote: { findFirst: vi.fn().mockResolvedValue(null), create: vi.fn().mockImplementation(({ data }) => Promise.resolve({ ...data, id: 'dn', supplier: null, purchaseOrder: null })) },
+      businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
       chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
       journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-1' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) },
         setting: seqSetting(),

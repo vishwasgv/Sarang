@@ -12,6 +12,7 @@ const SYSTEM_ACCOUNTS: Array<{ accountCode: string; accountName: string; account
   { accountCode: '1000', accountName: 'Cash & Bank', accountType: 'ASSET' },
   { accountCode: '1100', accountName: 'Accounts Receivable', accountType: 'ASSET' },
   { accountCode: '1200', accountName: 'Inventory', accountType: 'ASSET' },
+  { accountCode: '1300', accountName: 'Input Tax Credit', accountType: 'ASSET' },
   { accountCode: '1500', accountName: 'Fixed Assets', accountType: 'ASSET' },
   { accountCode: '2000', accountName: 'Accounts Payable', accountType: 'LIABILITY' },
   { accountCode: '2100', accountName: 'Tax Payable', accountType: 'LIABILITY' },

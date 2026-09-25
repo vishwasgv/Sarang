@@ -44,6 +44,7 @@ function makeDb(existing: typeof EXISTING | null = EXISTING) {
     },
     supplier: { update: vi.fn().mockResolvedValue({}) },
     // Notes post a journal entry (sales/purchases against receivables/payables); accounts resolve by code.
+    businessProfile: { findFirst: vi.fn().mockResolvedValue({ gstScheme: 'REGULAR' }) },
     chartOfAccounts: { findUnique: vi.fn(async ({ where }: { where: { accountCode: string } }) => ({ id: `coa-${where.accountCode}`, accountCode: where.accountCode, accountName: where.accountCode, accountType: 'ASSET', isActive: true })) },
     journalEntry: { create: vi.fn().mockResolvedValue({ id: 'je-1', entryNumber: 'JE-00001' }), findFirst: vi.fn().mockResolvedValue(null), findMany: vi.fn().mockResolvedValue([]), update: vi.fn().mockResolvedValue({}) }
   }
