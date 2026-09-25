@@ -2633,6 +2633,23 @@
     "saved": "Pattern saved",
     "couldNot": "Could not save the pattern."
   },
+  "expenseClaims": {
+    "title": "Expense Claims",
+    "hint": "Staff spent their own money for the business? Record the claim, approve it, then repay it. Repaying records a normal expense.",
+    "claimant": "Who is claiming",
+    "category": "Category",
+    "description": "What was it for",
+    "amount": "Amount",
+    "submit": "Submit claim",
+    "submitted": "Claim submitted",
+    "approve": "Approve",
+    "reject": "Reject",
+    "pay": "Repay",
+    "paid": "Claim repaid and expense recorded",
+    "empty": "No claims here yet.",
+    "status": { "SUBMITTED": "Waiting", "APPROVED": "Approved", "PAID": "Repaid", "REJECTED": "Rejected" },
+    "methods": { "CASH": "Cash", "UPI": "UPI", "BANK_TRANSFER": "Bank transfer" }
+  },
   "bankRules": {
     "title": "Bank Rules",
     "subtitle": "Teach Sarang where your bank statement lines belong",

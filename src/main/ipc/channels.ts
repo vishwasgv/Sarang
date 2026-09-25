@@ -368,6 +368,12 @@ export interface IpcChannels {
     setEnabled: (payload: { id: string; enabled: boolean }) => Promise<ApiResponse>
     remove: (payload: { id: string }) => Promise<ApiResponse>
   }
+  expenseClaims: {
+    list: (payload?: { status?: string }) => Promise<ApiResponse>
+    submit: (payload: { claimantName: string; categoryId: string; description: string; amount: number; claimDate?: string }) => Promise<ApiResponse>
+    decide: (payload: { id: string; to: 'APPROVED' | 'REJECTED'; note?: string }) => Promise<ApiResponse>
+    pay: (payload: { id: string; paymentMethod: string }) => Promise<ApiResponse>
+  }
   customKpis: {
     list: () => Promise<ApiResponse>
     add: (payload: { name: string; metric: string; period: string }) => Promise<ApiResponse>

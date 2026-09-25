@@ -919,6 +919,25 @@ model BankRule {
   @@index([isActive, priority])
 }
 
+// A claim for money a staff member spent from their own pocket. PAID claims point at the Expense created when they were repaid.
+model ExpenseClaim {
+  id            String   @id @default(cuid())
+  claimantName  String
+  categoryId    String
+  description   String
+  amount        Float
+  claimDate     DateTime @default(now())
+  status        String   @default("SUBMITTED") // SUBMITTED | APPROVED | REJECTED | PAID
+  decisionNote  String?
+  expenseId     String?
+  submittedById String?
+  decidedById   String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  @@index([status])
+}
+
 // A saved pattern for a journal entry (accounts and sides, no amounts). Lines are kept as JSON text.
 model VoucherClass {
   id        String   @id @default(cuid())

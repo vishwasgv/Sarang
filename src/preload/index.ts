@@ -291,6 +291,12 @@ const api: IpcChannels = {
     setEnabled: (p) => invoke('workflowRules:setEnabled', p),
     remove: (p) => invoke('workflowRules:remove', p)
   },
+  expenseClaims: {
+    list: (p) => invoke('expenseClaims:list', p),
+    submit: (p) => invoke('expenseClaims:submit', p),
+    decide: (p) => invoke('expenseClaims:decide', p),
+    pay: (p) => invoke('expenseClaims:pay', p)
+  },
   customKpis: {
     list: () => invoke('customKpis:list'),
     add: (p) => invoke('customKpis:add', p),

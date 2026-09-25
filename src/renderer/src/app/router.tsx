@@ -39,6 +39,7 @@ import { JournalEntriesScreen } from '@modules/accounting/ui/JournalEntriesScree
 import { BankAccountsScreen } from '@modules/accounting/ui/BankAccountsScreen'
 import { BankReconciliationScreen } from '@modules/accounting/ui/BankReconciliationScreen'
 import { BankRulesScreen } from '@modules/accounting/ui/BankRulesScreen'
+import { ExpenseClaimsScreen } from '@modules/expenses/ui/ExpenseClaimsScreen'
 import { PostDatedChequesScreen } from '@modules/accounting/ui/PostDatedChequesScreen'
 import { BankDepositScreen } from '@modules/accounting/ui/BankDepositScreen'
 import { GstPaymentScreen } from '@modules/accounting/ui/GstPaymentScreen'
@@ -348,6 +349,7 @@ export function AppRouter() {
         <Route path="/accounting/chart-of-accounts" element={<ProtectedRoute permission="chartOfAccounts.view"><ChartOfAccountsScreen /></ProtectedRoute>} />
         <Route path="/accounting/journal-entries" element={<ProtectedRoute permission="journalEntries.view"><JournalEntriesScreen /></ProtectedRoute>} />
         <Route path="/accounting/bank-accounts" element={<ProtectedRoute permission="bankAccounts.view"><BankAccountsScreen /></ProtectedRoute>} />
+        <Route path="/expenses/claims" element={<ProtectedRoute permission="expenses.view"><ExpenseClaimsScreen /></ProtectedRoute>} />
         <Route path="/accounting/bank-rules" element={<ProtectedRoute permission="bankReconciliation.view"><BankRulesScreen /></ProtectedRoute>} />
         <Route path="/accounting/bank-accounts/:id" element={<ProtectedRoute permission="bankReconciliation.view"><BankReconciliationScreen /></ProtectedRoute>} />
         <Route path="/accounting/post-dated-cheques" element={<ProtectedRoute permission="postDatedCheques.view"><PostDatedChequesScreen /></ProtectedRoute>} />
