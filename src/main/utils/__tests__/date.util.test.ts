@@ -67,3 +67,15 @@ describe('date.util — parseLocalDateStart / parseLocalDateEnd', () => {
     expect(toLocalISODate(parseLocalDateEnd('2026-12-31'))).toBe('2026-12-31')
   })
 })
+
+import { addLocalDays } from '../date.util'
+describe('addLocalDays', () => {
+  it('adds calendar days at local midnight across month, year and leap-day boundaries', () => {
+    expect(addLocalDays(new Date(2026, 8, 1, 15, 30), 30).getDate()).toBe(1)
+    expect(addLocalDays(new Date(2026, 8, 1, 15, 30), 30).getMonth()).toBe(9)
+    expect(addLocalDays(new Date(2026, 11, 20), 30).getFullYear()).toBe(2027)
+    const leap = addLocalDays(new Date(2028, 1, 28), 1)
+    expect([leap.getMonth(), leap.getDate()]).toEqual([1, 29])
+    expect(addLocalDays(new Date(2026, 8, 1, 15, 30), 0).getHours()).toBe(0)
+  })
+})

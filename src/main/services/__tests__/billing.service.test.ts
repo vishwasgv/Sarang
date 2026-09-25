@@ -480,6 +480,24 @@ describe('billingService.createInvoice', () => {
     expect((res as { error: { code: string } }).error.code).toBe('CUST-003')
   })
 
+  it('a credit sale with no chosen due date gets one from the customer payment terms, and a chosen date wins', async () => {
+    vi.mocked(isModuleEnabled).mockResolvedValue(true)
+    const run = async (dueDate?: string) => {
+      const db = makeMockDb()
+      db.customer.findUnique = vi.fn().mockResolvedValue({ id: 'cust-1', creditLimit: 0, outstandingBalance: 0, paymentTermsDays: 30 })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await billingService.createInvoice({ ...basePayload, paymentMethod: 'CREDIT', customerId: 'cust-1', ...(dueDate ? { dueDate } : {}), items: [{ productId: 'prod-1', quantity: 1, unitPrice: 200, discountAmount: 0, taxRate: 0 }] })
+      return db.invoice.create.mock.calls[0]?.[0]?.data?.dueDate as Date | null | undefined
+    }
+    const auto = await run()
+    expect(auto).toBeInstanceOf(Date)
+    const days = Math.round(((auto as Date).getTime() - new Date().setHours(0, 0, 0, 0)) / 86400000)
+    expect(days).toBe(30)
+    const chosen = await run('2026-12-25')
+    expect(chosen).toBeInstanceOf(Date)
+    expect((chosen as Date).getMonth()).toBe(11)
+  })
+
   // Phase 67 §9.1 — Distributor item 5: Auto Risk-Scored Retailer Credit.
   // Closes a real coverage gap: the E2E suite already proves the HIGH-risk
   // (0.5x) blocking case live end-to-end, but nothing at the unit level had

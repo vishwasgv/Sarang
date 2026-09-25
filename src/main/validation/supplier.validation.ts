@@ -16,6 +16,7 @@ const supplierBankFields = {
 const supplierMsmeFields = {
   isMsmeRegistered: z.boolean().default(false),
   msmeCategory: z.enum(['MICRO', 'SMALL', 'MEDIUM']).optional(),
+  paymentTermsDays: z.number().int().min(0).max(365).nullable().optional(),
 }
 
 export const CreateSupplierSchema = z.object({

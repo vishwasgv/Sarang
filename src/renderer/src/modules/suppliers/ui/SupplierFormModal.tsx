@@ -32,7 +32,8 @@ const schema = z.object({
   // Phase 63 — Price List assignment (real gap found+fixed during live
   // verification: the backend field/validation/service already accepted
   // this, but no UI anywhere ever let a user actually set it).
-  priceListId: z.string().optional()
+  priceListId: z.string().optional(),
+  paymentTermsDays: z.union([z.literal(''), z.coerce.number().int().min(0).max(365)]).optional()
 })
 
 type FormValues = z.infer<typeof schema>
@@ -44,6 +45,7 @@ interface Supplier {
   bankAccountNumber?: string | null; bankIfscCode?: string | null; bankName?: string | null; panNumber?: string | null
   openingBalance?: number
   priceListId?: string | null
+  paymentTermsDays?: number | null
   customFields?: string | null
 }
 
@@ -90,7 +92,8 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
         bankName: supplier?.bankName ?? '',
         panNumber: supplier?.panNumber ?? '',
         openingBalance: supplier?.openingBalance ?? 0,
-        priceListId: supplier?.priceListId ?? ''
+        priceListId: supplier?.priceListId ?? '',
+        paymentTermsDays: supplier?.paymentTermsDays ?? ''
       })
       setCustomFieldValues(parseCustomFields(supplier?.customFields))
     }
@@ -99,7 +102,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
   async function onSubmit(values: FormValues) {
     try {
       const { openingBalance, ...rest } = values
-      const payload = { ...rest, email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
+      const payload = { ...rest, paymentTermsDays: values.paymentTermsDays === '' || values.paymentTermsDays === undefined ? null : Number(values.paymentTermsDays), email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
       const response = isEdit
         ? await window.api.suppliers.update({ id: supplier!.id, ...payload })
         : await window.api.suppliers.create({ ...payload, openingBalance: openingBalance ?? 0 })
@@ -147,6 +150,7 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
           <Input label={t('common.country')} placeholder={t('common.countryPlaceholder')} {...register('country')} />
         </div>
         <Input label={taxField.label} placeholder={taxField.placeholder ?? t('common.taxNumberPlaceholder')} hint={taxField.hint} {...register('taxNumber')} />
+        <Input label={t('suppliers.paymentTermsDays')} type="number" min="0" max="365" step="1" placeholder="30" {...register('paymentTermsDays')} />
         {priceLists.length > 0 && (
           <Select label={t('common.priceList')} {...register('priceListId')}>
             <option value="">{t('suppliers.priceListNonePurchase')}</option>

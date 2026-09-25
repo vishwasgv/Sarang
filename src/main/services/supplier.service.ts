@@ -145,6 +145,7 @@ export async function createSupplier(payload: CreateSupplierPayload): Promise<Ap
           openingBalance: payload.openingBalance ?? 0,
           isMsmeRegistered: payload.isMsmeRegistered ?? false,
           msmeCategory: payload.msmeCategory ?? null,
+          paymentTermsDays: payload.paymentTermsDays ?? null,
           priceListId: payload.priceListId || null,
           customFields: serializeCustomFieldValues(payload.customFields)
         }
@@ -216,6 +217,7 @@ export async function updateSupplier(payload: UpdateSupplierPayload): Promise<Ap
         panNumber: payload.panNumber?.trim() || null,
         isMsmeRegistered: payload.isMsmeRegistered ?? false,
         msmeCategory: payload.msmeCategory ?? null,
+        paymentTermsDays: payload.paymentTermsDays === undefined ? existing.paymentTermsDays : payload.paymentTermsDays,
         priceListId: payload.priceListId ?? existing.priceListId,
         customFields: payload.customFields !== undefined ? serializeCustomFieldValues(payload.customFields) : existing.customFields
       }

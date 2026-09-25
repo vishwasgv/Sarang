@@ -25,6 +25,7 @@ const schema = z.object({
   taxExempt: z.boolean().optional(),
   taxExemptReason: z.string().max(200).optional(),
   creditLimit: z.coerce.number().min(0).optional(),
+  paymentTermsDays: z.union([z.literal(''), z.coerce.number().int().min(0).max(365)]).optional(),
   // Phase 58 §2 — Distributor customer-class/negotiated pricing. Free text
   // (e.g. "RETAILER"/"WHOLESALER"/"VIP") — only surfaced in the UI when
   // field_order_capture is on (a DISTRIBUTOR default), same "config flags
@@ -65,7 +66,7 @@ interface Customer {
   id: string; customerName: string; phone?: string | null; email?: string | null
   address?: string | null; city?: string | null; state?: string | null; country?: string | null
   taxNumber?: string | null; taxExempt?: boolean; taxExemptReason?: string | null
-  creditLimit?: number; customerClass?: string | null; notes?: string | null
+  creditLimit?: number; paymentTermsDays?: number | null; customerClass?: string | null; notes?: string | null
   customerKind?: 'INDIVIDUAL' | 'BUSINESS'
   companyRegistrationNumber?: string | null; contactPersonName?: string | null
   idProofType?: string | null; idProofNumber?: string | null
@@ -125,6 +126,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         taxExempt: customer?.taxExempt ?? false,
         taxExemptReason: customer?.taxExemptReason ?? '',
         creditLimit: customer?.creditLimit ?? 0,
+        paymentTermsDays: customer?.paymentTermsDays ?? '',
         customerClass: customer?.customerClass ?? '',
         notes: customer?.notes ?? '',
         customerKind: customer?.customerKind ?? 'INDIVIDUAL',
@@ -146,7 +148,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
 
   async function onSubmit(values: FormValues) {
     try {
-      const payload = { ...values, email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
+      const payload = { ...values, paymentTermsDays: values.paymentTermsDays === '' || values.paymentTermsDays === undefined ? null : Number(values.paymentTermsDays), email: values.email || undefined, priceListId: values.priceListId || undefined, customFields: customFieldValues }
       const response = isEdit
         ? await window.api.customers.update({ id: customer!.id, ...payload })
         : await window.api.customers.create(payload)
@@ -217,6 +219,7 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
         <div className="grid grid-cols-2 gap-4">
           <Input label={taxField.label} placeholder={taxField.placeholder ?? t('common.taxNumberPlaceholder')} hint={taxField.hint} {...register('taxNumber')} />
           <Input label={t('customers.creditLimit')} type="number" min="0" step="0.01" {...register('creditLimit')} error={errors.creditLimit?.message} />
+          <Input label={t('customers.paymentTermsDays')} type="number" min="0" max="365" step="1" placeholder="30" {...register('paymentTermsDays')} error={errors.paymentTermsDays?.message} />
         </div>
         {priceLists.length > 0 && (
           <Select label={t('common.priceList')} {...register('priceListId')}>

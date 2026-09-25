@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, addLocalDays } from '../utils/date.util'
 import { inventoryService, applyLocationDeltaTx } from './inventory.service'
 import { customerLedgerService } from './customer-ledger.service'
 import { calculateLineTotal, sumCurrency, roundCurrency, getCurrencyDecimals } from './currency.service'
@@ -297,11 +297,13 @@ export const billingService = {
     let customerTaxExempt = false
     let customerTaxExemptReason: string | null = null
     let customerState: string | null = null
+    let customerTermsDays: number | null = null
     if (payload.customerId) {
-      const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptReason: true, state: true, taxNumber: true } })
+      const exemptCheck = await db.customer.findUnique({ where: { id: payload.customerId }, select: { taxExempt: true, taxExemptReason: true, state: true, taxNumber: true, paymentTermsDays: true } })
       customerTaxExempt = exemptCheck?.taxExempt ?? false
       customerTaxExemptReason = exemptCheck?.taxExemptReason ?? null
       customerState = exemptCheck ? resolvePartyState(exemptCheck.state, exemptCheck.taxNumber) || null : null
+      customerTermsDays = exemptCheck?.paymentTermsDays ?? null
     }
     // Presentation of the tax (CGST + SGST, IGST or one GST line). Never affects an amount. When the
     // caller does not choose, it follows the place of supply: the buyer's state typed on the sale, else
@@ -573,6 +575,8 @@ export const billingService = {
     const paidAmount = startsUnpaid ? 0 : totalAmount
     const balanceAmount = startsUnpaid ? totalAmount : 0
     const paymentStatus = startsUnpaid ? 'UNPAID' : 'PAID'
+    // Agreed payment terms give the due date when the sale did not choose one.
+    if (startsUnpaid && !effectiveDueDate && customerTermsDays && customerTermsDays > 0) effectiveDueDate = addLocalDays(new Date(), customerTermsDays)
 
     // Validate customer exists for credit sales
     if (isCredit && !payload.customerId) {

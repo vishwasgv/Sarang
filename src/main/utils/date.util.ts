@@ -93,3 +93,10 @@ export function startOfLocalDay(date: Date): Date {
 export function toLocalDateOnlyIso(date: Date): string {
   return `${toLocalISODate(date)}T00:00:00.000Z`
 }
+
+/** The local date `days` after `from` at local midnight (calendar days, not 24-hour steps, so daylight saving cannot shift it). */
+export function addLocalDays(from: Date, days: number): Date {
+  const d = new Date(from.getFullYear(), from.getMonth(), from.getDate())
+  d.setDate(d.getDate() + days)
+  return d
+}

@@ -206,6 +206,23 @@ describe('billService.createBill', () => {
     expect(db.bill.create.mock.calls[0][0].data.supplierInvoiceDate).toBeInstanceOf(Date)
   })
 
+  it('due date: an explicit date wins, then the supplier terms, and an MSME supplier is capped at 45 days', async () => {
+    const dueFor = async (supplier: Record<string, unknown>, extra: Record<string, unknown> = {}) => {
+      const db = makeDb()
+      db.supplier.findUnique = vi.fn().mockResolvedValue(makeSupplier(supplier))
+      db.bill.create = vi.fn().mockResolvedValue({ ...makeBill(), supplier: makeSupplier(), items: [] })
+      vi.mocked(getPrisma).mockReturnValue(db as never)
+      await billService.createBill({ supplierId: 'sup-1', billDate: '2026-09-01', items: [productItem], isReverseCharge: false, ...extra })
+      return db.bill.create.mock.calls[0][0].data.dueDate as Date | null
+    }
+    const ymd = (d: Date | null) => (d ? `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}` : null)
+    expect(ymd(await dueFor({ paymentTermsDays: 30 }))).toBe('2026-10-01')
+    expect(ymd(await dueFor({ paymentTermsDays: 30 }, { dueDate: '2026-09-10' }))).toBe('2026-09-10')
+    expect(ymd(await dueFor({ paymentTermsDays: 90, isMsmeRegistered: true }))).toBe('2026-10-16')
+    expect(ymd(await dueFor({ isMsmeRegistered: true }))).toBe('2026-10-16')
+    expect(await dueFor({})).toBeNull()
+  })
+
   it('under RCM, posts a 4-line balanced JournalEntry: Debit Operating Expenses for the net amount, Debit Input Tax Credit for the self-assessed tax, Credit AP for the net (tax-exclusive) amount, Credit Tax Payable for the self-assessed tax', async () => {
     const db = makeDb({
       chartOfAccounts: {

@@ -1,5 +1,5 @@
 import { getPrisma } from '../database/db'
-import { parseLocalDateStart } from '../utils/date.util'
+import { parseLocalDateStart, addLocalDays } from '../utils/date.util'
 import { supplierLedgerService } from './supplier-ledger.service'
 import { calculateLineTotal, sumCurrency, roundCurrency } from './currency.service'
 import { computeDocumentTotals, sumMoney, unitAmount } from '../../shared/utils/money'
@@ -182,8 +182,12 @@ export const billService = {
     // shorter buyer-agreed term is still valid, only the ABSENCE of one
     // should fall back to the statutory default rather than staying null.
     let resolvedDueDate: Date | null = payload.dueDate ? parseLocalDateStart(payload.dueDate) : null
+    // Agreed terms with this supplier come first; an MSME supplier is never given longer than the 45-day statutory limit.
+    if (!resolvedDueDate && supplier.paymentTermsDays && supplier.paymentTermsDays > 0) {
+      resolvedDueDate = addLocalDays(resolvedBillDate, supplier.isMsmeRegistered ? Math.min(supplier.paymentTermsDays, 45) : supplier.paymentTermsDays)
+    }
     if (!resolvedDueDate && supplier.isMsmeRegistered) {
-      resolvedDueDate = new Date(resolvedBillDate.getTime() + 45 * 24 * 60 * 60 * 1000)
+      resolvedDueDate = addLocalDays(resolvedBillDate, 45)
     }
 
     try {
