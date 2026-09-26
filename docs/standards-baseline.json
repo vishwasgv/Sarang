@@ -1,7 +1,7 @@
 {
   "oversized": {
     "src/main/database/seed.ts": 937,
-    "src/main/ipc/channels.ts": 2269,
+    "src/main/ipc/channels.ts": 2281,
     "src/main/ipc/handlers/industry.handler.ts": 620,
     "src/main/ipc/handlers/reports.handler.ts": 1503,
     "src/main/services/ai-query.service.ts": 2795,
@@ -25,7 +25,7 @@
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10993,
     "src/main/services/restaurant.service.ts": 1011,
-    "src/preload/index.ts": 1990,
+    "src/preload/index.ts": 2003,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
     "src/renderer/src/modules/billing/ui/BillingScreen.tsx": 3069,
     "src/renderer/src/modules/billing/ui/InvoiceDetailScreen.tsx": 966,
@@ -39,7 +39,7 @@
     "src/renderer/src/modules/logistics/ui/GRNScreen.tsx": 661,
     "src/renderer/src/modules/manufacturing/ui/ProductionOrdersScreen.tsx": 1221,
     "src/renderer/src/modules/manufacturing/ui/RawMaterialsScreen.tsx": 658,
-    "src/renderer/src/modules/products/ui/ProductFormModal.tsx": 1050,
+    "src/renderer/src/modules/products/ui/ProductFormModal.tsx": 1055,
     "src/renderer/src/modules/reports/ui/FinancialStatementViews.tsx": 649,
     "src/renderer/src/modules/reports/ui/GstReportViews.tsx": 777,
     "src/renderer/src/modules/reports/ui/ReportsScreen.tsx": 13057,
@@ -67,7 +67,7 @@
     "src/renderer/src/modules/service-business/ui/TailoringScreen.tsx": 1043,
     "src/renderer/src/modules/service-business/ui/TokenQueueScreen.tsx": 693,
     "src/renderer/src/modules/service-business/ui/VisitNoteScreen.tsx": 1795,
-    "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3659,
+    "src/renderer/src/modules/settings/ui/SettingsScreen.tsx": 3660,
     "src/renderer/src/modules/setup/ui/SetupWizard.tsx": 898,
     "src/renderer/src/modules/suppliers/ui/BillDetailScreen.tsx": 641,
     "src/renderer/src/modules/suppliers/ui/SupplierDetailScreen.tsx": 606

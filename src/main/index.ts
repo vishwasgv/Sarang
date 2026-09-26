@@ -1,3 +1,4 @@
+import { applyLanConfig, isLanClientConfigured, stopLan } from './lan/controller'
 import { ensureOpeningStockPosted } from './services/stock-opening-ledger.service'
 import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electron'
 import { refreshTaxComponentsCache } from './services/tax-components-cache'
@@ -243,7 +244,8 @@ app.whenReady().then(async () => {
   // tutorial.db instead of the real database for the rest of this process's
   // lifetime — every screen/service below runs completely unmodified either
   // way, it's just talking to different data.
-  const tutorialFlag = resolveTutorialBoot()
+  const isLanClient = isLanClientConfigured()
+  const tutorialFlag = isLanClient ? null : resolveTutorialBoot()
 
   // REAL BUG found+fixed 2026-08-04 (live install verification): every
   // tutorial session, on a genuinely fresh tutorial.db, was crashing with
@@ -290,10 +292,13 @@ app.whenReady().then(async () => {
   }
 
   try {
-    await initializeDatabase(tutorialFlag ? getTutorialDbPath() : undefined)
+    // A client PC keeps no business data of its own: it only needs an empty scratch database for the few local-only actions.
+    await initializeDatabase(isLanClient ? join(app.getPath('userData'), 'lan-client-scratch.db') : tutorialFlag ? getTutorialDbPath() : undefined)
     // Idempotent — ensures expense categories and GST tax configs exist for existing installs
-    await seedDefaultData().catch(e => logger.warn('[Seed] Non-fatal seed error on startup:', e))
-    await ensureOpeningStockPosted().catch(e => logger.warn('[Stock] Opening stock entry skipped:', e))
+    if (!isLanClient) {
+      await seedDefaultData().catch(e => logger.warn('[Seed] Non-fatal seed error on startup:', e))
+      await ensureOpeningStockPosted().catch(e => logger.warn('[Stock] Opening stock entry skipped:', e))
+    }
 
     if (tutorialFlag) {
       try {
@@ -334,69 +339,72 @@ app.whenReady().then(async () => {
     }
   }
 
-  // Async integrity check — logs for diagnostics, and pushes a real notification
-  // (same mechanism as the auto-backup/reminder notifications below) so a
-  // corrupted database isn't something the user only discovers by happening to
-  // open Settings > Backup & Recovery.
-  checkDatabaseIntegrity().then(r => {
-    if (!r.ok) {
-      logger.error('[DB] Integrity issue on startup:', r.message)
-      createNotification({
-        title: 'Database Integrity Issue',
-        message: `${r.message} Click to open Backup & Recovery and restore from a backup.`,
-        notificationType: 'ERROR',
-        actionPath: '/backup'
-      }).catch(() => {})
-    } else {
-      logger.info('[DB] Integrity check passed.')
-    }
-  }).catch(() => {})
+  // A client PC runs none of the server's background work (backups, reminders, recurring documents): the server PC does.
+  if (!isLanClient) {
+    // Async integrity check — logs for diagnostics, and pushes a real notification
+    // (same mechanism as the auto-backup/reminder notifications below) so a
+    // corrupted database isn't something the user only discovers by happening to
+    // open Settings > Backup & Recovery.
+    checkDatabaseIntegrity().then(r => {
+      if (!r.ok) {
+        logger.error('[DB] Integrity issue on startup:', r.message)
+        createNotification({
+          title: 'Database Integrity Issue',
+          message: `${r.message} Click to open Backup & Recovery and restore from a backup.`,
+          notificationType: 'ERROR',
+          actionPath: '/backup'
+        }).catch(() => {})
+      } else {
+        logger.info('[DB] Integrity check passed.')
+      }
+    }).catch(() => {})
 
-  // Auto-backup reminder check (GAP G7.2) — must re-check periodically, not just
-  // at startup: a shop that leaves the app running for days without restarting
-  // would otherwise never get auto-backed-up again after the initial check.
-  checkAutoBackupReminder().catch(() => {})
-
-  // Aggregate, anonymous daily active-usage tracking (disclosed once at
-  // install in SetupWizard, never surfaced again during normal use) —
-  // start/recover today's tick immediately, then opportunistically try to
-  // deliver any queued backlog. See usage-metrics.service.ts's header
-  // comment for the full design; never load-bearing, never blocks startup.
-  recordUsageTick().then(() => flushUsageQueue()).catch(() => {})
-
-  // Notification evaluation engine: fire on startup + every 60 min (spec §13.7)
-  evaluateNotificationQueue().catch(() => {})
-  scanPaymentOverdueNotifications().catch(() => {})
-  generateComplianceTasks().catch(() => {})
-  // Phase 63 — Recurring Invoices/Bills/Expenses, same on-demand evaluation
-  // shape as everything else in this block (no real cron exists in this
-  // codebase — see recurring-profile.service.ts's own header comment).
-  recurringProfileService.generateDueRecurringDocuments().catch(() => {})
-  // Phase 67 §9.1 — Retail time-boxed markdown auto-revert, same shape.
-  priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
-  quotationService.expireOverdue().catch(() => {})
-  processDueReversals().catch(() => {})
-  sweepReminderQueue().catch(() => {})
-  refreshTaxComponentsCache().catch(() => {})
-  cleanupLegacyReferenceTokens().catch(() => {})
-  setInterval(() => {
+    // Auto-backup reminder check (GAP G7.2) — must re-check periodically, not just
+    // at startup: a shop that leaves the app running for days without restarting
+    // would otherwise never get auto-backed-up again after the initial check.
     checkAutoBackupReminder().catch(() => {})
+
+    // Aggregate, anonymous daily active-usage tracking (disclosed once at
+    // install in SetupWizard, never surfaced again during normal use) —
+    // start/recover today's tick immediately, then opportunistically try to
+    // deliver any queued backlog. See usage-metrics.service.ts's header
+    // comment for the full design; never load-bearing, never blocks startup.
+    recordUsageTick().then(() => flushUsageQueue()).catch(() => {})
+
+    // Notification evaluation engine: fire on startup + every 60 min (spec §13.7)
     evaluateNotificationQueue().catch(() => {})
     scanPaymentOverdueNotifications().catch(() => {})
     generateComplianceTasks().catch(() => {})
+    // Phase 63 — Recurring Invoices/Bills/Expenses, same on-demand evaluation
+    // shape as everything else in this block (no real cron exists in this
+    // codebase — see recurring-profile.service.ts's own header comment).
     recurringProfileService.generateDueRecurringDocuments().catch(() => {})
+    // Phase 67 §9.1 — Retail time-boxed markdown auto-revert, same shape.
     priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
     quotationService.expireOverdue().catch(() => {})
     processDueReversals().catch(() => {})
     sweepReminderQueue().catch(() => {})
-  }, 60 * 60 * 1000)
+    refreshTaxComponentsCache().catch(() => {})
+    cleanupLegacyReferenceTokens().catch(() => {})
+    setInterval(() => {
+      checkAutoBackupReminder().catch(() => {})
+      evaluateNotificationQueue().catch(() => {})
+      scanPaymentOverdueNotifications().catch(() => {})
+      generateComplianceTasks().catch(() => {})
+      recurringProfileService.generateDueRecurringDocuments().catch(() => {})
+      priceMarkdownService.revertDuePriceMarkdowns().catch(() => {})
+      quotationService.expireOverdue().catch(() => {})
+      processDueReversals().catch(() => {})
+      sweepReminderQueue().catch(() => {})
+    }, 60 * 60 * 1000)
 
-  // Usage-metrics tick — shorter cadence than the hour-ly evaluators above
-  // by design (see usage-metrics.service.ts): keeps the elapsed-time math
-  // tight and bounds how much a crash can lose to at most one interval.
-  setInterval(() => {
-    recordUsageTick().then(() => flushUsageQueue()).catch(() => {})
-  }, 5 * 60 * 1000)
+    // Usage-metrics tick — shorter cadence than the hour-ly evaluators above
+    // by design (see usage-metrics.service.ts): keeps the elapsed-time math
+    // tight and bounds how much a crash can lose to at most one interval.
+    setInterval(() => {
+      recordUsageTick().then(() => flushUsageQueue()).catch(() => {})
+    }, 5 * 60 * 1000)
+  }
 
   // R26: Enforce CSP at the webRequest layer (stronger than meta tag alone).
   // Skipped in dev: the production policy's `script-src 'self'` (no
@@ -426,30 +434,33 @@ app.whenReady().then(async () => {
   // never throws — see warmUpAiProvider()'s own header comment.
   warmUpAiProvider().catch(() => {})
 
-  // Phase 47 — starts the local LAN QR-ordering HTTP server only if the
-  // opt-in module is already enabled from a prior session; zero-footprint
-  // (never binds a port) otherwise, matching every other opt-in module.
-  ensureQrOrderServerState().catch(e => logger.error('[QROrderServer] Startup check failed:', e))
-  ensureKitchenDisplayServerState().catch(e => logger.error('[KitchenDisplayServer] Startup check failed:', e))
-  ensureFieldOrderServerState().catch(e => logger.error('[FieldOrderServer] Startup check failed:', e))
-  ensureTokenQueueServerState().catch(e => logger.error('[TokenQueueServer] Startup check failed:', e))
-  ensureDoctorPadServerState().catch(e => logger.error('[DoctorPadServer] Startup check failed:', e))
-  // REAL BUG found+fixed 2026-09-16 (caught while restarting the app to test
-  // an unrelated fix, not by any test): Owner View was wired into the 3
-  // toggle-triggered ensure*ServerState() call sites (industry:setTemplate/
-  // changeBusinessType/updateModules) but never into app startup like every
-  // sibling LAN server here — a user who enabled Owner View then restarted
-  // Sarang would find it silently not running until they re-toggled it.
-  ensureOwnerViewServerState().catch(e => logger.error('[OwnerViewServer] Startup check failed:', e))
+  if (!isLanClient) {
+    // Phase 47 — starts the local LAN QR-ordering HTTP server only if the
+    // opt-in module is already enabled from a prior session; zero-footprint
+    // (never binds a port) otherwise, matching every other opt-in module.
+    ensureQrOrderServerState().catch(e => logger.error('[QROrderServer] Startup check failed:', e))
+    ensureKitchenDisplayServerState().catch(e => logger.error('[KitchenDisplayServer] Startup check failed:', e))
+    ensureFieldOrderServerState().catch(e => logger.error('[FieldOrderServer] Startup check failed:', e))
+    ensureTokenQueueServerState().catch(e => logger.error('[TokenQueueServer] Startup check failed:', e))
+    ensureDoctorPadServerState().catch(e => logger.error('[DoctorPadServer] Startup check failed:', e))
+    // REAL BUG found+fixed 2026-09-16 (caught while restarting the app to test
+    // an unrelated fix, not by any test): Owner View was wired into the 3
+    // toggle-triggered ensure*ServerState() call sites (industry:setTemplate/
+    // changeBusinessType/updateModules) but never into app startup like every
+    // sibling LAN server here — a user who enabled Owner View then restarted
+    // Sarang would find it silently not running until they re-toggled it.
+    ensureOwnerViewServerState().catch(e => logger.error('[OwnerViewServer] Startup check failed:', e))
 
-  // 2026-09-22 — founder ask: check for updates as soon as the app has
-  // internet, not only when the dashboard happens to be viewed. This is a
-  // second trigger for the exact same throttled/toggle-respecting function
-  // analytics.service.ts's dashboard-alerts path already calls — never a
-  // duplicate network hit, checkForUpdatesIfDue() itself no-ops unless the
-  // ~20h throttle has actually elapsed. Fire-and-forget: must never block
-  // window creation or fail visibly if offline.
-  checkForUpdatesIfDue().catch(() => {})
+    // 2026-09-22 — founder ask: check for updates as soon as the app has
+    // internet, not only when the dashboard happens to be viewed. This is a
+    // second trigger for the exact same throttled/toggle-respecting function
+    // analytics.service.ts's dashboard-alerts path already calls — never a
+    // duplicate network hit, checkForUpdatesIfDue() itself no-ops unless the
+    // ~20h throttle has actually elapsed. Fire-and-forget: must never block
+    // window creation or fail visibly if offline.
+    checkForUpdatesIfDue().catch(() => {})
+  }
+  applyLanConfig((m) => logger.warn(m)).catch(e => logger.error('[LAN] Startup failed:', e))
 
   app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) createWindow()
@@ -457,6 +468,7 @@ app.whenReady().then(async () => {
 })
 
 app.on('window-all-closed', () => {
+  stopLan().catch(() => {})
   stopQrOrderServer().catch(() => {})
   stopKitchenDisplayServer().catch(() => {})
   stopFieldOrderServer().catch(() => {})

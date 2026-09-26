@@ -1,3 +1,4 @@
+import { LanSetupModal } from '@modules/settings/ui/LanSetupModal'
 import React, { useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -32,6 +33,7 @@ export function LoginScreen() {
   const [showPassword, setShowPassword] = useState(false)
   const [serverError, setServerError] = useState<string | null>(null)
   const [forgotOpen, setForgotOpen] = useState(false)
+  const [lanOpen, setLanOpen] = useState(false)
 
   const {
     register,
@@ -182,6 +184,7 @@ export function LoginScreen() {
           </form>
         </Card>
 
+        <button type="button" onClick={() => setLanOpen(true)} className="block mx-auto mt-4 text-sm text-slate-500 hover:underline min-h-[44px]">{t('lan.loginLink')}</button>
         {/* Footer */}
         <p className="text-center text-sm text-slate-400 mt-6 inline-flex items-center justify-center gap-1.5 w-full">
           {t('about.poweredBy')} <AszurexMark width={14} /> · {t('about.tagline')}
@@ -189,6 +192,7 @@ export function LoginScreen() {
       </motion.div>
 
       <ForgotPasswordModal open={forgotOpen} onClose={() => setForgotOpen(false)} />
+      <LanSetupModal open={lanOpen} onClose={() => setLanOpen(false)} />
     </div>
   )
 }

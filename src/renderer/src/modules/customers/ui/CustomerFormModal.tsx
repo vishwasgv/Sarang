@@ -1,3 +1,4 @@
+import { useRecordLock } from '@shared/hooks/useRecordLock'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -92,6 +93,7 @@ interface CustomerFormModalProps {
 }
 
 export function CustomerFormModal({ open, onClose, onSaved, customer }: CustomerFormModalProps) {
+  const lockedBy = useRecordLock('customer', customer?.id, open)
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const { isModuleEnabled } = useIndustryStore()
@@ -180,12 +182,15 @@ export function CustomerFormModal({ open, onClose, onSaved, customer }: Customer
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
-          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
+          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting} disabled={lockedBy !== null}>
             {isEdit ? t('common.saveChanges') : (isDoctorVertical ? `Add ${patientNoun}` : t('customers.addCustomer'))}
           </Button>
         </>
       }
     >
+      {lockedBy !== null && (
+        <p role="alert" className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">{lockedBy ? t('lan.beingEdited', { name: lockedBy }) : t('lan.beingEditedGeneric')}</p>
+      )}
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <div className="flex items-center gap-1 rounded-lg border border-slate-200 dark:border-slate-700 p-1 w-fit">
           {(['INDIVIDUAL', 'BUSINESS'] as const).map(kind => (

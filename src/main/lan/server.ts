@@ -4,6 +4,7 @@ import { existsSync, readFileSync, statSync, unlinkSync } from 'fs'
 import { createSessionHolder, runWithSession, readSession, type SessionHolder } from '../security/session-context'
 import { getChannel, isServerOnlyChannel, changesData } from './registry'
 import { runAsRemote, type RemoteContext } from './context'
+import { runInWriteQueue } from './write-queue'
 import { open, seal, type PollResponse, type RpcRequest, type RpcResponse, type RpcDownload } from './protocol'
 
 const MAX_BODY = 30 * 1024 * 1024
@@ -62,6 +63,7 @@ export class LanServer {
   private lastBy: string | null = null
   private lastAt = 0
   private sweeper: NodeJS.Timeout | null = null
+  private failures = new Map<string, { count: number; since: number }>()
 
   constructor(private readonly opts: LanServerOptions) {}
 
@@ -118,14 +120,23 @@ export class LanServer {
       res.writeHead(404).end()
       return
     }
+    const ip = req.socket.remoteAddress ?? ''
+    // Guessing the shared secret is slowed down: after 20 rejected messages in a minute an address waits its turn.
+    const bad = this.failures.get(ip)
+    if (bad && Date.now() - bad.since < 60_000 && bad.count >= 20) {
+      res.writeHead(429).end()
+      return
+    }
     let request: RpcRequest
     try {
       request = open<RpcRequest>(this.opts.secret, await readBody(req))
     } catch {
+      const now = Date.now()
+      const cur = this.failures.get(ip)
+      this.failures.set(ip, !cur || now - cur.since >= 60_000 ? { count: 1, since: now } : { count: cur.count + 1, since: cur.since })
       res.writeHead(401).end()
       return
     }
-    const ip = req.socket.remoteAddress ?? ''
     let conn = request.conn ? this.connections.get(request.conn) : undefined
     if (!conn) {
       conn = { id: randomBytes(12).toString('hex'), holder: createSessionHolder(), ip, since: Date.now(), lastSeen: Date.now() }
@@ -168,7 +179,8 @@ export class LanServer {
 
     // A PC that signs in remotely never leaves a remembered sign-in on this PC.
     const input = channel === 'auth:login' && typeof payload === 'object' && payload !== null ? { ...(payload as object), rememberMe: false } : payload
-    const result = await runWithSession(conn.holder, () => runAsRemote(ctx, () => handler(input)))
+    const run = () => runWithSession(conn.holder, () => runAsRemote(ctx, () => handler(input)))
+    const result = changesData(channel) ? await runInWriteQueue(run) : await run()
     ctx.user = conn.holder.session?.username ?? null
     if (channel === 'auth:logout') conn.holder.session = null
     const failed = typeof result === 'object' && result !== null && (result as { success?: boolean }).success === false

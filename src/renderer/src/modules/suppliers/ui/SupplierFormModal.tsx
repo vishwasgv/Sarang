@@ -1,3 +1,4 @@
+import { useRecordLock } from '@shared/hooks/useRecordLock'
 import React, { useEffect, useState } from 'react'
 import { useTranslation } from 'react-i18next'
 import { useForm } from 'react-hook-form'
@@ -63,6 +64,7 @@ interface SupplierFormModalProps {
 }
 
 export function SupplierFormModal({ open, onClose, onSaved, supplier }: SupplierFormModalProps) {
+  const lockedBy = useRecordLock('supplier', supplier?.id, open)
   const { t } = useTranslation()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
   const isEdit = !!supplier
@@ -141,12 +143,15 @@ export function SupplierFormModal({ open, onClose, onSaved, supplier }: Supplier
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
-          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
+          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting} disabled={lockedBy !== null}>
             {isEdit ? t('common.saveChanges') : t('suppliers.addSupplier')}
           </Button>
         </>
       }
     >
+      {lockedBy !== null && (
+        <p role="alert" className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">{lockedBy ? t('lan.beingEdited', { name: lockedBy }) : t('lan.beingEditedGeneric')}</p>
+      )}
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         <Input label={`${t('suppliers.supplierName')} *`} placeholder={t('suppliers.supplierNamePlaceholder')} {...register('supplierName')} error={errors.supplierName?.message} />
         <div className="grid grid-cols-2 gap-4">

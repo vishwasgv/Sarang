@@ -40,7 +40,7 @@ export class LanClient {
     const message: RpcRequest = { channel, payload, conn: this.conn }
     try {
       const res = await this.post(seal(this.opts.secret, message), timeoutMs)
-      if (res.status === 401) return { result: WRONG_SECRET, downloads: [] }
+      if (res.status === 401 || res.status === 429) return { result: WRONG_SECRET, downloads: [] }
       if (res.status !== 200) return { result: UNREACHABLE, downloads: [] }
       const body = open<RpcResponse>(this.opts.secret, res.text)
       this.conn = body.conn

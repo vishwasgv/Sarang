@@ -404,6 +404,18 @@ export interface IpcChannels {
     save: (payload: { name: string; narration?: string; lines: Array<{ accountId: string; side: 'DEBIT' | 'CREDIT'; remarks?: string }> }) => Promise<ApiResponse>
     remove: (payload: { id: string }) => Promise<ApiResponse>
   }
+  locks: {
+    acquire: (payload: { kind: string; id: string }) => Promise<ApiResponse>
+    release: (payload: { kind: string; id: string }) => Promise<ApiResponse>
+  }
+  lan: {
+    getStatus: () => Promise<ApiResponse>
+    saveConfig: (payload: { mode: 'off' | 'server' | 'client'; port?: number; secret?: string; host?: string }) => Promise<ApiResponse>
+    newSecret: () => Promise<ApiResponse>
+    disconnect: (payload: { id: string }) => Promise<ApiResponse>
+    testConnection: (payload: { host: string; port?: number; secret: string }) => Promise<ApiResponse>
+    restart: () => Promise<ApiResponse>
+  }
   bankRules: {
     list: () => Promise<ApiResponse>
     create: (payload: { name: string; bankAccountId?: string | null; direction: 'DEBIT' | 'CREDIT' | 'ANY'; contains: string; minAmount?: number | null; maxAmount?: number | null; accountId: string; priority?: number }) => Promise<ApiResponse>

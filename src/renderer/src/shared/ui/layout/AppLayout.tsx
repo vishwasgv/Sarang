@@ -1,3 +1,4 @@
+import { LanBanner } from '@modules/settings/ui/LanBanner'
 import { useScheduledReportRunner } from '@modules/reports/scheduled/scheduled-reports.runner'
 import React, { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
@@ -98,6 +99,7 @@ export function AppLayout() {
                 transition={{ duration: 0.18, ease: 'easeOut' }}
                 className="h-full"
               >
+                <LanBanner />
                 <Outlet />
               </motion.div>
             </AnimatePresence>

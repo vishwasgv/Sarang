@@ -1,3 +1,4 @@
+import { useRecordLock } from '@shared/hooks/useRecordLock'
 import React, { useEffect, useState } from 'react'
 import { useMoneyContext } from '@shared/utils/money-context'
 import { useForm, Controller } from 'react-hook-form'
@@ -194,6 +195,7 @@ const CREATE_NEW_CATEGORY_VALUE = '__create_new_category__'
 const UNITS = ['PCS', 'KG', 'G', 'L', 'ML', 'M', 'CM', 'SQFT', 'SQM', 'BOX', 'DOZEN', 'PACKET', 'PAIR', 'SET', 'BOTTLE', 'BAG', 'ROLL', 'HOUR', 'SERVICE']
 
 export function ProductFormModal({ open, onClose, onSaved, product, categories, onCategoryCreated }: ProductFormModalProps) {
+  const lockedBy = useRecordLock('product', product?.id, open)
   const { t } = useTranslation()
   const moneyCtx = useMoneyContext()
   const { success: toastSuccess, error: toastError } = useNotificationStore()
@@ -540,12 +542,15 @@ export function ProductFormModal({ open, onClose, onSaved, product, categories, 
       footer={
         <>
           <Button variant="secondary" size="sm" onClick={onClose} disabled={isSubmitting}>{t('common.cancel')}</Button>
-          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting}>
+          <Button size="sm" onClick={handleSubmit(onSubmit)} loading={isSubmitting} disabled={lockedBy !== null}>
             {isEdit ? t('common.saveChanges') : t('products.addProduct')}
           </Button>
         </>
       }
     >
+      {lockedBy !== null && (
+        <p role="alert" className="mb-3 rounded-lg bg-amber-50 border border-amber-200 px-4 py-3 text-sm text-amber-800">{lockedBy ? t('lan.beingEdited', { name: lockedBy }) : t('lan.beingEditedGeneric')}</p>
+      )}
       <form className="space-y-4" onSubmit={handleSubmit(onSubmit)}>
         {/* Basic Info */}
         <div className="grid grid-cols-2 gap-4">

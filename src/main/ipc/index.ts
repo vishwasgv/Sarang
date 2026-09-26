@@ -210,12 +210,26 @@ import { register as registerTourPackage } from './handlers/tour-package.handler
 import { register as registerTripBooking } from './handlers/trip-booking.handler'
 import { register as registerDriverDutyLog } from './handlers/driver-duty-log.handler'
 
+import { register as registerLan } from './handlers/lan.handler'
+import { register as registerEditLocks } from './handlers/edit-lock.handler'
+import { registerChannel } from '../lan/registry'
+import { forwardIfClient, noteLocalCall, getLanServer } from '../lan/router'
+import { runInWriteQueue } from '../lan/write-queue'
+import { changesData } from '../lan/registry'
+
 type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown>) => void
 
 function handle(channel: string, handler: (payload: unknown) => Promise<unknown>): void {
+  registerChannel(channel, handler)
   ipcMain.handle(channel, async (_event, payload) => {
     try {
-      return await handler(payload)
+      // On a client PC the call goes to the server PC; on the server PC a change is announced to the others.
+      const forwarded = await forwardIfClient(channel, payload)
+      if (forwarded !== undefined) return forwarded
+      // With other PCs connected, this PC's own saves wait in the same line as theirs.
+      const result = getLanServer() && changesData(channel) ? await runInWriteQueue(() => handler(payload)) : await handler(payload)
+      noteLocalCall(channel, result)
+      return result
     } catch (err) {
       console.error(`[IPC] Error in ${channel}:`, err)
       return { success: false, error: { code: 'SYS-001', message: 'Something unexpected happened. Please try again.' } }
@@ -275,6 +289,8 @@ export function registerAllIpcHandlers(): void {
   registerStockTakes(h)
   registerBins(h)
   registerBankRules(h)
+  registerLan(h)
+  registerEditLocks(h)
   registerVoucherClasses(h)
   registerCustomKpis(h)
   registerExchangeRates(h)

@@ -22,7 +22,7 @@ const LOCAL_ONLY = new Set([
   'import:parseFile', 'import:parseDroppedFile', 'import:validatePreview', 'import:execute',
   'documents:pick', 'documents:attach', 'documents:open', 'documents:print', 'documents:exportForShare',
   'share:showItemInFolder', 'branchSummaries:import', 'reportFiles:chooseFolder', 'gstReturns:reconcile',
-  'app:restartAndInstallUpdate', 'app:checkForUpdates', 'app:checkForUpdatesNow', 'app:approveUpdateDownload', 'app:dismissPendingUpdate', 'app:setAutoUpdateCheckEnabled'
+  'app:restartAndInstallUpdate', 'app:checkForUpdates', 'app:checkForUpdatesNow', 'app:approveUpdateDownload', 'app:dismissPendingUpdate', 'app:setAutoUpdateCheckEnabled', 'print:listPrinters'
 ])
 
 export function isServerOnlyChannel(channel: string): boolean {

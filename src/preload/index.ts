@@ -327,6 +327,18 @@ const api: IpcChannels = {
     save: (p) => invoke('voucherClasses:save', p),
     remove: (p) => invoke('voucherClasses:remove', p)
   },
+  locks: {
+    acquire: (p) => invoke('locks:acquire', p),
+    release: (p) => invoke('locks:release', p)
+  },
+  lan: {
+    getStatus: () => invoke('lan:getStatus'),
+    saveConfig: (p) => invoke('lan:saveConfig', p),
+    newSecret: () => invoke('lan:newSecret'),
+    disconnect: (p) => invoke('lan:disconnect', p),
+    testConnection: (p) => invoke('lan:testConnection', p),
+    restart: () => invoke('lan:restart')
+  },
   bankRules: {
     list: () => invoke('bankRules:list'),
     create: (p) => invoke('bankRules:create', p),
@@ -1956,6 +1968,7 @@ const ALLOWED_PUSH_CHANNELS = [
   'import:progress',
   'import:complete',
   'system:alert',
+  'lan:changed',
 ] as const
 type AllowedPushChannel = typeof ALLOWED_PUSH_CHANNELS[number]
 

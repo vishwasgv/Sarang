@@ -1,5 +1,6 @@
 import { ScheduledReportsCard } from '@modules/reports/scheduled/ScheduledReportsCard'
 import { StockRulesCard } from './StockRulesCard'
+import { LanCard } from './LanCard'
 import { CustomFieldRulesEditor, EMPTY_RULES, rulesPayload, type FieldRulesForm } from './CustomFieldRulesEditor'
 import { WorkflowRulesCard } from './WorkflowRulesCard'
 import { ExchangeRatesCard } from './ExchangeRatesCard'
@@ -496,7 +497,7 @@ export function SettingsScreen() {
         {activeSection === 'industry' && <IndustrySettingsScreen />}
         {activeSection === 'language' && <LanguageSection />}
         {activeSection === 'appearance' && <AppearanceSection />}
-        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><WorkflowRulesCard /><LateInterestCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
+        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><LanCard /><WorkflowRulesCard /><LateInterestCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
         {activeSection === 'barcode' && <BarcodeSection />}
         {activeSection === 'invoiceTemplates' && <InvoiceTemplatesSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}
