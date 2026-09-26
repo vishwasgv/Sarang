@@ -1,3 +1,4 @@
+import { chooseSavePath } from '../lan/file-bridge'
 import { app, BrowserWindow, dialog } from 'electron'
 import * as XLSX from 'xlsx'
 import { writeFile, unlink } from 'fs/promises'
@@ -43,7 +44,7 @@ export async function exportToCsv(params: {
   headers: string[]
   rows: (string | number | null | undefined)[][]
 }): Promise<void> {
-  const { filePath } = await dialog.showSaveDialog({
+  const { filePath } = await chooseSavePath({
     title: 'Save CSV Report',
     defaultPath: params.filename,
     filters: [{ name: 'CSV Files', extensions: ['csv'] }]
@@ -79,7 +80,7 @@ export async function exportToExcel(params: {
   filename: string
   sheets: { name: string; headers: string[]; rows: (string | number | null | undefined)[][] }[]
 }): Promise<void> {
-  const { filePath } = await dialog.showSaveDialog({
+  const { filePath } = await chooseSavePath({
     title: 'Save Excel Report',
     defaultPath: params.filename,
     filters: [{ name: 'Excel Files', extensions: ['xlsx'] }]
@@ -122,7 +123,7 @@ export async function exportToExcel(params: {
 // a file that doesn't exist. A real save reports `filePath` so a caller can
 // act on it (e.g. shell.showItemInFolder).
 export async function exportToPdf(params: { html: string; filename: string }): Promise<{ cancelled: boolean; filePath?: string }> {
-  const { filePath } = await dialog.showSaveDialog({
+  const { filePath } = await chooseSavePath({
     title: 'Save PDF Report',
     defaultPath: params.filename,
     filters: [{ name: 'PDF Files', extensions: ['pdf'] }]

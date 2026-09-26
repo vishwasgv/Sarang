@@ -1,3 +1,4 @@
+import { chooseSavePath } from '../lan/file-bridge'
 import { dialog } from 'electron'
 import { writeFile } from 'fs/promises'
 import { getPrisma } from '../database/db'
@@ -42,7 +43,7 @@ export async function prepareGstr3bJson(month: string) {
 }
 
 export async function saveJsonFile(defaultName: string, body: unknown): Promise<{ saved: boolean; path?: string }> {
-  const { filePath } = await dialog.showSaveDialog({
+  const { filePath } = await chooseSavePath({
     title: 'Save file',
     defaultPath: defaultName,
     filters: [{ name: 'JSON files', extensions: ['json'] }]

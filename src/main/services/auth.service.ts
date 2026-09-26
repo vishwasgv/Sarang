@@ -1,3 +1,4 @@
+import { isRemoteRequest } from '../lan/context'
 import { passwordStrengthProblem, passwordStrengthMessage } from './password-strength.util'
 import bcrypt from 'bcryptjs'
 import { createHash, randomBytes } from 'crypto'
@@ -226,7 +227,8 @@ export async function logout(): Promise<ApiResponse> {
     await logAction({ userId: session.userId, action: 'USER_LOGOUT', entityType: 'User', entityId: session.userId })
     writeSession(null)
   }
-  await clearSavedSession()
+  // A sign-out from another PC must not wipe the remembered sign-in kept on this PC.
+  if (!isRemoteRequest()) await clearSavedSession()
   return { success: true }
 }
 

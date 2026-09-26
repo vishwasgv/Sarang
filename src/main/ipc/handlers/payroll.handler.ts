@@ -1,3 +1,4 @@
+import { printHtml } from '../../lan/print-html'
 import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
@@ -82,18 +83,6 @@ export function register(handle: HandleFn): void {
       paymentMethod: salaryRes.data.paymentMethod,
     }, profile as Parameters<typeof printService.generatePayslipHtml>[1])
 
-    const tmpPath = join(app.getPath('temp'), `sarang_payslip_${Date.now()}.html`)
-    await writeFile(tmpPath, html, 'utf-8')
-    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
-      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
-      win.loadFile(tmpPath)
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: false, printBackground: true, color: true }, (success: boolean) => {
-          win.close()
-          unlink(tmpPath).catch(() => {})
-          resolve({ success, data: { printed: success } })
-        })
-      })
-    })
+    return printHtml(html, 'sarang_payslip', { silent: false, printBackground: true, color: true })
   })
 }

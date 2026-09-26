@@ -1,3 +1,4 @@
+import { printHtml } from '../../lan/print-html'
 import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
@@ -78,19 +79,7 @@ export function register(handle: HandleFn): void {
     const html = isReceipt
       ? await printService.generateDebitNoteReceiptHtml(dnRes.data as Parameters<typeof printService.generateDebitNoteReceiptHtml>[0], profile as Parameters<typeof printService.generateDebitNoteReceiptHtml>[1], paperWidth)
       : await printService.generateDebitNoteHtml(dnRes.data as Parameters<typeof printService.generateDebitNoteHtml>[0], profile as Parameters<typeof printService.generateDebitNoteHtml>[1])
-    const tmpPath = join(app.getPath('temp'), `sarang_dn_${Date.now()}.html`)
-    await writeFile(tmpPath, html, 'utf-8')
-    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
-      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
-      win.loadFile(tmpPath)
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: false, printBackground: true, color: !isReceipt }, (success: boolean) => {
-          win.close()
-          unlink(tmpPath).catch(() => {})
-          resolve({ success, data: { printed: success } })
-        })
-      })
-    })
+    return printHtml(html, 'sarang_dn', { silent: false, printBackground: true, color: !isReceipt })
   })
 
   handle('debitNotes:printReceipt', async (payload) => {
@@ -107,19 +96,7 @@ export function register(handle: HandleFn): void {
     const printType = (printTypeSetting?.settingValue ?? 'THERMAL_80MM') as 'A4' | 'THERMAL_80MM' | 'THERMAL_58MM'
     const paperWidth = overridePaperWidth ?? (printType === 'THERMAL_58MM' ? '58mm' : '80mm')
     const html = await printService.generateDebitNoteReceiptHtml(dnRes.data as Parameters<typeof printService.generateDebitNoteReceiptHtml>[0], profile as Parameters<typeof printService.generateDebitNoteReceiptHtml>[1], paperWidth)
-    const tmpPath = join(app.getPath('temp'), `sarang_dn_rcpt_${Date.now()}.html`)
-    await writeFile(tmpPath, html, 'utf-8')
-    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
-      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
-      win.loadFile(tmpPath)
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: false, printBackground: true }, (success: boolean) => {
-          win.close()
-          unlink(tmpPath).catch(() => {})
-          resolve({ success, data: { printed: success } })
-        })
-      })
-    })
+    return printHtml(html, 'sarang_dn_rcpt', { silent: false, printBackground: true })
   })
 
   // Share feature — reuses the existing HTML generator unchanged, saved to a

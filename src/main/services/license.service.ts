@@ -1,3 +1,4 @@
+import { parseSeatKey } from './license-seats.util'
 import { createHash, createHmac, createPublicKey, randomBytes, timingSafeEqual, verify as cryptoVerify, sign as cryptoSign } from 'crypto'
 import { hostname, networkInterfaces, platform } from 'os'
 import { getPrisma } from '../database/db'
@@ -68,10 +69,11 @@ const LICENSE_HMAC_SECRET = process.env.SARANG_LICENSE_HMAC_SECRET || 'DEV-ONLY-
 const LICENSE_ED25519_PUBLIC_KEY_PEM = process.env.SARANG_LICENSE_ED25519_PUBLIC_KEY_PEM
   || '-----BEGIN PUBLIC KEY-----\nMCowBQYDK2VwAyEAMgopXjPtcF4Q7sU8uRUa26nE2FrPjVAj+2kml/jhgu0=\n-----END PUBLIC KEY-----\n'
 
-interface ParsedLicenseKey {
+export interface ParsedLicenseKey {
   tier: LicenseTier
   region: LicenseRegion
   issuedAt: Date
+  seats?: number
 }
 
 /**
@@ -278,6 +280,7 @@ function parseAndVerifyLicenseKeyV2(parts: string[]): ParsedLicenseKey | null {
 /** Parses + verifies a key's signature. Returns null for any malformed/tampered key, never throws. Dispatches across three formats — legacy 5-part HMAC, 6-part HMAC, SARANG2 Ed25519 — all validated forever, none ever retired. */
 export function parseAndVerifyLicenseKey(key: string): ParsedLicenseKey | null {
   const parts = key.trim().toUpperCase().split('-')
+  if (parts[0] === 'SARANG3') return parseSeatKey(parts, verifyEd25519)
   if (parts[0] === 'SARANG2') return parseAndVerifyLicenseKeyV2(parts)
   if (parts[0] !== 'SARANG') return null
   if (parts.length !== 5 && parts.length !== 6) return null

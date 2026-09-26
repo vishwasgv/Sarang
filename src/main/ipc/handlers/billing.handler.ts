@@ -1,3 +1,4 @@
+import { printHtml } from '../../lan/print-html'
 import { app, BrowserWindow } from 'electron'
 import { customFieldService } from '../../services/custom-field.service'
 import { afterCreate } from '../../services/workflow-rule.service'
@@ -144,19 +145,7 @@ export function register(handle: HandleFn): void {
     const html = isReceipt
       ? await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth, templateConfig)
       : await printService.generateInvoiceHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateInvoiceHtml>[0], profile as Parameters<typeof printService.generateInvoiceHtml>[1], templateConfig)
-    const tmpPath = join(app.getPath('temp'), `sarang_inv_${Date.now()}.html`)
-    await writeFile(tmpPath, html, 'utf-8')
-    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
-      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
-      win.loadFile(tmpPath)
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: false, printBackground: true, color: !isReceipt }, (success: boolean) => {
-          win.close()
-          unlink(tmpPath).catch(() => {})
-          resolve({ success, data: { printed: success } })
-        })
-      })
-    })
+    return printHtml(html, 'sarang_inv', { silent: false, printBackground: true, color: !isReceipt })
   })
 
   handle('print:receipt', async (payload) => {
@@ -175,19 +164,7 @@ export function register(handle: HandleFn): void {
     const invoiceForTemplate = invoiceRes.data as { invoiceTemplateId?: string | null }
     const templateConfig = await invoiceTemplateService.resolveTemplateConfig(invoiceForTemplate.invoiceTemplateId, (profile as { defaultInvoiceTemplateId?: string | null } | null)?.defaultInvoiceTemplateId)
     const html = await printService.generateReceiptHtml(invoiceRes.data as unknown as Parameters<typeof printService.generateReceiptHtml>[0], profile as Parameters<typeof printService.generateReceiptHtml>[1], paperWidth, templateConfig)
-    const tmpPath = join(app.getPath('temp'), `sarang_rcpt_${Date.now()}.html`)
-    await writeFile(tmpPath, html, 'utf-8')
-    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
-      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
-      win.loadFile(tmpPath)
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: false, printBackground: true }, (success: boolean) => {
-          win.close()
-          unlink(tmpPath).catch(() => {})
-          resolve({ success, data: { printed: success } })
-        })
-      })
-    })
+    return printHtml(html, 'sarang_rcpt', { silent: false, printBackground: true })
   })
 
   // Preview only — returns the rendered HTML without ever opening a print

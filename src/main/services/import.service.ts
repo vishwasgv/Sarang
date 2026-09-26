@@ -1,3 +1,4 @@
+import { chooseSavePath } from '../lan/file-bridge'
 import { PartyDuplicateIndex } from './import-duplicates.util'
 import { dialog, BrowserWindow } from 'electron'
 import { readFileSync } from 'fs'
@@ -1022,7 +1023,7 @@ export async function downloadTemplate(module: ImportModule): Promise<{
       openingBalances: 'OpeningBalances'
     }
 
-    const { filePath, canceled } = await dialog.showSaveDialog({
+    const { filePath, canceled } = await chooseSavePath({
       title: 'Save Import Template',
       defaultPath: `Sarang_${moduleNames[module]}_Import_Template.xlsx`,
       filters: [{ name: 'Excel', extensions: ['xlsx'] }]

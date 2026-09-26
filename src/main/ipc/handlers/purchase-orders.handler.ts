@@ -1,3 +1,4 @@
+import { printHtml } from '../../lan/print-html'
 import { app, BrowserWindow } from 'electron'
 import { writeFile, unlink } from 'fs/promises'
 import { join } from 'path'
@@ -98,19 +99,7 @@ export function register(handle: HandleFn): void {
     if (!poRes.success) return poRes
     const profile = await getPrisma().businessProfile.findFirst()
     const html = await printService.generatePurchaseOrderHtml(poRes.data as Parameters<typeof printService.generatePurchaseOrderHtml>[0], profile as Parameters<typeof printService.generatePurchaseOrderHtml>[1])
-    const tmpPath = join(app.getPath('temp'), `sarang_po_${Date.now()}.html`)
-    await writeFile(tmpPath, html, 'utf-8')
-    return new Promise<{ success: boolean; data?: unknown; error?: { code: string; message: string } }>((resolve) => {
-      const win = new BrowserWindow({ show: false, webPreferences: { contextIsolation: true, sandbox: true } })
-      win.loadFile(tmpPath)
-      win.webContents.once('did-finish-load', () => {
-        win.webContents.print({ silent: false, printBackground: true, color: true }, (success: boolean) => {
-          win.close()
-          unlink(tmpPath).catch(() => {})
-          resolve({ success, data: { printed: success } })
-        })
-      })
-    })
+    return printHtml(html, 'sarang_po', { silent: false, printBackground: true, color: true })
   })
 
   // Share feature — reuses the same HTML generator, saved to a chosen file
