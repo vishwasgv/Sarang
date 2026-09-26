@@ -176,7 +176,8 @@
     "optionalNotesPlaceholder": "Catatan opsional…",
     "somethingWentWrong": "Terjadi kesalahan. Silakan coba lagi.",
     "done": "Selesai",
-    "archive": "Arsip"
+    "archive": "Arsip",
+    "taxNumberCheck": "Ini tampaknya bukan {{label}} yang valid. Silakan periksa kembali."
   },
   "auth": {
     "username": "Nama Pengguna",
@@ -325,6 +326,35 @@
         "repairJobs": "Anda telah mencatat {{count}} tiket reparasi atau pekerjaan — ini terlihat seperti pola {{template}}.",
         "appointments": "Anda telah memesan {{count}} janji temu — ini terlihat seperti pola {{template}}.",
         "variantOrLooseProducts": "Anda memiliki {{count}} produk dengan varian ukuran/warna atau harga berdasarkan berat curah — ini terlihat seperti pola {{template}}."
+      }
+    },
+    "customKpi": {
+      "add": "Tambahkan kotak Anda sendiri",
+      "namePlaceholder": "Nama kotak",
+      "metrics": {
+        "SALES_TOTAL": "Penjualan",
+        "INVOICE_COUNT": "Jumlah faktur",
+        "EXPENSE_TOTAL": "Pengeluaran",
+        "PURCHASES_TOTAL": "Tagihan pemasok",
+        "NEW_CUSTOMERS": "Pelanggan baru"
+      },
+      "periods": {
+        "TODAY": "Hari ini",
+        "WEEK": "Minggu ini",
+        "MONTH": "Bulan ini",
+        "YEAR": "Tahun ini"
+      }
+    },
+    "customize": {
+      "button": "Sesuaikan",
+      "hint": "Pilih apa yang ditampilkan di dasbor Anda.",
+      "sections": {
+        "ask": "Kotak Ask Sarang",
+        "kpis": "Angka utama",
+        "revenue": "Pendapatan dan produk terlaris",
+        "outstanding": "Tunggakan dan kondisi stok",
+        "activity": "Aktivitas terbaru",
+        "quick": "Tindakan cepat"
       }
     }
   },
@@ -620,7 +650,55 @@
     "splitPaymentFailedTitle": "Pembayaran Terpisah Gagal",
     "splitPaymentFailedMessage": "Faktur {{invoiceNumber}} telah dibuat tetapi pembayaran tidak dapat dicatat: {{error}}. Buka faktur dan catat pembayaran secara manual.",
     "splitPaymentConnectionErrorMessage": "Faktur {{invoiceNumber}} telah dibuat tetapi pembayaran tidak dapat dicatat karena kesalahan koneksi. Buka faktur dan catat pembayaran secara manual.",
-    "unknownError": "Kesalahan tidak diketahui"
+    "unknownError": "Kesalahan tidak diketahui",
+    "salesperson": "Tenaga penjual",
+    "noSalesperson": "Tanpa tenaga penjual",
+    "ewayThresholdAlert": "Penjualan ini melebihi {{amount}}. Jika Anda mengirim barang, e-way bill mungkin diperlukan. Konfirmasikan dengan akuntan Anda.",
+    "addCharge": "Tambah biaya",
+    "exportZeroRate": {
+      "title": "Penjualan ekspor?",
+      "hint": "Pelanggan ini berada di negara lain. Centang untuk tidak mengenakan pajak pada penjualan ini (ekspor tarif nol). Periksa aturan di negara Anda dan simpan bukti ekspor."
+    },
+    "tdsDeducted": "TDS dipotong",
+    "tdsDeductedHint": "Gunakan ini ketika pelanggan membayar Anda lebih sedikit karena menahan pajak penghasilan (TDS). Jumlahnya dicatat sebagai pajak yang akan menjadi kredit Anda, bukan sebagai uang yang diterima.",
+    "giveFree": "Berikan gratis",
+    "chargeKindLabel": "Jenis biaya",
+    "chargeTaxRateLabel": "Tarif pajak untuk biaya ini (%)",
+    "chargeTaxHint": "Biaya seperti pengiriman atau pengemasan biasanya dikenai pajak dengan tarif yang sama seperti barangnya. Tanyakan pada akuntan Anda jika ragu.",
+    "chargeKinds": {
+      "TIP": "Tip / Biaya layanan",
+      "SHIPPING": "Pengiriman / Antar",
+      "PACKING": "Pengemasan",
+      "HANDLING": "Penanganan",
+      "INSTALLATION": "Pemasangan",
+      "OTHER": "Biaya lain"
+    },
+    "pricesIncludeTax": "Harga sudah termasuk pajak",
+    "priceInclTax": "(termasuk pajak)",
+    "priceExclTax": "(belum termasuk pajak)",
+    "pricesIncludeTaxHint": "Harga yang Anda masukkan sudah mengandung pajak. Pajak dihitung dari setiap harga, bukan ditambahkan di atasnya.",
+    "pricesExcludeTaxHint": "Harga yang Anda masukkan belum termasuk pajak. Pajak ditambahkan di atasnya.",
+    "pricesIncludeTaxShareNote": "Harga sudah termasuk pajak.",
+    "taxShownAs": "Pajak ditampilkan sebagai",
+    "shareTaxLines": "Pajak: {{lines}}.",
+    "taxCategoryLabel": "Kategori pajak",
+    "taxCategoryStandard": "Tarif standar",
+    "taxCategoryReduced": "Tarif turun",
+    "taxCategoryZeroRated": "Tarif nol",
+    "taxCategoryExempt": "Bebas",
+    "taxCategoryNilRated": "Tarif nihil",
+    "taxCategoryOutOfScope": "Di luar GST (pasokan non-GST)",
+    "taxCategoryHint": "Pasokan tarif nihil, bebas, dan non-GST dilaporkan pada baris tersendiri dalam pengembalian GST.",
+    "olderRatesShort": "Tarif lama",
+    "taxShownCgstSgst": "CGST + SGST",
+    "taxShownIgst": "IGST",
+    "taxShownGst": "GST",
+    "taxShownAutoHint": "Dipilih berdasarkan negara bagian pembeli. Hanya cara pajak ditampilkan yang berubah; jumlah pajak dan total tetap sama.",
+    "taxShownSameAmountHint": "Hanya cara pajak ditampilkan yang berubah. Jumlah pajak dan total tetap sama pada ketiganya.",
+    "buyerStateOptional": "Negara bagian pembeli (opsional, menentukan tampilan pajak secara otomatis)",
+    "offSlabRate": "{{rate}}% bukan salah satu tarif pajak yang Anda simpan. Periksa sebelum menyimpan.",
+    "unitPriceInclTax": "Harga satuan (termasuk pajak)",
+    "unitPriceExclTax": "Harga satuan (belum termasuk pajak)"
   },
   "products": {
     "title": "Produk",
@@ -925,7 +1003,10 @@
       "removeImageTitle": "Hapus gambar",
       "openingEllipsis": "Membuka…",
       "chooseImage": "Pilih Gambar",
-      "descriptionPlaceholder": "Deskripsi produk opsional…"
+      "descriptionPlaceholder": "Deskripsi produk opsional…",
+      "costPriceBeforeTax": "Harga pokok (sebelum pajak) *",
+      "sellingPriceBeforeTax": "Harga jual (sebelum pajak) *",
+      "sellingPriceInclTax": "Harga jual (termasuk pajak) *"
     }
   },
   "customers": {
@@ -1021,7 +1102,15 @@
     "taxExemptHint": "Faktur untuk pelanggan ini ditagih dengan pajak 0% — untuk pengenaan terbalik B2B, pengecualian diplomatik/LSM, atau pembeli bebas pajak lainnya.",
     "taxExemptReasonLabel": "Alasan (dicetak pada faktur)",
     "taxExemptReasonPlaceholder": "mis. Pengenaan terbalik — VAT Reg GB123456789",
-    "cityPlaceholder": "Jakarta"
+    "cityPlaceholder": "Jakarta",
+    "taxExemptCertificateLabel": "Nomor sertifikat pembebasan",
+    "taxExemptExpiryLabel": "Sertifikat berlaku sampai (opsional)",
+    "taxExemptExpiryHint": "Setelah tanggal ini pelanggan dikenai pajak lagi sampai Anda memperbarui sertifikatnya.",
+    "taxExemptExpiredWarning": "Sertifikat ini sudah kedaluwarsa, sehingga pajak dikenakan. Perbarui tanggalnya untuk membebaskan pelanggan ini lagi.",
+    "doNotMessageLabel": "Jangan kirim pesan ke pelanggan ini",
+    "doNotMessageHint": "Centang jika pelanggan meminta tidak menerima pengingat atau penawaran. Pengingat yang menunggu untuk mereka dihapus dan yang baru tidak pernah ditawarkan untuk dikirim.",
+    "paymentTermsDays": "Syarat pembayaran (hari untuk membayar)",
+    "statement": "Rekening koran"
   },
   "suppliers": {
     "title": "Pemasok",
@@ -1091,7 +1180,14 @@
     "panNumberLabel": "Nomor PAN",
     "panNumberPlaceholder": "Untuk TDS/kepatuhan",
     "openingBalanceLabel": "Saldo Awal",
-    "openingBalancePlaceholder": "Jumlah yang sudah terutang kepada pemasok ini, jika ada"
+    "openingBalancePlaceholder": "Jumlah yang sudah terutang kepada pemasok ini, jika ada",
+    "paymentTermsDays": "Syarat pembayaran (hari untuk membayar)",
+    "creditLimit": "Batas kredit dari pemasok ini",
+    "category": "Kategori",
+    "rating": "Peringkat",
+    "noRating": "Belum diberi peringkat",
+    "overLimit": "melebihi batas",
+    "statement": "Rekening koran"
   },
   "inventory": {
     "title": "Inventaris",
@@ -1407,7 +1503,8 @@
       "equipment": "Peralatan",
       "noWarrantyExpiringSoon": "Tidak ada item bergaransi yang akan berakhir segera.",
       "warrantyExpired": "Garansi kedaluwarsa"
-    }
+    },
+    "reservedNote": "{{count}} dijanjikan pada pesanan"
   },
   "purchaseOrders": {
     "title": "Pesanan Pembelian",
@@ -1500,7 +1597,8 @@
     "dropShipToCustomerOptional": "Kirim Langsung ke Pelanggan (opsional)",
     "deliverToOwnLocation": "Kirim ke lokasi saya sendiri (default)",
     "notesOptional": "Catatan (opsional)",
-    "internalNotesPlaceholder": "Catatan internal…"
+    "internalNotesPlaceholder": "Catatan internal…",
+    "receiveHint": "Terima Stok memasukkan semua isi pesanan ini sekaligus. Jika barang datang bertahap, atau Anda ingin mencatat surat jalan dan kendaraan, gunakan Nota Penerimaan Barang (GRN)."
   },
   "accounting": {
     "chartOfAccounts": {
@@ -1526,7 +1624,8 @@
       "accountNamePlaceholder": "mis. Kas Kecil",
       "typeLabel": "Jenis",
       "parentAccountLabel": "Akun Induk (opsional)",
-      "noneTopLevel": "Tidak ada — tingkat teratas"
+      "noneTopLevel": "Tidak ada — tingkat teratas",
+      "viewLedger": "Buku besar"
     },
     "journalEntries": {
       "title": "Entri Jurnal",
@@ -1545,7 +1644,8 @@
         "INTEREST_CHARGE": "Beban Bunga",
         "ASSET_DEPRECIATION": "Penyusutan Aset",
         "ASSET_DISPOSAL": "Pelepasan Aset",
-        "YEAR_END_OPENING": "Pembukaan Akhir Tahun"
+        "YEAR_END_OPENING": "Pembukaan Akhir Tahun",
+        "GST_PAYMENT": "Pembayaran GST"
       },
       "noEntriesYet": "Belum ada entri jurnal",
       "colEntryNumber": "No. Entri",
@@ -1572,7 +1672,9 @@
       "addLine": "+ Tambah baris",
       "balanced": "Seimbang",
       "notBalancedBadge": "Tidak seimbang",
-      "postEntry": "Bukukan Entri"
+      "postEntry": "Bukukan Entri",
+      "autoReverseOn": "Balik otomatis pada (opsional)",
+      "autoReverseHint": "Untuk akrual: jurnal membatalkan dirinya sendiri pada tanggal ini, saat aplikasi berikutnya dibuka."
     },
     "bankAccounts": {
       "title": "Rekening Bank & Kas",
@@ -1778,6 +1880,92 @@
       "yearClosed": "Tahun ditutup",
       "netIncomeSummary": "Laba bersih: {{netIncome}} di {{count}} akun yang dibawa maju.",
       "couldNotCloseYear": "Tidak dapat menutup tahun fiskal."
+    },
+    "memo": {
+      "title": "Catatan memorandum",
+      "hint": "Catatan tentang hal-hal yang belum menjadi jurnal akuntansi, seperti barang yang dikirim untuk dicoba. Catatan ini tidak pernah mengubah pembukuan Anda.",
+      "titlePlaceholder": "Judul",
+      "notesPlaceholder": "Rincian (opsional)"
+    },
+    "branches": {
+      "title": "Ringkasan cabang",
+      "subtitle": "Kirim angka toko ini ke kantor pusat, atau baca berkas yang dikirim toko lain",
+      "sendTitle": "Kirim angka saya",
+      "sendHelp": "Membuat berkas kecil berisi penjualan, pembelian, pengeluaran, piutang, utang, stok, dan kas toko ini untuk tanggal yang dipilih. Kirim berkas ke kantor pusat lewat email atau flash disk.",
+      "branchName": "Nama cabang",
+      "from": "Dari",
+      "to": "Sampai",
+      "makeFile": "Buat berkas",
+      "exported": "Berkas disimpan",
+      "receiveTitle": "Baca berkas dari cabang",
+      "receiveHelp": "Pilih berkas yang dikirim cabang. Mengimpor cabang dan tanggal yang sama lagi akan menggantikan angka sebelumnya.",
+      "chooseFiles": "Pilih berkas",
+      "openReport": "Buka Laporan",
+      "imported": "{{count}} berkas diimpor",
+      "period": "Tanggal",
+      "sales": "Penjualan",
+      "couldNot": "Tidak dapat menyelesaikan ini.",
+      "note": "Berkas hanya membawa angka, tanpa nama pelanggan atau pemasok. Sarang tidak mengirim apa pun lewat internet."
+    },
+    "gstReturns": {
+      "title": "Berkas pengembalian GST",
+      "subtitle": "Siapkan berkas GSTR-1 dan GSTR-3B dari pembukuan Anda untuk diperiksa dan diunggah ke portal GST",
+      "month": "Bulan",
+      "gstr1Title": "GSTR-1 (penjualan)",
+      "gstr1Help": "Faktur ke pembeli terdaftar, penjualan eceran per negara bagian dan tarif, nota kredit, pasokan nihil dan bebas, serta ringkasan HSN.",
+      "gstr3bTitle": "GSTR-3B (ringkasan)",
+      "gstr3bHelp": "Pajak atas penjualan, pajak reverse charge, pasokan antarnegara bagian ke pembeli tidak terdaftar, dan kredit pajak masukan Anda.",
+      "download": "Unduh berkas",
+      "reconTitle": "Cocokkan dengan portal GST (GSTR-2B / 2A)",
+      "reconHelp": "Pilih berkas pembelian yang Anda unduh dari portal GST. Sarang mencocokkannya dengan tagihan pemasok Anda berdasarkan GSTIN pemasok dan nomor faktur, lalu menunjukkan apa yang hilang di kedua sisi.",
+      "reconChoose": "Pilih berkas",
+      "claimable": "Kredit yang diizinkan portal pada tagihan yang cocok",
+      "atRisk": "Kredit pada tagihan yang belum dilaporkan pemasok",
+      "colStatus": "Hasil",
+      "colSupplier": "Pemasok",
+      "colInvoice": "Faktur",
+      "colPortalTax": "Pajak portal",
+      "colBooksTax": "Pajak Anda",
+      "colBill": "Tagihan Anda",
+      "status": {
+        "MATCHED": "Cocok",
+        "MISMATCH": "Jumlah berbeda",
+        "MISSING_IN_BOOKS": "Tidak ada di pembukuan Anda",
+        "MISSING_IN_PORTAL": "Tidak ada di portal",
+        "REVIEW": "Nota kredit, periksa"
+      },
+      "note": {
+        "notClaimable": "portal menandai kredit sebagai tidak dapat diklaim",
+        "creditNote": "nota kredit pemasok",
+        "noInvoiceNumber": "tambahkan nomor faktur pemasok pada tagihan"
+      },
+      "saved": "Berkas disimpan",
+      "couldNotPrepare": "Tidak dapat menyiapkan berkas.",
+      "disclaimer": "Berkas ini adalah draf yang dibuat dari pembukuan Anda. Buka di alat offline portal GST, periksa setiap angka dengan akuntan Anda, dan laporkan dari portal. Sarang tidak mengirim apa pun ke pemerintah."
+    },
+    "gstPayments": {
+      "title": "Pembayaran GST",
+      "subtitle": "Catat GST yang Anda bayar ke pemerintah, dengan memakai kredit pajak masukan Anda terlebih dahulu",
+      "newPayment": "Catat pembayaran GST",
+      "none": "Belum ada pembayaran GST yang dicatat.",
+      "details": "Rincian",
+      "taxSettled": "Pajak diselesaikan",
+      "creditUsed": "Dibayar dari kredit masukan",
+      "cashPaid": "Dibayar tunai atau bank",
+      "paidFrom": "Dibayar dari",
+      "cashInHand": "Kas di tangan",
+      "reference": "Nomor challan atau referensi",
+      "fillFromMonth": "Isi dari angka bulan ini",
+      "accountantNote": "Konfirmasikan jumlahnya dan kredit mana yang boleh dipakai dengan akuntan Anda sebelum membayar.",
+      "void": "Batalkan pembayaran",
+      "voided": "Dibatalkan",
+      "reason": "Alasan",
+      "reasonRequired": "Mohon beri alasan.",
+      "taxRequired": "Masukkan jumlah pajak.",
+      "creditTooMuch": "Kredit yang dipakai tidak boleh lebih dari pajak yang diselesaikan.",
+      "saved": "Pembayaran GST dicatat",
+      "couldNotSave": "Tidak dapat menyimpan pembayaran GST.",
+      "couldNotLoad": "Tidak dapat memuat pembayaran GST."
     }
   },
   "bills": {
@@ -1896,7 +2084,13 @@
       "loadSuppliersFailed": "Tidak dapat memuat pemasok.",
       "loadOptionsFailed": "Tidak dapat memuat opsi tagihan.",
       "createFailed": "Tidak dapat membuat tagihan."
-    }
+    },
+    "editBill": "Edit tagihan",
+    "supplierInvoiceNumber": "Nomor faktur pemasok",
+    "supplierInvoiceDate": "Tanggal faktur pemasok",
+    "addCategory": "+ Kategori baru",
+    "newCategoryName": "Nama kategori",
+    "couldNotAddCategory": "Tidak dapat menambahkan kategori."
   },
   "salesOrders": {
     "title": "Pesanan Penjualan",
@@ -1941,7 +2135,8 @@
     "loadListFailedMessage": "Gagal memuat pesanan penjualan.",
     "loadCustomersFailedMessage": "Gagal memuat pelanggan.",
     "loadOptionsFailedMessage": "Gagal memuat opsi pesanan penjualan.",
-    "createFailedMessage": "Gagal membuat pesanan penjualan."
+    "createFailedMessage": "Gagal membuat pesanan penjualan.",
+    "shortStock": "Pesanan membutuhkan {{needed}} tetapi hanya {{available}} yang bebas setelah pesanan lain. Pesanan sudah dikonfirmasi; dapatkan lebih banyak stok sebelum menagih."
   },
   "priceLists": {
     "title": "Daftar Harga",
@@ -2208,7 +2403,15 @@
     "couldNotLoad": "Tidak dapat memuat bidang kustom.",
     "couldNotSave": "Tidak dapat menyimpan bidang kustom ini.",
     "nameRequired": "Nama bidang wajib diisi.",
-    "optionsRequired": "Tambahkan setidaknya satu opsi dropdown."
+    "optionsRequired": "Tambahkan setidaknya satu opsi dropdown.",
+    "rules": {
+      "required": "Kolom ini wajib diisi",
+      "min": "Angka terkecil yang diizinkan",
+      "max": "Angka terbesar yang diizinkan",
+      "pattern": "Format yang harus dipenuhi nilai (opsional)",
+      "patternHint": "Pesan yang ditampilkan jika tidak cocok",
+      "patternPlaceholder": "Misalnya ^[A-Z]{5}[0-9]{4}[A-Z]$"
+    }
   },
   "approvalWorkflows": {
     "title": "Alur Persetujuan",
@@ -3075,6 +3278,174 @@
       "eventProfitability": {
         "label": "Profitabilitas Acara",
         "description": "Per acara katering yang selesai: harga akhir yang disepakati dikurangi biaya staf dan estimasi biaya bahan"
+      },
+      "balanceSheet": {
+        "label": "Neraca",
+        "description": "Apa yang dimiliki dan terutang oleh bisnis pada suatu tanggal, dengan ekuitas pemilik dan laba berjalan, dengan pilihan membandingkan dengan tanggal sebelumnya"
+      },
+      "generalLedger": {
+        "label": "Buku besar",
+        "description": "Setiap posting dalam satu akun dengan saldo awal, berjalan, dan akhir serta dokumen asalnya"
+      },
+      "dayBook": {
+        "label": "Buku harian",
+        "description": "Semua voucher dan jurnal menurut tanggal, dapat disaring menurut jenis, dengan total debit dan kredit setiap hari"
+      },
+      "cashFlowStatement": {
+        "label": "Laporan arus kas",
+        "description": "Dari mana kas datang dan ke mana perginya: operasi, investasi, dan pendanaan, dari kas awal sampai akhir"
+      },
+      "payrollChallan": {
+        "label": "PF, ESI, dan pajak profesi per karyawan",
+        "description": "Untuk bulan pada tanggal akhir: apa yang dipotong untuk setiap karyawan, diperiksa dengan tarif Anda, dengan total untuk challan"
+      },
+      "branchConsolidation": {
+        "label": "Konsolidasi cabang",
+        "description": "Bisnis ini dan berkas cabang yang Anda impor, berdampingan: penjualan, pembelian, pengeluaran, piutang, utang, stok, dan kas"
+      },
+      "fundFlow": {
+        "label": "Arus dana",
+        "description": "Dari mana dana datang dan ke mana perginya di antara dua tanggal, selain pergerakan kas itu sendiri"
+      },
+      "bankBook": {
+        "label": "Buku bank",
+        "description": "Setiap setoran dan penarikan pada setiap rekening bank atau kas dengan saldo awal, berjalan, dan akhir"
+      },
+      "bankReconciliationSummary": {
+        "label": "Ringkasan rekonsiliasi bank",
+        "description": "Untuk setiap rekening bank, berapa baris rekening koran yang cocok dengan pembukuan Anda dan berapa yang masih terbuka"
+      },
+      "taxByPart": {
+        "label": "Pajak per bagian",
+        "description": "Pajak atas penjualan dan pembelian dibagi menjadi bagian bernama dari setiap tarif pajak (misalnya GST federal dan PST provinsi), sehingga setiap bagian dapat dilaporkan ke otoritasnya sendiri"
+      },
+      "tdsReceivable": {
+        "label": "TDS yang dapat ditagih",
+        "description": "Pajak yang ditahan pelanggan Anda saat membayar (TDS), per pelanggan dan faktur, untuk dicocokkan dengan sertifikat mereka dan laporan pajak Anda"
+      },
+      "costCategoryProfit": {
+        "label": "Laba per kategori biaya",
+        "description": "Pendapatan, pengeluaran, dan laba dijumlahkan menurut kategori yang Anda berikan pada setiap pusat biaya (misalnya departemen atau proyek)"
+      },
+      "ratioAnalysis": {
+        "label": "Analisis rasio",
+        "description": "Pemeriksaan kesehatan bisnis: likuiditas, utang, margin, dan berapa hari yang dibutuhkan pelanggan, pemasok, dan stok"
+      },
+      "yearOverYear": {
+        "label": "Tahun ke tahun",
+        "description": "Penjualan dan pembelian bulan demi bulan dibandingkan bulan yang sama setahun sebelumnya"
+      },
+      "creditNoteRegister": {
+        "label": "Daftar nota kredit",
+        "description": "Setiap nota kredit yang diterbitkan pada periode dengan pelanggan, alasan, pajak, dan jumlah"
+      },
+      "debitNoteRegister": {
+        "label": "Daftar nota debit",
+        "description": "Setiap nota debit (kredit pemasok) yang dibuat pada periode dengan pemasok, alasan, pajak, dan jumlah"
+      },
+      "salesReturnRegister": {
+        "label": "Daftar retur penjualan",
+        "description": "Setiap retur penjualan pada periode dengan faktur asalnya"
+      },
+      "stockTakeVariance": {
+        "label": "Selisih penghitungan stok",
+        "description": "Selisih antara pembukuan dan penghitungan fisik yang diposting pada periode, per item, dengan nilainya"
+      },
+      "stockSummary": {
+        "label": "Ringkasan dan penilaian stok",
+        "description": "Setiap item dengan jumlah, biaya, nilai stok, dan apakah rendah atau habis, dengan total nilai stok Anda"
+      },
+      "stockLedger": {
+        "label": "Buku besar stok",
+        "description": "Setiap pergerakan stok pada periode untuk setiap item dengan saldo awal dan saldo berjalan"
+      },
+      "inventoryAgeing": {
+        "label": "Umur inventaris",
+        "description": "Berapa lama stok yang Anda pegang berada di rak: nilai pada 0-30, 31-60, 61-90, dan lebih dari 90 hari"
+      },
+      "stockByLocation": {
+        "label": "Stok per lokasi",
+        "description": "Stok dan nilainya di setiap lokasi atau gudang"
+      },
+      "transfersRegister": {
+        "label": "Daftar transfer stok",
+        "description": "Setiap transfer stok antarlokasi pada periode"
+      },
+      "profitByItem": {
+        "label": "Laba per item",
+        "description": "Pendapatan, biaya, dan laba untuk setiap item terjual, yang paling menguntungkan lebih dulu"
+      },
+      "profitByCustomer": {
+        "label": "Laba per pelanggan",
+        "description": "Pendapatan, biaya, dan laba untuk setiap pelanggan, yang paling menguntungkan lebih dulu"
+      },
+      "receivablesSummary": {
+        "label": "Ringkasan piutang",
+        "description": "Berapa yang terutang setiap pelanggan kepada Anda, berapa yang terlambat, dan apa yang jatuh tempo dalam 7 hari ke depan"
+      },
+      "payablesSummary": {
+        "label": "Ringkasan utang",
+        "description": "Berapa yang Anda utang kepada setiap pemasok, berapa yang terlambat, dan apa yang jatuh tempo dalam 7 hari ke depan"
+      },
+      "salesRegister": {
+        "label": "Daftar penjualan",
+        "description": "Setiap faktur dan retur pada periode dengan pelanggan, nomor pajak, jumlah, dan status pembayaran"
+      },
+      "expenseByCategory": {
+        "label": "Pengeluaran per kategori",
+        "description": "Ke mana uang pergi: pengeluaran dikelompokkan menurut kategori dengan porsi setiap kategori"
+      },
+      "expenseByVendor": {
+        "label": "Pengeluaran per pemasok",
+        "description": "Pengeluaran dikelompokkan menurut pemasok tempat pembayaran dilakukan"
+      },
+      "fixedAssetRegister": {
+        "label": "Daftar aset tetap",
+        "description": "Setiap aset tetap dengan biaya, penyusutan sejauh ini, dan nilai buku"
+      },
+      "salesByCustomer": {
+        "label": "Penjualan per pelanggan",
+        "description": "Apa yang dibeli setiap pelanggan pada periode: faktur, jumlah, penjualan, pajak, dan porsi dari seluruh penjualan"
+      },
+      "salesByItem": {
+        "label": "Penjualan per item",
+        "description": "Setiap item terjual pada periode dengan jumlah, penjualan, dan porsi, terlaris lebih dulu"
+      },
+      "salesByCategory": {
+        "label": "Penjualan per kategori",
+        "description": "Penjualan setiap kategori produk, dengan porsi setiap kategori dari total"
+      },
+      "salesBySalesperson": {
+        "label": "Penjualan per tenaga penjual",
+        "description": "Penjualan yang dikreditkan ke setiap tenaga penjual, berdasarkan tenaga penjual yang dipilih pada faktur"
+      },
+      "vatReturn": {
+        "label": "Pengembalian PPN / pajak penjualan",
+        "description": "Penjualan dan pembelian periode ini menurut perlakuan pajak, disusun di bawah kotak-kotak pengembalian negara Anda, dengan pajak bersih yang harus dibayar atau diklaim kembali"
+      },
+      "irnRegister": {
+        "label": "Daftar IRN faktur elektronik",
+        "description": "Faktur dan nota kredit ke pembeli terdaftar dengan IRN yang disimpan pada masing-masing, dan yang masih menunggu"
+      },
+      "gstr9Data": {
+        "label": "Data tahunan GSTR-9",
+        "description": "Satu tahun keuangan disusun di bawah tabel pengembalian tahunan: pasokan keluar, nihil dan bebas, kredit masukan, pajak yang harus dibayar dan dibayar, serta ringkasan HSN"
+      },
+      "tdsDeducted": {
+        "label": "TDS dipotong",
+        "description": "Pajak yang dipotong dari pembayaran pemasok menurut penerima, PAN, dan pasal, disusun untuk pengembalian triwulanan Anda, dengan yang masih harus disetor"
+      },
+      "purchaseGstRegister": {
+        "label": "Daftar GST pembelian",
+        "description": "Setiap tagihan pemasok dan nota debit dengan nilai kena pajak dan CGST, SGST, serta IGST, per bulan"
+      },
+      "purchaseHsnSummary": {
+        "label": "Ringkasan HSN pembelian",
+        "description": "Pembelian menurut kode HSN dan tarif pajak dengan jumlah, nilai kena pajak, dan pajak, untuk pengembalian dan akuntan Anda"
+      },
+      "gstNetPayable": {
+        "label": "GST bersih yang harus dibayar dan kredit masukan",
+        "description": "Pajak atas penjualan, pajak reverse charge, dan kredit pajak masukan menurut CGST, SGST, dan IGST, dengan yang tersisa untuk dibayar atau dibawa ke periode berikutnya"
       }
     },
     "summary": {
@@ -3364,7 +3735,11 @@
       "totalRatedVendors": "Vendor Dinilai",
       "overallAvgRating": "Rating Rata-rata Keseluruhan",
       "correlationCoefficient": "Korelasi Kehadiran–Performa",
-      "alertCount": "Siswa yang Ditandai"
+      "alertCount": "Siswa yang Ditandai",
+      "nilRatedValue": "Pasokan tarif nihil",
+      "exemptValue": "Pasokan bebas",
+      "nonGstValue": "Pasokan non-GST",
+      "invoiceLevelDiscount": "Diskon tingkat faktur"
     },
     "aging": {
       "current": "Terkini",
@@ -3468,7 +3843,14 @@
       "complianceByVaccine": "Kepatuhan per Vaksin",
       "caseTypeVolumeChart": "Tren Volume Kasus",
       "attendancePerformanceDetails": "Kehadiran vs. Performa, per Siswa",
-      "feeDueUnderperformanceDetails": "Siswa yang Ditandai"
+      "feeDueUnderperformanceDetails": "Siswa yang Ditandai",
+      "stateUnknown_one": "{{count}} dokumen tidak memiliki negara bagian; diklasifikasikan sebagai CGST + SGST",
+      "stateUnknown_other": "{{count}} dokumen tidak memiliki negara bagian; diklasifikasikan sebagai CGST + SGST",
+      "nilExemptHeading": "Pasokan tarif nihil, bebas, dan non-GST",
+      "byCategoryHeading": "Menurut kategori pajak dan tarif",
+      "nilRatedLabel": "Tarif nihil",
+      "exemptLabel": "Bebas",
+      "nonGstLabel": "Non-GST"
     },
     "empty": {
       "invoices": "Tidak ada faktur dalam rentang tanggal ini.",
@@ -3984,7 +4366,11 @@
       "totalVendorCost": "Total Biaya Vendor",
       "vendorName": "Vendor",
       "ratedEventCount": "Acara Dinilai",
-      "avgRating": "Rating Rata-rata"
+      "avgRating": "Rating Rata-rata",
+      "taxCategory": "Kategori pajak",
+      "supplyKind": "Pasokan",
+      "interStateCol": "Antarnegara bagian",
+      "registeredBuyer": "Pembeli terdaftar"
     },
     "legend": {
       "schemeCost": "Biaya Skema",
@@ -4151,6 +4537,719 @@
       "sendReminderDesc": "Kirim pengingat kepada pelanggan.",
       "couldNotSendTitle": "Tidak Dapat Mengirim",
       "couldNotBuildLink": "Tidak dapat membuat tautan pengingat."
+    },
+    "vat": {
+      "taxOnSales": "{{tax}} atas penjualan",
+      "taxOnPurchases": "{{tax}} atas pembelian",
+      "toPay": "Pajak bersih yang harus dibayar",
+      "refund": "Pajak bersih yang dapat diklaim kembali",
+      "chartTitle": "Penjualan dan pembelian menurut perlakuan pajak",
+      "taxed": "Kena pajak",
+      "zero": "Tarif nol",
+      "exempt": "Bebas",
+      "sales": "Penjualan",
+      "purchases": "Pembelian",
+      "box": "Kotak",
+      "description": "Deskripsi",
+      "note": {
+        "workingPaper": "Ini adalah kertas kerja yang dibuat dari pembukuan Anda. Periksa setiap kotak dengan formulir resmi negara Anda bersama akuntan Anda sebelum melapor.",
+        "genericLayout": "Tata letak kotak khusus negara Anda belum tersedia, jadi angka ditampilkan sebagai ringkasan sederhana yang bisa Anda salin ke formulir."
+      }
+    },
+    "scheduled": {
+      "title": "Laporan disimpan otomatis",
+      "help": "Pilih laporan, seberapa sering, dan folder. Selama Sarang terbuka, ia menyimpan hari, minggu, atau bulan lengkap terakhir ke folder itu sebagai berkas yang bisa dibuka di Excel.",
+      "report": "Laporan",
+      "frequency": "Seberapa sering",
+      "format": "Jenis berkas",
+      "folder": "Folder",
+      "chooseFolder": "Pilih folder",
+      "add": "Tambah",
+      "added": "Jadwal ditambahkan",
+      "saveNow": "Simpan sekarang",
+      "pause": "Jeda",
+      "resume": "Lanjutkan",
+      "savedTo": "Laporan disimpan",
+      "folderRequired": "Pilih folder terlebih dahulu.",
+      "couldNotSave": "Tidak dapat menyimpan jadwal.",
+      "freq": {
+        "DAILY": "Setiap hari (kemarin)",
+        "WEEKLY": "Setiap minggu (Senin sampai Minggu lalu)",
+        "MONTHLY": "Setiap bulan (bulan lalu)"
+      },
+      "note": "Penyimpanan hanya terjadi saat Sarang terbuka. Jika tertutup, periode lengkap terakhir disimpan saat dibuka berikutnya."
+    },
+    "gen": {
+      "unassigned": "Belum ditetapkan",
+      "noRows": "Tidak ada yang ditampilkan untuk periode ini.",
+      "notes": {
+        "salesBy": {
+          "returnsNetted": "Retur dikurangkan dari penjualan asalnya. Jumlah adalah sebelum pajak kecuali kolom pajak ditampilkan.",
+          "creditNotesExcluded": "Nota kredit berupa jumlah biasa (tanpa produk) tidak termasuk di sini."
+        },
+        "profit": {
+          "currentCost": "Biaya adalah biaya setiap item hari ini; biaya saat penjualan tidak disimpan pada baris faktur.",
+          "returnsNetted": "Retur dikurangkan dari penjualan dan biaya asalnya."
+        },
+        "open": {
+          "dueDateNote": "Dokumen tanpa tanggal jatuh tempo dihitung jatuh tempo pada tanggalnya sendiri."
+        },
+        "register": {
+          "returnsNegative": "Retur muncul sebagai jumlah negatif."
+        },
+        "expenses": {
+          "vendorNote": "Pengeluaran tanpa pemasok dicantumkan bersama sebagai Belum ditetapkan."
+        },
+        "taxByPart": {
+          "note": "Hanya tarif yang Anda bagi menjadi bagian (Pengaturan > Pajak) yang dirinci; pajak pada tarif lain muncul sebagai Belum ditetapkan. Bagian dihitung dari tarif gabungan."
+        },
+        "tdsReceivable": {
+          "note": "Catat TDS dari halaman faktur (cara pembayaran: TDS dipotong). Cocokkan dengan sertifikat yang diberikan pelanggan dan dengan laporan pajak Anda."
+        },
+        "costCategory": {
+          "note": "Entri tanpa pusat biaya, atau pusat biaya tanpa kategori, muncul sebagai Belum ditetapkan."
+        },
+        "assets": {
+          "asOfToday": "Penyusutan adalah yang sudah diposting sejauh ini."
+        },
+        "stock": {
+          "currentStock": "Jumlah dan nilai adalah kondisi saat ini, memakai metode biaya setiap item."
+        },
+        "ledger": {
+          "signed": "Pergerakan yang mengeluarkan stok ditampilkan di kolom Keluar. Saldo awal adalah saldo sebelum tanggal pertama."
+        },
+        "ageing": {
+          "method": "Stok yang ada dianggap berasal dari penerimaan terbaru (masuk pertama, keluar pertama); stok tanpa penerimaan tercatat dihitung sebagai yang tertua."
+        },
+        "fundFlow": {
+          "method": "Menampilkan perubahan pada setiap akun selain kas, dan laba periode. Sumber dikurangi penggunaan sama dengan perubahan kas."
+        },
+        "bankBook": {
+          "fromLedger": "Diambil dari entri yang diposting pada setiap rekening bank. Saldo awal adalah saldo sebelum tanggal pertama."
+        },
+        "recon": {
+          "statementOnly": "Menghitung baris rekening koran yang diimpor untuk rekonsiliasi. Rekening bank tanpa rekening koran yang diimpor tidak dicantumkan."
+        },
+        "ratios": {
+          "method": "Saldo adalah per tanggal akhir; margin dan hari memakai periode. Rasio kosong jika tidak ada yang dibagi."
+        },
+        "yoy": {
+          "method": "Tahun sebelumnya adalah tanggal yang sama satu tahun lalu. Penjualan sebelum pajak; pembelian adalah jumlah tagihan sebelum pajak."
+        },
+        "count": "Dokumen",
+        "tax": "Pajak",
+        "amount": "Jumlah",
+        "date": "Tanggal",
+        "reason": "Alasan",
+        "original": "Faktur asli",
+        "chart": "Dokumen per bulan",
+        "number": {
+          "credit": "Nota kredit",
+          "debit": "Nota debit",
+          "return": "Retur"
+        },
+        "party": {
+          "credit": "Pelanggan",
+          "debit": "Pemasok"
+        },
+        "branches": {
+          "method": "Mencakup bisnis ini (angka dihitung sekarang) dan setiap berkas yang diimpor yang tanggalnya berada dalam tanggal yang Anda pilih. Penjualan sebelum pajak.",
+          "currencyMixed": "Beberapa berkas memakai mata uang berbeda dari bisnis ini; total menjumlahkannya apa adanya, tanpa konversi."
+        },
+        "takeVariance": {
+          "method": "Hanya penghitungan yang sudah diposting yang disertakan. Nilai memakai biaya setiap item hari ini. Item tanpa selisih tidak disertakan."
+        },
+        "payroll": {
+          "employeeShare": "Ini adalah jumlah yang dipotong dari karyawan. Iuran pemberi kerja tidak dihitung di sini.",
+          "method": "Periksa berarti jumlah yang dipotong berbeda dari yang diberikan tarif Anda di Pengaturan untuk gaji pokok itu. Tarif Anda tetapkan sendiri dan konfirmasikan dengan akuntan Anda."
+        }
+      },
+      "salesBy": {
+        "totalSales": "Total penjualan",
+        "average": "Rata-rata per baris",
+        "count": {
+          "customer": "Pelanggan",
+          "item": "Item terjual",
+          "category": "Kategori",
+          "salesperson": "Tenaga penjual"
+        },
+        "name": {
+          "customer": "Pelanggan",
+          "item": "Item",
+          "category": "Kategori",
+          "salesperson": "Tenaga penjual"
+        },
+        "invoices": "Faktur",
+        "quantity": "Jumlah",
+        "taxable": "Penjualan",
+        "tax": "Pajak",
+        "total": "Total dengan pajak",
+        "share": "Porsi",
+        "chart": {
+          "customer": "Pelanggan teratas menurut penjualan",
+          "item": "Item teratas menurut penjualan",
+          "category": "Penjualan per kategori",
+          "salesperson": "Penjualan per tenaga penjual"
+        }
+      },
+      "profit": {
+        "revenue": "Penjualan",
+        "cost": "Biaya",
+        "profit": "Laba",
+        "margin": "Margin",
+        "quantity": "Jumlah",
+        "name": {
+          "item": "Item",
+          "customer": "Pelanggan"
+        },
+        "chart": {
+          "item": "Item paling menguntungkan",
+          "customer": "Pelanggan paling menguntungkan"
+        }
+      },
+      "open": {
+        "total": {
+          "receivable": "Total piutang",
+          "payable": "Total utang"
+        },
+        "parties": {
+          "receivable": "Pelanggan yang berutang",
+          "payable": "Pemasok yang dihutangi"
+        },
+        "name": {
+          "receivable": "Pelanggan",
+          "payable": "Pemasok"
+        },
+        "documents": {
+          "receivable": "Faktur",
+          "payable": "Tagihan"
+        },
+        "overdue": "Terlambat",
+        "dueThisWeek": "Jatuh tempo dalam 7 hari",
+        "balance": "Saldo",
+        "oldestDays": "Keterlambatan tertua (hari)",
+        "chart": {
+          "receivable": "Jumlah terbesar yang terutang kepada Anda",
+          "payable": "Jumlah terbesar yang Anda utang"
+        }
+      },
+      "register": {
+        "documents": "Dokumen",
+        "subtotal": "Sebelum pajak",
+        "tax": "Pajak",
+        "total": "Total",
+        "date": "Tanggal",
+        "number": "Faktur",
+        "customer": "Pelanggan",
+        "taxNumber": "Nomor pajak",
+        "paymentStatus": "Pembayaran",
+        "billNumber": "Tagihan",
+        "supplierInvoice": "Faktur pemasok",
+        "supplier": "Pemasok",
+        "paid": "Dibayar",
+        "balance": "Saldo",
+        "chart": {
+          "sales": "Penjualan menurut tanggal faktur",
+          "purchases": "Pembelian menurut tanggal tagihan"
+        }
+      },
+      "expenses": {
+        "total": "Total pengeluaran",
+        "entries": "Entri",
+        "amount": "Jumlah",
+        "share": "Porsi",
+        "count": {
+          "category": "Kategori",
+          "vendor": "Pemasok"
+        },
+        "name": {
+          "category": "Kategori",
+          "vendor": "Pemasok"
+        },
+        "chart": {
+          "category": "Pengeluaran per kategori",
+          "vendor": "Pengeluaran per pemasok"
+        }
+      },
+      "stock": {
+        "totalValue": "Nilai stok",
+        "items": "Item",
+        "low": "Stok rendah",
+        "out": "Stok habis",
+        "item": "Item",
+        "sku": "SKU",
+        "category": "Kategori",
+        "quantity": "Jumlah",
+        "unitCost": "Biaya satuan",
+        "value": "Nilai",
+        "status": "Status",
+        "chart": {
+          "value": "Item dengan nilai stok terbesar"
+        }
+      },
+      "ledger": {
+        "movements": "Pergerakan",
+        "in": "Masuk",
+        "out": "Keluar",
+        "items": "Item",
+        "date": "Tanggal",
+        "type": "Jenis",
+        "balance": "Saldo",
+        "location": "Lokasi",
+        "reference": "Referensi",
+        "quantity": "Jumlah",
+        "chart": "Jumlah yang dipindahkan menurut jenis"
+      },
+      "ageing": {
+        "total": "Nilai stok",
+        "b0": "0-30 hari",
+        "b31": "31-60 hari",
+        "b61": "61-90 hari",
+        "b90": "Lebih dari 90 hari",
+        "olderShare": "Porsi yang ditahan lebih dari 90 hari",
+        "chart": "Nilai stok menurut umur, stok tertua lebih dulu"
+      },
+      "location": {
+        "count": "Lokasi",
+        "name": "Lokasi",
+        "products": "Item",
+        "chart": "Nilai stok per lokasi"
+      },
+      "transfers": {
+        "count": "Transfer",
+        "quantity": "Jumlah dipindahkan",
+        "direction": "Arah",
+        "chart": "Jumlah ditransfer per hari"
+      },
+      "taxByPart": {
+        "part": "Bagian pajak",
+        "rate": "Tarif",
+        "salesTaxable": "Nilai penjualan",
+        "salesTax": "Pajak atas penjualan",
+        "purchaseTax": "Pajak atas pembelian",
+        "net": "Bersih yang harus dibayar",
+        "chart": "Pajak atas penjualan dan pembelian per bagian"
+      },
+      "tdsReceivable": {
+        "total": "TDS dipotong",
+        "entries": "Entri",
+        "customers": "Pelanggan",
+        "date": "Tanggal",
+        "customer": "Pelanggan",
+        "taxNumber": "Nomor pajak",
+        "invoice": "Faktur",
+        "reference": "Referensi",
+        "amount": "Jumlah TDS",
+        "chart": "TDS dipotong per pelanggan"
+      },
+      "costCategory": {
+        "category": "Kategori",
+        "revenue": "Pendapatan",
+        "expense": "Pengeluaran",
+        "profit": "Laba",
+        "chart": "Pendapatan dan pengeluaran per kategori"
+      },
+      "assets": {
+        "count": "Aset",
+        "cost": "Biaya",
+        "depreciation": "Penyusutan",
+        "bookValue": "Nilai buku",
+        "code": "Kode",
+        "name": "Aset",
+        "category": "Kategori",
+        "purchaseDate": "Dibeli pada",
+        "status": "Status",
+        "chart": "Biaya dan nilai buku setiap aset"
+      },
+      "fundFlow": {
+        "item": "Item",
+        "sources": "Sumber dana",
+        "applications": "Penggunaan dana",
+        "cashChange": "Perubahan kas",
+        "netProfit": "Laba bersih periode",
+        "chart": "Sumber dan penggunaan terbesar"
+      },
+      "bankBook": {
+        "deposits": "Setoran",
+        "withdrawals": "Penarikan",
+        "closing": "Saldo akhir",
+        "bank": "Rekening bank",
+        "date": "Tanggal",
+        "particulars": "Keterangan",
+        "balance": "Saldo",
+        "opening": "Saldo awal",
+        "chart": "Saldo akhir per rekening"
+      },
+      "recon": {
+        "matched": "Cocok",
+        "unmatched": "Tidak cocok",
+        "unmatchedAmount": "Jumlah tidak cocok",
+        "lines": "Baris rekening koran",
+        "last": "Terakhir direkonsiliasi",
+        "chart": "Baris rekening koran yang cocok dan tidak cocok"
+      },
+      "ratios": {
+        "ratio": "Rasio",
+        "value": "Nilai",
+        "unitLabel": "Satuan",
+        "meaningLabel": "Apa artinya",
+        "chart": "Margin",
+        "name": {
+          "current": "Rasio lancar",
+          "quick": "Rasio cepat",
+          "debtToEquity": "Utang terhadap ekuitas",
+          "grossMargin": "Margin kotor",
+          "netMargin": "Margin bersih",
+          "debtorDays": "Hari yang dibutuhkan pelanggan untuk membayar",
+          "creditorDays": "Hari yang Anda butuhkan untuk membayar pemasok",
+          "stockDays": "Hari stok yang ditahan"
+        },
+        "unit": {
+          "times": "kali",
+          "percent": "%",
+          "days": "hari"
+        },
+        "meaning": {
+          "current": "Aset lancar untuk setiap 1 kewajiban lancar. Di atas 1 berarti tagihan jangka pendek dapat dipenuhi.",
+          "quick": "Sama seperti di atas tanpa stok, yang mungkin butuh waktu untuk terjual.",
+          "debtToEquity": "Berapa yang terutang dibandingkan dengan yang telah ditanamkan pemilik.",
+          "grossMargin": "Porsi penjualan yang tersisa setelah biaya barang yang terjual.",
+          "netMargin": "Porsi penjualan yang tersisa sebagai laba setelah semua pengeluaran.",
+          "debtorDays": "Piutang dibagi penjualan, dalam hari pada periode.",
+          "creditorDays": "Utang dibagi pembelian, dalam hari pada periode.",
+          "stockDays": "Stok dibagi harga pokok penjualan, dalam hari pada periode."
+        }
+      },
+      "yoy": {
+        "month": "Bulan",
+        "salesThis": "Penjualan tahun ini",
+        "salesLast": "Penjualan tahun lalu",
+        "salesChange": "Perubahan",
+        "purchasesThis": "Pembelian tahun ini",
+        "purchasesLast": "Pembelian tahun lalu",
+        "chart": "Penjualan, tahun ini dan tahun lalu"
+      },
+      "branches": {
+        "count": "Bisnis",
+        "branch": "Bisnis atau cabang",
+        "sales": "Penjualan",
+        "purchases": "Pembelian",
+        "expenses": "Pengeluaran",
+        "receivables": "Piutang",
+        "payables": "Utang",
+        "stockValue": "Nilai stok",
+        "cashAndBank": "Kas dan bank",
+        "chart": "Penjualan dan pembelian per bisnis"
+      },
+      "takeVariance": {
+        "counts": "Penghitungan diposting",
+        "items": "Item dengan selisih",
+        "surplus": "Nilai kelebihan",
+        "shortage": "Nilai kekurangan",
+        "times": "Kali dihitung",
+        "system": "Menurut pembukuan",
+        "counted": "Dihitung",
+        "variance": "Selisih",
+        "value": "Nilai",
+        "chart": "Selisih terbesar menurut nilai"
+      },
+      "payroll": {
+        "employees": "Karyawan",
+        "employee": "Karyawan",
+        "code": "Kode",
+        "basic": "Gaji pokok",
+        "pf": "PF",
+        "esi": "ESI",
+        "pt": "Pajak profesi",
+        "other": "Potongan lain",
+        "check": "Periksa",
+        "chart": "Potongan per karyawan"
+      }
+    },
+    "gst": {
+      "taxOnSales": "Pajak atas penjualan",
+      "reverseCharge": "Pajak reverse charge",
+      "taxPayable": "Pajak yang harus dibayar",
+      "inputCredit": "Kredit pajak masukan",
+      "netPayable": "GST bersih yang harus dibayar",
+      "creditForward": "Kredit dibawa ke periode berikutnya",
+      "creditForwardNote": "Kredit masukan Anda lebih besar dari pajak terutang, jadi tidak ada yang dibayar dan kelebihan kredit dibawa ke periode berikutnya.",
+      "chartTitle": "Pajak yang harus dibayar, kredit masukan, dan bersih, per jenis pajak",
+      "head": "Jenis pajak",
+      "documents": "Pembelian yang memberi kredit masukan",
+      "document": "Dokumen",
+      "party": "Pemasok",
+      "noRows": "Tidak ada pembelian dengan kredit masukan pada periode ini.",
+      "register": {
+        "type": "Jenis",
+        "supplierGstin": "GSTIN pemasok",
+        "state": "Negara bagian",
+        "taxable": "Nilai kena pajak",
+        "tax": "Pajak",
+        "total": "Total",
+        "rcm": "Reverse charge",
+        "kind": {
+          "BILL": "Tagihan",
+          "DEBIT_NOTE": "Nota debit"
+        },
+        "chartTitle": "Nilai kena pajak dan pajak per bulan",
+        "noRows": "Tidak ada pembelian pada periode ini.",
+        "unknownState": "{{count}} dokumen tidak memiliki negara bagian pemasok yang diketahui; pajaknya ditampilkan sebagai CGST + SGST."
+      },
+      "irn": {
+        "withIrn": "Dengan IRN",
+        "withoutIrn": "Belum ada IRN",
+        "documents": "Dokumen",
+        "customer": "Pelanggan",
+        "chartTitle": "Dokumen dengan dan tanpa IRN",
+        "noRows": "Tidak ada faktur ke pembeli terdaftar pada periode ini."
+      },
+      "gstr9": {
+        "table": "Tabel",
+        "item": "Item",
+        "t4": "4 Pasokan keluar (kena pajak)",
+        "t5": "5 Pasokan keluar (tanpa pajak)",
+        "t6": "6 Kredit pajak masukan",
+        "t9": "9 Pajak yang harus dibayar dan dibayar",
+        "t17": "17 HSN keluar",
+        "t18": "18 HSN masuk",
+        "b2b": "Ke pembeli terdaftar",
+        "b2c": "Ke pembeli lain",
+        "creditNotes": "Nota kredit ke pembeli terdaftar",
+        "nilRated": "Tarif nihil",
+        "exempt": "Bebas",
+        "nonGst": "Bukan GST",
+        "inputs": "Masukan dan jasa",
+        "payable": "Pajak yang harus dibayar",
+        "paidFromCredit": "Dibayar dari kredit masukan",
+        "paidInCash": "Dibayar tunai atau bank",
+        "paidLine": "Dibayar: {{credit}} dari kredit masukan, {{cash}} tunai atau bank",
+        "outwardTaxable": "Nilai kena pajak pasokan keluar",
+        "taxPayable": "Pajak yang harus dibayar",
+        "itcAvailed": "Kredit masukan yang dimanfaatkan",
+        "paid": "Pajak dibayar",
+        "chartTitle": "Pasokan keluar menurut jenis",
+        "tableHsn": "Baris ringkasan HSN: {{outward}} keluar, {{inward}} masuk (lihat ekspor). Pajak atas pasokan keluar: {{tax}}.",
+        "note": {
+          "financialYearDates": "Angka berasal dari pembukuan Anda untuk tanggal yang dipilih. Gunakan 1 April sampai 31 Maret untuk satu tahun keuangan.",
+          "accountantCheck": "Perubahan, selisih dengan GSTR-1 dan GSTR-3B, dan item dari tahun lain harus diperiksa akuntan Anda sebelum melapor."
+        }
+      },
+      "tds": {
+        "deducted": "Pajak dipotong",
+        "amountPaid": "Jumlah dibayar",
+        "notDeposited": "Dipotong, belum disetor",
+        "payments": "Pembayaran",
+        "bill": "Tagihan",
+        "section": "Pasal",
+        "notGiven": "Pasal tidak diisi",
+        "chartTitle": "Pajak dipotong menurut pasal",
+        "noRows": "Tidak ada pembayaran dengan pajak dipotong pada periode ini.",
+        "missingPan": "{{count}} pembayaran ditujukan ke pemasok tanpa PAN tercatat. Tambahkan PAN pada pemasok; tanpanya pajak mungkin harus dipotong dengan tarif lebih tinggi.",
+        "confirm": "Tarif dan pasal bergantung pada penerima dan tahun. Konfirmasikan dengan akuntan Anda sebelum melapor."
+      },
+      "hsn": {
+        "code": "HSN / SAC",
+        "description": "Deskripsi",
+        "rate": "Tarif %",
+        "quantity": "Jumlah",
+        "chartTitle": "Nilai kena pajak menurut kode HSN",
+        "noRows": "Tidak ada pembelian pada periode ini.",
+        "missing": "{{count}} baris kena pajak tidak memiliki kode HSN pada produknya. Tambahkan kode pada produk untuk memasukkannya di sini."
+      },
+      "source": {
+        "BILL": "Tagihan pemasok",
+        "PURCHASE_ORDER": "Pesanan pembelian",
+        "DEBIT_NOTE": "Nota debit"
+      },
+      "note": {
+        "earlierPurchases": "Kredit masukan berasal dari tagihan pemasok, pesanan pembelian yang diterima, dan nota debit yang dicatat mulai versi ini. Pembelian yang dicatat sebelumnya memiliki pajak di dalam biayanya.",
+        "setOffLater": "Bersih yang harus dibayar adalah total sederhana untuk setiap jenis pajak. Konfirmasikan dengan akuntan Anda kredit mana yang boleh diperhitungkan terhadap pajak mana.",
+        "composition": "Bisnis Anda berada pada skema komposisi, jadi tidak ada kredit masukan yang diklaim.",
+        "stateUnknown": "{{count}} dokumen pembelian tidak memiliki negara bagian yang diketahui; pajaknya ditampilkan sebagai CGST + SGST."
+      }
+    },
+    "fs": {
+      "asOfDate": "Per tanggal",
+      "compareWith": "Bandingkan dengan",
+      "account": "Akun",
+      "selectAccount": "Pilih akun",
+      "pickAccountFirst": "Pilih akun untuk melihat buku besarnya.",
+      "voucherType": "Jenis voucher",
+      "allVouchers": "Semua voucher",
+      "voucherTypes": {
+        "SALES": "Penjualan",
+        "PURCHASE": "Pembelian",
+        "RECEIPT": "Penerimaan",
+        "PAYMENT": "Pembayaran",
+        "EXPENSE": "Pengeluaran",
+        "JOURNAL": "Jurnal",
+        "OTHER": "Lainnya"
+      },
+      "bs": {
+        "totalAssets": "Total aset",
+        "totalLiabilities": "Total liabilitas",
+        "totalEquity": "Total ekuitas",
+        "liabilitiesAndEquity": "Liabilitas + Ekuitas",
+        "currentProfit": "Laba periode berjalan",
+        "checkLine": "Aset = Liabilitas + Ekuitas",
+        "difference": "Selisih",
+        "change": "Perubahan",
+        "chartTitle": "Aset dibanding Liabilitas + Ekuitas",
+        "assets": "Aset",
+        "liabilities": "Liabilitas",
+        "equity": "Ekuitas",
+        "group": {
+          "currentAssets": "Aset lancar",
+          "fixedAssets": "Aset tetap",
+          "currentLiabilities": "Liabilitas jangka pendek",
+          "longTermLiabilities": "Pinjaman dan liabilitas jangka panjang",
+          "equity": "Ekuitas"
+        }
+      },
+      "gl": {
+        "entryNo": "No. entri",
+        "source": "Dokumen sumber",
+        "narration": "Keterangan",
+        "totalDebit": "Total debit",
+        "totalCredit": "Total kredit",
+        "carryForward": "Saldo dibawa dari penutupan tahun",
+        "reversed": "Dibalik",
+        "runningBalance": "Saldo berjalan",
+        "debitSide": "Saldo ditampilkan di sisi debit",
+        "creditSide": "Saldo ditampilkan di sisi kredit",
+        "openDocument": "Buka"
+      },
+      "db": {
+        "vouchers": "Voucher",
+        "days": "Hari",
+        "voucher": "Voucher",
+        "particulars": "Keterangan",
+        "dailyTotal": "Total harian",
+        "dayTotal": "Total hari",
+        "truncated": "Menampilkan {{count}} voucher pertama. Persempit rentang tanggal atau pilih jenis voucher untuk melihat sisanya.",
+        "byType": "Menurut jenis voucher"
+      },
+      "cf": {
+        "operating": "Kas dari aktivitas operasi",
+        "investing": "Kas dari aktivitas investasi",
+        "financing": "Kas dari aktivitas pendanaan",
+        "netProfit": "Laba bersih periode",
+        "depreciation": "Tambah: penyusutan",
+        "depreciationInvesting": "Penyusutan sudah ditambahkan di atas",
+        "netChange": "Perubahan bersih kas",
+        "openingCash": "Kas awal",
+        "closingCash": "Kas akhir",
+        "ledgerCash": "Kas dan bank menurut buku besar",
+        "reconciled": "Cocok dengan akun kas dan bank",
+        "notReconciled": "Tidak cocok dengan akun kas dan bank",
+        "chartTitle": "Pergerakan kas",
+        "cashAccounts": "Akun kas dan bank",
+        "section": "Bagian",
+        "item": "Item"
+      }
+    },
+    "chart": {
+      "noData": "Tidak ada data untuk dibuat grafik pada pilihan ini.",
+      "count": "Jumlah",
+      "other": "Lainnya",
+      "unknown": "Tidak dicatat",
+      "stage": "Tahap",
+      "funnelTooltip": "{{value}} ({{percent}}% dari tahap pertama)",
+      "heatLow": "Lebih sedikit",
+      "heatHigh": "Lebih banyak",
+      "heatNone": "Tidak ada",
+      "heatHint": "Arahkan kursor ke sel untuk melihat nilai persisnya.",
+      "rate": "Tarif pajak",
+      "taxableValue": "Nilai kena pajak",
+      "tax": "Pajak",
+      "b2b": "B2B",
+      "b2c": "B2C",
+      "gstr1Title": "Nilai kena pajak menurut tarif pajak (B2B dan B2C)",
+      "taxHead": "Jenis pajak",
+      "outward": "Pasokan keluar",
+      "reverseCharge": "Masukan reverse charge",
+      "gstr3bHeadTitle": "Pajak keluar menurut jenis pajak",
+      "gstr3bCompareTitle": "Pasokan keluar dibanding masukan reverse charge",
+      "hsnTitle": "10 kode HSN teratas menurut nilai kena pajak",
+      "hsnCode": "Kode HSN",
+      "tbTitle": "Debit dibanding kredit menurut jenis akun",
+      "accountType": "Jenis akun",
+      "accountTypes": {
+        "ASSET": "Aset",
+        "LIABILITY": "Liabilitas",
+        "EQUITY": "Ekuitas",
+        "INCOME": "Pendapatan",
+        "EXPENSE": "Beban",
+        "OTHER": "Lainnya"
+      },
+      "categoryMixTitle": "Porsi pendapatan menurut kategori",
+      "khataTitle": "Eksposur tertunggak menurut tingkat risiko",
+      "riskTier": "Tingkat risiko",
+      "outstanding": "Tertunggak",
+      "riskTiers": {
+        "LOW": "Rendah",
+        "MEDIUM": "Sedang",
+        "HIGH": "Tinggi"
+      },
+      "trends": {
+        "RISING": "Naik",
+        "STABLE": "Stabil",
+        "FALLING": "Turun"
+      },
+      "auditTitle": "Tindakan audit per hari (catatan yang dimuat)",
+      "day": "Hari",
+      "actions": "Tindakan",
+      "backupSizeTitle": "Ukuran cadangan per minggu",
+      "backupCountTitle": "Cadangan per minggu",
+      "week": "Minggu yang dimulai",
+      "sizeMb": "Ukuran (MB)",
+      "backups": "Cadangan",
+      "complianceStatusTitle": "Tugas terbuka menurut status",
+      "complianceMonthTitle": "Tugas terbuka menurut bulan jatuh tempo",
+      "overdue": "Terlambat",
+      "dueSoon": "Jatuh tempo dalam 7 hari",
+      "pendingLater": "Tertunda (jatuh tempo nanti)",
+      "month": "Bulan",
+      "tasks": "Tugas",
+      "docTitle": "Dokumen diterbitkan menurut jenis",
+      "docType": "Jenis dokumen",
+      "documents": "Dokumen",
+      "activeDocs": "Diterbitkan",
+      "cancelledDocs": "Dibatalkan",
+      "fittingTitle": "Penjualan aksesori yang terlewat menurut komponen",
+      "fitting": "Komponen",
+      "missedPairings": "Pasangan yang terlewat",
+      "hallmarkStatusTitle": "Status cap",
+      "hallmarkByMetalTitle": "Status cap menurut logam",
+      "metal": "Logam",
+      "hotelArrivalsTitle": "Kedatangan per hari",
+      "hotelIdTitle": "Tamu menurut jenis identitas",
+      "arrivals": "Kedatangan",
+      "idType": "Jenis identitas",
+      "mrpProductTitle": "Pelanggaran HET menurut produk",
+      "mrpTrendTitle": "Pelanggaran HET per hari",
+      "violations": "Pelanggaran",
+      "product": "Produk",
+      "h1xTitle": "Entri Schedule H1/X per hari",
+      "entries": "Entri",
+      "rxComplete": "Rincian resep lengkap",
+      "rxMissing": "Rincian resep tidak ada",
+      "seasonHeatTitle": "Jendela musim menurut bulan",
+      "seasonReorderTitle": "Produk stok rendah atau habis menurut bulan batas pemesanan ulang",
+      "activeSeasons": "Musim aktif",
+      "lowStockProducts": "Produk stok rendah atau habis",
+      "sizeStockOutTitle": "Stok habis menurut ukuran",
+      "size": "Ukuran",
+      "outOfStock": "Stok habis",
+      "lowStock": "Stok rendah",
+      "vehicleWeekTitle": "Kendaraan yang perlu diservis per minggu",
+      "vehicleTypeTitle": "Kendaraan yang perlu diservis menurut jenis kendaraan",
+      "vehiclesDue": "Kendaraan yang perlu diservis",
+      "styleCount": "Jumlah model",
+      "recallOnTimeTitle": "Tepat waktu dan terlambat menurut kategori",
+      "late": "Terlambat",
+      "noDate": "Tanpa tanggal (berdasarkan jarak)"
     }
   },
   "cashClose": {
@@ -4478,7 +5577,34 @@
       "deletedDesc": "\"{{name}}\" telah dihapus.",
       "deleteFailed": "Gagal menghapus.",
       "deleteConfirmTitle": "Hapus Tarif Pajak",
-      "deleteConfirmMessage": "Hapus \"{{name}}\"? Ini akan menonaktifkan tarif tersebut. Faktur yang ada tidak terpengaruh."
+      "deleteConfirmMessage": "Hapus \"{{name}}\"? Ini akan menonaktifkan tarif tersebut. Faktur yang ada tidak terpengaruh.",
+      "parts": {
+        "title": "Bagian dari tarif ini (opsional)",
+        "add": "Tambah bagian",
+        "hint": "Bagi tarif menjadi bagian bernama, misalnya GST 5% dan PST 7% untuk tarif 12%. Bagian harus berjumlah sama dengan tarif. Dokumen dan laporan Pajak per bagian kemudian menampilkan setiap bagian; jumlah yang ditagih tidak berubah.",
+        "namePlaceholder": "Nama, misalnya GST",
+        "sum": "Bagian berjumlah {{sum}}% (tarif {{rate}}%)"
+      },
+      "olderRates": "Tarif lama (sebelum 22 Sep 2025)",
+      "olderRatesHint": "Tarif ini dicabut pada 22 September 2025. Dokumen lama tetap memakainya; tidak ada yang dihitung ulang.",
+      "loadRates": "Muat tarif pajak {{country}}",
+      "loadRatesHint": "Menambahkan tarif {{country}} yang belum ada di daftar Anda. Tarif yang sudah Anda miliki tidak pernah diubah atau dihapus, dan dokumen lama tidak pernah disentuh.",
+      "ratesLoaded": "{{count}} tarif pajak ditambahkan untuk {{country}}.",
+      "ratesUpToDate": "Semua tarif pajak {{country}} sudah ada di daftar Anda.",
+      "loadRatesFailed": "Tidak dapat memuat tarif pajak.",
+      "stale": {
+        "title": "Tarif dari negara lain",
+        "help": "Tarif ini ditambahkan otomatis saat Sarang disiapkan dan bukan milik negara Anda. Nonaktifkan yang tidak Anda pakai. Tidak ada yang dihapus dan dokumen lama tetap memakai pajaknya.",
+        "turnOff": "Nonaktifkan tarif terpilih",
+        "done": "Tarif dinonaktifkan",
+        "failed": "Tidak dapat menonaktifkan tarif."
+      },
+      "noPresetNote": "Tidak ada tarif pajak siap pakai untuk {{country}}. Tambahkan tarif Anda secara manual dengan Tambah pajak.",
+      "noTaxNote": "{{country}} saat ini tidak memiliki pajak penjualan atau PPN. Tambahkan tarif secara manual jika itu berubah.",
+      "presetChecked": "Tarif diperiksa pada {{date}}. Tarif pajak berubah: konfirmasikan dengan akuntan Anda atau otoritas pajak.",
+      "englishOnlyNote": "Nama dan catatan pajak untuk negara ini ditampilkan dalam bahasa Inggris.",
+      "currentRates": "Tarif saat ini",
+      "taxCategory": "Kategori pajak"
     },
     "usersMgmt": {
       "loadFailed": "Gagal memuat pengguna.",
@@ -4508,11 +5634,24 @@
       "minLenInvalid": "Panjang minimum harus berupa angka antara 4 dan 64.",
       "expiryInvalid": "Kedaluwarsa kata sandi harus 0 (tidak pernah) atau jumlah hari hingga 3650.",
       "historyInvalid": "Riwayat kata sandi harus 0 (nonaktif) atau angka antara 1 dan 24.",
-      "saveFailed": "Gagal menyimpan."
+      "saveFailed": "Gagal menyimpan.",
+      "requireMix": "Wajibkan kombinasi huruf kecil, huruf besar, dan angka",
+      "requireMixHelp": "Juga memblokir kata sandi yang sangat umum. Berlaku untuk kata sandi yang ditetapkan mulai sekarang."
     },
     "currencyLocale": {
       "saved": "Pengaturan mata uang & lokal disimpan",
-      "saveFailed": "Gagal menyimpan pengaturan"
+      "saveFailed": "Gagal menyimpan pengaturan",
+      "roundingLabel": "Pembulatan total faktur",
+      "roundingHelp": "Membulatkan total akhir faktur ke langkah ini dan menampilkan selisihnya sebagai baris Pembulatan. Berlaku hanya untuk faktur baru; faktur yang tersimpan tidak pernah berubah.",
+      "roundingNone": "Tanpa pembulatan (total tepat)",
+      "rounding005": "Ke 0,05 terdekat",
+      "rounding010": "Ke 0,10 terdekat",
+      "rounding050": "Ke 0,50 terdekat",
+      "rounding1": "Ke 1,00 terdekat (satuan penuh)",
+      "pricesIncludeTaxLabel": "Harga sudah termasuk pajak",
+      "pricesIncludeTaxHelp": "Aktifkan jika harga di rak Anda sudah mengandung pajak (gaya HET). Faktur, penawaran, dan pesanan baru dimulai dengan pilihan ini dan Anda dapat mengubahnya pada setiap dokumen. Dokumen yang tersimpan tidak pernah berubah.",
+      "pricesIncludeTaxOn": "Ya, harga sudah termasuk pajak",
+      "pricesIncludeTaxOff": "Tidak, pajak ditambahkan di atasnya"
     },
     "print": {
       "typeSaved": "Jenis cetak disimpan",
@@ -4625,7 +5764,12 @@
       "savedMessage": "Template pesan ini telah diperbarui.",
       "saveFailed": "Tidak dapat menyimpan template.",
       "resetTitle": "Template Diatur Ulang",
-      "resetMessage": "Template pesan ini telah dikembalikan ke teks default-nya."
+      "resetMessage": "Template pesan ini telah dikembalikan ke teks default-nya.",
+      "savedRefreshed_one": "Disimpan. {{count}} pengingat yang menunggu telah diperbarui ke redaksi baru.",
+      "savedRefreshed_other": "Disimpan. {{count}} pengingat yang menunggu telah diperbarui ke redaksi baru.",
+      "perLanguageNote": "Redaksi yang Anda simpan disimpan untuk bahasa pengingat yang dipilih di atas. Pilih bahasa lain untuk menulis redaksinya sendiri.",
+      "signatureToggle": "Akhiri pesan dengan \"Powered by Sarang\"",
+      "unknownTokens": "Penanda ini tidak akan terisi: {{tokens}}"
     },
     "barcode": {
       "featureTurnedOff": "Fitur dinonaktifkan. Barcode dan produk curah Anda yang ada tidak terpengaruh.",
@@ -4649,6 +5793,35 @@
       "clearConfirmTitle": "Bersihkan Riwayat Pertanyaan AI",
       "clearConfirmMessage": "Ini akan menghapus secara permanen catatan lokal dari setiap pertanyaan yang diajukan. Ini tidak dapat dibatalkan.",
       "clearConfirmAction": "Bersihkan Riwayat"
+    },
+    "lateInterest": {
+      "title": "Bunga atas saldo tertunggak",
+      "hint": "Kenakan bunga pada faktur pelanggan yang lewat jatuh tempo. Bunga dihitung untuk setiap faktur tertunggak sejak jatuh temponya sendiri, dan hanya dikenakan saat Anda menekan tombol di halaman pelanggan.",
+      "enable": "Aktifkan bunga atas saldo tertunggak",
+      "ratePlaceholder": "Tarif tahunan dalam persen",
+      "simple": "Bunga sederhana",
+      "compound": "Majemuk bulanan"
+    },
+    "workflowRules": {
+      "title": "Aturan peringatan",
+      "hint": "Dapatkan notifikasi saat penjualan, tagihan pemasok, atau pengeluaran minimal sejumlah yang Anda pilih disimpan.",
+      "namePlaceholder": "Nama aturan",
+      "amountPlaceholder": "Minimal (jumlah)",
+      "atLeast": "minimal",
+      "on": "Aktif",
+      "off": "Nonaktif",
+      "events": {
+        "INVOICE_CREATED": "Faktur disimpan",
+        "BILL_CREATED": "Tagihan pemasok disimpan",
+        "EXPENSE_CREATED": "Pengeluaran disimpan"
+      }
+    },
+    "stockRules": {
+      "title": "Aturan stok",
+      "allowNegative": "Izinkan menjual lebih dari stok yang ada",
+      "allowNegativeHelp": "Aktifkan jika Anda menjual sebelum mencatat pembelian. Stok kemudian bisa di bawah nol sampai pembelian dimasukkan.",
+      "saved": "Aturan stok disimpan",
+      "saveFailed": "Tidak dapat menyimpan aturan stok."
     }
   },
   "about": {
@@ -4746,7 +5919,11 @@
       "backupTitle": "Cadangan & Pemulihan",
       "backupBody": "Data Anda hanya ada di perangkat ini — layar ini adalah cara Anda melindunginya. Siapkan cadangan otomatis di sini agar Anda tidak pernah kecolongan.",
       "licenseTitle": "Lisensi Anda",
-      "licenseBody": "Sarang gratis untuk 100 hari pertama Anda. Layar ini selalu menunjukkan persis di mana posisi Anda, dan di sinilah Anda akan memperbarui saat waktunya tiba."
+      "licenseBody": "Sarang gratis untuk 100 hari pertama Anda. Layar ini selalu menunjukkan persis di mana posisi Anda, dan di sinilah Anda akan memperbarui saat waktunya tiba.",
+      "askSarangTitle": "Ask Sarang",
+      "askSarangBody": "Ajukan pertanyaan tentang bisnis Anda dalam bahasa Inggris sederhana, atau ketuk salah satu contoh: penjualan hari ini, siapa yang berutang kepada Anda, neraca, tagihan pemasok mana yang terlambat. Pertama kali, tekan Aktifkan Ask Sarang. Semua dijawab di komputer ini dan tidak ada yang keluar darinya. Ia juga bisa menjelaskan mengapa sesuatu tidak berfungsi dan mengarahkan Anda ke bab Panduan yang tepat.",
+      "billsTitle": "Tagihan pemasok",
+      "billsBody": "Catat di sini apa yang ditagihkan pemasok kepada Anda dan bayarlah. Ketik nomor faktur pemasok sendiri agar tagihan yang sama tidak pernah dimasukkan dua kali, dan gunakan filter Terlambat untuk melihat yang terlambat. Tagihan dapat diedit selama masih terbuka dan belum dibayar. Barang datang? Posting GRN dengan setiap baris terhubung ke produk, karena tagihan saja tidak pernah menambah stok."
     },
     "items": {
       "restaurantTables": {
@@ -4839,7 +6016,12 @@
       },
       "logisticsGrn": {
         "title": "Nota Penerimaan Barang (GRN)",
-        "body": "Catat apa yang benar-benar tiba terhadap pesanan pembelian — buat satu dan lihat bagaimana itu cocok dengan yang dipesan."
+        "body": "Catat apa yang benar-benar tiba terhadap pesanan pembelian — buat satu dan lihat bagaimana itu cocok dengan yang dipesan.",
+        "linkToItem": "Hubungkan ke item",
+        "findItem": "Cari item",
+        "linked": "Baris terhubung; stoknya telah ditambahkan",
+        "linkFailed": "Tidak dapat menghubungkan baris ini.",
+        "pathHint": "Gunakan GRN saat barang datang bertahap atau Anda ingin surat jalan dan kendaraan tercatat. Untuk memasukkan satu pesanan pembelian sekaligus, buka di Pesanan Pembelian dan pilih Terima Stok. Jangan lakukan keduanya untuk barang yang sama."
       },
       "logisticsChallan": {
         "title": "Surat Jalan",
@@ -5236,6 +6418,54 @@
       "tripBookings": {
         "title": "Pemesanan Perjalanan",
         "body": "Pesan perjalanan untuk kendaraan dan paket tertentu, catat tugas harian (km yang ditempuh, uang saku sopir, biaya kelebihan), dan tagih setelah perjalanan selesai."
+      },
+      "expenseClaims": {
+        "title": "Klaim pengeluaran",
+        "body": "Staf membayar sesuatu dari kantong sendiri? Catat klaimnya di sini, setujui atau tolak, lalu ganti. Penggantian mencatat pengeluaran biasa di pembukuan Anda."
+      },
+      "bankRules": {
+        "title": "Aturan bank",
+        "body": "Ajari Sarang ke mana baris rekening koran yang berulang seharusnya masuk, misalnya setiap baris yang memuat 'listrik' masuk ke akun utilitas Anda. Ia mencantumkan baris terimpor yang cocok dengan aturan dan memostingnya sekali klik."
+      },
+      "gstPayments": {
+        "title": "Pembayaran GST",
+        "body": "Catat GST yang Anda bayar ke pemerintah. Ini mengurangi pajak yang Anda utang dan kredit masukan yang dipakai, serta mengurangi bank atau kas Anda. Periksa jumlahnya dengan akuntan Anda sebelum membayar."
+      },
+      "gstReturns": {
+        "title": "Berkas pengembalian GST",
+        "body": "Siapkan GSTR-1 dan GSTR-3B Anda sebagai berkas yang dapat diunggah ke portal pemerintah, dan cocokkan pembelian Anda dengan GSTR-2B portal. Ini adalah draf dari catatan Anda: buka masing-masing di alat milik pemerintah sebelum mengandalkannya."
+      },
+      "branchSummaries": {
+        "title": "Ringkasan cabang",
+        "body": "Setiap toko menyimpan Sarang-nya sendiri. Ekspor ringkasan dari setiap toko dan impor di sini untuk melihat semua toko Anda bersama. Tidak ada yang sinkron sendiri."
+      },
+      "stockCounts": {
+        "title": "Penghitungan stok",
+        "body": "Hitung stok Anda: Sarang mencantumkan apa yang dikiranya Anda punya, Anda mengetik apa yang Anda hitung, dan ia menunjukkan selisih serta nilainya. Tidak ada yang berubah sampai Anda menekan Posting."
+      },
+      "stockJournal": {
+        "title": "Jurnal stok",
+        "body": "Catat barang yang berubah bentuk, misalnya memecah satu dus menjadi bungkus: pilih apa yang keluar dan apa yang masuk lalu simpan bersama."
+      },
+      "binLocations": {
+        "title": "Lokasi rak",
+        "body": "Catat di rak, rak susun, atau bin mana setiap item berada, misalnya A-3-2, agar siapa pun dapat menemukannya."
+      },
+      "salesOverview": {
+        "title": "Ikhtisar penjualan",
+        "body": "Tampilan satu halaman untuk penjualan dan faktur hari ini, apa yang terutang pelanggan kepada Anda, apa yang terlambat, dan pintasan ke setiap layar penjualan."
+      },
+      "purchasesOverview": {
+        "title": "Ikhtisar pembelian",
+        "body": "Apa yang Anda utang ke pemasok, apa yang jatuh tempo dalam 7 hari ke depan, tagihan terbuka, dan daftar tagihan yang harus dibayar minggu ini."
+      },
+      "accountingOverview": {
+        "title": "Ikhtisar akuntansi",
+        "body": "Saldo kas dan bank, jurnal hari ini, dan pintasan ke pembukuan, laporan, dan pengembalian Anda."
+      },
+      "inventoryOverview": {
+        "title": "Ikhtisar inventaris",
+        "body": "Item dalam stok, stok rendah, dan stok habis sekilas, dengan pintasan ke penghitungan, pergerakan, dan lokasi."
       }
     },
     "couldNotStartTutorial": "Tidak dapat memulai tutorial."
@@ -5926,7 +7156,10 @@
     "statusDraft": "DRAF",
     "statusSent": "TERKIRIM",
     "statusAccepted": "DITERIMA",
-    "statusExpired": "KEDALUWARSA"
+    "statusExpired": "KEDALUWARSA",
+    "documentKind": "Jenis dokumen",
+    "kindQuotation": "Penawaran",
+    "kindProforma": "Faktur proforma (bukan faktur pajak)"
   },
   "creditNotes": {
     "title": "Nota Kredit",
@@ -5951,7 +7184,15 @@
     "saveCreditNote": "Simpan Nota Kredit",
     "updateCreditNote": "Perbarui Nota Kredit",
     "noCustomer": "Tidak ada pelanggan",
-    "refInvoice": "Ref: {{number}}"
+    "refInvoice": "Ref: {{number}}",
+    "addTax": "Tambahkan pajak pada nota ini",
+    "addTaxHint": "Nonaktif: nota tidak memiliki pajak dan totalnya adalah jumlah yang Anda masukkan.",
+    "taxRateLabel": "Tarif pajak %",
+    "taxRateHint": "Biarkan kosong untuk memakai tarif faktur terkait atau tarif bawaan Anda.",
+    "taxSkippedWarning": "Faktur asli mengenakan pajak. Melewatkan pajak di sini tidak akan membatalkan pajak yang Anda kenakan.",
+    "amountBeforeTax": "Jumlah sebelum pajak",
+    "noteTotal": "Total nota",
+    "amountEntered": "Jumlah dimasukkan"
   },
   "debitNotes": {
     "title": "Nota Debit",
@@ -5976,7 +7217,15 @@
     "saveDebitNote": "Simpan Nota Debit",
     "updateDebitNote": "Perbarui Nota Debit",
     "noSupplier": "Tidak ada pemasok",
-    "refPO": "Ref: {{number}}"
+    "refPO": "Ref: {{number}}",
+    "addTax": "Tambahkan pajak pada nota ini",
+    "addTaxHint": "Nonaktif: nota tidak memiliki pajak dan totalnya adalah jumlah yang Anda masukkan.",
+    "taxRateLabel": "Tarif pajak %",
+    "taxRateHint": "Biarkan kosong untuk memakai tarif pesanan pembelian terkait atau tarif bawaan Anda.",
+    "taxSkippedWarning": "Pesanan pembelian asli mengandung pajak. Melewatkan pajak di sini tidak akan membatalkan pajaknya.",
+    "amountBeforeTax": "Jumlah sebelum pajak",
+    "noteTotal": "Total nota",
+    "amountEntered": "Jumlah dimasukkan"
   },
   "share": {
     "whatsapp": "WhatsApp",
@@ -6201,7 +7450,29 @@
       "loadCarriersFailedMessage": "Ekspedisi tidak dapat dimuat.",
       "openEditFailedMessage": "Detail pengiriman tidak dapat dimuat.",
       "changeStatusFailedMessage": "Status pengiriman tidak dapat diperbarui.",
-      "deleteFailedMessage": "Pengiriman tidak dapat dihapus."
+      "deleteFailedMessage": "Pengiriman tidak dapat dihapus.",
+      "printLabels": "Cetak label",
+      "trackButton": "Lacak",
+      "label": {
+        "from": "Dari",
+        "to": "KEPADA",
+        "tracking": "Pelacakan",
+        "carrier": "Pengangkut",
+        "weight": "Berat",
+        "package": "Paket",
+        "of": "dari",
+        "eway": "e-way bill"
+      },
+      "track": {
+        "PENDING": "Dibuat",
+        "READY": "Siap",
+        "IN_TRANSIT": "Dalam perjalanan",
+        "OUT_FOR_DELIVERY": "Sedang diantar",
+        "DELIVERED": "Terkirim",
+        "RETURNED": "Kiriman ini dikembalikan.",
+        "CANCELLED": "Kiriman ini dibatalkan.",
+        "expected": "Diperkirakan pada {{date}}"
+      }
     },
     "grn": {
       "title": "Nota Penerimaan Barang (GRN)",
@@ -6252,7 +7523,11 @@
       "loadPurchaseOrdersFailedMessage": "Pesanan pembelian tidak dapat dimuat.",
       "loadCatalogFailedMessage": "Data penautan tidak dapat dimuat.",
       "verifyFailedMessage": "Nota penerimaan barang tidak dapat diverifikasi.",
-      "actionFailedMessage": "Tindakan ini tidak dapat diselesaikan."
+      "actionFailedMessage": "Tindakan ini tidak dapat diselesaikan.",
+      "postUnlinkedWarning": "{{count}} item tidak terhubung ke produk dan TIDAK akan memperbarui stok Anda. Batalkan dan hubungkan dulu, atau posting saja.",
+      "createAndLink": "+ Buat produk \"{{name}}\" dan hubungkan",
+      "createdProductTitle": "Produk dibuat",
+      "createdProductNotice": "\"{{name}}\" ditambahkan ke Produk dengan harga pokok Anda. Tetapkan harga jual sebenarnya di Produk sebelum menjualnya."
     },
     "challan": {
       "title": "Surat Jalan",
@@ -6292,7 +7567,20 @@
       "loadFailedMessage": "Surat jalan tidak dapat dimuat.",
       "loadVehiclesFailedMessage": "Kendaraan tidak dapat dimuat.",
       "changeStatusFailedMessage": "Status surat jalan tidak dapat diperbarui.",
-      "deleteFailedMessage": "Surat jalan tidak dapat dihapus."
+      "deleteFailedMessage": "Surat jalan tidak dapat dihapus.",
+      "customerGstin": "GSTIN pelanggan",
+      "placeOfSupply": "Tempat pasokan (negara bagian)",
+      "reason": "Alasan memindahkan barang",
+      "reasons": {
+        "SUPPLY": "Pasokan",
+        "JOB_WORK": "Kerja upah",
+        "SAMPLE": "Sampel",
+        "RETURN": "Retur",
+        "OTHER": "Lainnya"
+      },
+      "transporterName": "Nama pengangkut",
+      "lrNumber": "Dokumen angkut / nomor LR",
+      "hsn": "HSN"
     },
     "freight": {
       "title": "Buku Besar Ongkir",
@@ -7151,7 +8439,9 @@
     "empty": {
       "title": "Belum ada pusat biaya",
       "body": "Buat pusat biaya pertama Anda untuk mulai memberi tag pada faktur, tagihan, pengeluaran, dan karyawan — lalu lihat rincian laba/pengeluaran nyata per departemen, cabang, atau proyek."
-    }
+    },
+    "category": "Kategori",
+    "categoryPlaceholder": "Misalnya Departemen atau Proyek"
   },
   "budgets": {
     "title": "Anggaran",
@@ -7174,6 +8464,14 @@
     "empty": {
       "title": "Belum ada anggaran untuk bulan ini",
       "body": "Tetapkan anggaran untuk pusat biaya, akun tertentu, atau seluruh perusahaan — lalu kembali di akhir bulan untuk melihat bagaimana pengeluaran aktual dibandingkan."
+    },
+    "scenario": {
+      "label": "Rencana",
+      "base": "Rencana dasar",
+      "copy": "Rencana pengandaian baru",
+      "namePlaceholder": "Nama rencana",
+      "percent": "Perubahan dalam persen",
+      "created": "Rencana pengandaian dibuat"
     }
   },
   "serviceCombos": {
@@ -7956,5 +9254,233 @@
       "couldNotCloseAccount": "Tidak dapat menutup akun.",
       "invoiceAmountWithBalance": "{{amount}} (saldo {{balance}})"
     }
+  },
+  "exchangeRates": {
+    "title": "Kurs",
+    "hint": "Simpan tabel kurs Anda sendiri. Saat Anda membuat faktur dalam mata uang asing, kurs terbaru terisi otomatis, dan Anda masih bisa mengubahnya.",
+    "codePlaceholder": "USD",
+    "ratePlaceholder": "Kurs dalam mata uang Anda",
+    "importCsv": "Impor CSV",
+    "csvHelp": "Kolom CSV: mata uang, kurs, tanggal (misalnya USD, 83.25, 2026-09-05). Kurs adalah nilai satu unit mata uang asing dalam mata uang Anda sendiri. Tidak ada yang diimpor jika ada baris yang bermasalah.",
+    "empty": "Belum ada kurs.",
+    "imported": "Kurs diimpor",
+    "importFailed": "Tidak dapat mengimpor"
+  },
+  "addresses": {
+    "title": "Alamat lain",
+    "add": "Tambah alamat",
+    "empty": "Tidak ada alamat lain. Tambahkan alamat pengiriman, gudang, atau cabang jika pihak ini punya lebih dari satu.",
+    "default": "Utama",
+    "labelPlaceholder": "Nama, misalnya Gudang",
+    "addressPlaceholder": "Alamat lengkap",
+    "makeDefault": "Gunakan sebagai alamat utama"
+  },
+  "einvoice": {
+    "title": "Faktur elektronik",
+    "hasIrn": "IRN disimpan",
+    "noIrn": "Belum ada IRN",
+    "steps": "1. Unduh berkas. 2. Unggah ke portal faktur elektronik. 3. Tempel IRN dan rincian yang diberikan portal di bawah.",
+    "download": "Unduh berkas faktur elektronik",
+    "irn": "IRN",
+    "ackNo": "Nomor konfirmasi",
+    "ackDate": "Tanggal konfirmasi",
+    "signedQr": "Teks QR bertanda tangan (opsional)",
+    "saveIrn": "Simpan IRN",
+    "remove": "Hapus IRN",
+    "fileSaved": "Berkas faktur elektronik disimpan",
+    "irnSaved": "IRN disimpan",
+    "couldNotPrepare": "Tidak dapat menyiapkan berkas faktur elektronik.",
+    "couldNotSave": "Tidak dapat menyimpan IRN."
+  },
+  "ewayBill": {
+    "title": "E-way bill",
+    "help": "Siapkan berkas untuk membuat e-way bill di portal e-way bill. Tambahkan nomor kendaraan atau ID pengangkut.",
+    "mode": "Moda transportasi",
+    "modes": {
+      "ROAD": "Darat",
+      "RAIL": "Kereta api",
+      "AIR": "Udara",
+      "SHIP": "Kapal"
+    },
+    "vehicle": "Nomor kendaraan",
+    "transporterId": "ID pengangkut (GSTIN)",
+    "transporterName": "Nama pengangkut",
+    "distance": "Jarak dalam km (0 membiarkan portal menghitungnya)",
+    "download": "Unduh berkas e-way bill",
+    "fileSaved": "Berkas e-way bill disimpan",
+    "couldNotPrepare": "Tidak dapat menyiapkan berkas e-way bill."
+  },
+  "duplicates": {
+    "find": "Cari duplikat",
+    "titleCustomers": "Pelanggan duplikat",
+    "titleSuppliers": "Pemasok duplikat",
+    "subtitle": "Data yang tampak seperti orang atau bisnis yang sama. Pilih yang dipertahankan dan gabungkan yang lain ke dalamnya.",
+    "none": "Tidak ada duplikat ditemukan.",
+    "reason": {
+      "PHONE": "Nomor telepon sama",
+      "TAX_NUMBER": "Nomor pajak sama",
+      "EMAIL": "Email sama",
+      "NAME": "Nama sama di kota yang sama"
+    },
+    "keepThis": "Pertahankan ini",
+    "merge": "Gabungkan ke data terpilih",
+    "merged": "Digabungkan",
+    "failed": "Tidak dapat menggabungkan.",
+    "confirmTitle": "Gabungkan data ini?",
+    "confirmText": "Semua yang tercatat pada data lain (tagihan, pembayaran, riwayat) berpindah ke {{name}}, dan yang lain diarsipkan. Ini tidak dapat dibatalkan."
+  },
+  "hub": {
+    "sales": "Ikhtisar penjualan",
+    "purchases": "Ikhtisar pembelian",
+    "accounting": "Ikhtisar akuntansi",
+    "inventory": "Ikhtisar inventaris",
+    "goTo": "Buka",
+    "dueBills": "Tagihan yang harus dibayar dalam 7 hari ke depan",
+    "noDueBills": "Tidak ada tagihan jatuh tempo dalam 7 hari ke depan.",
+    "overdue": "Terlambat",
+    "stat": {
+      "salesToday": "Penjualan hari ini",
+      "invoicesToday": "Faktur hari ini",
+      "receivable": "Piutang Anda",
+      "overdue": "Terlambat",
+      "openQuotations": "Penawaran terbuka",
+      "payable": "Utang Anda",
+      "dueThisWeek": "Jatuh tempo dalam 7 hari",
+      "openBills": "Tagihan terbuka",
+      "cashAndBank": "Kas dan bank",
+      "bankAccounts": "Rekening bank",
+      "entriesToday": "Jurnal hari ini",
+      "items": "Item dalam stok",
+      "lowStock": "Stok rendah",
+      "outOfStock": "Stok habis"
+    }
+  },
+  "bins": {
+    "title": "Lokasi rak",
+    "subtitle": "Di rak, rak susun, atau bin mana setiap item berada",
+    "location": "Lokasi",
+    "search": "Cari item",
+    "help": "Ketik label rak, rak susun, atau bin seperti A-3-2 lalu tekan Enter. Kosongkan untuk menghapus. Item muncul di sini setelah memiliki stok di lokasi ini.",
+    "item": "Item",
+    "quantity": "Dalam stok",
+    "bin": "Bin",
+    "none": "Tidak ada item dengan stok di lokasi ini.",
+    "couldNot": "Tidak dapat menyimpan bin."
+  },
+  "keyboardHints": {
+    "journal": "Papan ketik: Enter pada jumlah terakhir menambah baris penyeimbang, Ctrl+Enter memposting."
+  },
+  "journalTemplates": {
+    "use": "Mulai dari pola tersimpan",
+    "saveAs": "Simpan akun-akun ini sebagai pola",
+    "name": "Nama pola",
+    "saved": "Pola disimpan",
+    "couldNot": "Tidak dapat menyimpan pola."
+  },
+  "expenseClaims": {
+    "title": "Klaim pengeluaran",
+    "hint": "Staf memakai uang sendiri untuk bisnis? Catat klaimnya, setujui, lalu ganti. Penggantian mencatat pengeluaran biasa.",
+    "claimant": "Siapa yang mengklaim",
+    "category": "Kategori",
+    "description": "Untuk apa",
+    "amount": "Jumlah",
+    "submit": "Kirim klaim",
+    "submitted": "Klaim terkirim",
+    "approve": "Setujui",
+    "reject": "Tolak",
+    "pay": "Ganti",
+    "paid": "Klaim diganti dan pengeluaran dicatat",
+    "empty": "Belum ada klaim.",
+    "status": {
+      "SUBMITTED": "Menunggu",
+      "APPROVED": "Disetujui",
+      "PAID": "Diganti",
+      "REJECTED": "Ditolak"
+    },
+    "methods": {
+      "CASH": "Tunai",
+      "UPI": "UPI",
+      "BANK_TRANSFER": "Transfer bank"
+    }
+  },
+  "bankRules": {
+    "title": "Aturan bank",
+    "subtitle": "Ajari Sarang ke mana baris rekening koran bank Anda seharusnya masuk",
+    "newRule": "Aturan baru",
+    "help": "Aturan cocok dengan baris rekening koran jika memuat semua kata yang Anda ketik (urutan apa saja), arahnya sesuai pilihan, dan jumlahnya dalam rentang. Aturan pertama yang cocok yang dipakai.",
+    "name": "Nama aturan",
+    "contains": "Kata yang dicari",
+    "direction": "Arah",
+    "any": "Apa saja",
+    "moneyOut": "Uang keluar",
+    "moneyIn": "Uang masuk",
+    "dir": {
+      "ANY": "Arah apa saja",
+      "DEBIT": "Uang keluar",
+      "CREDIT": "Uang masuk"
+    },
+    "bank": "Rekening bank",
+    "allBanks": "Semua rekening bank",
+    "minAmount": "Jumlah terkecil (opsional)",
+    "maxAmount": "Jumlah terbesar (opsional)",
+    "postTo": "Posting ke akun ini",
+    "add": "Tambah aturan",
+    "none": "Belum ada aturan.",
+    "linesHelp": "Baris rekening koran yang belum dicocokkan dengan transaksi. Memposting baris mencatat jurnal pada akun aturan dan menandai baris sebagai sudah direkonsiliasi. Anda bisa membatalkannya dari layar rekonsiliasi bank.",
+    "noLines": "Tidak ada baris rekening koran yang belum direkonsiliasi untuk rekening bank ini.",
+    "noRule": "Tidak ada aturan yang cocok",
+    "post": "Posting",
+    "postAll": "Posting semua yang cocok ({{count}})",
+    "posted": "Diposting dan direkonsiliasi",
+    "postedMany": "{{count}} baris diposting dan direkonsiliasi",
+    "couldNot": "Tidak dapat menyelesaikan ini."
+  },
+  "stockJournal": {
+    "title": "Jurnal stok",
+    "subtitle": "Ubah beberapa item menjadi item lain, seperti mengemas ulang atau merakit satu set",
+    "new": "Entri baru",
+    "help": "Pilih apa yang keluar dari stok Anda dan apa yang masuk. Nilai yang keluar dibagi ke yang masuk, sehingga total nilai stok Anda tidak berubah.",
+    "takenOut": "Dikeluarkan dari stok",
+    "broughtIn": "Dimasukkan ke stok",
+    "findItem": "Cari item",
+    "notes": "Catatan (opsional)",
+    "save": "Simpan entri",
+    "saved": "Jurnal stok disimpan",
+    "none": "Belum ada entri jurnal stok.",
+    "outShort": "Keluar:",
+    "inShort": "Masuk:",
+    "couldNot": "Tidak dapat menyimpan entri ini."
+  },
+  "stockTake": {
+    "title": "Penghitungan stok",
+    "subtitle": "Hitung apa yang ada di rak dan perbaiki pembukuan",
+    "startTitle": "Mulai penghitungan baru",
+    "startHelp": "Mengambil potret dari apa kata pembukuan untuk setiap item stok. Lalu Anda mengetik apa yang Anda hitung. Tidak ada yang berubah di stok Anda sampai Anda memposting hasil hitung.",
+    "notes": "Catatan (opsional)",
+    "start": "Mulai menghitung",
+    "none": "Belum ada penghitungan stok.",
+    "items": "item",
+    "status": {
+      "IN_PROGRESS": "Sedang dihitung",
+      "POSTED": "Diposting",
+      "CANCELLED": "Dibatalkan"
+    },
+    "counted": "Dihitung",
+    "withDifference": "Dengan selisih",
+    "surplus": "Lebih",
+    "shortage": "Kurang",
+    "search": "Cari item",
+    "howTo": "Ketik jumlah yang dihitung lalu tekan Enter. Biarkan baris kosong jika Anda tidak menghitung item itu; item itu tidak akan diubah.",
+    "item": "Item",
+    "system": "Menurut pembukuan",
+    "countedCol": "Dihitung",
+    "difference": "Selisih",
+    "value": "Nilai",
+    "post": "Posting hasil hitung",
+    "cancel": "Batalkan penghitungan ini",
+    "posted": "Hasil hitung stok diposting",
+    "adjusted": "{{count}} item dikoreksi",
+    "badQuantity": "Masukkan jumlah nol atau lebih.",
+    "couldNot": "Tidak dapat menyelesaikan ini."
   }
 }

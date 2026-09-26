@@ -176,7 +176,8 @@
     "optionalNotesPlaceholder": "Notas opcionales…",
     "somethingWentWrong": "Algo salió mal. Inténtelo de nuevo.",
     "done": "Listo",
-    "archive": "Archivar"
+    "archive": "Archivar",
+    "taxNumberCheck": "Esto no parece un {{label}} válido. Compruébelo, por favor."
   },
   "auth": {
     "username": "Usuario",
@@ -325,6 +326,35 @@
         "repairJobs": "Ha registrado {{count}} tickets de reparación o trabajo — eso parece un patrón de {{template}}.",
         "appointments": "Ha reservado {{count}} citas — eso parece un patrón de {{template}}.",
         "variantOrLooseProducts": "Tiene {{count}} productos con variantes de talla/color o precio por peso suelto — eso parece un patrón de {{template}}."
+      }
+    },
+    "customKpi": {
+      "add": "Agregue su propio recuadro",
+      "namePlaceholder": "Nombre del recuadro",
+      "metrics": {
+        "SALES_TOTAL": "Ventas",
+        "INVOICE_COUNT": "Número de facturas",
+        "EXPENSE_TOTAL": "Gastos",
+        "PURCHASES_TOTAL": "Facturas de proveedores",
+        "NEW_CUSTOMERS": "Clientes nuevos"
+      },
+      "periods": {
+        "TODAY": "Hoy",
+        "WEEK": "Esta semana",
+        "MONTH": "Este mes",
+        "YEAR": "Este año"
+      }
+    },
+    "customize": {
+      "button": "Personalizar",
+      "hint": "Elija qué mostrar en su panel.",
+      "sections": {
+        "ask": "Cuadro de Ask Sarang",
+        "kpis": "Cifras clave",
+        "revenue": "Ingresos y productos más vendidos",
+        "outstanding": "Pendientes y estado del stock",
+        "activity": "Actividad reciente",
+        "quick": "Acciones rápidas"
       }
     }
   },
@@ -620,7 +650,55 @@
     "splitPaymentFailedTitle": "Error en Pago Dividido",
     "splitPaymentFailedMessage": "La factura {{invoiceNumber}} fue creada, pero los pagos no pudieron registrarse: {{error}}. Vaya a la factura y registre los pagos manualmente.",
     "splitPaymentConnectionErrorMessage": "La factura {{invoiceNumber}} fue creada, pero los pagos no pudieron registrarse debido a un error de conexión. Vaya a la factura y registre los pagos manualmente.",
-    "unknownError": "Error desconocido"
+    "unknownError": "Error desconocido",
+    "salesperson": "Vendedor",
+    "noSalesperson": "Sin vendedor",
+    "ewayThresholdAlert": "Esta venta supera {{amount}}. Si va a enviar mercancía, puede hacer falta una guía electrónica (e-way bill). Confírmelo con su contador.",
+    "addCharge": "Agregar cargo",
+    "exportZeroRate": {
+      "title": "¿Venta de exportación?",
+      "hint": "Este cliente está en otro país. Marque la casilla para no cobrar impuesto en esta venta (exportación con tasa cero). Revise las normas de su país y conserve la prueba de exportación."
+    },
+    "tdsDeducted": "TDS retenido",
+    "tdsDeductedHint": "Use esta opción cuando el cliente le pagó menos porque retuvo impuesto sobre la renta (TDS). El importe se registra como impuesto a su favor, no como dinero recibido.",
+    "giveFree": "Regalar",
+    "chargeKindLabel": "Tipo de cargo",
+    "chargeTaxRateLabel": "Tasa de impuesto de este cargo (%)",
+    "chargeTaxHint": "Los cargos como el envío o el embalaje suelen llevar la misma tasa que la mercancía. Consulte a su contador si tiene dudas.",
+    "chargeKinds": {
+      "TIP": "Propina / Cargo por servicio",
+      "SHIPPING": "Envío / Entrega",
+      "PACKING": "Embalaje",
+      "HANDLING": "Manipulación",
+      "INSTALLATION": "Instalación",
+      "OTHER": "Otro cargo"
+    },
+    "pricesIncludeTax": "Los precios incluyen impuesto",
+    "priceInclTax": "(con impuesto)",
+    "priceExclTax": "(sin impuesto)",
+    "pricesIncludeTaxHint": "Los precios que escribe ya contienen el impuesto. El impuesto se calcula a partir de cada precio en lugar de sumarse encima.",
+    "pricesExcludeTaxHint": "Los precios que escribe son antes de impuestos. El impuesto se suma encima.",
+    "pricesIncludeTaxShareNote": "Los precios incluyen impuesto.",
+    "taxShownAs": "Impuesto mostrado como",
+    "shareTaxLines": "Impuesto: {{lines}}.",
+    "taxCategoryLabel": "Categoría de impuesto",
+    "taxCategoryStandard": "Tasa general",
+    "taxCategoryReduced": "Tasa reducida",
+    "taxCategoryZeroRated": "Tasa cero",
+    "taxCategoryExempt": "Exento",
+    "taxCategoryNilRated": "Tasa nula",
+    "taxCategoryOutOfScope": "Fuera del GST (operación no sujeta a GST)",
+    "taxCategoryHint": "Las operaciones a tasa nula, exentas y no sujetas a GST se informan en filas propias en las declaraciones de GST.",
+    "olderRatesShort": "Tasas anteriores",
+    "taxShownCgstSgst": "CGST + SGST",
+    "taxShownIgst": "IGST",
+    "taxShownGst": "GST",
+    "taxShownAutoHint": "Se elige según el estado del comprador. Solo cambia la forma de mostrar el impuesto; el importe del impuesto y el total no cambian.",
+    "taxShownSameAmountHint": "Solo cambia la forma de mostrar el impuesto. El importe del impuesto y el total son los mismos en las tres opciones.",
+    "buyerStateOptional": "Estado del comprador (opcional, define automáticamente cómo se muestra el impuesto)",
+    "offSlabRate": "{{rate}}% no es una de sus tasas de impuesto guardadas. Revíselo antes de guardar.",
+    "unitPriceInclTax": "Precio unitario (con impuesto)",
+    "unitPriceExclTax": "Precio unitario (sin impuesto)"
   },
   "products": {
     "title": "Productos",
@@ -925,7 +1003,10 @@
       "removeImageTitle": "Quitar imagen",
       "openingEllipsis": "Abriendo…",
       "chooseImage": "Elegir Imagen",
-      "descriptionPlaceholder": "Descripción opcional del producto…"
+      "descriptionPlaceholder": "Descripción opcional del producto…",
+      "costPriceBeforeTax": "Precio de costo (antes de impuestos) *",
+      "sellingPriceBeforeTax": "Precio de venta (antes de impuestos) *",
+      "sellingPriceInclTax": "Precio de venta (con impuesto) *"
     }
   },
   "customers": {
@@ -1021,7 +1102,15 @@
     "taxExemptHint": "Las facturas a este cliente se emiten con 0% de impuesto — para inversión del sujeto pasivo B2B, exenciones diplomáticas/de ONG, u otros compradores exentos de impuestos.",
     "taxExemptReasonLabel": "Motivo (impreso en la factura)",
     "taxExemptReasonPlaceholder": "p. ej. Inversión del sujeto pasivo — Reg. VAT GB123456789",
-    "cityPlaceholder": "Mumbai"
+    "cityPlaceholder": "Mumbai",
+    "taxExemptCertificateLabel": "Número del certificado de exención",
+    "taxExemptExpiryLabel": "Certificado válido hasta (opcional)",
+    "taxExemptExpiryHint": "Después de esta fecha se cobra impuesto al cliente otra vez hasta que actualice el certificado.",
+    "taxExemptExpiredWarning": "Este certificado ha vencido, por lo que se está cobrando impuesto. Actualice la fecha para volver a eximir a este cliente.",
+    "doNotMessageLabel": "No enviar mensajes a este cliente",
+    "doNotMessageHint": "Márquelo si el cliente pidió no recibir recordatorios ni ofertas. Se eliminan sus recordatorios pendientes y nunca se le ofrecen nuevos para enviar.",
+    "paymentTermsDays": "Condiciones de pago (días para pagar)",
+    "statement": "Estado de cuenta"
   },
   "suppliers": {
     "title": "Proveedores",
@@ -1091,7 +1180,14 @@
     "panNumberLabel": "Número PAN",
     "panNumberPlaceholder": "Para TDS/cumplimiento",
     "openingBalanceLabel": "Saldo Inicial",
-    "openingBalancePlaceholder": "Monto ya adeudado a este proveedor, si corresponde"
+    "openingBalancePlaceholder": "Monto ya adeudado a este proveedor, si corresponde",
+    "paymentTermsDays": "Condiciones de pago (días para pagar)",
+    "creditLimit": "Límite de crédito con este proveedor",
+    "category": "Categoría",
+    "rating": "Calificación",
+    "noRating": "Sin calificar",
+    "overLimit": "sobre el límite",
+    "statement": "Estado de cuenta"
   },
   "inventory": {
     "title": "Inventario",
@@ -1407,7 +1503,8 @@
       "equipment": "Equipo",
       "noWarrantyExpiringSoon": "No hay artículos con garantía por vencer próximamente.",
       "warrantyExpired": "Garantía vencida"
-    }
+    },
+    "reservedNote": "{{count}} comprometidos en pedidos"
   },
   "purchaseOrders": {
     "title": "Órdenes de Compra",
@@ -1500,7 +1597,8 @@
     "dropShipToCustomerOptional": "Envío Directo al Cliente (opcional)",
     "deliverToOwnLocation": "Entregar en mi propia ubicación (predeterminado)",
     "notesOptional": "Notas (opcional)",
-    "internalNotesPlaceholder": "Notas internas…"
+    "internalNotesPlaceholder": "Notas internas…",
+    "receiveHint": "Recibir stock trae todo lo de este pedido de una vez. Si la mercancía llega por partes, o quiere registrar el albarán y el vehículo, use una Nota de Recepción (GRN)."
   },
   "accounting": {
     "chartOfAccounts": {
@@ -1526,7 +1624,8 @@
       "accountNamePlaceholder": "p. ej. Caja Chica",
       "typeLabel": "Tipo",
       "parentAccountLabel": "Cuenta Principal (opcional)",
-      "noneTopLevel": "Ninguna — nivel superior"
+      "noneTopLevel": "Ninguna — nivel superior",
+      "viewLedger": "Mayor"
     },
     "journalEntries": {
       "title": "Asientos de Diario",
@@ -1545,7 +1644,8 @@
         "INTEREST_CHARGE": "Cargo por Intereses",
         "ASSET_DEPRECIATION": "Depreciación de Activo",
         "ASSET_DISPOSAL": "Baja de Activo",
-        "YEAR_END_OPENING": "Apertura de Fin de Año"
+        "YEAR_END_OPENING": "Apertura de Fin de Año",
+        "GST_PAYMENT": "Pago de GST"
       },
       "noEntriesYet": "Todavía no hay asientos de diario",
       "colEntryNumber": "N.º de Asiento",
@@ -1572,7 +1672,9 @@
       "addLine": "+ Agregar línea",
       "balanced": "Balanceado",
       "notBalancedBadge": "No balanceado",
-      "postEntry": "Registrar Asiento"
+      "postEntry": "Registrar Asiento",
+      "autoReverseOn": "Revertir automáticamente el (opcional)",
+      "autoReverseHint": "Para devengos: el asiento se anula solo en esta fecha, la próxima vez que abra la aplicación."
     },
     "bankAccounts": {
       "title": "Cuentas Bancarias y de Efectivo",
@@ -1778,6 +1880,92 @@
       "yearClosed": "Año cerrado",
       "netIncomeSummary": "Ingreso neto: {{netIncome}} en {{count}} cuentas trasladadas.",
       "couldNotCloseYear": "No se pudo cerrar el año fiscal."
+    },
+    "memo": {
+      "title": "Notas de memorándum",
+      "hint": "Notas sobre cosas que todavía no son asientos contables, como mercancía enviada a prueba. Nunca modifican sus libros.",
+      "titlePlaceholder": "Título",
+      "notesPlaceholder": "Detalles (opcional)"
+    },
+    "branches": {
+      "title": "Resúmenes de sucursales",
+      "subtitle": "Envíe las cifras de esta tienda a la oficina central o lea los archivos enviados por otras tiendas",
+      "sendTitle": "Enviar mis cifras",
+      "sendHelp": "Crea un archivo pequeño con las ventas, compras, gastos, cuentas por cobrar, cuentas por pagar, stock y efectivo de esta tienda para las fechas elegidas. Envíe el archivo a la oficina central por correo o en una memoria USB.",
+      "branchName": "Nombre de la sucursal",
+      "from": "Desde",
+      "to": "Hasta",
+      "makeFile": "Crear el archivo",
+      "exported": "Archivo guardado",
+      "receiveTitle": "Leer archivos de las sucursales",
+      "receiveHelp": "Elija los archivos que enviaron las sucursales. Si importa otra vez la misma sucursal y las mismas fechas, se reemplazan las cifras anteriores.",
+      "chooseFiles": "Elegir archivos",
+      "openReport": "Abrir Informes",
+      "imported": "{{count}} archivo(s) importado(s)",
+      "period": "Fechas",
+      "sales": "Ventas",
+      "couldNot": "No se pudo completar esta acción.",
+      "note": "Los archivos solo llevan cifras, sin nombres de clientes ni de proveedores. Sarang no envía nada por internet."
+    },
+    "gstReturns": {
+      "title": "Archivos de declaración de GST",
+      "subtitle": "Prepare archivos GSTR-1 y GSTR-3B a partir de sus libros para revisarlos y subirlos al portal de GST",
+      "month": "Mes",
+      "gstr1Title": "GSTR-1 (ventas)",
+      "gstr1Help": "Facturas a compradores registrados, ventas minoristas por estado y tasa, notas de crédito, operaciones a tasa nula y exentas, y el resumen de HSN.",
+      "gstr3bTitle": "GSTR-3B (resumen)",
+      "gstr3bHelp": "Impuesto sobre ventas, impuesto con inversión del sujeto pasivo, operaciones interestatales a compradores no registrados y su crédito fiscal por insumos.",
+      "download": "Descargar archivo",
+      "reconTitle": "Conciliar con el portal de GST (GSTR-2B / 2A)",
+      "reconHelp": "Elija el archivo de compras que descargó del portal de GST. Sarang lo compara con las facturas de sus proveedores por GSTIN del proveedor y número de factura, y muestra lo que falta en cada lado.",
+      "reconChoose": "Elegir el archivo",
+      "claimable": "Crédito que el portal permite en facturas conciliadas",
+      "atRisk": "Crédito en facturas que el proveedor no ha declarado",
+      "colStatus": "Resultado",
+      "colSupplier": "Proveedor",
+      "colInvoice": "Factura",
+      "colPortalTax": "Impuesto del portal",
+      "colBooksTax": "Su impuesto",
+      "colBill": "Su factura",
+      "status": {
+        "MATCHED": "Conciliada",
+        "MISMATCH": "Los importes difieren",
+        "MISSING_IN_BOOKS": "No está en sus libros",
+        "MISSING_IN_PORTAL": "No está en el portal",
+        "REVIEW": "Nota de crédito, revisar"
+      },
+      "note": {
+        "notClaimable": "el portal marca el crédito como no aprovechable",
+        "creditNote": "nota de crédito del proveedor",
+        "noInvoiceNumber": "agregue el número de factura del proveedor en la factura"
+      },
+      "saved": "Archivo guardado",
+      "couldNotPrepare": "No se pudo preparar el archivo.",
+      "disclaimer": "Estos archivos son borradores hechos a partir de sus libros. Ábralos en la herramienta sin conexión del portal de GST, revise cada cifra con su contador y presente desde el portal. Sarang no envía nada al gobierno."
+    },
+    "gstPayments": {
+      "title": "Pagos de GST",
+      "subtitle": "Registre el GST que paga al gobierno, usando primero su crédito fiscal por insumos",
+      "newPayment": "Registrar pago de GST",
+      "none": "Todavía no hay pagos de GST registrados.",
+      "details": "Detalles",
+      "taxSettled": "Impuesto liquidado",
+      "creditUsed": "Pagado con crédito por insumos",
+      "cashPaid": "Pagado en efectivo o banco",
+      "paidFrom": "Pagado desde",
+      "cashInHand": "Efectivo en caja",
+      "reference": "Número de challan o de referencia",
+      "fillFromMonth": "Rellenar con las cifras de este mes",
+      "accountantNote": "Confirme los importes y qué crédito puede usar con su contador antes de pagar.",
+      "void": "Cancelar pago",
+      "voided": "Cancelado",
+      "reason": "Motivo",
+      "reasonRequired": "Indique un motivo.",
+      "taxRequired": "Escriba el importe del impuesto.",
+      "creditTooMuch": "El crédito usado no puede ser mayor que el impuesto liquidado.",
+      "saved": "Pago de GST registrado",
+      "couldNotSave": "No se pudo guardar el pago de GST.",
+      "couldNotLoad": "No se pudieron cargar los pagos de GST."
     }
   },
   "bills": {
@@ -1896,7 +2084,13 @@
       "loadSuppliersFailed": "No se pudieron cargar los proveedores.",
       "loadOptionsFailed": "No se pudieron cargar las opciones de la factura.",
       "createFailed": "No se pudo crear la factura."
-    }
+    },
+    "editBill": "Editar factura",
+    "supplierInvoiceNumber": "Número de factura del proveedor",
+    "supplierInvoiceDate": "Fecha de factura del proveedor",
+    "addCategory": "+ Nueva categoría",
+    "newCategoryName": "Nombre de la categoría",
+    "couldNotAddCategory": "No se pudo agregar la categoría."
   },
   "salesOrders": {
     "title": "Órdenes de Venta",
@@ -1941,7 +2135,8 @@
     "loadListFailedMessage": "Error al cargar las órdenes de venta.",
     "loadCustomersFailedMessage": "Error al cargar los clientes.",
     "loadOptionsFailedMessage": "Error al cargar las opciones de la orden de venta.",
-    "createFailedMessage": "Error al crear la orden de venta."
+    "createFailedMessage": "Error al crear la orden de venta.",
+    "shortStock": "El pedido necesita {{needed}} pero solo hay {{available}} libres después de otros pedidos. El pedido está confirmado; consiga más stock antes de facturar."
   },
   "priceLists": {
     "title": "Listas de Precios",
@@ -2208,7 +2403,15 @@
     "couldNotLoad": "No se pudieron cargar los campos personalizados.",
     "couldNotSave": "No se pudo guardar este campo personalizado.",
     "nameRequired": "El nombre del campo es obligatorio.",
-    "optionsRequired": "Agrega al menos una opción de la lista."
+    "optionsRequired": "Agrega al menos una opción de la lista.",
+    "rules": {
+      "required": "Este campo es obligatorio",
+      "min": "Número mínimo permitido",
+      "max": "Número máximo permitido",
+      "pattern": "Formato que debe cumplir el valor (opcional)",
+      "patternHint": "Mensaje que se muestra cuando no coincide",
+      "patternPlaceholder": "Por ejemplo ^[A-Z]{5}[0-9]{4}[A-Z]$"
+    }
   },
   "approvalWorkflows": {
     "title": "Flujos de Aprobación",
@@ -3075,6 +3278,174 @@
       "eventProfitability": {
         "label": "Rentabilidad del Evento",
         "description": "Por cada evento de catering completado: el precio final acordado menos el costo de personal y el costo estimado de ingredientes"
+      },
+      "balanceSheet": {
+        "label": "Balance general",
+        "description": "Lo que el negocio tiene y debe en una fecha, con el patrimonio del dueño y la ganancia actual, con comparación opcional con una fecha anterior"
+      },
+      "generalLedger": {
+        "label": "Libro mayor",
+        "description": "Cada asiento de una cuenta con saldo inicial, acumulado y final y el documento de origen"
+      },
+      "dayBook": {
+        "label": "Libro diario",
+        "description": "Todos los comprobantes y asientos por fecha, filtrables por tipo, con totales de débito y crédito de cada día"
+      },
+      "cashFlowStatement": {
+        "label": "Estado de flujo de efectivo",
+        "description": "De dónde vino y adónde fue el efectivo: operación, inversión y financiación, del efectivo inicial al final"
+      },
+      "payrollChallan": {
+        "label": "PF, ESI e impuesto profesional por empleado",
+        "description": "Para el mes de la fecha final: lo descontado a cada empleado, comprobado con sus tasas, con totales para el challan"
+      },
+      "branchConsolidation": {
+        "label": "Consolidación de sucursales",
+        "description": "Este negocio y los archivos de sucursales que importó, lado a lado: ventas, compras, gastos, cuentas por cobrar, cuentas por pagar, stock y efectivo"
+      },
+      "fundFlow": {
+        "label": "Flujo de fondos",
+        "description": "De dónde vinieron los fondos y adónde fueron entre dos fechas, aparte del movimiento del propio efectivo"
+      },
+      "bankBook": {
+        "label": "Libro de bancos",
+        "description": "Cada depósito y retiro de cada cuenta bancaria o de efectivo con saldo inicial, acumulado y final"
+      },
+      "bankReconciliationSummary": {
+        "label": "Resumen de conciliación bancaria",
+        "description": "Para cada cuenta bancaria, cuántas líneas del extracto coinciden con sus libros y cuántas siguen abiertas"
+      },
+      "taxByPart": {
+        "label": "Impuesto por parte",
+        "description": "Impuesto sobre ventas y compras dividido en las partes con nombre de cada tasa (por ejemplo GST federal y PST provincial), para presentar cada parte ante su propia autoridad"
+      },
+      "tdsReceivable": {
+        "label": "TDS por cobrar",
+        "description": "Impuesto que sus clientes retuvieron al pagarle (TDS), por cliente y factura, para compararlo con sus certificados y su estado de impuestos"
+      },
+      "costCategoryProfit": {
+        "label": "Ganancia por categoría de costo",
+        "description": "Ingresos, gastos y ganancia sumados por la categoría que dio a cada centro de costo (por ejemplo departamento o proyecto)"
+      },
+      "ratioAnalysis": {
+        "label": "Análisis de razones financieras",
+        "description": "Chequeo de salud del negocio: liquidez, deuda, márgenes y cuántos días tardan clientes, proveedores y stock"
+      },
+      "yearOverYear": {
+        "label": "Año contra año",
+        "description": "Ventas y compras mes a mes frente a los mismos meses de un año antes"
+      },
+      "creditNoteRegister": {
+        "label": "Registro de notas de crédito",
+        "description": "Cada nota de crédito emitida en el período con cliente, motivo, impuesto e importe"
+      },
+      "debitNoteRegister": {
+        "label": "Registro de notas de débito",
+        "description": "Cada nota de débito (crédito de proveedor) emitida en el período con proveedor, motivo, impuesto e importe"
+      },
+      "salesReturnRegister": {
+        "label": "Registro de devoluciones de ventas",
+        "description": "Cada devolución de ventas del período con la factura de la que proviene"
+      },
+      "stockTakeVariance": {
+        "label": "Diferencias de conteos de stock",
+        "description": "Diferencias entre los libros y los conteos físicos contabilizados en el período, por artículo, con su valor"
+      },
+      "stockSummary": {
+        "label": "Resumen y valoración del stock",
+        "description": "Cada artículo con cantidad, costo, valor en stock y si está bajo o agotado, con el valor total de su stock"
+      },
+      "stockLedger": {
+        "label": "Libro de stock",
+        "description": "Cada movimiento de stock del período para cada artículo con el saldo inicial y un saldo acumulado"
+      },
+      "inventoryAgeing": {
+        "label": "Antigüedad del inventario",
+        "description": "Cuánto tiempo lleva en el estante el stock que tiene: valor en 0-30, 31-60, 61-90 y más de 90 días"
+      },
+      "stockByLocation": {
+        "label": "Stock por ubicación",
+        "description": "Stock y su valor en cada ubicación o almacén"
+      },
+      "transfersRegister": {
+        "label": "Registro de traslados de stock",
+        "description": "Cada traslado de stock entre ubicaciones en el período"
+      },
+      "profitByItem": {
+        "label": "Ganancia por artículo",
+        "description": "Ingresos, costo y ganancia de cada artículo vendido, primero el más rentable"
+      },
+      "profitByCustomer": {
+        "label": "Ganancia por cliente",
+        "description": "Ingresos, costo y ganancia de cada cliente, primero el más rentable"
+      },
+      "receivablesSummary": {
+        "label": "Resumen de cuentas por cobrar",
+        "description": "Lo que le debe cada cliente, cuánto está vencido y qué vence en los próximos 7 días"
+      },
+      "payablesSummary": {
+        "label": "Resumen de cuentas por pagar",
+        "description": "Lo que usted debe a cada proveedor, cuánto está vencido y qué vence en los próximos 7 días"
+      },
+      "salesRegister": {
+        "label": "Registro de ventas",
+        "description": "Cada factura y devolución del período con cliente, número fiscal, importes y estado de pago"
+      },
+      "expenseByCategory": {
+        "label": "Gastos por categoría",
+        "description": "Adónde fue el dinero: gastos agrupados por categoría con la participación de cada una"
+      },
+      "expenseByVendor": {
+        "label": "Gastos por proveedor",
+        "description": "Gastos agrupados por el proveedor al que se pagaron"
+      },
+      "fixedAssetRegister": {
+        "label": "Registro de activos fijos",
+        "description": "Cada activo fijo con costo, depreciación acumulada y valor en libros"
+      },
+      "salesByCustomer": {
+        "label": "Ventas por cliente",
+        "description": "Lo que compró cada cliente en el período: facturas, cantidad, ventas, impuesto y participación en las ventas totales"
+      },
+      "salesByItem": {
+        "label": "Ventas por artículo",
+        "description": "Cada artículo vendido en el período con cantidad, ventas y participación, primero los más vendidos"
+      },
+      "salesByCategory": {
+        "label": "Ventas por categoría",
+        "description": "Ventas de cada categoría de producto, con la participación de cada categoría en el total"
+      },
+      "salesBySalesperson": {
+        "label": "Ventas por vendedor",
+        "description": "Ventas atribuidas a cada vendedor, según el vendedor elegido en la factura"
+      },
+      "vatReturn": {
+        "label": "Declaración de IVA / impuesto sobre ventas",
+        "description": "Las ventas y compras del período por tratamiento fiscal, dispuestas bajo las casillas de la declaración de su país, con el impuesto neto a pagar o recuperar"
+      },
+      "irnRegister": {
+        "label": "Registro de IRN de facturas electrónicas",
+        "description": "Facturas y notas de crédito a compradores registrados con el IRN guardado en cada una, y las que aún esperan uno"
+      },
+      "gstr9Data": {
+        "label": "Datos anuales de GSTR-9",
+        "description": "Un ejercicio fiscal dispuesto bajo las tablas de la declaración anual: operaciones de salida, tasa nula y exentas, crédito por insumos, impuesto a pagar y pagado, y resúmenes de HSN"
+      },
+      "tdsDeducted": {
+        "label": "TDS retenido",
+        "description": "Impuesto retenido en pagos a proveedores por beneficiario, PAN y sección, dispuesto para su declaración trimestral, con lo que falta por depositar"
+      },
+      "purchaseGstRegister": {
+        "label": "Registro de GST de compras",
+        "description": "Cada factura de proveedor y nota de débito con valor imponible y CGST, SGST e IGST, por mes"
+      },
+      "purchaseHsnSummary": {
+        "label": "Resumen de HSN de compras",
+        "description": "Compras por código HSN y tasa de impuesto con cantidad, valor imponible e impuesto, para su declaración y su contador"
+      },
+      "gstNetPayable": {
+        "label": "GST neto a pagar y crédito por insumos",
+        "description": "Impuesto sobre ventas, impuesto con inversión del sujeto pasivo y crédito fiscal por insumos por CGST, SGST e IGST, con lo que queda por pagar o trasladar"
       }
     },
     "summary": {
@@ -3364,7 +3735,11 @@
       "totalRatedVendors": "Proveedores Calificados",
       "overallAvgRating": "Calificación Prom. General",
       "correlationCoefficient": "Correlación Asistencia–Rendimiento",
-      "alertCount": "Estudiantes Marcados"
+      "alertCount": "Estudiantes Marcados",
+      "nilRatedValue": "Operaciones a tasa nula",
+      "exemptValue": "Operaciones exentas",
+      "nonGstValue": "Operaciones no sujetas a GST",
+      "invoiceLevelDiscount": "Descuento a nivel de factura"
     },
     "aging": {
       "current": "Al Día",
@@ -3468,7 +3843,14 @@
       "complianceByVaccine": "Cumplimiento por Vacuna",
       "caseTypeVolumeChart": "Tendencia de Volumen de Casos",
       "attendancePerformanceDetails": "Asistencia vs. Rendimiento, por Estudiante",
-      "feeDueUnderperformanceDetails": "Estudiantes Marcados"
+      "feeDueUnderperformanceDetails": "Estudiantes Marcados",
+      "stateUnknown_one": "{{count}} documento no tiene estado; se clasificó como CGST + SGST",
+      "stateUnknown_other": "{{count}} documentos no tienen estado; se clasificaron como CGST + SGST",
+      "nilExemptHeading": "Operaciones a tasa nula, exentas y no sujetas a GST",
+      "byCategoryHeading": "Por categoría de impuesto y tasa",
+      "nilRatedLabel": "Tasa nula",
+      "exemptLabel": "Exento",
+      "nonGstLabel": "No GST"
     },
     "empty": {
       "discounts": "No se otorgaron descuentos ni precios negociados en este rango de fechas.",
@@ -3984,7 +4366,11 @@
       "totalVendorCost": "Costo Total del Proveedor",
       "vendorName": "Proveedor",
       "ratedEventCount": "Eventos Calificados",
-      "avgRating": "Calificación Prom."
+      "avgRating": "Calificación Prom.",
+      "taxCategory": "Categoría de impuesto",
+      "supplyKind": "Operación",
+      "interStateCol": "Interestatal",
+      "registeredBuyer": "Comprador registrado"
     },
     "legend": {
       "schemeCost": "Costo del Esquema",
@@ -4151,6 +4537,719 @@
       "sendReminderDesc": "Enviar el recordatorio al cliente.",
       "couldNotSendTitle": "No Se Pudo Enviar",
       "couldNotBuildLink": "No se pudo generar el enlace del recordatorio."
+    },
+    "vat": {
+      "taxOnSales": "{{tax}} sobre ventas",
+      "taxOnPurchases": "{{tax}} sobre compras",
+      "toPay": "Impuesto neto a pagar",
+      "refund": "Impuesto neto a recuperar",
+      "chartTitle": "Ventas y compras por tratamiento fiscal",
+      "taxed": "Con impuesto",
+      "zero": "Tasa cero",
+      "exempt": "Exento",
+      "sales": "Ventas",
+      "purchases": "Compras",
+      "box": "Casilla",
+      "description": "Descripción",
+      "note": {
+        "workingPaper": "Este es un papel de trabajo hecho a partir de sus libros. Revise cada casilla con el formulario oficial de su país junto con su contador antes de presentar.",
+        "genericLayout": "El formato de casillas de su país todavía no está incorporado, así que las cifras se muestran como un resumen simple que puede copiar al formulario."
+      }
+    },
+    "scheduled": {
+      "title": "Informes guardados automáticamente",
+      "help": "Elija un informe, con qué frecuencia y una carpeta. Mientras Sarang está abierto guarda el último día, semana o mes completo en esa carpeta como un archivo que puede abrir en Excel.",
+      "report": "Informe",
+      "frequency": "Con qué frecuencia",
+      "format": "Tipo de archivo",
+      "folder": "Carpeta",
+      "chooseFolder": "Elegir carpeta",
+      "add": "Agregar",
+      "added": "Programación agregada",
+      "saveNow": "Guardar ahora",
+      "pause": "Pausar",
+      "resume": "Reanudar",
+      "savedTo": "Informe guardado",
+      "folderRequired": "Elija primero una carpeta.",
+      "couldNotSave": "No se pudo guardar la programación.",
+      "freq": {
+        "DAILY": "Cada día (ayer)",
+        "WEEKLY": "Cada semana (del lunes al domingo pasados)",
+        "MONTHLY": "Cada mes (el mes pasado)"
+      },
+      "note": "El guardado solo ocurre mientras Sarang está abierto. Si estaba cerrado, el último período completo se guarda la próxima vez que se abra."
+    },
+    "gen": {
+      "unassigned": "Sin asignar",
+      "noRows": "No hay nada que mostrar para este período.",
+      "notes": {
+        "salesBy": {
+          "returnsNetted": "Las devoluciones se descuentan de las ventas de las que provienen. Los importes son antes de impuestos salvo que se muestre una columna de impuesto.",
+          "creditNotesExcluded": "Las notas de crédito que son importes simples (sin producto) no se incluyen aquí."
+        },
+        "profit": {
+          "currentCost": "El costo es el costo actual de cada artículo; el costo en el momento de la venta no se guarda en la línea de la factura.",
+          "returnsNetted": "Las devoluciones se descuentan de las ventas y del costo de los que provienen."
+        },
+        "open": {
+          "dueDateNote": "Un documento sin fecha de vencimiento se cuenta como vencido en su propia fecha."
+        },
+        "register": {
+          "returnsNegative": "Las devoluciones aparecen como importes negativos."
+        },
+        "expenses": {
+          "vendorNote": "Los gastos sin proveedor indicado se agrupan como Sin asignar."
+        },
+        "taxByPart": {
+          "note": "Solo se desglosan las tasas que dividió en partes (Configuración > Impuestos); el impuesto de cualquier otra tasa aparece como Sin asignar. Las partes se calculan a partir de la tasa combinada."
+        },
+        "tdsReceivable": {
+          "note": "Registre el TDS desde la página de la factura (forma de pago: TDS retenido). Compárelo con los certificados que le dan sus clientes y con su estado de impuestos."
+        },
+        "costCategory": {
+          "note": "Los asientos sin centro de costo, o con un centro de costo sin categoría, aparecen como Sin asignar."
+        },
+        "assets": {
+          "asOfToday": "La depreciación es lo que se ha contabilizado hasta ahora."
+        },
+        "stock": {
+          "currentStock": "Las cantidades y los valores son los actuales, según el método de costo de cada artículo."
+        },
+        "ledger": {
+          "signed": "Los movimientos que sacan stock aparecen en la columna Salida. El saldo inicial es el saldo anterior a la primera fecha."
+        },
+        "ageing": {
+          "method": "Se considera que el stock en existencia corresponde a las recepciones más recientes (primero en entrar, primero en salir); el stock sin recepción registrada cuenta como el más antiguo."
+        },
+        "fundFlow": {
+          "method": "Muestra el cambio en cada cuenta distinta del efectivo y la ganancia del período. Fuentes menos aplicaciones es igual al cambio en el efectivo."
+        },
+        "bankBook": {
+          "fromLedger": "Tomado de los asientos contabilizados en cada cuenta bancaria. El saldo inicial es el saldo anterior a la primera fecha."
+        },
+        "recon": {
+          "statementOnly": "Cuenta las líneas de extracto importadas para conciliar. Las cuentas bancarias sin extracto importado no aparecen."
+        },
+        "ratios": {
+          "method": "Los saldos son al cierre de la fecha final; los márgenes y los días usan el período. Una razón aparece en blanco cuando no hay nada entre lo que dividir."
+        },
+        "yoy": {
+          "method": "El año anterior son las mismas fechas un año atrás. Las ventas son antes de impuestos; las compras son importes de facturas antes de impuestos."
+        },
+        "count": "Documentos",
+        "tax": "Impuesto",
+        "amount": "Importe",
+        "date": "Fecha",
+        "reason": "Motivo",
+        "original": "Factura original",
+        "chart": "Documentos por mes",
+        "number": {
+          "credit": "Nota de crédito",
+          "debit": "Nota de débito",
+          "return": "Devolución"
+        },
+        "party": {
+          "credit": "Cliente",
+          "debit": "Proveedor"
+        },
+        "branches": {
+          "method": "Incluye este negocio (cifras calculadas ahora) y todos los archivos importados cuyas fechas caen dentro de las fechas elegidas. Las ventas son antes de impuestos.",
+          "currencyMixed": "Algunos archivos usan una moneda distinta de la de este negocio; los totales las suman tal cual, sin convertir."
+        },
+        "takeVariance": {
+          "method": "Solo se incluyen los conteos contabilizados. El valor usa el costo actual de cada artículo. Los artículos sin diferencia no aparecen."
+        },
+        "payroll": {
+          "employeeShare": "Son los importes descontados a los empleados. La aportación del empleador no se calcula aquí.",
+          "method": "Revisar significa que el importe descontado difiere de lo que darían sus tasas de Configuración para ese sueldo básico. Las tasas las define usted y debe confirmarlas con su contador."
+        }
+      },
+      "salesBy": {
+        "totalSales": "Ventas totales",
+        "average": "Promedio por fila",
+        "count": {
+          "customer": "Clientes",
+          "item": "Artículos vendidos",
+          "category": "Categorías",
+          "salesperson": "Vendedores"
+        },
+        "name": {
+          "customer": "Cliente",
+          "item": "Artículo",
+          "category": "Categoría",
+          "salesperson": "Vendedor"
+        },
+        "invoices": "Facturas",
+        "quantity": "Cantidad",
+        "taxable": "Ventas",
+        "tax": "Impuesto",
+        "total": "Total con impuesto",
+        "share": "Participación",
+        "chart": {
+          "customer": "Principales clientes por ventas",
+          "item": "Principales artículos por ventas",
+          "category": "Ventas por categoría",
+          "salesperson": "Ventas por vendedor"
+        }
+      },
+      "profit": {
+        "revenue": "Ventas",
+        "cost": "Costo",
+        "profit": "Ganancia",
+        "margin": "Margen",
+        "quantity": "Cantidad",
+        "name": {
+          "item": "Artículo",
+          "customer": "Cliente"
+        },
+        "chart": {
+          "item": "Artículos más rentables",
+          "customer": "Clientes más rentables"
+        }
+      },
+      "open": {
+        "total": {
+          "receivable": "Total por cobrar",
+          "payable": "Total por pagar"
+        },
+        "parties": {
+          "receivable": "Clientes que deben",
+          "payable": "Proveedores a los que se debe"
+        },
+        "name": {
+          "receivable": "Cliente",
+          "payable": "Proveedor"
+        },
+        "documents": {
+          "receivable": "Facturas",
+          "payable": "Facturas de proveedores"
+        },
+        "overdue": "Vencidas",
+        "dueThisWeek": "Vencen en 7 días",
+        "balance": "Saldo",
+        "oldestDays": "Vencido más antiguo (días)",
+        "chart": {
+          "receivable": "Mayores importes que le deben",
+          "payable": "Mayores importes que usted debe"
+        }
+      },
+      "register": {
+        "documents": "Documentos",
+        "subtotal": "Antes de impuestos",
+        "tax": "Impuesto",
+        "total": "Total",
+        "date": "Fecha",
+        "number": "Factura",
+        "customer": "Cliente",
+        "taxNumber": "Número fiscal",
+        "paymentStatus": "Pago",
+        "billNumber": "Factura de proveedor",
+        "supplierInvoice": "Factura del proveedor",
+        "supplier": "Proveedor",
+        "paid": "Pagado",
+        "balance": "Saldo",
+        "chart": {
+          "sales": "Ventas por fecha de factura",
+          "purchases": "Compras por fecha de factura"
+        }
+      },
+      "expenses": {
+        "total": "Gastos totales",
+        "entries": "Asientos",
+        "amount": "Importe",
+        "share": "Participación",
+        "count": {
+          "category": "Categorías",
+          "vendor": "Proveedores"
+        },
+        "name": {
+          "category": "Categoría",
+          "vendor": "Proveedor"
+        },
+        "chart": {
+          "category": "Gastos por categoría",
+          "vendor": "Gastos por proveedor"
+        }
+      },
+      "stock": {
+        "totalValue": "Valor del stock",
+        "items": "Artículos",
+        "low": "Stock bajo",
+        "out": "Sin stock",
+        "item": "Artículo",
+        "sku": "SKU",
+        "category": "Categoría",
+        "quantity": "Cantidad",
+        "unitCost": "Costo unitario",
+        "value": "Valor",
+        "status": "Estado",
+        "chart": {
+          "value": "Artículos con más valor en stock"
+        }
+      },
+      "ledger": {
+        "movements": "Movimientos",
+        "in": "Entrada",
+        "out": "Salida",
+        "items": "Artículos",
+        "date": "Fecha",
+        "type": "Tipo",
+        "balance": "Saldo",
+        "location": "Ubicación",
+        "reference": "Referencia",
+        "quantity": "Cantidad",
+        "chart": "Cantidad movida por tipo"
+      },
+      "ageing": {
+        "total": "Valor del stock",
+        "b0": "0-30 días",
+        "b31": "31-60 días",
+        "b61": "61-90 días",
+        "b90": "Más de 90 días",
+        "olderShare": "Porcentaje retenido más de 90 días",
+        "chart": "Valor del stock por antigüedad, el más antiguo primero"
+      },
+      "location": {
+        "count": "Ubicaciones",
+        "name": "Ubicación",
+        "products": "Artículos",
+        "chart": "Valor del stock por ubicación"
+      },
+      "transfers": {
+        "count": "Traslados",
+        "quantity": "Cantidad movida",
+        "direction": "Sentido",
+        "chart": "Cantidad trasladada por día"
+      },
+      "taxByPart": {
+        "part": "Parte del impuesto",
+        "rate": "Tasa",
+        "salesTaxable": "Valor de ventas",
+        "salesTax": "Impuesto sobre ventas",
+        "purchaseTax": "Impuesto sobre compras",
+        "net": "Neto a pagar",
+        "chart": "Impuesto sobre ventas y compras por parte"
+      },
+      "tdsReceivable": {
+        "total": "TDS retenido",
+        "entries": "Asientos",
+        "customers": "Clientes",
+        "date": "Fecha",
+        "customer": "Cliente",
+        "taxNumber": "Número fiscal",
+        "invoice": "Factura",
+        "reference": "Referencia",
+        "amount": "Importe del TDS",
+        "chart": "TDS retenido por cliente"
+      },
+      "costCategory": {
+        "category": "Categoría",
+        "revenue": "Ingresos",
+        "expense": "Gastos",
+        "profit": "Ganancia",
+        "chart": "Ingresos y gastos por categoría"
+      },
+      "assets": {
+        "count": "Activos",
+        "cost": "Costo",
+        "depreciation": "Depreciación",
+        "bookValue": "Valor en libros",
+        "code": "Código",
+        "name": "Activo",
+        "category": "Categoría",
+        "purchaseDate": "Comprado el",
+        "status": "Estado",
+        "chart": "Costo y valor en libros de cada activo"
+      },
+      "fundFlow": {
+        "item": "Concepto",
+        "sources": "Orígenes de fondos",
+        "applications": "Aplicaciones de fondos",
+        "cashChange": "Variación del efectivo",
+        "netProfit": "Ganancia neta del período",
+        "chart": "Mayores orígenes y aplicaciones"
+      },
+      "bankBook": {
+        "deposits": "Depósitos",
+        "withdrawals": "Retiros",
+        "closing": "Saldo final",
+        "bank": "Cuenta bancaria",
+        "date": "Fecha",
+        "particulars": "Detalle",
+        "balance": "Saldo",
+        "opening": "Saldo inicial",
+        "chart": "Saldo final por cuenta"
+      },
+      "recon": {
+        "matched": "Conciliadas",
+        "unmatched": "Sin conciliar",
+        "unmatchedAmount": "Importe sin conciliar",
+        "lines": "Líneas del extracto",
+        "last": "Última conciliación",
+        "chart": "Líneas del extracto conciliadas y sin conciliar"
+      },
+      "ratios": {
+        "ratio": "Razón",
+        "value": "Valor",
+        "unitLabel": "Unidad",
+        "meaningLabel": "Qué le indica",
+        "chart": "Márgenes",
+        "name": {
+          "current": "Razón corriente",
+          "quick": "Prueba ácida",
+          "debtToEquity": "Deuda sobre patrimonio",
+          "grossMargin": "Margen bruto",
+          "netMargin": "Margen neto",
+          "debtorDays": "Días que tardan los clientes en pagar",
+          "creditorDays": "Días que usted tarda en pagar a proveedores",
+          "stockDays": "Días de stock en existencia"
+        },
+        "unit": {
+          "times": "veces",
+          "percent": "%",
+          "days": "días"
+        },
+        "meaning": {
+          "current": "Activo corriente por cada 1 de pasivo corriente. Por encima de 1 significa que se pueden cubrir las deudas a corto plazo.",
+          "quick": "Lo mismo sin el stock, que puede tardar en venderse.",
+          "debtToEquity": "Cuánto se debe en comparación con lo que ha puesto el dueño.",
+          "grossMargin": "Parte de las ventas que queda después del costo de lo vendido.",
+          "netMargin": "Parte de las ventas que queda como ganancia después de todos los gastos.",
+          "debtorDays": "Cuentas por cobrar divididas entre las ventas, en días del período.",
+          "creditorDays": "Cuentas por pagar divididas entre las compras, en días del período.",
+          "stockDays": "Stock dividido entre el costo de ventas, en días del período."
+        }
+      },
+      "yoy": {
+        "month": "Mes",
+        "salesThis": "Ventas de este año",
+        "salesLast": "Ventas del año pasado",
+        "salesChange": "Variación",
+        "purchasesThis": "Compras de este año",
+        "purchasesLast": "Compras del año pasado",
+        "chart": "Ventas, este año y el año pasado"
+      },
+      "branches": {
+        "count": "Negocios",
+        "branch": "Negocio o sucursal",
+        "sales": "Ventas",
+        "purchases": "Compras",
+        "expenses": "Gastos",
+        "receivables": "Cuentas por cobrar",
+        "payables": "Cuentas por pagar",
+        "stockValue": "Valor del stock",
+        "cashAndBank": "Efectivo y bancos",
+        "chart": "Ventas y compras por negocio"
+      },
+      "takeVariance": {
+        "counts": "Conteos contabilizados",
+        "items": "Artículos con diferencia",
+        "surplus": "Valor del sobrante",
+        "shortage": "Valor del faltante",
+        "times": "Veces contado",
+        "system": "Según los libros",
+        "counted": "Contado",
+        "variance": "Diferencia",
+        "value": "Valor",
+        "chart": "Mayores diferencias por valor"
+      },
+      "payroll": {
+        "employees": "Empleados",
+        "employee": "Empleado",
+        "code": "Código",
+        "basic": "Sueldo básico",
+        "pf": "PF",
+        "esi": "ESI",
+        "pt": "Impuesto profesional",
+        "other": "Otros descuentos",
+        "check": "Revisar",
+        "chart": "Descuentos por empleado"
+      }
+    },
+    "gst": {
+      "taxOnSales": "Impuesto sobre ventas",
+      "reverseCharge": "Impuesto con inversión del sujeto pasivo",
+      "taxPayable": "Impuesto a pagar",
+      "inputCredit": "Crédito fiscal por insumos",
+      "netPayable": "GST neto a pagar",
+      "creditForward": "Crédito trasladado",
+      "creditForwardNote": "Su crédito por insumos es mayor que el impuesto debido, así que no hay nada que pagar y el crédito sobrante se traslada.",
+      "chartTitle": "Impuesto a pagar, crédito por insumos y neto, por tipo de impuesto",
+      "head": "Tipo de impuesto",
+      "documents": "Compras que dieron crédito por insumos",
+      "document": "Documento",
+      "party": "Proveedor",
+      "noRows": "No hay compras con crédito por insumos en este período.",
+      "register": {
+        "type": "Tipo",
+        "supplierGstin": "GSTIN del proveedor",
+        "state": "Estado",
+        "taxable": "Valor imponible",
+        "tax": "Impuesto",
+        "total": "Total",
+        "rcm": "Inversión del sujeto pasivo",
+        "kind": {
+          "BILL": "Factura",
+          "DEBIT_NOTE": "Nota de débito"
+        },
+        "chartTitle": "Valor imponible e impuesto por mes",
+        "noRows": "No hay compras en este período.",
+        "unknownState": "{{count}} documento(s) no tienen un estado de proveedor conocido; su impuesto se muestra como CGST + SGST."
+      },
+      "irn": {
+        "withIrn": "Con IRN",
+        "withoutIrn": "Aún sin IRN",
+        "documents": "Documentos",
+        "customer": "Cliente",
+        "chartTitle": "Documentos con y sin IRN",
+        "noRows": "No hay facturas a compradores registrados en este período."
+      },
+      "gstr9": {
+        "table": "Tabla",
+        "item": "Concepto",
+        "t4": "4 Operaciones de salida (con impuesto)",
+        "t5": "5 Operaciones de salida (sin impuesto)",
+        "t6": "6 Crédito fiscal por insumos",
+        "t9": "9 Impuesto a pagar y pagado",
+        "t17": "17 HSN de salidas",
+        "t18": "18 HSN de entradas",
+        "b2b": "A compradores registrados",
+        "b2c": "A otros compradores",
+        "creditNotes": "Notas de crédito a compradores registrados",
+        "nilRated": "Tasa nula",
+        "exempt": "Exentas",
+        "nonGst": "No GST",
+        "inputs": "Insumos y servicios",
+        "payable": "Impuesto a pagar",
+        "paidFromCredit": "Pagado con crédito por insumos",
+        "paidInCash": "Pagado en efectivo o banco",
+        "paidLine": "Pagado: {{credit}} con crédito por insumos, {{cash}} en efectivo o banco",
+        "outwardTaxable": "Valor imponible de salidas",
+        "taxPayable": "Impuesto a pagar",
+        "itcAvailed": "Crédito por insumos aprovechado",
+        "paid": "Impuesto pagado",
+        "chartTitle": "Operaciones de salida por tipo",
+        "tableHsn": "Filas del resumen de HSN: {{outward}} de salida, {{inward}} de entrada (vea la exportación). Impuesto sobre las salidas: {{tax}}.",
+        "note": {
+          "financialYearDates": "Las cifras salen de sus libros para las fechas elegidas. Use del 1 de abril al 31 de marzo para un ejercicio fiscal.",
+          "accountantCheck": "Las rectificaciones, las diferencias con GSTR-1 y GSTR-3B y los conceptos de otros años deben ser revisados por su contador antes de presentar."
+        }
+      },
+      "tds": {
+        "deducted": "Impuesto retenido",
+        "amountPaid": "Importe pagado",
+        "notDeposited": "Retenido, aún sin depositar",
+        "payments": "Pagos",
+        "bill": "Factura",
+        "section": "Sección",
+        "notGiven": "Sección no indicada",
+        "chartTitle": "Impuesto retenido por sección",
+        "noRows": "No hay pagos con impuesto retenido en este período.",
+        "missingPan": "{{count}} pago(s) son a proveedores sin PAN registrado. Agregue el PAN en el proveedor; sin él puede que haya que retener el impuesto con una tasa más alta.",
+        "confirm": "Las tasas y secciones dependen del beneficiario y del año. Confírmelo con su contador antes de presentar."
+      },
+      "hsn": {
+        "code": "HSN / SAC",
+        "description": "Descripción",
+        "rate": "Tasa %",
+        "quantity": "Cantidad",
+        "chartTitle": "Valor imponible por código HSN",
+        "noRows": "No hay compras en este período.",
+        "missing": "{{count}} línea(s) con impuesto no tienen código HSN en el producto. Agregue el código en el producto para incluirla aquí."
+      },
+      "source": {
+        "BILL": "Factura de proveedor",
+        "PURCHASE_ORDER": "Orden de compra",
+        "DEBIT_NOTE": "Nota de débito"
+      },
+      "note": {
+        "earlierPurchases": "El crédito por insumos proviene de facturas de proveedores, órdenes de compra recibidas y notas de débito registradas a partir de esta versión. Las compras registradas antes tenían el impuesto dentro del costo.",
+        "setOffLater": "El neto a pagar es un total simple para cada tipo de impuesto. Confirme con su contador qué crédito puede aplicarse contra qué impuesto.",
+        "composition": "Su negocio está en el régimen de composición, por lo que no se reclama crédito por insumos.",
+        "stateUnknown": "{{count}} documento(s) de compra no tienen un estado conocido; su impuesto se muestra como CGST + SGST."
+      }
+    },
+    "fs": {
+      "asOfDate": "A la fecha",
+      "compareWith": "Comparar con",
+      "account": "Cuenta",
+      "selectAccount": "Seleccione una cuenta",
+      "pickAccountFirst": "Elija una cuenta para ver su mayor.",
+      "voucherType": "Tipo de comprobante",
+      "allVouchers": "Todos los comprobantes",
+      "voucherTypes": {
+        "SALES": "Ventas",
+        "PURCHASE": "Compra",
+        "RECEIPT": "Recibo",
+        "PAYMENT": "Pago",
+        "EXPENSE": "Gasto",
+        "JOURNAL": "Diario",
+        "OTHER": "Otro"
+      },
+      "bs": {
+        "totalAssets": "Total de activos",
+        "totalLiabilities": "Total de pasivos",
+        "totalEquity": "Total del patrimonio",
+        "liabilitiesAndEquity": "Pasivos + Patrimonio",
+        "currentProfit": "Ganancia del período actual",
+        "checkLine": "Activos = Pasivos + Patrimonio",
+        "difference": "Diferencia",
+        "change": "Variación",
+        "chartTitle": "Activos frente a Pasivos + Patrimonio",
+        "assets": "Activos",
+        "liabilities": "Pasivos",
+        "equity": "Patrimonio",
+        "group": {
+          "currentAssets": "Activo corriente",
+          "fixedAssets": "Activo fijo",
+          "currentLiabilities": "Pasivo corriente",
+          "longTermLiabilities": "Préstamos y pasivos a largo plazo",
+          "equity": "Patrimonio"
+        }
+      },
+      "gl": {
+        "entryNo": "N.º de asiento",
+        "source": "Documento de origen",
+        "narration": "Concepto",
+        "totalDebit": "Total débito",
+        "totalCredit": "Total crédito",
+        "carryForward": "Saldo trasladado del cierre del ejercicio",
+        "reversed": "Revertido",
+        "runningBalance": "Saldo acumulado",
+        "debitSide": "Los saldos se muestran en el debe",
+        "creditSide": "Los saldos se muestran en el haber",
+        "openDocument": "Abrir"
+      },
+      "db": {
+        "vouchers": "Comprobantes",
+        "days": "Días",
+        "voucher": "Comprobante",
+        "particulars": "Detalle",
+        "dailyTotal": "Total del día",
+        "dayTotal": "Total del día",
+        "truncated": "Se muestran los primeros {{count}} comprobantes. Reduzca el rango de fechas o elija un tipo de comprobante para ver el resto.",
+        "byType": "Por tipo de comprobante"
+      },
+      "cf": {
+        "operating": "Efectivo de actividades de operación",
+        "investing": "Efectivo de actividades de inversión",
+        "financing": "Efectivo de actividades de financiación",
+        "netProfit": "Ganancia neta del período",
+        "depreciation": "Más: depreciación",
+        "depreciationInvesting": "Depreciación ya sumada arriba",
+        "netChange": "Variación neta del efectivo",
+        "openingCash": "Efectivo inicial",
+        "closingCash": "Efectivo final",
+        "ledgerCash": "Efectivo y bancos según el mayor",
+        "reconciled": "Conciliado con las cuentas de efectivo y bancos",
+        "notReconciled": "No coincide con las cuentas de efectivo y bancos",
+        "chartTitle": "Movimiento de efectivo",
+        "cashAccounts": "Cuentas de efectivo y bancos",
+        "section": "Sección",
+        "item": "Concepto"
+      }
+    },
+    "chart": {
+      "noData": "No hay datos para graficar en esta selección.",
+      "count": "Cantidad",
+      "other": "Otros",
+      "unknown": "Sin registrar",
+      "stage": "Etapa",
+      "funnelTooltip": "{{value}} ({{percent}}% de la primera etapa)",
+      "heatLow": "Menos",
+      "heatHigh": "Más",
+      "heatNone": "Ninguno",
+      "heatHint": "Pase el cursor sobre una celda para ver su valor exacto.",
+      "rate": "Tasa de impuesto",
+      "taxableValue": "Valor imponible",
+      "tax": "Impuesto",
+      "b2b": "B2B",
+      "b2c": "B2C",
+      "gstr1Title": "Valor imponible por tasa de impuesto (B2B frente a B2C)",
+      "taxHead": "Tipo de impuesto",
+      "outward": "Operaciones de salida",
+      "reverseCharge": "Entradas con inversión del sujeto pasivo",
+      "gstr3bHeadTitle": "Impuesto de salida por tipo de impuesto",
+      "gstr3bCompareTitle": "Operaciones de salida frente a entradas con inversión del sujeto pasivo",
+      "hsnTitle": "10 principales códigos HSN por valor imponible",
+      "hsnCode": "Código HSN",
+      "tbTitle": "Débito frente a crédito por tipo de cuenta",
+      "accountType": "Tipo de cuenta",
+      "accountTypes": {
+        "ASSET": "Activo",
+        "LIABILITY": "Pasivo",
+        "EQUITY": "Patrimonio",
+        "INCOME": "Ingreso",
+        "EXPENSE": "Gasto",
+        "OTHER": "Otro"
+      },
+      "categoryMixTitle": "Participación en ingresos por categoría",
+      "khataTitle": "Exposición pendiente por nivel de riesgo",
+      "riskTier": "Nivel de riesgo",
+      "outstanding": "Pendiente",
+      "riskTiers": {
+        "LOW": "Bajo",
+        "MEDIUM": "Medio",
+        "HIGH": "Alto"
+      },
+      "trends": {
+        "RISING": "En aumento",
+        "STABLE": "Estable",
+        "FALLING": "En descenso"
+      },
+      "auditTitle": "Acciones de auditoría por día (registros cargados)",
+      "day": "Día",
+      "actions": "Acciones",
+      "backupSizeTitle": "Tamaño de las copias de seguridad por semana",
+      "backupCountTitle": "Copias de seguridad por semana",
+      "week": "Semana que empieza",
+      "sizeMb": "Tamaño (MB)",
+      "backups": "Copias de seguridad",
+      "complianceStatusTitle": "Tareas abiertas por estado",
+      "complianceMonthTitle": "Tareas abiertas por mes de vencimiento",
+      "overdue": "Vencidas",
+      "dueSoon": "Vencen en 7 días",
+      "pendingLater": "Pendientes (vencen después)",
+      "month": "Mes",
+      "tasks": "Tareas",
+      "docTitle": "Documentos emitidos por tipo",
+      "docType": "Tipo de documento",
+      "documents": "Documentos",
+      "activeDocs": "Emitidos",
+      "cancelledDocs": "Cancelados",
+      "fittingTitle": "Ventas de accesorios perdidas por pieza",
+      "fitting": "Pieza",
+      "missedPairings": "Combinaciones perdidas",
+      "hallmarkStatusTitle": "Estado del contraste",
+      "hallmarkByMetalTitle": "Estado del contraste por metal",
+      "metal": "Metal",
+      "hotelArrivalsTitle": "Llegadas por día",
+      "hotelIdTitle": "Huéspedes por tipo de identificación",
+      "arrivals": "Llegadas",
+      "idType": "Tipo de identificación",
+      "mrpProductTitle": "Infracciones del PVP por producto",
+      "mrpTrendTitle": "Infracciones del PVP por día",
+      "violations": "Infracciones",
+      "product": "Producto",
+      "h1xTitle": "Asientos de Schedule H1/X por día",
+      "entries": "Asientos",
+      "rxComplete": "Datos de la receta completos",
+      "rxMissing": "Faltan datos de la receta",
+      "seasonHeatTitle": "Ventanas de temporada por mes",
+      "seasonReorderTitle": "Productos con stock bajo o agotados por mes límite de reposición",
+      "activeSeasons": "Temporadas activas",
+      "lowStockProducts": "Productos con stock bajo o agotados",
+      "sizeStockOutTitle": "Agotados por talla",
+      "size": "Talla",
+      "outOfStock": "Sin stock",
+      "lowStock": "Stock bajo",
+      "vehicleWeekTitle": "Vehículos que necesitan servicio por semana",
+      "vehicleTypeTitle": "Vehículos que necesitan servicio por tipo de vehículo",
+      "vehiclesDue": "Vehículos que necesitan servicio",
+      "styleCount": "Número de modelos",
+      "recallOnTimeTitle": "A tiempo frente a con retraso por categoría",
+      "late": "Con retraso",
+      "noDate": "Sin fecha (por distancia)"
     }
   },
   "cashClose": {
@@ -4661,7 +5760,34 @@
       "deletedDesc": "\"{{name}}\" ha sido eliminado.",
       "deleteFailed": "Error al eliminar.",
       "deleteConfirmTitle": "Eliminar Tasa de Impuesto",
-      "deleteConfirmMessage": "¿Eliminar \"{{name}}\"? Esto desactivará la tasa. Las facturas existentes no se ven afectadas."
+      "deleteConfirmMessage": "¿Eliminar \"{{name}}\"? Esto desactivará la tasa. Las facturas existentes no se ven afectadas.",
+      "parts": {
+        "title": "Partes de esta tasa (opcional)",
+        "add": "Agregar parte",
+        "hint": "Divida una tasa en partes con nombre, por ejemplo GST 5% y PST 7% para una tasa del 12%. Las partes deben sumar la tasa. Los documentos y el informe Impuesto por parte muestran entonces cada parte; el importe cobrado no cambia.",
+        "namePlaceholder": "Nombre, por ejemplo GST",
+        "sum": "Las partes suman {{sum}}% (tasa {{rate}}%)"
+      },
+      "olderRates": "Tasas anteriores (antes del 22 de septiembre de 2025)",
+      "olderRatesHint": "Estas tasas se retiraron el 22 de septiembre de 2025. Los documentos antiguos las conservan; no se recalcula nada.",
+      "loadRates": "Cargar las tasas de impuesto de {{country}}",
+      "loadRatesHint": "Agrega las tasas de {{country}} que faltan en su lista. Las tasas que ya tiene nunca se cambian ni se eliminan, y los documentos antiguos nunca se tocan.",
+      "ratesLoaded": "Se agregaron {{count}} tasas de impuesto para {{country}}.",
+      "ratesUpToDate": "Todas las tasas de impuesto de {{country}} ya están en su lista.",
+      "loadRatesFailed": "No se pudieron cargar las tasas de impuesto.",
+      "stale": {
+        "title": "Tasas de otro país",
+        "help": "Estas tasas se agregaron automáticamente cuando se configuró Sarang y no pertenecen a su país. Desactive las que no use. No se elimina nada y los documentos antiguos conservan su impuesto.",
+        "turnOff": "Desactivar las tasas seleccionadas",
+        "done": "Tasas desactivadas",
+        "failed": "No se pudieron desactivar las tasas."
+      },
+      "noPresetNote": "No hay tasas de impuesto predefinidas para {{country}}. Agregue sus tasas manualmente con Agregar impuesto.",
+      "noTaxNote": "{{country}} no tiene por ahora impuesto sobre ventas ni IVA. Agregue una tasa manualmente si eso cambia.",
+      "presetChecked": "Tasas comprobadas el {{date}}. Las tasas de impuesto cambian: confírmelas con su contador o con la autoridad fiscal.",
+      "englishOnlyNote": "Los nombres y notas de impuestos de este país se muestran en inglés.",
+      "currentRates": "Tasas actuales",
+      "taxCategory": "Categoría de impuesto"
     },
     "usersMgmt": {
       "loadFailed": "Error al cargar los usuarios.",
@@ -4691,11 +5817,24 @@
       "minLenInvalid": "La longitud mínima debe ser un número entre 4 y 64.",
       "expiryInvalid": "La caducidad de la contraseña debe ser 0 (nunca) o un número de días de hasta 3650.",
       "historyInvalid": "El historial de contraseñas debe ser 0 (desactivado) o un número entre 1 y 24.",
-      "saveFailed": "Error al guardar."
+      "saveFailed": "Error al guardar.",
+      "requireMix": "Exigir una combinación de minúsculas, mayúsculas y un número",
+      "requireMixHelp": "También bloquea contraseñas muy comunes. Se aplica a las contraseñas que se definan a partir de ahora."
     },
     "currencyLocale": {
       "saved": "Configuración de moneda e idioma guardada",
-      "saveFailed": "Error al guardar la configuración"
+      "saveFailed": "Error al guardar la configuración",
+      "roundingLabel": "Redondeo del total de la factura",
+      "roundingHelp": "Redondea el total final de la factura a este paso y muestra la diferencia como una línea de Redondeo. Se aplica solo a facturas nuevas; las facturas guardadas nunca cambian.",
+      "roundingNone": "Sin redondeo (total exacto)",
+      "rounding005": "Al 0.05 más cercano",
+      "rounding010": "Al 0.10 más cercano",
+      "rounding050": "Al 0.50 más cercano",
+      "rounding1": "Al 1.00 más cercano (unidad entera)",
+      "pricesIncludeTaxLabel": "Los precios incluyen impuesto",
+      "pricesIncludeTaxHelp": "Actívelo si los precios de sus estantes ya contienen impuesto (estilo PVP). Las facturas, cotizaciones y pedidos nuevos empiezan con esta opción y puede cambiarla en cada documento. Los documentos guardados nunca cambian.",
+      "pricesIncludeTaxOn": "Sí, los precios incluyen impuesto",
+      "pricesIncludeTaxOff": "No, el impuesto se suma encima"
     },
     "print": {
       "typeSaved": "Tipo de impresión guardado",
@@ -4808,7 +5947,12 @@
       "savedMessage": "Esta plantilla de mensaje ha sido actualizada.",
       "saveFailed": "No se pudo guardar la plantilla.",
       "resetTitle": "Plantilla Restablecida",
-      "resetMessage": "Esta plantilla de mensaje se ha restablecido a su texto predeterminado."
+      "resetMessage": "Esta plantilla de mensaje se ha restablecido a su texto predeterminado.",
+      "savedRefreshed_one": "Guardado. Se actualizó {{count}} recordatorio en espera con la nueva redacción.",
+      "savedRefreshed_other": "Guardado. Se actualizaron {{count}} recordatorios en espera con la nueva redacción.",
+      "perLanguageNote": "La redacción que guarde se conserva para el idioma de recordatorio elegido arriba. Elija otro idioma para escribir su propia redacción.",
+      "signatureToggle": "Terminar los mensajes con \"Powered by Sarang\"",
+      "unknownTokens": "Estos marcadores no se rellenarán: {{tokens}}"
     },
     "barcode": {
       "featureTurnedOff": "Función desactivada. Sus códigos de barras existentes y productos facturados a granel no se ven afectados.",
@@ -4832,6 +5976,35 @@
       "clearConfirmTitle": "Borrar Historial de Preguntas de IA",
       "clearConfirmMessage": "Esto elimina permanentemente el registro local de cada pregunta realizada. Esto no se puede deshacer.",
       "clearConfirmAction": "Borrar Historial"
+    },
+    "lateInterest": {
+      "title": "Intereses sobre saldos vencidos",
+      "hint": "Cobre intereses sobre las facturas de clientes que han pasado su fecha de vencimiento. El interés se calcula para cada factura vencida desde su propia fecha de vencimiento y solo se cobra cuando usted pulsa el botón en la página del cliente.",
+      "enable": "Activar los intereses sobre saldos vencidos",
+      "ratePlaceholder": "Tasa anual en porcentaje",
+      "simple": "Interés simple",
+      "compound": "Compuesto mensual"
+    },
+    "workflowRules": {
+      "title": "Reglas de alerta",
+      "hint": "Reciba una notificación cuando se guarde una venta, una factura de proveedor o un gasto de al menos el importe que elija.",
+      "namePlaceholder": "Nombre de la regla",
+      "amountPlaceholder": "Al menos (importe)",
+      "atLeast": "al menos",
+      "on": "Activada",
+      "off": "Desactivada",
+      "events": {
+        "INVOICE_CREATED": "Factura guardada",
+        "BILL_CREATED": "Factura de proveedor guardada",
+        "EXPENSE_CREATED": "Gasto guardado"
+      }
+    },
+    "stockRules": {
+      "title": "Reglas de stock",
+      "allowNegative": "Permitir vender más que el stock disponible",
+      "allowNegativeHelp": "Actívelo si vende antes de registrar la compra. El stock puede quedar entonces por debajo de cero hasta que se ingrese la compra.",
+      "saved": "Reglas de stock guardadas",
+      "saveFailed": "No se pudieron guardar las reglas de stock."
     }
   },
   "manual": {
@@ -4939,7 +6112,11 @@
       "backupTitle": "Copia de seguridad y restauración",
       "backupBody": "Tus datos viven solo en este dispositivo — esta pantalla es cómo los proteges. Configura copias de seguridad automáticas aquí para que nunca te tomen desprevenido.",
       "licenseTitle": "Tu licencia",
-      "licenseBody": "Sarang es gratis durante tus primeros 100 días. Esta pantalla siempre muestra exactamente en qué punto estás, y es donde renovarás cuando llegue el momento."
+      "licenseBody": "Sarang es gratis durante tus primeros 100 días. Esta pantalla siempre muestra exactamente en qué punto estás, y es donde renovarás cuando llegue el momento.",
+      "askSarangTitle": "Ask Sarang",
+      "askSarangBody": "Haga una pregunta sobre su negocio en inglés sencillo o toque uno de los ejemplos: las ventas de hoy, quién le debe dinero, el balance general, qué facturas de proveedores están vencidas. La primera vez, pulse Activar Ask Sarang. Todo se responde en este equipo y nada sale de él. También puede explicar por qué algo no funciona y remitirle al capítulo correcto del Manual.",
+      "billsTitle": "Facturas de proveedores",
+      "billsBody": "Registre aquí lo que un proveedor le facturó y pague. Escriba el número de factura del propio proveedor para que la misma factura nunca se ingrese dos veces y use el filtro Vencidas para ver lo que está atrasado. Una factura se puede editar mientras esté abierta y sin pagar. ¿Llega mercancía? Contabilice la GRN con cada línea vinculada a un producto, porque una factura por sí sola nunca suma stock."
     },
     "items": {
       "restaurantTables": {
@@ -5032,7 +6209,12 @@
       },
       "logisticsGrn": {
         "title": "Nota de recepción de mercancía (GRN)",
-        "body": "Registra qué llegó realmente contra una orden de compra — crea una y observa cómo se concilia con lo que se pidió."
+        "body": "Registra qué llegó realmente contra una orden de compra — crea una y observa cómo se concilia con lo que se pidió.",
+        "linkToItem": "Vincular con un artículo",
+        "findItem": "Buscar un artículo",
+        "linked": "Línea vinculada; se agregó su stock",
+        "linkFailed": "No se pudo vincular esta línea.",
+        "pathHint": "Use una GRN cuando la mercancía llega por partes o quiere dejar constancia del albarán y del vehículo. Para ingresar una orden de compra completa de una vez, ábrala en Órdenes de compra y elija Recibir stock. No haga las dos cosas con la misma mercancía."
       },
       "logisticsChallan": {
         "title": "Albarán de entrega",
@@ -5429,6 +6611,54 @@
       "tripBookings": {
         "title": "Reservas de Viaje",
         "body": "Reserve un viaje con un vehículo y un paquete, registre el servicio diario (km recorridos, bata del conductor, cargos excedentes) y factúrelo cuando el viaje concluya."
+      },
+      "expenseClaims": {
+        "title": "Reclamos de gastos",
+        "body": "¿El personal pagó algo de su propio bolsillo? Registre aquí el reclamo, apruébelo o recházelo y luego reembólselo. El reembolso registra un gasto normal en sus libros."
+      },
+      "bankRules": {
+        "title": "Reglas bancarias",
+        "body": "Enseñe a Sarang a qué pertenecen las líneas recurrentes del extracto bancario, por ejemplo que toda línea que contenga 'electricidad' va a su cuenta de servicios. Muestra las líneas importadas que coinciden con una regla y las contabiliza con un clic."
+      },
+      "gstPayments": {
+        "title": "Pagos de GST",
+        "body": "Registre el GST que paga al gobierno. Reduce el impuesto que debe y el crédito por insumos que usó, y reduce su banco o efectivo. Compruebe los importes con su contador antes de pagar."
+      },
+      "gstReturns": {
+        "title": "Archivos de declaración de GST",
+        "body": "Prepare su GSTR-1 y GSTR-3B como archivos que puede subir al portal del gobierno, y concilie sus compras con el GSTR-2B del portal. Son borradores hechos a partir de sus registros: abra cada uno en la herramienta del propio gobierno antes de confiar en él."
+      },
+      "branchSummaries": {
+        "title": "Resúmenes de sucursales",
+        "body": "Cada tienda tiene su propio Sarang. Exporte un resumen de cada tienda e impórtelos aquí para ver todas sus tiendas juntas. Nada se sincroniza por sí solo."
+      },
+      "stockCounts": {
+        "title": "Conteos de stock",
+        "body": "Cuente su stock: Sarang muestra lo que cree que tiene, usted escribe lo que contó y se muestra la diferencia y su valor. Nada cambia hasta que pulse Contabilizar."
+      },
+      "stockJournal": {
+        "title": "Diario de stock",
+        "body": "Registre mercancía que cambia de forma, por ejemplo al dividir una caja en paquetes: elija qué sale y qué entra y guárdelos juntos."
+      },
+      "binLocations": {
+        "title": "Ubicaciones en estantería",
+        "body": "Anote en qué estante, rack o casillero está cada artículo, por ejemplo A-3-2, para que cualquiera lo encuentre."
+      },
+      "salesOverview": {
+        "title": "Resumen de ventas",
+        "body": "Una vista de una página con las ventas y facturas de hoy, lo que le deben los clientes, lo vencido y accesos directos a cada pantalla de ventas."
+      },
+      "purchasesOverview": {
+        "title": "Resumen de compras",
+        "body": "Lo que debe a proveedores, lo que vence en los próximos 7 días, las facturas abiertas y la lista de facturas por pagar esta semana."
+      },
+      "accountingOverview": {
+        "title": "Resumen de contabilidad",
+        "body": "Saldos de efectivo y bancos, asientos de diario de hoy y accesos directos a sus libros, estados y declaraciones."
+      },
+      "inventoryOverview": {
+        "title": "Resumen de inventario",
+        "body": "Artículos en stock, con stock bajo y agotados de un vistazo, con accesos directos a conteos, movimientos y ubicaciones."
       }
     },
     "couldNotStartTutorial": "No se pudo iniciar el tutorial."
@@ -6119,7 +7349,10 @@
     "statusDraft": "BORRADOR",
     "statusSent": "ENVIADA",
     "statusAccepted": "ACEPTADA",
-    "statusExpired": "VENCIDA"
+    "statusExpired": "VENCIDA",
+    "documentKind": "Tipo de documento",
+    "kindQuotation": "Cotización",
+    "kindProforma": "Factura proforma (no es una factura fiscal)"
   },
   "creditNotes": {
     "title": "Notas de Crédito",
@@ -6144,7 +7377,15 @@
     "saveCreditNote": "Guardar Nota de Crédito",
     "updateCreditNote": "Actualizar Nota de Crédito",
     "noCustomer": "Sin cliente",
-    "refInvoice": "Ref: {{number}}"
+    "refInvoice": "Ref: {{number}}",
+    "addTax": "Agregar impuesto a esta nota",
+    "addTaxHint": "Desactivado: la nota no lleva impuesto y su total es el importe que escribe.",
+    "taxRateLabel": "Tasa de impuesto %",
+    "taxRateHint": "Déjelo vacío para usar la tasa de la factura vinculada o su tasa predeterminada.",
+    "taxSkippedWarning": "La factura original cobró impuesto. Omitir el impuesto aquí no revertirá el impuesto que cobró.",
+    "amountBeforeTax": "Importe antes de impuestos",
+    "noteTotal": "Total de la nota",
+    "amountEntered": "Importe ingresado"
   },
   "debitNotes": {
     "title": "Notas de Débito",
@@ -6169,7 +7410,15 @@
     "saveDebitNote": "Guardar Nota de Débito",
     "updateDebitNote": "Actualizar Nota de Débito",
     "noSupplier": "Sin proveedor",
-    "refPO": "Ref: {{number}}"
+    "refPO": "Ref: {{number}}",
+    "addTax": "Agregar impuesto a esta nota",
+    "addTaxHint": "Desactivado: la nota no lleva impuesto y su total es el importe que escribe.",
+    "taxRateLabel": "Tasa de impuesto %",
+    "taxRateHint": "Déjelo vacío para usar la tasa de la orden de compra vinculada o su tasa predeterminada.",
+    "taxSkippedWarning": "La orden de compra original llevaba impuesto. Omitir el impuesto aquí no revertirá el impuesto de esa orden.",
+    "amountBeforeTax": "Importe antes de impuestos",
+    "noteTotal": "Total de la nota",
+    "amountEntered": "Importe ingresado"
   },
   "share": {
     "whatsapp": "WhatsApp",
@@ -6394,7 +7643,29 @@
       "loadCarriersFailedMessage": "No se pudieron cargar los transportistas.",
       "openEditFailedMessage": "No se pudieron cargar los detalles del envío.",
       "changeStatusFailedMessage": "No se pudo actualizar el estado del envío.",
-      "deleteFailedMessage": "No se pudo eliminar el envío."
+      "deleteFailedMessage": "No se pudo eliminar el envío.",
+      "printLabels": "Imprimir etiquetas",
+      "trackButton": "Rastrear",
+      "label": {
+        "from": "De",
+        "to": "PARA",
+        "tracking": "Seguimiento",
+        "carrier": "Transportista",
+        "weight": "Peso",
+        "package": "Paquete",
+        "of": "de",
+        "eway": "e-way bill"
+      },
+      "track": {
+        "PENDING": "Creado",
+        "READY": "Listo",
+        "IN_TRANSIT": "En tránsito",
+        "OUT_FOR_DELIVERY": "En reparto",
+        "DELIVERED": "Entregado",
+        "RETURNED": "Este envío fue devuelto.",
+        "CANCELLED": "Este envío fue cancelado.",
+        "expected": "Se espera para el {{date}}"
+      }
     },
     "grn": {
       "title": "Notas de Recepción de Mercancía (GRN)",
@@ -6445,7 +7716,11 @@
       "loadPurchaseOrdersFailedMessage": "No se pudieron cargar las órdenes de compra.",
       "loadCatalogFailedMessage": "No se pudieron cargar los datos de vinculación.",
       "verifyFailedMessage": "No se pudo verificar la nota de recepción.",
-      "actionFailedMessage": "No se pudo completar esta acción."
+      "actionFailedMessage": "No se pudo completar esta acción.",
+      "postUnlinkedWarning": "{{count}} artículo(s) no están vinculados a un producto y NO actualizarán su stock. Cancele y vincúlelos primero, o contabilice de todos modos.",
+      "createAndLink": "+ Crear producto \"{{name}}\" y vincular",
+      "createdProductTitle": "Producto creado",
+      "createdProductNotice": "\"{{name}}\" se agregó a Productos a su precio de costo. Defina su precio de venta real en Productos antes de venderlo."
     },
     "challan": {
       "title": "Albaranes de Entrega",
@@ -6485,7 +7760,20 @@
       "loadFailedMessage": "No se pudieron cargar los albaranes.",
       "loadVehiclesFailedMessage": "No se pudieron cargar los vehículos.",
       "changeStatusFailedMessage": "No se pudo actualizar el estado del albarán.",
-      "deleteFailedMessage": "No se pudo eliminar el albarán."
+      "deleteFailedMessage": "No se pudo eliminar el albarán.",
+      "customerGstin": "GSTIN del cliente",
+      "placeOfSupply": "Lugar de suministro (estado)",
+      "reason": "Motivo del traslado de la mercancía",
+      "reasons": {
+        "SUPPLY": "Suministro",
+        "JOB_WORK": "Trabajo por encargo",
+        "SAMPLE": "Muestra",
+        "RETURN": "Devolución",
+        "OTHER": "Otro"
+      },
+      "transporterName": "Nombre del transportista",
+      "lrNumber": "Documento de transporte / número de LR",
+      "hsn": "HSN"
     },
     "freight": {
       "title": "Libro de Fletes",
@@ -7151,7 +8439,9 @@
     "empty": {
       "title": "Aún no hay centros de costo",
       "body": "Cree su primer centro de costo para empezar a etiquetar facturas, cuentas por pagar, gastos y empleados — luego vea un desglose real de ganancias/gastos por departamento, sucursal o proyecto."
-    }
+    },
+    "category": "Categoría",
+    "categoryPlaceholder": "Por ejemplo Departamento o Proyecto"
   },
   "budgets": {
     "title": "Presupuestos",
@@ -7174,6 +8464,14 @@
     "empty": {
       "title": "No hay presupuesto para este mes",
       "body": "Defina un presupuesto para un centro de costo, una cuenta específica o toda la empresa — luego, a fin de mes, vea cómo se comparó el gasto real."
+    },
+    "scenario": {
+      "label": "Plan",
+      "base": "Plan base",
+      "copy": "Nuevo plan hipotético",
+      "namePlaceholder": "Nombre del plan",
+      "percent": "Cambio en porcentaje",
+      "created": "Plan hipotético creado"
     }
   },
   "serviceCombos": {
@@ -7956,5 +9254,233 @@
       "couldNotCloseAccount": "No se pudo cerrar la cuenta.",
       "invoiceAmountWithBalance": "{{amount}} (saldo {{balance}})"
     }
+  },
+  "exchangeRates": {
+    "title": "Tipos de cambio",
+    "hint": "Lleve su propia tabla de tipos de cambio. Al hacer una factura en moneda extranjera se rellena el último tipo, y aun así puede cambiarlo.",
+    "codePlaceholder": "USD",
+    "ratePlaceholder": "Tipo en su moneda",
+    "importCsv": "Importar CSV",
+    "csvHelp": "Columnas del CSV: moneda, tipo, fecha (por ejemplo USD, 83.25, 2026-09-05). El tipo es cuánto vale en su propia moneda una unidad de la moneda extranjera. No se importa nada si alguna fila tiene un problema.",
+    "empty": "Todavía no hay tipos.",
+    "imported": "Tipos importados",
+    "importFailed": "No se pudo importar"
+  },
+  "addresses": {
+    "title": "Otras direcciones",
+    "add": "Agregar dirección",
+    "empty": "No hay otras direcciones. Agregue una dirección de entrega, almacén o sucursal si esta parte tiene más de una.",
+    "default": "Predeterminada",
+    "labelPlaceholder": "Nombre, por ejemplo Almacén",
+    "addressPlaceholder": "Dirección completa",
+    "makeDefault": "Usar como dirección predeterminada"
+  },
+  "einvoice": {
+    "title": "Factura electrónica",
+    "hasIrn": "IRN guardado",
+    "noIrn": "Aún sin IRN",
+    "steps": "1. Descargue el archivo. 2. Suba el archivo al portal de facturas electrónicas. 3. Pegue abajo el IRN y los datos que le da el portal.",
+    "download": "Descargar archivo de factura electrónica",
+    "irn": "IRN",
+    "ackNo": "Número de acuse",
+    "ackDate": "Fecha de acuse",
+    "signedQr": "Texto del QR firmado (opcional)",
+    "saveIrn": "Guardar IRN",
+    "remove": "Quitar IRN",
+    "fileSaved": "Archivo de factura electrónica guardado",
+    "irnSaved": "IRN guardado",
+    "couldNotPrepare": "No se pudo preparar el archivo de factura electrónica.",
+    "couldNotSave": "No se pudo guardar el IRN."
+  },
+  "ewayBill": {
+    "title": "E-way bill",
+    "help": "Prepare el archivo para generar una guía electrónica (e-way bill) en el portal correspondiente. Agregue el número del vehículo o el ID del transportista.",
+    "mode": "Medio de transporte",
+    "modes": {
+      "ROAD": "Carretera",
+      "RAIL": "Ferrocarril",
+      "AIR": "Aéreo",
+      "SHIP": "Barco"
+    },
+    "vehicle": "Número del vehículo",
+    "transporterId": "ID del transportista (GSTIN)",
+    "transporterName": "Nombre del transportista",
+    "distance": "Distancia en km (0 deja que el portal la calcule)",
+    "download": "Descargar archivo de e-way bill",
+    "fileSaved": "Archivo de e-way bill guardado",
+    "couldNotPrepare": "No se pudo preparar el archivo de e-way bill."
+  },
+  "duplicates": {
+    "find": "Buscar duplicados",
+    "titleCustomers": "Clientes duplicados",
+    "titleSuppliers": "Proveedores duplicados",
+    "subtitle": "Registros que parecen la misma persona o negocio. Elija el que se conserva y combine los demás en él.",
+    "none": "No se encontraron duplicados.",
+    "reason": {
+      "PHONE": "Mismo número de teléfono",
+      "TAX_NUMBER": "Mismo número fiscal",
+      "EMAIL": "Mismo correo",
+      "NAME": "Mismo nombre en la misma ciudad"
+    },
+    "keepThis": "Conservar este",
+    "merge": "Combinar en el registro elegido",
+    "merged": "Combinado",
+    "failed": "No se pudo combinar.",
+    "confirmTitle": "¿Combinar estos registros?",
+    "confirmText": "Todo lo registrado en los demás registros (facturas, pagos, historial) pasa a {{name}} y los demás se archivan. No se puede deshacer."
+  },
+  "hub": {
+    "sales": "Resumen de ventas",
+    "purchases": "Resumen de compras",
+    "accounting": "Resumen de contabilidad",
+    "inventory": "Resumen de inventario",
+    "goTo": "Ir a",
+    "dueBills": "Facturas por pagar en los próximos 7 días",
+    "noDueBills": "No hay facturas que venzan en los próximos 7 días.",
+    "overdue": "Vencidas",
+    "stat": {
+      "salesToday": "Ventas de hoy",
+      "invoicesToday": "Facturas de hoy",
+      "receivable": "Le deben",
+      "overdue": "Vencidas",
+      "openQuotations": "Cotizaciones abiertas",
+      "payable": "Usted debe",
+      "dueThisWeek": "Vencen en 7 días",
+      "openBills": "Facturas abiertas",
+      "cashAndBank": "Efectivo y bancos",
+      "bankAccounts": "Cuentas bancarias",
+      "entriesToday": "Asientos de diario de hoy",
+      "items": "Artículos en stock",
+      "lowStock": "Stock bajo",
+      "outOfStock": "Sin stock"
+    }
+  },
+  "bins": {
+    "title": "Ubicaciones en estantería",
+    "subtitle": "En qué estante, rack o casillero está cada artículo",
+    "location": "Ubicación",
+    "search": "Buscar un artículo",
+    "help": "Escriba una etiqueta de estante, rack o casillero como A-3-2 y pulse Enter. Bórrela para quitarla. Los artículos aparecen aquí cuando tienen stock en esta ubicación.",
+    "item": "Artículo",
+    "quantity": "En stock",
+    "bin": "Casillero",
+    "none": "No hay artículos con stock en esta ubicación.",
+    "couldNot": "No se pudo guardar el casillero."
+  },
+  "keyboardHints": {
+    "journal": "Teclado: Enter en el último importe agrega una línea de equilibrio; Ctrl+Enter contabiliza."
+  },
+  "journalTemplates": {
+    "use": "Empezar desde un patrón guardado",
+    "saveAs": "Guardar estas cuentas como patrón",
+    "name": "Nombre del patrón",
+    "saved": "Patrón guardado",
+    "couldNot": "No se pudo guardar el patrón."
+  },
+  "expenseClaims": {
+    "title": "Reclamos de gastos",
+    "hint": "¿El personal gastó su propio dinero para el negocio? Registre el reclamo, apruébelo y luego reembólselo. El reembolso registra un gasto normal.",
+    "claimant": "Quién reclama",
+    "category": "Categoría",
+    "description": "Para qué fue",
+    "amount": "Importe",
+    "submit": "Enviar reclamo",
+    "submitted": "Reclamo enviado",
+    "approve": "Aprobar",
+    "reject": "Rechazar",
+    "pay": "Reembolsar",
+    "paid": "Reclamo reembolsado y gasto registrado",
+    "empty": "Todavía no hay reclamos.",
+    "status": {
+      "SUBMITTED": "En espera",
+      "APPROVED": "Aprobado",
+      "PAID": "Reembolsado",
+      "REJECTED": "Rechazado"
+    },
+    "methods": {
+      "CASH": "Efectivo",
+      "UPI": "UPI",
+      "BANK_TRANSFER": "Transferencia bancaria"
+    }
+  },
+  "bankRules": {
+    "title": "Reglas bancarias",
+    "subtitle": "Enseñe a Sarang a qué pertenecen las líneas de su extracto bancario",
+    "newRule": "Nueva regla",
+    "help": "Una regla se aplica a una línea del extracto cuando contiene todas las palabras que escribe (en cualquier orden), va en el sentido elegido y está dentro de los importes. Se usa la primera regla que coincide.",
+    "name": "Nombre de la regla",
+    "contains": "Palabras a buscar",
+    "direction": "Sentido",
+    "any": "Cualquiera",
+    "moneyOut": "Dinero que sale",
+    "moneyIn": "Dinero que entra",
+    "dir": {
+      "ANY": "Cualquier sentido",
+      "DEBIT": "Dinero que sale",
+      "CREDIT": "Dinero que entra"
+    },
+    "bank": "Cuenta bancaria",
+    "allBanks": "Todas las cuentas bancarias",
+    "minAmount": "Importe mínimo (opcional)",
+    "maxAmount": "Importe máximo (opcional)",
+    "postTo": "Contabilizar en esta cuenta",
+    "add": "Agregar regla",
+    "none": "Todavía no hay reglas.",
+    "linesHelp": "Líneas del extracto que aún no coinciden con una transacción. Al contabilizar una línea se registra el asiento en la cuenta de la regla y se marca la línea como conciliada. Puede deshacerlo desde la pantalla de conciliación bancaria.",
+    "noLines": "No hay líneas de extracto sin conciliar para esta cuenta bancaria.",
+    "noRule": "Ninguna regla se aplica",
+    "post": "Contabilizar",
+    "postAll": "Contabilizar todas las coincidentes ({{count}})",
+    "posted": "Contabilizada y conciliada",
+    "postedMany": "{{count}} línea(s) contabilizada(s) y conciliada(s)",
+    "couldNot": "No se pudo completar esta acción."
+  },
+  "stockJournal": {
+    "title": "Diario de stock",
+    "subtitle": "Convierta unos artículos en otros, como reenvasar o armar un juego",
+    "new": "Nueva entrada",
+    "help": "Elija qué sale de su stock y qué entra. El valor de lo que sale se reparte entre lo que entra, así que el valor total de su stock no cambia.",
+    "takenOut": "Retirado del stock",
+    "broughtIn": "Ingresado al stock",
+    "findItem": "Buscar un artículo",
+    "notes": "Nota (opcional)",
+    "save": "Guardar entrada",
+    "saved": "Diario de stock guardado",
+    "none": "Todavía no hay entradas en el diario de stock.",
+    "outShort": "Salida:",
+    "inShort": "Entrada:",
+    "couldNot": "No se pudo guardar esta entrada."
+  },
+  "stockTake": {
+    "title": "Conteos de stock",
+    "subtitle": "Cuente lo que hay en el estante y corrija los libros",
+    "startTitle": "Iniciar un conteo nuevo",
+    "startHelp": "Toma una instantánea de lo que dicen los libros para cada artículo en stock. Luego usted escribe lo que contó. Nada cambia en su stock hasta que contabilice el conteo.",
+    "notes": "Nota (opcional)",
+    "start": "Empezar a contar",
+    "none": "Todavía no hay conteos de stock.",
+    "items": "artículos",
+    "status": {
+      "IN_PROGRESS": "Contando",
+      "POSTED": "Contabilizado",
+      "CANCELLED": "Cancelado"
+    },
+    "counted": "Contado",
+    "withDifference": "Con diferencia",
+    "surplus": "Sobrante",
+    "shortage": "Faltante",
+    "search": "Buscar un artículo",
+    "howTo": "Escriba la cantidad contada y pulse Enter. Deje una fila vacía si no contó ese artículo; no se modificará.",
+    "item": "Artículo",
+    "system": "Según los libros",
+    "countedCol": "Contado",
+    "difference": "Diferencia",
+    "value": "Valor",
+    "post": "Contabilizar el conteo",
+    "cancel": "Cancelar este conteo",
+    "posted": "Conteo de stock contabilizado",
+    "adjusted": "{{count}} artículo(s) corregido(s)",
+    "badQuantity": "Escriba una cantidad de cero o más.",
+    "couldNot": "No se pudo completar esta acción."
   }
 }
