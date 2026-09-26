@@ -1,3 +1,4 @@
+import { ensureOpeningStockPosted } from './services/stock-opening-ledger.service'
 import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electron'
 import { refreshTaxComponentsCache } from './services/tax-components-cache'
 import { processDueReversals } from './services/journal-extras.service'
@@ -292,6 +293,7 @@ app.whenReady().then(async () => {
     await initializeDatabase(tutorialFlag ? getTutorialDbPath() : undefined)
     // Idempotent — ensures expense categories and GST tax configs exist for existing installs
     await seedDefaultData().catch(e => logger.warn('[Seed] Non-fatal seed error on startup:', e))
+    await ensureOpeningStockPosted().catch(e => logger.warn('[Stock] Opening stock entry skipped:', e))
 
     if (tutorialFlag) {
       try {
