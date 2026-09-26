@@ -162,15 +162,16 @@ describe('reports agree with a direct query of the same records', () => {
       if (t === 'INCOME') profit += l.creditAmount - l.debitAmount
       if (t === 'EXPENSE') profit -= l.debitAmount - l.creditAmount
     }
-    const shown = (bs as unknown as { currentProfit?: number; totals?: { currentProfit?: number } }).currentProfit
-    console.log('balance sheet keys', Object.keys(bs).join(','), 'ledger profit', round2(profit), 'shown', shown)
     expect(bs.balanced).toBe(true)
     const { reportService } = await import('../../services/report.service')
     const pl = await reportService.generateProfitAndLossReport(range())
-    const paid = await db.invoice.findMany({ where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] } } })
-    const exTax = paid.reduce((t, i) => t + i.totalAmount - (i.invoiceType === 'RETURN' ? -1 : 1) * i.taxAmount, 0)
-    // Revenue in the Profit and Loss report is before tax: tax collected is owed to the tax authority, not earned.
+    const live = await db.invoice.findMany({ where: { status: 'ACTIVE' } })
+    const exTax = live.reduce((t, i) => t + i.totalAmount - (i.invoiceType === 'RETURN' ? -1 : 1) * i.taxAmount, 0)
+    // Revenue in the Profit and Loss report is before tax and counts every live invoice, like the ledger does.
     expect(round2(pl.summary.revenue)).toBe(round2(exTax))
+    // One profit: the Profit and Loss report and the Balance Sheet agree.
+    console.log('profit ledger', round2(profit), 'P&L', pl.summary.netProfit)
+    expect(Math.abs(pl.summary.netProfit - profit)).toBeLessThan(0.05)
   })
 
   it('Ratio Analysis reads real stock and cost of sales: gross margin is a real margin, stock days are worked out', async () => {

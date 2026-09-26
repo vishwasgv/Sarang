@@ -12,6 +12,7 @@ import { applyLocationDeltaTx } from './inventory.service'
 import { explodeKitComponentsTx } from './kit.service'
 import { markSerialAvailableTx } from './serial.service'
 import { postReturnJournalTx } from './return-journal.util'
+import { postReturnCogsJournalTx } from './cogs-journal.util'
 
 export interface ReturnItem {
   productId: string
@@ -396,6 +397,7 @@ export async function createReturn(
       }
 
       await postReturnJournalTx(tx, returnInvoice)
+      await postReturnCogsJournalTx(tx, returnInvoice, original.id)
 
       return returnInvoice
     })

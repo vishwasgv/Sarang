@@ -4,7 +4,7 @@ vi.setConfig({ testTimeout: 120000, hookTimeout: 120000 })
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => process.env.TEMP ?? '.' } }))
 
 import { openRealDb, type RealDb } from '../real-db'
-import { allProblems } from '../invariants'
+import { allProblems, inventoryLedgerProblems } from '../invariants'
 
 function rng(seed: number) {
   let s = seed >>> 0
@@ -47,6 +47,7 @@ describe('stock: quantity always equals the sum of movements and the sum over lo
 
   it('starts consistent', async () => {
     expect(await allProblems({ stockFromMovements: true })).toEqual([])
+    expect(await inventoryLedgerProblems(0.01)).toEqual([])
   })
 
   for (const seed of [21, 22, 23, 24, 25, 26]) {
@@ -81,7 +82,9 @@ describe('stock: quantity always equals the sum of movements and the sum over lo
             log.push(`return ${res.success}`)
           }
         } else if (op < 0.75) {
-          const res = await inventoryService.addStock({ productId: pick(productIds), quantity: Math.floor(1 + rand() * 50), reason: 'purchase', unitCost: 10 + rand() * 30 } as never)
+          const pid = pick(productIds)
+          // Added at the current average cost, so the average does not move and the ledger must match the shelf exactly.
+          const res = await inventoryService.addStock({ productId: pid, quantity: Math.floor(1 + rand() * 50), reason: 'purchase', unitCost: (await db.inventory.findUnique({ where: { productId: pid } }))!.averageCost } as never)
           log.push(`add ${(res as { success: boolean }).success}`)
         } else if (op < 0.87) {
           const p = pick(productIds)
@@ -94,7 +97,8 @@ describe('stock: quantity always equals the sum of movements and the sum over lo
           const res = await inventoryService.transferStock({ productId: p, quantity: Math.floor(1 + rand() * 10), fromLocationId: from, toLocationId: to })
           log.push(`transfer ${(res as { success: boolean }).success}`)
         }
-        const problems = await allProblems({ stockFromMovements: true })
+        const problems = [...(await allProblems({ stockFromMovements: true })), ...(await inventoryLedgerProblems(0.5))]
+        if (problems.length && process.env.ASSURE_DEBUG) { const je = await db.journalEntry.findMany({ where: { sourceType: { in: ['INVOICE_COGS', 'STOCK_IN', 'STOCK_ADJUSTMENT', 'SALES_RETURN_COGS'] } }, include: { lines: { include: { account: true } } } }); console.log('DEBUG', JSON.stringify(je.map((e) => [e.sourceType, e.isReversed, e.lines.map((l) => `${l.account.accountCode} D${l.debitAmount} C${l.creditAmount}`)]))); const inv = await db.inventory.findMany(); console.log('DEBUG inv', JSON.stringify(inv.map((i) => [i.quantity, i.averageCost]))) }
         if (problems.length) throw new Error(`after step ${step} (${log[log.length - 1]}):\n${problems.join('\n')}\nlog:\n${log.join('\n')}`)
       }
       const ok = (p: string) => log.filter((l) => l.startsWith(p) && l.endsWith('true')).length

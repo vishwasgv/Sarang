@@ -2004,6 +2004,8 @@ model InvoiceItem {
   // product), just with unitPrice/lineTotal forced to 0. schemeId records
   // which PricingScheme produced it, so the printed invoice can show a real
   // reason rather than a silent zero price.
+  // Cost of one unit when it was sold (stock valuation at that moment); drives the cost of goods posted to the ledger and its reversal on a return.
+  costAtSale              Float     @default(0)
   isFreeOfCost            Boolean   @default(false)
   schemeId                String?
   createdAt               DateTime  @default(now())

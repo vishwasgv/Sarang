@@ -1,3 +1,4 @@
+vi.mock('../stock-journal.util', () => ({ postManualStockInTx: vi.fn().mockResolvedValue(undefined), postStockAdjustmentTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../sales-order-reservations', () => ({ reservedBySalesOrders: vi.fn().mockResolvedValue(new Map()), stockShortagesForOrder: vi.fn().mockResolvedValue([]) }))
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 

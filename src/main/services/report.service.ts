@@ -1112,14 +1112,20 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
   const from = toDate(params.dateFrom)
   const to = toDateEnd(params.dateTo)
 
-  const [invoices, expenses] = await Promise.all([
+  // Same basis as the ledger and the Balance Sheet: every live invoice counts when it is made (paid or not), goods are
+  // costed at what they cost when sold, and service lines on supplier bills are costs alongside the expenses.
+  const [invoices, expenses, serviceLines] = await Promise.all([
     db.invoice.findMany({
-      where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] }, invoiceDate: { gte: from, lte: to } },
-      select: { totalAmount: true, taxAmount: true, invoiceType: true, items: { select: { quantity: true, productId: true } } }
+      where: { status: 'ACTIVE', invoiceDate: { gte: from, lte: to } },
+      select: { totalAmount: true, taxAmount: true, invoiceType: true, items: { select: { quantity: true, productId: true, costAtSale: true } } }
     }),
     db.expense.findMany({
       where: { expenseDate: { gte: from, lte: to } },
       include: { category: { select: { categoryName: true } } }
+    }),
+    db.billItem.findMany({
+      where: { productId: null, bill: { status: { not: 'VOID' }, billDate: { gte: from, lte: to } } },
+      select: { total: true, taxAmount: true, serviceCategory: { select: { categoryName: true } } }
     })
   ])
 
@@ -1139,7 +1145,7 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
   // must drop too (the goods came back into stock), not rise as a second sale.
   const cogs = sumCurrency(invoices.flatMap((inv) => {
     const sign = inv.invoiceType === 'RETURN' ? -1 : 1
-    return inv.items.map((it) => sign * it.quantity * (costs.get(it.productId) ?? 0))
+    return inv.items.map((it) => sign * it.quantity * (it.costAtSale > 0 ? it.costAtSale : (costs.get(it.productId) ?? 0)))
   }))
   const grossProfit = roundCurrency(revenue - cogs)
 
@@ -1148,8 +1154,12 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
     const name = e.category.categoryName
     catRaw.set(name, [...(catRaw.get(name) ?? []), e.amount])
   }
+  for (const l of serviceLines) {
+    const name = l.serviceCategory?.categoryName ?? 'Supplier bills (services)'
+    catRaw.set(name, [...(catRaw.get(name) ?? []), l.total - l.taxAmount])
+  }
   const catMap = new Map<string, number>(Array.from(catRaw.entries()).map(([name, amounts]) => [name, sumCurrency(amounts)]))
-  const totalExpenses = sumCurrency(expenses.map(e => e.amount))
+  const totalExpenses = sumCurrency([...expenses.map(e => e.amount), ...serviceLines.map(l => l.total - l.taxAmount)])
   const netProfit = roundCurrency(grossProfit - totalExpenses)
 
   return {

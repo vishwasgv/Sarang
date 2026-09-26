@@ -137,6 +137,19 @@ export async function payableLedgerProblems(): Promise<string[]> {
   return Math.abs(glBalance - owed) > EPS ? [`Accounts Payable ledger ${glBalance} != open bill balances ${owed}`] : []
 }
 
+// With stock kept in the ledger, the Inventory account should equal quantity on hand at cost (small drift is allowed:
+// a return puts goods back at the cost they left at, which may differ from today's average).
+export async function inventoryLedgerProblems(tolerance = 1): Promise<string[]> {
+  const db = getPrisma()
+  const acct = await db.chartOfAccounts.findUnique({ where: { accountCode: '1200' } })
+  if (!acct) return []
+  const gl = await db.journalEntryLine.aggregate({ where: { accountId: acct.id }, _sum: { debitAmount: true, creditAmount: true } })
+  const glValue = (gl._sum.debitAmount ?? 0) - (gl._sum.creditAmount ?? 0)
+  const stock = await db.inventory.findMany({ select: { quantity: true, averageCost: true } })
+  const value = stock.reduce((s, i) => s + i.quantity * i.averageCost, 0)
+  return Math.abs(glValue - value) > tolerance ? [`Inventory ledger ${Math.round(glValue * 100) / 100} != stock at cost ${Math.round(value * 100) / 100}`] : []
+}
+
 export async function allProblems(opts: { stockFromMovements?: boolean } = {}): Promise<string[]> {
   return [
     ...(await journalBalanceProblems()),

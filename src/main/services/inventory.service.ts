@@ -1,3 +1,4 @@
+import { postManualStockInTx, postStockAdjustmentTx } from './stock-journal.util'
 import { reservedBySalesOrders } from './sales-order-reservations'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
@@ -131,6 +132,7 @@ export const inventoryService = {
           }
         })
         await applyLocationDeltaTx(tx, payload.productId, payload.quantity)
+        if (!payload.referenceType) await postManualStockInTx(tx, { productId: payload.productId, productName: (await tx.product.findUnique({ where: { id: payload.productId }, select: { productName: true } }))?.productName ?? '', quantity: payload.quantity, unitCost: payload.unitCost ?? inventory.averageCost })
         return inv
       }, { timeout: 15000, maxWait: 10000 })
 
@@ -324,6 +326,7 @@ export const inventoryService = {
         // the default Location, keeping LocationStock's sum in sync with
         // the new aggregate Inventory.quantity.
         await applyLocationDeltaTx(tx, payload.productId, difference)
+        await postStockAdjustmentTx(tx, { productId: payload.productId, productName: (await tx.product.findUnique({ where: { id: payload.productId }, select: { productName: true } }))?.productName ?? '', difference, unitCost: inventory.averageCost })
         return { updated: inv, previous: inventory }
       // REAL BUG found in this session's pre-release stress-testing audit:
       // this transaction had no extended timeout (Prisma's default 5s/2s),

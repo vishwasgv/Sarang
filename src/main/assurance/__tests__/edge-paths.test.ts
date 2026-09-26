@@ -112,4 +112,23 @@ describe('edge paths', () => {
     const rep = await reportService.generateOutstandingReport()
     expect(Number.isFinite(rep.customers.totalOutstanding)).toBe(true)
   })
+
+  it('goods on a bill go to the Inventory asset, services to expense; a sale then moves cost from Inventory to Cost of Goods Sold', async () => {
+    const { billService } = await import('../../services/bill.service')
+    const { billingService } = await import('../../services/billing.service')
+    await (await svc()).db.supplier.update({ where: { id: supplierId }, data: { isActive: true } })
+    await (await svc()).db.customer.update({ where: { id: customerId }, data: { isActive: true } })
+    const before = await accountNets()
+    const b = await billService.createBill({ supplierId, items: [{ productId, quantity: 10, unitCost: 100, discountAmount: 0, taxRate: 0 }, { serviceDescription: 'Freight', quantity: 1, unitCost: 250, discountAmount: 0, taxRate: 0 }], isReverseCharge: false } as never) as { success: boolean }
+    expect(b.success).toBe(true)
+    const afterBill = await accountNets()
+    expect(diff(afterBill, before)).toEqual({ '1200': 1000, '6000': 250, '2000': -1250 })
+    const { db } = await svc()
+    await db.inventory.update({ where: { productId }, data: { averageCost: 100 } })
+    const sale = await billingService.createInvoice({ customerId, paymentMethod: 'CASH', items: [{ productId, quantity: 3, unitPrice: 200, discountAmount: 0, isFreeOfCost: false }], globalDiscount: 0 } as never) as { success: boolean }
+    expect(sale.success).toBe(true)
+    const d = diff(await accountNets(), afterBill)
+    expect(d['5000']).toBe(300)
+    expect(d['1200']).toBe(-300)
+  })
 })

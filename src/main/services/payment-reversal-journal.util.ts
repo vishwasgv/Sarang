@@ -49,6 +49,7 @@ export async function reversePaymentJournalTx(
 // On cancelling an invoice: undo the entry of every payment still standing, and any till-payment reversals.
 export async function reverseInvoicePaymentEntriesTx(tx: TxClient, invoiceId: string, livePaymentIds: string[], reason: string, userId?: string): Promise<void> {
   for (const id of livePaymentIds) await reverseEntryBySourceTx(tx, 'PAYMENT', id, reason, userId)
+  await reverseEntryBySourceTx(tx, 'INVOICE_COGS', invoiceId, reason, userId)
   for (;;) {
     const e = await tx.journalEntry.findFirst({ where: { sourceType: CASH_SALE_PAYMENT_REVERSAL, sourceId: invoiceId, isReversed: false } })
     if (!e) break

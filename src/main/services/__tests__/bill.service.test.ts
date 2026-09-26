@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../purchase-tax-journal.util', async (orig) => ({ ...(await orig<typeof import('../purchase-tax-journal.util')>()), billGoodsShareTx: vi.fn().mockResolvedValue(0), orderGoodsShareTx: vi.fn().mockResolvedValue(0), noteGoodsShareTx: vi.fn().mockResolvedValue(0) }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../supplier-ledger.service', () => ({
@@ -232,6 +233,7 @@ describe('billService.createBill', () => {
             '2000': { id: 'coa-ap', accountCode: '2000', accountName: 'Accounts Payable', accountType: 'LIABILITY', isActive: true },
             '2100': { id: 'coa-tax', accountCode: '2100', accountName: 'Tax Payable', accountType: 'LIABILITY', isActive: true },
             '1300': { id: 'coa-itc', accountCode: '1300', accountName: 'Input Tax Credit', accountType: 'ASSET', isActive: true },
+            '1200': { id: 'coa-inv', accountCode: '1200', accountName: 'Inventory', accountType: 'ASSET', isActive: true },
           }
           return byCode[where.accountCode] ?? null
         })

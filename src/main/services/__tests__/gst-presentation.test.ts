@@ -10,6 +10,8 @@ import { describe, it, expect, vi, beforeEach } from 'vitest'
 // The property tests run thousands of documents; give them room when the whole suite runs in parallel.
 vi.setConfig({ testTimeout: 120_000 })
 
+vi.mock('../purchase-tax-journal.util', async (orig) => ({ ...(await orig<typeof import('../purchase-tax-journal.util')>()), billGoodsShareTx: vi.fn().mockResolvedValue(0), orderGoodsShareTx: vi.fn().mockResolvedValue(0), noteGoodsShareTx: vi.fn().mockResolvedValue(0) }))
+vi.mock('../cogs-journal.util', () => ({ postCogsJournalTx: vi.fn().mockResolvedValue(undefined), postReturnCogsJournalTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../utils/branding', () => ({
   aszurexFooterHtml: vi.fn().mockResolvedValue('footer'),
   aszurexBrandSuffixHtml: vi.fn().mockResolvedValue('suffix')

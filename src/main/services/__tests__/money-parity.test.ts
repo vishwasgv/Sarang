@@ -7,6 +7,8 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 import { Prisma } from '@prisma/client'
 
+vi.mock('../purchase-tax-journal.util', async (orig) => ({ ...(await orig<typeof import('../purchase-tax-journal.util')>()), billGoodsShareTx: vi.fn().mockResolvedValue(0), orderGoodsShareTx: vi.fn().mockResolvedValue(0), noteGoodsShareTx: vi.fn().mockResolvedValue(0) }))
+vi.mock('../cogs-journal.util', () => ({ postCogsJournalTx: vi.fn().mockResolvedValue(undefined), postReturnCogsJournalTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../inventory.service', () => ({ inventoryService: { reduceStockTx: vi.fn().mockResolvedValue(undefined), addStockTx: vi.fn().mockResolvedValue(undefined) }, applyLocationDeltaTx: vi.fn() }))

@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../cogs-journal.util', () => ({ postCogsJournalTx: vi.fn().mockResolvedValue(undefined), postReturnCogsJournalTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../payment-reversal-journal.util', () => ({ reverseInvoicePaymentEntriesTx: vi.fn().mockResolvedValue(undefined), clearInvoiceLedgerRemainderTx: vi.fn().mockResolvedValue(undefined), assertNoReturnsTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))

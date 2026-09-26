@@ -1,3 +1,4 @@
+import { postCogsJournalTx } from './cogs-journal.util'
 import { reverseInvoicePaymentEntriesTx, clearInvoiceLedgerRemainderTx, assertNoReturnsTx } from './payment-reversal-journal.util'
 import { getPrisma } from '../database/db'
 import { taxExemptionActive } from './tax-exemption.util'
@@ -74,6 +75,7 @@ export async function postInvoiceJournalEntry(tx: TxClient, invoice: { id: strin
     lines.push({ accountId: salesAccount.id, bankAccountId: null, costCentreId, debitAmount: 0, creditAmount: revenueAmount })
   }
   await journalEntryService.postSystemEntry(tx, { sourceType: 'INVOICE', sourceId: invoice.id, narration: `Invoice ${invoice.invoiceNumber}`, lines })
+  await postCogsJournalTx(tx, invoice)
 }
 
 export async function generateInvoiceNumber(tx?: Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]): Promise<string> {
