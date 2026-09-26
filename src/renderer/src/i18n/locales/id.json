@@ -9482,5 +9482,47 @@
     "adjusted": "{{count}} item dikoreksi",
     "badQuantity": "Masukkan jumlah nol atau lebih.",
     "couldNot": "Tidak dapat menyelesaikan ini."
+  },
+  "lan": {
+    "title": "Multi-pengguna (beberapa PC)",
+    "intro": "Memungkinkan lebih dari satu PC memakai data usaha yang sama di jaringan toko Anda. Satu PC menyimpan data (server); PC lain terhubung ke sana. Semuanya tetap di dalam jaringan Anda dan dienkripsi dengan rahasia bersama. Fitur ini nonaktif sampai Anda mengaktifkannya.",
+    "mode": {
+      "off": "Hanya satu PC",
+      "server": "PC ini menyimpan data (server)",
+      "client": "PC ini terhubung ke PC lain (klien)"
+    },
+    "modeHelp": {
+      "off": "Cara biasa: PC ini menyimpan data dan hanya Anda yang memakainya.",
+      "server": "PC lain di jaringan Anda dapat masuk dan bekerja di usaha ini pada saat yang sama, sesuai jumlah kursi pada lisensi Anda.",
+      "client": "PC ini tidak punya data sendiri. PC ini menampilkan usaha yang tersimpan di PC server."
+    },
+    "port": "Port",
+    "secret": "Rahasia bersama",
+    "secretHelp": "Ketik rahasia yang sama di setiap PC lain. Siapa pun yang mengetahuinya dan bisa menjangkau PC ini di jaringan Anda dapat mencoba masuk, jadi jaga kerahasiaannya.",
+    "newSecret": "Buat rahasia baru",
+    "running": "Server sedang berjalan.",
+    "addresses": "Alamat yang diketik di PC lain",
+    "noAddress": "Alamat jaringan tidak ditemukan. Hubungkan PC ini ke jaringan toko Anda.",
+    "seats": "Lisensi Anda mengizinkan {{count}} PC masuk sekaligus, termasuk PC ini.",
+    "firewall": "Jika PC lain tidak dapat terhubung, izinkan Sarang melalui firewall Windows di PC ini untuk jaringan pribadi.",
+    "connected": "PC yang terhubung sekarang",
+    "nobody": "Tidak ada PC lain yang terhubung.",
+    "notSignedIn": "Belum masuk",
+    "disconnect": "Putuskan",
+    "serverAddress": "Alamat PC server",
+    "test": "Uji koneksi",
+    "testOk": "Terhubung ke PC server.",
+    "testFailed": "Tidak dapat terhubung.",
+    "connectedTo": "PC ini bekerja dengan server di {{address}}.",
+    "saveRestart": "Simpan dan mulai ulang Sarang",
+    "saved": "Tersimpan. Sarang akan dimulai ulang.",
+    "saveFailed": "Pengaturan tidak dapat disimpan.",
+    "secretChanged": "Rahasia baru dibuat. Ketik di PC lain.",
+    "loginLink": "Pengaturan koneksi PC (beberapa PC)",
+    "changed": "PC lain mengubah sebagian data.",
+    "changedBy": "{{name}} mengubah sebagian data di PC lain.",
+    "refresh": "Segarkan",
+    "beingEdited": "{{name}} membuka ini di PC lain. Anda bisa melihatnya, tetapi menyimpan dinonaktifkan sampai mereka menutupnya.",
+    "beingEditedGeneric": "Seseorang membuka ini di PC lain. Anda bisa melihatnya, tetapi menyimpan dinonaktifkan sampai mereka menutupnya."
   }
 }

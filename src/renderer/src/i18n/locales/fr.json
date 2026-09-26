@@ -9482,5 +9482,47 @@
     "adjusted": "{{count}} article(s) corrigé(s)",
     "badQuantity": "Saisissez une quantité égale ou supérieure à zéro.",
     "couldNot": "Impossible de terminer cette opération."
+  },
+  "lan": {
+    "title": "Multi-utilisateur (plusieurs postes)",
+    "intro": "Permet à plusieurs postes d'utiliser les mêmes données d'entreprise sur le réseau de votre boutique. Un poste garde les données (le serveur) ; les autres s'y connectent. Tout reste dans votre réseau et est chiffré avec un secret partagé. C'est désactivé tant que vous ne l'activez pas.",
+    "mode": {
+      "off": "Un seul poste",
+      "server": "Ce poste garde les données (serveur)",
+      "client": "Ce poste se connecte à un autre poste (client)"
+    },
+    "modeHelp": {
+      "off": "La façon habituelle : ce poste garde les données et vous seul l'utilisez.",
+      "server": "Les autres postes de votre réseau peuvent se connecter et travailler sur cette entreprise en même temps, dans la limite des places de votre licence.",
+      "client": "Ce poste n'a pas de données propres. Il affiche l'entreprise conservée sur le poste serveur."
+    },
+    "port": "Port",
+    "secret": "Secret partagé",
+    "secretHelp": "Saisissez le même secret sur chacun des autres postes. Toute personne qui le connaît et peut atteindre ce poste sur votre réseau peut essayer de se connecter, gardez-le donc privé.",
+    "newSecret": "Créer un nouveau secret",
+    "running": "Le serveur fonctionne.",
+    "addresses": "Adresse à saisir sur les autres postes",
+    "noAddress": "Aucune adresse réseau trouvée. Connectez ce poste au réseau de votre boutique.",
+    "seats": "Votre licence autorise {{count}} poste(s) connecté(s) en même temps, celui-ci compris.",
+    "firewall": "Si un autre poste ne peut pas se connecter, autorisez Sarang dans le pare-feu Windows de ce poste pour les réseaux privés.",
+    "connected": "Postes connectés en ce moment",
+    "nobody": "Aucun autre poste n'est connecté.",
+    "notSignedIn": "Pas encore connecté",
+    "disconnect": "Déconnecter",
+    "serverAddress": "Adresse du poste serveur",
+    "test": "Tester la connexion",
+    "testOk": "Connecté au poste serveur.",
+    "testFailed": "Connexion impossible.",
+    "connectedTo": "Ce poste travaille avec le serveur à l'adresse {{address}}.",
+    "saveRestart": "Enregistrer et redémarrer Sarang",
+    "saved": "Enregistré. Sarang va redémarrer.",
+    "saveFailed": "Impossible d'enregistrer les paramètres.",
+    "secretChanged": "Nouveau secret créé. Saisissez-le sur les autres postes.",
+    "loginLink": "Connexion entre postes (plusieurs postes)",
+    "changed": "Un autre poste a modifié des données.",
+    "changedBy": "{{name}} a modifié des données sur un autre poste.",
+    "refresh": "Actualiser",
+    "beingEdited": "{{name}} a ceci ouvert sur un autre poste. Vous pouvez le consulter, mais l'enregistrement est désactivé jusqu'à sa fermeture.",
+    "beingEditedGeneric": "Quelqu'un a ceci ouvert sur un autre poste. Vous pouvez le consulter, mais l'enregistrement est désactivé jusqu'à sa fermeture."
   }
 }

@@ -9482,5 +9482,47 @@
     "adjusted": "{{count}} item(ns) corrigido(s)",
     "badQuantity": "Digite uma quantidade de zero ou mais.",
     "couldNot": "Não foi possível concluir."
+  },
+  "lan": {
+    "title": "Vários utilizadores (vários computadores)",
+    "intro": "Permite que mais de um computador use os mesmos dados do negócio na rede da sua loja. Um computador guarda os dados (o servidor); os outros ligam-se a ele. Tudo fica dentro da sua rede e é cifrado com um segredo partilhado. Está desativado até o ativar.",
+    "mode": {
+      "off": "Só um computador",
+      "server": "Este computador guarda os dados (servidor)",
+      "client": "Este computador liga-se a outro computador (cliente)"
+    },
+    "modeHelp": {
+      "off": "A forma habitual: este computador guarda os dados e só você o usa.",
+      "server": "Outros computadores da sua rede podem iniciar sessão e trabalhar neste negócio ao mesmo tempo, até ao número de lugares da sua licença.",
+      "client": "Este computador não tem dados próprios. Mostra o negócio guardado no computador servidor."
+    },
+    "port": "Porta",
+    "secret": "Segredo partilhado",
+    "secretHelp": "Escreva o mesmo segredo em cada um dos outros computadores. Quem o conhecer e conseguir chegar a este computador na sua rede pode tentar iniciar sessão, por isso mantenha-o privado.",
+    "newSecret": "Criar um segredo novo",
+    "running": "O servidor está a funcionar.",
+    "addresses": "Endereço a escrever nos outros computadores",
+    "noAddress": "Não foi encontrado nenhum endereço de rede. Ligue este computador à rede da sua loja.",
+    "seats": "A sua licença permite {{count}} computador(es) com sessão iniciada ao mesmo tempo, incluindo este.",
+    "firewall": "Se outro computador não conseguir ligar-se, permita o Sarang na firewall do Windows deste computador para redes privadas.",
+    "connected": "Computadores ligados agora",
+    "nobody": "Nenhum outro computador está ligado.",
+    "notSignedIn": "Ainda sem sessão iniciada",
+    "disconnect": "Desligar",
+    "serverAddress": "Endereço do computador servidor",
+    "test": "Testar ligação",
+    "testOk": "Ligado ao computador servidor.",
+    "testFailed": "Não foi possível ligar.",
+    "connectedTo": "Este computador trabalha com o servidor em {{address}}.",
+    "saveRestart": "Guardar e reiniciar o Sarang",
+    "saved": "Guardado. O Sarang vai reiniciar.",
+    "saveFailed": "Não foi possível guardar as definições.",
+    "secretChanged": "Segredo novo criado. Escreva-o nos outros computadores.",
+    "loginLink": "Ligação entre computadores (vários computadores)",
+    "changed": "Outro computador alterou alguns dados.",
+    "changedBy": "{{name}} alterou alguns dados noutro computador.",
+    "refresh": "Atualizar",
+    "beingEdited": "{{name}} tem isto aberto noutro computador. Pode ver, mas não guardar até que o feche.",
+    "beingEditedGeneric": "Alguém tem isto aberto noutro computador. Pode ver, mas não guardar até que o feche."
   }
 }

@@ -9482,5 +9482,47 @@
     "adjusted": "{{count}} artículo(s) corregido(s)",
     "badQuantity": "Escriba una cantidad de cero o más.",
     "couldNot": "No se pudo completar esta acción."
+  },
+  "lan": {
+    "title": "Varios usuarios (varios equipos)",
+    "intro": "Permite que más de un equipo use los mismos datos del negocio en la red de su tienda. Un equipo guarda los datos (el servidor); los demás se conectan a él. Todo queda dentro de su red y se cifra con un secreto compartido. Está desactivado hasta que lo active.",
+    "mode": {
+      "off": "Solo un equipo",
+      "server": "Este equipo guarda los datos (servidor)",
+      "client": "Este equipo se conecta a otro equipo (cliente)"
+    },
+    "modeHelp": {
+      "off": "La forma habitual: este equipo guarda los datos y solo usted lo usa.",
+      "server": "Otros equipos de su red pueden iniciar sesión y trabajar en este negocio al mismo tiempo, hasta el número de puestos de su licencia.",
+      "client": "Este equipo no tiene datos propios. Muestra el negocio guardado en el equipo servidor."
+    },
+    "port": "Puerto",
+    "secret": "Secreto compartido",
+    "secretHelp": "Escriba el mismo secreto en cada uno de los otros equipos. Quien lo conozca y pueda llegar a este equipo en su red puede intentar iniciar sesión, así que manténgalo en privado.",
+    "newSecret": "Crear un secreto nuevo",
+    "running": "El servidor está en marcha.",
+    "addresses": "Dirección que se escribe en los otros equipos",
+    "noAddress": "No se encontró ninguna dirección de red. Conecte este equipo a la red de su tienda.",
+    "seats": "Su licencia permite {{count}} equipo(s) con sesión iniciada a la vez, incluido este.",
+    "firewall": "Si otro equipo no puede conectarse, permita Sarang en el firewall de Windows de este equipo para redes privadas.",
+    "connected": "Equipos conectados ahora",
+    "nobody": "No hay ningún otro equipo conectado.",
+    "notSignedIn": "Aún sin iniciar sesión",
+    "disconnect": "Desconectar",
+    "serverAddress": "Dirección del equipo servidor",
+    "test": "Probar conexión",
+    "testOk": "Conectado al equipo servidor.",
+    "testFailed": "No se pudo conectar.",
+    "connectedTo": "Este equipo trabaja con el servidor en {{address}}.",
+    "saveRestart": "Guardar y reiniciar Sarang",
+    "saved": "Guardado. Sarang se reiniciará.",
+    "saveFailed": "No se pudo guardar la configuración.",
+    "secretChanged": "Secreto nuevo creado. Escríbalo en los otros equipos.",
+    "loginLink": "Conexión entre equipos (varios equipos)",
+    "changed": "Otro equipo cambió algunos datos.",
+    "changedBy": "{{name}} cambió algunos datos en otro equipo.",
+    "refresh": "Actualizar",
+    "beingEdited": "{{name}} tiene esto abierto en otro equipo. Puede verlo, pero no guardar hasta que lo cierre.",
+    "beingEditedGeneric": "Alguien tiene esto abierto en otro equipo. Puede verlo, pero no guardar hasta que lo cierre."
   }
 }
