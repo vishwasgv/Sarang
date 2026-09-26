@@ -140,7 +140,7 @@ async function run() {
       // page.locator('select') picks that up as index 0 and throws off
       // every subsequent index.
       const modal = page.locator('div.fixed.inset-0.z-50')
-      const selects = modal.locator('select')
+      const selects = modal.locator('select').filter({ has: page.locator('option', { hasText: '1000 —' }) })
       await selects.nth(0).selectOption({ label: '1000 — Cash & Bank' })
       await selects.nth(1).selectOption({ label: '3000 — Owner’s Capital' })
       const numberInputs = page.locator('input[type="number"]')

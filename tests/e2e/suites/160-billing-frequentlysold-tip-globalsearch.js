@@ -63,7 +63,7 @@ async function run() {
       await h.gotoHash(page, '#/billing/new')
       await page.waitForTimeout(700)
 
-      await page.getByRole('button', { name: /Add Tip/ }).click()
+      await page.getByRole('button', { name: /Add (Tip|Charge)/ }).click()
       await page.waitForTimeout(400)
       const modal = h.topModal(page)
       await modal.locator('input[type="number"]').fill('55')

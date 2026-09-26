@@ -53,7 +53,7 @@ async function run() {
 
       await page.getByRole('button', { name: /Check In$/ }).first().click()
       await page.waitForTimeout(400)
-      const searchInput = page.getByPlaceholder('Search by name or phone...')
+      const searchInput = page.getByPlaceholder(/Search by name or phone/)
       await searchInput.fill('E2E Chk Visitor')
       await page.waitForTimeout(700)
       await page.locator('button', { hasText: 'E2E Chk Visitor' }).first().click()
