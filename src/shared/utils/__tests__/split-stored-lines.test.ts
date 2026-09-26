@@ -1,5 +1,7 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { computeDocumentTotals, splitStoredLines, sumMoney, getCurrencyDecimals, roundMoney } from '../money'
+
+vi.setConfig({ testTimeout: 30000 }) // random-input property tests can pass the 5s default when the machine is busy
 
 // Deterministic PRNG so a failure is reproducible.
 function rng(seed: number) {

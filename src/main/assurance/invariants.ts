@@ -33,11 +33,16 @@ export async function invoiceProblems(): Promise<string[]> {
     // A split payment that fell a few minor units short is closed with a rounding write-off, which counts as paid.
     const writeOffs = await db.journalEntry.findMany({ where: { sourceType: 'PAYMENT_ROUNDING', sourceId: inv.id, isReversed: false }, include: { lines: true } })
     const writtenOff = writeOffs.reduce((s, e) => s + e.lines.reduce((t, l) => t + l.creditAmount, 0), 0)
-    const paid = inv.payments.filter((p) => !p.isReversed).reduce((s, p) => s + p.amount, 0) + writtenOff
+    // A foreign-currency settlement at a lower rate writes the shortfall off against Accounts Receivable; that also counts as paid.
+    const fxLoss = await db.journalEntry.findMany({ where: { sourceType: 'REALIZED_FX_GAIN_LOSS', sourceId: { in: inv.payments.filter((p) => !p.isReversed).map((p) => p.id) }, isReversed: false }, include: { lines: { include: { account: true } } } })
+    const fxWrittenOff = fxLoss.reduce((s, e) => s + e.lines.filter((l) => l.account.accountCode === '1100').reduce((t, l) => t + l.creditAmount, 0), 0)
+    const paid = inv.payments.filter((p) => !p.isReversed).reduce((s, p) => s + p.amount, 0) + writtenOff + fxWrittenOff
     if (Math.abs(paid - inv.paidAmount) > EPS) out.push(`${inv.invoiceNumber}: paidAmount ${inv.paidAmount} != sum of live payments ${paid}`)
     // Returns against the invoice reduce its open balance, so paid + balance may fall short of the total by up to the returned value.
     const returned = await db.invoice.aggregate({ where: { originalInvoiceId: inv.id, invoiceType: 'RETURN' }, _sum: { totalAmount: true } })
-    const returnedValue = Math.abs(returned._sum.totalAmount ?? 0)
+    const noted = await db.creditNote.aggregate({ where: { invoiceId: inv.id }, _sum: { appliedToInvoiceAmount: true } })
+    // Credit notes applied to the invoice reduce its open balance the same way.
+    const returnedValue = Math.abs(returned._sum.totalAmount ?? 0) + (noted._sum.appliedToInvoiceAmount ?? 0)
     const gap = inv.totalAmount - (inv.paidAmount + inv.balanceAmount)
     if (gap < -EPS || gap > returnedValue + EPS) out.push(`${inv.invoiceNumber}: paid ${inv.paidAmount} + balance ${inv.balanceAmount} vs total ${inv.totalAmount} (returned ${returnedValue})`)
     if (inv.balanceAmount < -EPS) out.push(`${inv.invoiceNumber}: negative balance ${inv.balanceAmount}`)

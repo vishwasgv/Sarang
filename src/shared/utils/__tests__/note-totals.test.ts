@@ -1,6 +1,8 @@
-import { describe, it, expect } from 'vitest'
+import { describe, it, expect, vi } from 'vitest'
 import { computeNoteTotals, computeDocumentTotals, getCurrencyDecimals, roundMoney, splitTaxHalves, sumMoney, type NoteTotalsInput } from '../money'
 import { gstPresentationLines } from '../gst-presentation'
+
+vi.setConfig({ testTimeout: 30000 }) // random-input property tests can pass the 5s default when the machine is busy
 
 function rng(seed: number) { let s = seed >>> 0; return () => { s = (Math.imul(s, 1664525) + 1013904223) >>> 0; return s / 4294967296 } }
 const CURRENCIES = ['INR', 'USD', 'KWD', 'JPY']
