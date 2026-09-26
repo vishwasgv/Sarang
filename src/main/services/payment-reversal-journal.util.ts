@@ -1,3 +1,4 @@
+import { ServiceError } from '../errors/service-error'
 import type { getPrisma } from '../database/db'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { customerLedgerService } from './customer-ledger.service'
@@ -80,4 +81,11 @@ export async function clearInvoiceLedgerRemainderTx(tx: TxClient, invoice: { id:
     creditAmount: net > 0 ? net : 0,
     remarks
   }, tx)
+}
+
+// A return already put its goods back and reversed its share of the sale, so cancelling the whole invoice on top of it
+// would restore those goods and reverse that revenue a second time.
+export async function assertNoReturnsTx(tx: TxClient, invoiceId: string): Promise<void> {
+  const returns = await tx.invoice.count({ where: { originalInvoiceId: invoiceId, invoiceType: 'RETURN' } })
+  if (returns > 0) throw new ServiceError('INVOC-019', 'This invoice has sales returns against it, so it cannot be cancelled. Return the remaining items instead.')
 }

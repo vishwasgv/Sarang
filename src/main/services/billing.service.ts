@@ -1,4 +1,4 @@
-import { reverseInvoicePaymentEntriesTx, clearInvoiceLedgerRemainderTx } from './payment-reversal-journal.util'
+import { reverseInvoicePaymentEntriesTx, clearInvoiceLedgerRemainderTx, assertNoReturnsTx } from './payment-reversal-journal.util'
 import { getPrisma } from '../database/db'
 import { taxExemptionActive } from './tax-exemption.util'
 import { parseLocalDateStart, addLocalDays } from '../utils/date.util'
@@ -1096,6 +1096,7 @@ export const billingService = {
         // ledger effects dated to the ORIGINAL invoiceDate, so that's the
         // date checked, not today.
         await assertNotLockedOrThrow(tx, invoice.invoiceDate)
+        await assertNoReturnsTx(tx, invoice.id)
         // Phase 62 — GL auto-posting: reverses the original invoice's
         // JournalEntry within this same transaction (no-ops if the invoice
         // predates GL auto-posting and never had one).

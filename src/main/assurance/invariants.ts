@@ -64,12 +64,20 @@ export async function customerBalanceProblems(): Promise<string[]> {
   return out
 }
 
-export async function stockProblems(): Promise<string[]> {
+export async function stockProblems(opts: { baselineFromMovements?: boolean } = {}): Promise<string[]> {
   const db = getPrisma()
   const inv = await db.inventory.findMany({ include: { product: { select: { productName: true } } } })
   const out: string[] = []
   for (const i of inv) {
     if (i.quantity < -EPS) out.push(`${i.product.productName}: negative stock ${i.quantity}`)
+    if (opts.baselineFromMovements) {
+      const mv = await db.inventoryMovement.aggregate({ where: { productId: i.productId }, _sum: { quantity: true } })
+      const moved = mv._sum.quantity ?? 0
+      if (Math.abs(moved - i.quantity) > EPS) out.push(`${i.product.productName}: quantity ${i.quantity} != sum of movements ${moved}`)
+      const loc = await db.locationStock.aggregate({ where: { productId: i.productId }, _sum: { quantity: true } })
+      const atLocations = loc._sum.quantity ?? 0
+      if (Math.abs(atLocations - i.quantity) > EPS) out.push(`${i.product.productName}: quantity ${i.quantity} != sum over locations ${atLocations}`)
+    }
   }
   return out
 }
@@ -95,14 +103,45 @@ export async function balanceSheetProblems(): Promise<string[]> {
   return bs.balanced ? [] : [`balance sheet does not balance: difference ${bs.difference}`]
 }
 
-export async function allProblems(): Promise<string[]> {
+export async function billProblems(): Promise<string[]> {
+  const db = getPrisma()
+  const bills = await db.bill.findMany({ include: { payments: true } })
+  const out: string[] = []
+  for (const b of bills) {
+    if (b.status === 'VOID') continue
+    const live = b.payments.filter((p) => !p.isReversed)
+    // A payment's amount counts in full towards the bill; any tax withheld (TDS) is part of that amount.
+    const paid = live.reduce((s, p) => s + p.amount, 0)
+    if (Math.abs(paid - b.paidAmount) > EPS) out.push(`bill ${b.billNumber}: paidAmount ${b.paidAmount} != live payments ${paid}`)
+    if (Math.abs(b.paidAmount + b.balanceAmount - b.totalAmount) > EPS) out.push(`bill ${b.billNumber}: paid ${b.paidAmount} + balance ${b.balanceAmount} != total ${b.totalAmount}`)
+    if (b.balanceAmount < -EPS) out.push(`bill ${b.billNumber}: negative balance ${b.balanceAmount}`)
+    const expected = b.balanceAmount <= EPS ? 'PAID' : b.paidAmount > EPS ? 'PARTIALLY_PAID' : 'OPEN'
+    if (b.status !== expected) out.push(`bill ${b.billNumber}: status ${b.status}, expected ${expected}`)
+  }
+  return out
+}
+
+export async function payableLedgerProblems(): Promise<string[]> {
+  const db = getPrisma()
+  const acct = await db.chartOfAccounts.findUnique({ where: { accountCode: '2000' } })
+  if (!acct) return []
+  const gl = await db.journalEntryLine.aggregate({ where: { accountId: acct.id }, _sum: { debitAmount: true, creditAmount: true } })
+  const glBalance = (gl._sum.creditAmount ?? 0) - (gl._sum.debitAmount ?? 0)
+  const open = await db.bill.aggregate({ where: { status: { not: 'VOID' } }, _sum: { balanceAmount: true } })
+  const owed = open._sum.balanceAmount ?? 0
+  return Math.abs(glBalance - owed) > EPS ? [`Accounts Payable ledger ${glBalance} != open bill balances ${owed}`] : []
+}
+
+export async function allProblems(opts: { stockFromMovements?: boolean } = {}): Promise<string[]> {
   return [
     ...(await journalBalanceProblems()),
     ...(await trialBalanceProblems()),
     ...(await invoiceProblems()),
     ...(await customerBalanceProblems()),
-    ...(await stockProblems()),
+    ...(await stockProblems({ baselineFromMovements: opts.stockFromMovements })),
     ...(await receivableLedgerProblems()),
-    ...(await balanceSheetProblems())
+    ...(await balanceSheetProblems()),
+    ...(await billProblems()),
+    ...(await payableLedgerProblems())
   ]
 }
