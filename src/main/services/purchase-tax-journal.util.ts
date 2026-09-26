@@ -99,16 +99,13 @@ export function goodsShareOf(items: Array<{ productId?: string | null; total: nu
   return items.filter((i) => !!i.productId).reduce((s, i) => s + Math.abs(i.total), 0) / all
 }
 
-export async function billGoodsShareTx(tx: TxClient, billId: string): Promise<number> {
-  return goodsShareOf(await tx.billItem.findMany({ where: { billId }, select: { productId: true, total: true } }))
+// The share is worked out on each line before its claimable tax (that tax goes to Input Tax Credit, not to the cost).
+export async function billGoodsShareTx(tx: TxClient, billId: string, claimable = true): Promise<number> {
+  const lines = await tx.billItem.findMany({ where: { billId }, select: { productId: true, total: true, taxAmount: true } })
+  return goodsShareOf(lines.map((l) => ({ productId: l.productId, total: claimable ? l.total - l.taxAmount : l.total })))
 }
 
-export async function orderGoodsShareTx(tx: TxClient, purchaseOrderId: string): Promise<number> {
-  return goodsShareOf(await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId }, select: { productId: true, total: true } }))
-}
-
-/** A debit note against a purchase order returns goods in the order's proportion; a free-standing note stays an expense credit. */
-export async function noteGoodsShareTx(tx: TxClient, debitNoteId: string): Promise<number> {
-  const linked = await tx.debitNote.findUnique({ where: { id: debitNoteId }, select: { purchaseOrderId: true } })
-  return linked?.purchaseOrderId ? orderGoodsShareTx(tx, linked.purchaseOrderId) : 0
+export async function orderGoodsShareTx(tx: TxClient, purchaseOrderId: string, claimable = true): Promise<number> {
+  const lines = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId }, select: { productId: true, total: true, taxAmount: true } })
+  return goodsShareOf(lines.map((l) => ({ productId: l.productId, total: claimable ? l.total - l.taxAmount : l.total })))
 }

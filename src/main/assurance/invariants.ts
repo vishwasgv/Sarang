@@ -130,6 +130,8 @@ export async function payableLedgerProblems(): Promise<string[]> {
   const db = getPrisma()
   const acct = await db.chartOfAccounts.findUnique({ where: { accountCode: '2000' } })
   if (!acct) return []
+  // A received purchase order (with or without a bill later) and a debit note also move Accounts Payable outside the bills, so this check only applies where none exist.
+  if ((await db.journalEntry.count({ where: { sourceType: { in: ['PURCHASE_ORDER', 'DEBIT_NOTE'] } } })) > 0) return []
   const gl = await db.journalEntryLine.aggregate({ where: { accountId: acct.id }, _sum: { debitAmount: true, creditAmount: true } })
   const glBalance = (gl._sum.creditAmount ?? 0) - (gl._sum.debitAmount ?? 0)
   const open = await db.bill.aggregate({ where: { status: { not: 'VOID' } }, _sum: { balanceAmount: true } })

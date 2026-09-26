@@ -39,7 +39,7 @@ async function postBillJournalEntry(tx: TxClient, bill: { id: string; billNumber
   const accounts = await loadPurchaseAccounts(tx, bill.isReverseCharge && bill.taxAmount > 0, claimable && bill.taxAmount > 0)
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'BILL', sourceId: bill.id, narration: `Bill ${bill.billNumber}`,
-    lines: purchaseJournalLines({ total: bill.totalAmount, tax: bill.taxAmount, isReverseCharge: bill.isReverseCharge, claimable, accounts, costCentreId: bill.costCentreId ?? null, goodsShare: await billGoodsShareTx(tx, bill.id) })
+    lines: purchaseJournalLines({ total: bill.totalAmount, tax: bill.taxAmount, isReverseCharge: bill.isReverseCharge, claimable, accounts, costCentreId: bill.costCentreId ?? null, goodsShare: await billGoodsShareTx(tx, bill.id, claimable) })
   })
 }
 

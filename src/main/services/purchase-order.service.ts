@@ -79,7 +79,7 @@ async function postPOJournalEntry(tx: TxClient, po: { id: string; poNumber: stri
   const accounts = await loadPurchaseAccounts(tx, po.isReverseCharge && po.taxAmount > 0, claimable && po.taxAmount > 0)
   await journalEntryService.postSystemEntry(tx, {
     sourceType: 'PURCHASE_ORDER', sourceId: po.id, narration: `PO ${po.poNumber} received`,
-    lines: purchaseJournalLines({ total: po.totalAmount, tax: po.taxAmount, isReverseCharge: po.isReverseCharge, claimable, accounts, goodsShare: await orderGoodsShareTx(tx, po.id) })
+    lines: purchaseJournalLines({ total: po.totalAmount, tax: po.taxAmount, isReverseCharge: po.isReverseCharge, claimable, accounts, goodsShare: await orderGoodsShareTx(tx, po.id, claimable) })
   })
 }
 

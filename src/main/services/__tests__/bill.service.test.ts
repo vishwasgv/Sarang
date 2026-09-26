@@ -1,6 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
-vi.mock('../purchase-tax-journal.util', async (orig) => ({ ...(await orig<typeof import('../purchase-tax-journal.util')>()), billGoodsShareTx: vi.fn().mockResolvedValue(0), orderGoodsShareTx: vi.fn().mockResolvedValue(0), noteGoodsShareTx: vi.fn().mockResolvedValue(0) }))
+vi.mock('../purchase-tax-journal.util', async (orig) => ({ ...(await orig<typeof import('../purchase-tax-journal.util')>()), billGoodsShareTx: vi.fn().mockResolvedValue(0), orderGoodsShareTx: vi.fn().mockResolvedValue(0) }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../supplier-ledger.service', () => ({
