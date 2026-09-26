@@ -1,3 +1,4 @@
+import { stockValueAndCostOfSales } from '../ratio-stock-cost.util'
 import { describe, it, expect, vi } from 'vitest'
 
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
@@ -16,6 +17,7 @@ vi.mock('../financial-statements.service', async () => {
     }
   }
 })
+vi.mock('../ratio-stock-cost.util', () => ({ stockValueAndCostOfSales: vi.fn().mockResolvedValue({ stockValue: 600, costOfSales: 1200 }) }))
 vi.mock('../sales-lines.query', () => ({
   loadSalesLines: vi.fn().mockImplementation(async (p: { dateFrom: string }) => ({
     decimals: 2,
@@ -121,6 +123,7 @@ describe('ratio analysis', () => {
     expect(r.chartRows).toEqual([{ name: 'ratios.name.grossMargin', value: 40 }, { name: 'ratios.name.netMargin', value: 25 }])
   })
   it('leaves a ratio blank when there is nothing to divide by', async () => {
+    vi.mocked(stockValueAndCostOfSales).mockResolvedValueOnce({ stockValue: 0, costOfSales: 0 })
     vi.mocked(getPrisma).mockReturnValue({ businessProfile: profile, journalEntryLine: { findMany: vi.fn().mockResolvedValue([]) }, bill: { findMany: vi.fn().mockResolvedValue([]) } } as never)
     const r = await BOOKS_REPORTS.ratioAnalysis.run(p)
     expect(r.rows.find((x) => x.ratio === 'ratios.name.grossMargin')!.value).toBeNull()

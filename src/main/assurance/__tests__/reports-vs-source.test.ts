@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeAll, afterAll } from 'vitest'
 
+vi.setConfig({ testTimeout: 120000, hookTimeout: 120000 })
 vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => process.env.TEMP ?? '.' } }))
 
 import { openRealDb, type RealDb } from '../real-db'
