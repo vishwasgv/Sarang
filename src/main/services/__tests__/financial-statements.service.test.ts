@@ -324,7 +324,7 @@ describe('financialStatementsService (db-backed)', () => {
     const findMany = vi.fn().mockResolvedValue(toRawEntries(JAN.filter((e) => e.src === 'BILL')))
     vi.mocked(getPrisma).mockReturnValue(dbWith({ journalEntry: { findMany } }) as never)
     const book = await financialStatementsService.generateDayBook({ dateFrom: '2026-01-01', dateTo: '2026-01-31', voucherType: 'PURCHASE' })
-    expect(findMany.mock.calls[0][0].where.sourceType).toEqual({ in: ['BILL', 'GOODS_RECEIPT_NOTE', 'PURCHASE_ORDER'] })
+    expect(findMany.mock.calls[0][0].where.sourceType).toEqual({ in: ['BILL', 'GOODS_RECEIPT_NOTE', 'PURCHASE_ORDER', 'DEBIT_NOTE'] })
     expect(book.totalVouchers).toBe(1)
     expect(book.totalDebit).toBe(20000)
   })

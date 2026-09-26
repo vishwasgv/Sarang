@@ -11,6 +11,7 @@ import { getBusinessCurrencyDecimals } from './settings.service'
 import { applyLocationDeltaTx } from './inventory.service'
 import { explodeKitComponentsTx } from './kit.service'
 import { markSerialAvailableTx } from './serial.service'
+import { postReturnJournalTx } from './return-journal.util'
 
 export interface ReturnItem {
   productId: string
@@ -393,6 +394,8 @@ export async function createReturn(
           remarks: `Credit for return — ${returnInvoice.invoiceNumber}`
         }, tx)
       }
+
+      await postReturnJournalTx(tx, returnInvoice)
 
       return returnInvoice
     })

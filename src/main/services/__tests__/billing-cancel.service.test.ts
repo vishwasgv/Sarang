@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../payment-reversal-journal.util', () => ({ reverseInvoicePaymentEntriesTx: vi.fn().mockResolvedValue(undefined), clearInvoiceLedgerRemainderTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn() }))
 vi.mock('../inventory.service', () => ({

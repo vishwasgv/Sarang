@@ -1,3 +1,4 @@
+import { reverseInvoicePaymentEntriesTx, clearInvoiceLedgerRemainderTx } from './payment-reversal-journal.util'
 import { getPrisma } from '../database/db'
 import { taxExemptionActive } from './tax-exemption.util'
 import { parseLocalDateStart, addLocalDays } from '../utils/date.util'
@@ -1099,6 +1100,7 @@ export const billingService = {
         // JournalEntry within this same transaction (no-ops if the invoice
         // predates GL auto-posting and never had one).
         await reverseEntryBySourceTx(tx, 'INVOICE', invoice.id, `Invoice ${invoice.invoiceNumber} cancelled: ${payload.reason}`, userId)
+        await reverseInvoicePaymentEntriesTx(tx, invoice.id, invoice.payments.map((p) => p.id), `Invoice ${invoice.invoiceNumber} cancelled: ${payload.reason}`, userId)
         // BUG FOUND 2026-07-22: every sibling mutation that must not touch a
         // RETURN invoice (splitInvoice's SPLIT-003, createReturn's RET-004)
         // has this exact guard; cancelInvoice didn't, relying only on the UI
@@ -1241,6 +1243,8 @@ export const billingService = {
             }, tx)
           }
         }
+
+        await clearInvoiceLedgerRemainderTx(tx, invoice, `Cancellation of Invoice ${invoice.invoiceNumber}`)
 
         // Auto-reverse all non-reversed payments so the audit trail stays clean
         // and cash/payment reports don't show phantom received amounts on cancelled invoices.

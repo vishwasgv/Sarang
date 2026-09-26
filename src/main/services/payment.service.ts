@@ -9,6 +9,8 @@ import { getBusinessCurrencyDecimals } from './settings.service'
 import { assertNotLockedOrThrow } from './transaction-lock.service'
 import { chartOfAccountsService } from './chart-of-accounts.service'
 import { journalEntryService, reverseEntryBySourceTx } from './journal-entry.service'
+import { writeOffSplitShortfallTx } from './split-payment-rounding.util'
+import { reversePaymentJournalTx } from './payment-reversal-journal.util'
 import type { RecordPaymentPayload, RecordForeignCurrencySettlementPayload, RecordSplitPaymentPayload, ReversePaymentPayload } from '../validation/payment.validation'
 
 type TxClient = Parameters<Parameters<ReturnType<typeof getPrisma>['$transaction']>[0]>[0]
@@ -335,6 +337,8 @@ export const paymentService = {
           await postPaymentJournalEntry(tx, { paymentId: pmt.id, invoiceNumber: invoice.invoiceNumber, amount: leg.amount })
         }
 
+        await writeOffSplitShortfallTx(tx, invoice, roundCurrency(invoice.balanceAmount - splitTotal, dp))
+
         // paidAmount credits the invoice for its full actual balanceAmount, not
         // the entered splitTotal — the PM-007 check above already tolerates up
         // to 5 paise of mismatch between them as "close enough to call paid".
@@ -388,7 +392,7 @@ export const paymentService = {
         await assertNotLockedOrThrow(tx, payment.paymentDate)
 
         // Phase 62 — GL auto-posting: reverse the original payment's JournalEntry.
-        await reverseEntryBySourceTx(tx, 'PAYMENT', payment.id, `Payment reversed: ${payload.reason} (Invoice ${payment.invoice.invoiceNumber})`, userId)
+        await reversePaymentJournalTx(tx, payment, payment.invoice.invoiceNumber, `Payment reversed: ${payload.reason}`, userId)
 
         // Real bug found in this audit: recordForeignCurrencySettlement's
         // Payment.amount is the APPLIED amount, not necessarily the full
