@@ -1,3 +1,4 @@
+import { postProductionCostTx } from './production-journal.util'
 import { getPrisma } from '../database/db'
 import { logAction } from './audit.service'
 import { generateSequenceNumber } from './sequence.service'
@@ -479,6 +480,10 @@ export async function completeProductionOrder(payload: {
         }
       })
       await applyLocationDeltaTx(tx, order.productId, payload.producedQty)
+      await postProductionCostTx(tx, {
+        orderNumber: order.orderNumber, totalCost,
+        componentCost: order.materialUsage.reduce((sum, u) => sum + (u.componentProduct ? u.quantityActual * (u.componentProduct.inventory?.averageCost ?? 0) : 0), 0)
+      })
 
       // The claim above already applied every field change atomically —
       // just re-fetch the full record (with its includes) for the response.

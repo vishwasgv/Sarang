@@ -20,7 +20,7 @@
     "src/main/services/lab-test-order.service.ts": 622,
     "src/main/services/message-template.defaults.ts": 826,
     "src/main/services/print.service.ts": 2076,
-    "src/main/services/production-order.service.ts": 719,
+    "src/main/services/production-order.service.ts": 724,
     "src/main/services/quotation.service.ts": 613,
     "src/main/services/rental.service.ts": 1027,
     "src/main/services/report.service.ts": 10993,

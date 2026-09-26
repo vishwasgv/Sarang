@@ -1,5 +1,6 @@
 import { describe, it, expect, vi, beforeEach } from 'vitest'
 
+vi.mock('../production-journal.util', () => ({ postProductionCostTx: vi.fn().mockResolvedValue(undefined) }))
 vi.mock('../../database/db', () => ({ getPrisma: vi.fn() }))
 vi.mock('../audit.service', () => ({ logAction: vi.fn().mockResolvedValue(undefined) }))
 
