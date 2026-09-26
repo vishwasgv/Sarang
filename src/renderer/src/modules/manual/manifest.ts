@@ -25,6 +25,7 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   { slug: 'guide-reminders-alerts', group: 'getting-started', title: 'Guide: Reminders and Alerts' },
   { slug: 'guide-money-books', group: 'getting-started', title: 'Guide: Money and Your Books' },
   { slug: 'guide-routine', group: 'getting-started', title: 'Guide: Daily, Weekly and Monthly Routine' },
+  { slug: 'guide-multi-user', group: 'getting-started', title: 'Guide: Using Sarang on More Than One PC' },
 
   // Universal features — apply to every business type
   { slug: 'billing', group: 'universal', title: 'Billing & Documents' },
