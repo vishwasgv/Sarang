@@ -5,6 +5,7 @@ import { parseLocalDateStart, parseLocalDateEnd, toLocalISODate } from '../utils
 import { classifyAccount, YEAR_END_SOURCE, financialStatementsService } from './financial-statements.service'
 import type { CellValue, GenericReport, GenericReportDefinition, GenericReportParams } from './generic-report.types'
 import { loadSalesLines } from './sales-lines.query'
+import { stockValueAndCostOfSales } from './ratio-stock-cost.util'
 
 // Reports read from the books: fund flow, bank book and reconciliation summary, ratios, year over year, and the
 // credit note, debit note and sales return registers.
@@ -172,23 +173,24 @@ async function ratioAnalysis(p: GenericReportParams): Promise<GenericReport> {
   const from = parseLocalDateStart(p.dateFrom)
   const to = parseLocalDateEnd(p.dateTo)
   const days = Math.max(1, Math.round((to.getTime() - from.getTime()) / 86400000))
-  const [sheet, plLines, bills] = await Promise.all([
+  const [sheet, plLines, bills, stockCost] = await Promise.all([
     financialStatementsService.generateBalanceSheet({ asOf }),
     db.journalEntryLine.findMany({
       where: { journalEntry: { entryDate: { gte: from, lte: to }, sourceType: { not: YEAR_END_SOURCE } }, account: { accountType: { in: ['INCOME', 'EXPENSE'] } } },
       select: { debitAmount: true, creditAmount: true, account: { select: { accountCode: true, accountType: true } } }
     }),
-    db.bill.findMany({ where: { billDate: { gte: from, lte: to }, status: { not: 'VOID' } }, select: { totalAmount: true } })
+    db.bill.findMany({ where: { billDate: { gte: from, lte: to }, status: { not: 'VOID' } }, select: { totalAmount: true } }),
+    stockValueAndCostOfSales(from, to, decimals)
   ])
   const group = (key: string) => sheet.groups.find((g) => g.key === key)
   const rowAmount = (code: string) => sheet.groups.flatMap((g) => g.rows).find((r) => r.accountCode === code)?.amount ?? 0
   const currentAssets = group('currentAssets')?.total ?? 0
   const currentLiabilities = group('currentLiabilities')?.total ?? 0
-  const inventory = rowAmount('1200')
+  const inventory = stockCost.stockValue
   const receivables = rowAmount('1100')
   const payables = rowAmount('2000')
   const income = sumMoney(plLines.filter((l) => l.account.accountType === 'INCOME').map((l) => l.creditAmount - l.debitAmount), decimals)
-  const cogs = sumMoney(plLines.filter((l) => l.account.accountCode === '5000').map((l) => l.debitAmount - l.creditAmount), decimals)
+  const cogs = stockCost.costOfSales
   const expense = sumMoney(plLines.filter((l) => l.account.accountType === 'EXPENSE').map((l) => l.debitAmount - l.creditAmount), decimals)
   const profit = roundMoney(income - expense, decimals)
   const purchases = sumMoney(bills.map((b) => b.totalAmount), decimals)
@@ -196,7 +198,7 @@ async function ratioAnalysis(p: GenericReportParams): Promise<GenericReport> {
 
   const list: Array<{ id: string; value: number | null; unit: 'times' | 'percent' | 'days' }> = [
     { id: 'current', value: ratio(currentAssets, currentLiabilities), unit: 'times' },
-    { id: 'quick', value: ratio(roundMoney(currentAssets - inventory, decimals), currentLiabilities), unit: 'times' },
+    { id: 'quick', value: ratio(roundMoney(currentAssets - rowAmount('1200'), decimals), currentLiabilities), unit: 'times' },
     { id: 'debtToEquity', value: ratio(sheet.totals.liabilities, equity), unit: 'times' },
     { id: 'grossMargin', value: income !== 0 ? pct(roundMoney(income - cogs, decimals), income) : null, unit: 'percent' },
     { id: 'netMargin', value: income !== 0 ? pct(profit, income) : null, unit: 'percent' },

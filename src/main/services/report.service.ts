@@ -1115,7 +1115,7 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
   const [invoices, expenses] = await Promise.all([
     db.invoice.findMany({
       where: { status: 'ACTIVE', paymentStatus: { in: ['PAID', 'PARTIAL'] }, invoiceDate: { gte: from, lte: to } },
-      select: { totalAmount: true, invoiceType: true, items: { select: { quantity: true, productId: true } } }
+      select: { totalAmount: true, taxAmount: true, invoiceType: true, items: { select: { quantity: true, productId: true } } }
     }),
     db.expense.findMany({
       where: { expenseDate: { gte: from, lte: to } },
@@ -1130,7 +1130,8 @@ async function generateProfitAndLossReport(params: { dateFrom: string; dateTo: s
   // silently diverging from it.
   const costs = await getProductCostsBatch(invoices.flatMap(inv => inv.items.map(it => it.productId)))
 
-  const revenue = sumCurrency(invoices.map(inv => inv.totalAmount))
+  // Revenue is what was sold before tax: the tax collected belongs to the tax authority (a return stores its tax as a positive magnitude).
+  const revenue = sumCurrency(invoices.map(inv => inv.totalAmount - (inv.invoiceType === 'RETURN' ? -1 : 1) * inv.taxAmount))
   // Same RETURN-invoice sign correction as analytics.service.ts's
   // computeProfit(): a return's item quantities are stored positive (used to
   // restock inventory), so summing quantity*cost unconditionally would

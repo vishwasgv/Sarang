@@ -1548,7 +1548,7 @@ describe('reportService.generateProfitAndLossReport', () => {
   // see report.service.ts's own generateProfitAndLossReport.
   function makePLInvoice(overrides: Record<string, unknown> = {}) {
     return {
-      totalAmount: 1000, invoiceType: 'SALE',
+      totalAmount: 1000, taxAmount: 0, invoiceType: 'SALE',
       items: [{ quantity: 2, productId: 'prod-1' }],
       ...overrides,
     }

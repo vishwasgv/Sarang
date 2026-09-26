@@ -23,7 +23,7 @@
     "src/main/services/production-order.service.ts": 719,
     "src/main/services/quotation.service.ts": 613,
     "src/main/services/rental.service.ts": 1027,
-    "src/main/services/report.service.ts": 10982,
+    "src/main/services/report.service.ts": 10983,
     "src/main/services/restaurant.service.ts": 1011,
     "src/preload/index.ts": 1990,
     "src/renderer/src/modules/backup/ui/BackupScreen.tsx": 818,
