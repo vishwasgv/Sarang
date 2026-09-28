@@ -1,69 +1,108 @@
-SARANG BUSINESS OS LITE — LICENSE & TERMS OF USE
-Aszurex | Trust Beyond Limits
-Copyright (c) 2026 Aszurex. All rights reserved.
+SARANG BUSINESS OS LITE - LICENSE AND TERMS OF USE
+AszureX | Trust Beyond Limits
+Copyright (c) 2026 AszureX. All rights reserved.
 
-Please read these terms before installing.
+Please read these terms before installing. The full, current terms are at
+aszurex.com/sarang-terms.html. If this text and those terms differ, the one
+that is more protective of your data and of your right to view and export it
+applies.
 
-1. FREE FOR YOUR FIRST 12 MONTHS, THEN A LICENSE FEE
-   Sarang Business OS Lite is free to use for the first 12 months from the
-   date you activate it. After that, continued use requires a license
-   (currently 599 INR/year in India, 29 USD/year internationally) — you will
-   be reminded inside the app well before this applies, and existing data,
-   viewing, printing, exporting, and backup/restore remain available even if
-   a license lapses; only creating new invoices/bills is affected. A license
-   key is tied to one device (your PC or laptop) at a time. Full terms are
-   in the in-app Settings > License section and at aszurex.com/sarang.
-   (If you installed a version of Sarang before this term applied, it
-   remains free for you exactly as originally provided.)
+1. THE LICENSE AND THE FREE TRIAL
+   AszureX grants you a personal, non-exclusive, non-transferable license to
+   install and use Sarang Business OS Lite for your own business, on the
+   number of PCs your license key allows, for the period the key covers.
+   Sarang is licensed, not sold. You get a free trial of 100 days from the
+   day you activate it. After that, creating new invoices and similar
+   billable documents needs a paid annual license. The price is shown on
+   aszurex.com when you buy and before you pay; a price change never affects
+   a license period you have already paid for. Licenses do not renew
+   automatically unless you set up a recurring payment yourself.
 
-2. OFFLINE-FIRST, YOUR DATA STAYS ON YOUR COMPUTER
-   Sarang stores all business data (invoices, customers, inventory, and
-   everything else you enter) locally on this computer, in a SQLite
-   database under your Windows user profile. Sarang does not require an
-   internet connection to operate, does not send your business data to
-   Aszurex or any third party, and does not use cloud storage. You are
-   solely responsible for backing up and safeguarding your own data;
-   Sarang includes built-in backup and restore tools for this purpose.
+2. WHEN A LICENSE ENDS
+   If your trial or paid period ends, Sarang does not lock you out of your
+   data. You can still view, search, print, export, and back up everything
+   you entered. Only the creation of new invoices and similar documents
+   pauses until you renew.
 
-3. NO TRACKING, NO TELEMETRY
-   Sarang does not collect analytics, usage telemetry, or tracking data
-   of any kind, and makes no network calls to Aszurex servers during
-   normal operation.
+3. PCS AND SEATS
+   A license covers one PC, the shop PC that keeps your data. If you turn on
+   the optional multi-user feature, other PCs on your own network can work on
+   the same business at the same time; each PC signed in at the same moment
+   uses one seat, and the shop PC counts as one. Your license key states how
+   many seats you have. Using a key on more PCs than its seats allow is not
+   permitted. You may move your license to replacement hardware.
 
-4. NO PAYMENT PROCESSING
-   Sarang can generate UPI QR codes for display so your customers can pay
-   you directly through their own banking or UPI app. Aszurex does not
-   process, verify, or handle any payment through this software — Sarang
-   only records that a payment was made, based on what you enter.
+4. YOUR DATA STAYS ON YOUR COMPUTER
+   Sarang stores your business data (invoices, customers, inventory, and
+   everything else you enter) on your own computer, in a database under your
+   Windows user profile. AszureX does not receive it, and there is no cloud
+   storage. In multi-user mode, data travels only between your own PCs on
+   your own network. You own your data. You are responsible for taking
+   regular backups (Sarang has built-in backup and restore), for keeping your
+   PCs and network secure, and for keeping the records your country's law
+   requires. AszureX cannot recover data from your computer.
 
-5. "AS IS", NO WARRANTY
-   This software is provided "as is", without warranty of any kind,
-   express or implied, including but not limited to warranties of
-   merchantability, fitness for a particular purpose, or accuracy of
-   calculations (including tax, GST, or other statutory computations).
-   You are responsible for verifying that figures used for tax filing,
-   compliance, or other legal/financial purposes are correct before
-   relying on them.
+5. WHAT SARANG SENDS OVER THE INTERNET
+   Sarang works fully offline. Nothing below ever blocks it from working.
+   When your PC happens to be online, Sarang may send AszureX:
+   - a license check, at most once a day: a one-way hash of your license key
+     and a one-way hash of this PC's identifier (neither can be turned back
+     into the key or the identifier). We use it to see that a license is in
+     use and on how many PCs, and to be able to stop a key that was forged,
+     shared beyond its seats, or resold;
+   - the number of minutes Sarang was open each day, with the same key hash,
+     to see overall usage patterns;
+   - an update check (paid, active licenses only), which contacts our
+     release page on GitHub. GitHub can see your IP address, as any website
+     can. You can switch the check off in Settings.
+   No invoice, customer, product, or other business data is ever sent. The
+   Privacy Policy at aszurex.com/sarang-privacy.html explains this in full.
 
-6. LIMITATION OF LIABILITY
-   To the maximum extent permitted by applicable law, Aszurex shall not
-   be liable for any indirect, incidental, special, or consequential
-   damages, or for any loss of data, profits, or business, arising from
-   the use of or inability to use this software, including any loss
-   arising from the license verification, expiration, degraded-mode, or
-   renewal process described in Section 1 above.
+6. NO PAYMENT PROCESSING
+   Sarang can show UPI QR codes so your customers can pay you directly through
+   their own banking app. AszureX does not process, verify, or handle any
+   payment made this way; Sarang only records what you enter.
 
-7. ACCEPTABLE USE
-   You may install and use Sarang Business OS Lite for your own business
-   operations. You may not resell, sublicense, or represent this software
-   as your own product.
+7. TAX, ACCOUNTING AND LEGAL FIGURES
+   Sarang helps you prepare invoices, tax figures, reports, and return files.
+   It is not tax, accounting, or legal advice. Tax rates, rules, and file
+   formats change and differ by place. You must check every figure and file
+   before you file a return, pay tax, or rely on a report. Sarang does not
+   file anything with any government.
 
-8. CHANGES TO THIS SOFTWARE
-   Aszurex may release updated versions of Sarang. Installing an update
-   preserves your existing data; a safety backup is created automatically
-   before any update that changes the database structure.
+8. "AS IS", NO WARRANTY, LIMIT OF LIABILITY
+   Sarang is provided "as is" and "as available", without warranty of any
+   kind, express or implied, including fitness for a particular purpose and
+   the accuracy of any calculation. To the fullest extent the law allows,
+   AszureX is not liable for indirect, incidental, special, or consequential
+   loss, or for loss of data, profit, or business, and its total liability
+   for any claim about Sarang is limited to the license fees you paid in the
+   12 months before the claim arose. Nothing here limits liability that
+   cannot lawfully be limited, such as for fraud or for death or personal
+   injury caused by negligence.
 
-By clicking "I Agree", you acknowledge that you have read and accepted
-these terms.
+9. ACCEPTABLE USE AND REVOKING A KEY
+   You may not copy Sarang for others, resell, rent, lend, or sublicense it,
+   present it as your own product, remove or alter license checks, or use a
+   key that was not issued to you. AszureX may stop a license key from working
+   if it was forged, shared beyond its seats, resold, bought with a payment
+   that was reversed or found fraudulent, or used to attack our services.
+   Stopping a key never deletes or locks your own data; you can still view,
+   export, and back it up.
 
-Sarang Business OS Lite | Aszurex | www.aszurex.com
+10. UPDATES
+   AszureX may release updated versions. Installing an update keeps your
+   existing data, and a safety backup is created automatically before any
+   update that changes the database structure. Updates may change or remove
+   features, but we will not remove your ability to view and export your data.
+
+11. GOVERNING LAW
+   These terms are governed by the laws of India, and disputes are subject to
+   the competent courts in India, after we have tried in good faith for 30
+   days to resolve it. This does not remove any consumer right you have in
+   your own country that cannot be waived.
+
+By clicking "I Agree", you confirm that you have read and accepted these
+terms.
+
+Sarang Business OS Lite | AszureX | www.aszurex.com | contact@aszurex.com

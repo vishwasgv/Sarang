@@ -138,7 +138,7 @@ async function runFlow(app, t0) {
     await page.waitForTimeout(500)
     const activated = await page.locator('text=License activated for this device').count()
     log(`Step: Complete — license key activation ${activated ? 'succeeded' : 'FAILED — check TEST_LICENSE_SECRET matches this build'}`)
-    await page.locator('text=I understand Sarang is free for my first 12 months').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
+    await page.locator('text=I understand Sarang is free for my first 100 days').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
   }
   await shot('07-complete')
 

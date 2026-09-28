@@ -543,7 +543,7 @@ export function BillDetailScreen() {
                     <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('bills.tdsSection')}</label>
                     <input list="tds-sections" value={tdsSection} onChange={e => setTdsSection(e.target.value)} placeholder="194C"
                       className="w-full h-9 px-3 rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 dark:text-slate-100 text-sm focus:outline-none focus:ring-2 focus:ring-brand" />
-                    <datalist id="tds-sections">{TDS_SECTIONS.map(x => <option key={x.code} value={x.code}>{x.label}</option>)}</datalist>
+                    <datalist id="tds-sections">{TDS_SECTIONS.map(x => <option key={x.code} value={x.code}>{`${x.label} (Income-tax Act 2025: ${x.newRef})`}</option>)}</datalist>
                   </div>
                   <div>
                     <label className="block text-[11px] font-semibold text-slate-500 dark:text-slate-400 uppercase mb-1">{t('bills.tdsAmountLabel', { symbol: currSym })}</label>

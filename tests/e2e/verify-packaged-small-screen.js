@@ -98,7 +98,7 @@ async function main() {
       await licenseKeyField.fill(generateTestLicenseKey('TRIAL', 'IN'))
       await page.getByRole('button', { name: 'Activate' }).click()
       await page.waitForTimeout(500)
-      await page.locator('text=I understand Sarang is free for my first 12 months').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
+      await page.locator('text=I understand Sarang is free for my first 100 days').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
     }
 
     const launchBtn = page.getByRole('button', { name: 'Launch Dashboard' })

@@ -34,7 +34,7 @@
 ; installer.nsi -> assistedInstaller.nsh -> Modern UI 2's Pages/Welcome.nsh.
 !macro customWelcomePage
   !define MUI_WELCOMEPAGE_TITLE "Welcome to Sarang Business OS Lite"
-  !define MUI_WELCOMEPAGE_TEXT "Sarang is an offline-first business management system powered by Aszurex.$\n$\nYour data is stored securely on this computer — no cloud, no internet required. Free for your first 12 months.$\n$\nNote: Windows may show a SmartScreen notice for this installer since Sarang is newly released. If you downloaded it from the official Aszurex website, click 'More info' then 'Run anyway' — that's expected and safe.$\n$\nClick Next to continue."
+  !define MUI_WELCOMEPAGE_TEXT "Sarang is an offline-first business management system powered by Aszurex.$\n$\nYour data is stored securely on this computer — no cloud, no internet required. Free for your first 100 days.$\n$\nNote: Windows may show a SmartScreen notice for this installer since Sarang is newly released. If you downloaded it from the official Aszurex website, click 'More info' then 'Run anyway' — that's expected and safe.$\n$\nClick Next to continue."
   !insertmacro MUI_PAGE_WELCOME
 !macroend
 

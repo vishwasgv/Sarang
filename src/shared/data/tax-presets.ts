@@ -114,7 +114,7 @@ const PRESET_LIST: TaxPreset[] = [
     rates: [std('VAT 19%', 19), red('VAT 7%', 7)],
     taxNumberLabel: 'VAT ID (USt-IdNr.)', taxNumberPattern: /^(DE)?\d{9}$/, languages: ['de'], pricesUsuallyIncludeTax: true,
     sources: [TF_EU, EUROFISCALIS],
-    notes: ['Sources disagree on whether restaurant food is at 7% from 1 January 2026; confirm the rate for meals.']
+    notes: ['From 1 January 2026 restaurant and catering food (dine-in, takeaway and delivery) is at 7%; drinks stay at 19%.']
   }),
   make({
     code: 'FR', name: 'France', currency: 'EUR', taxModel: 'VAT', taxLabel: 'TVA',

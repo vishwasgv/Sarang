@@ -166,7 +166,7 @@ async function main() {
           await shot(page, '02-activation-failed')
           passed = false
         } else {
-          await page.locator('text=I understand Sarang is free for my first 12 months').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
+          await page.locator('text=I understand Sarang is free for my first 100 days').locator('xpath=preceding-sibling::input[@type="checkbox"]').check()
           await shot(page, '02-license-activated')
 
           const launchBtn = page.getByRole('button', { name: 'Launch Dashboard' })
