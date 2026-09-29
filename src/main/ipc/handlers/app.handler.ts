@@ -1,6 +1,7 @@
 import { dialog, app } from 'electron'
 import { copyFile, mkdir, stat } from 'fs/promises'
 import { extname, join } from 'path'
+import { pathToFileURL } from 'url'
 import { getPrisma } from '../../database/db'
 import { logger } from '../../utils/logger'
 import { requireSession } from '../permission-guard'
@@ -12,12 +13,20 @@ type HandleFn = (channel: string, handler: (payload: unknown) => Promise<unknown
 
 export function register(handle: HandleFn): void {
   handle('app:getPaths', async () => {
+    // ocrAssetsUrl (J10, 2026-09-29): a file:// URL for the bundled tesseract.js worker/core/
+    // trained-data directory (see electron-builder.config.ts's resources/ocr entry) — always
+    // an explicit local path, so receipt OCR never falls back to tesseract.js's documented
+    // default of fetching these files from the jsdelivr CDN.
+    const ocrAssetsDir = app.isPackaged
+      ? join(process.resourcesPath, 'ocr')
+      : join(__dirname, '../../resources/ocr')
     return {
       success: true,
       data: {
         userData: app.getPath('userData'),
         logs: join(app.getPath('userData'), 'logs'),
-        backups: join(app.getPath('userData'), 'backups')
+        backups: join(app.getPath('userData'), 'backups'),
+        ocrAssetsUrl: pathToFileURL(ocrAssetsDir).href
       }
     }
   })

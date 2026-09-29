@@ -143,6 +143,18 @@ const config: Configuration = {
       from: 'resources/owner-view',
       to: 'owner-view'
     },
+    // Receipt OCR (J10, 2026-09-29) — tesseract.js's worker script, WASM core (SIMD+LSTM
+    // build only; Electron's bundled Chromium always supports WASM SIMD, so no non-SIMD
+    // fallback is carried) and English trained data, vendored here so OCR runs fully
+    // offline. Without this entry (see the doctor-pad/owner-view bug notes above for exactly
+    // this class of mistake), tesseract.js's documented default behaviour is to silently
+    // fetch these three files from the jsdelivr CDN instead — a real violation of Sarang's
+    // offline-first, no-network-calls architecture that must never happen. See
+    // receipt-ocr.util.ts for how the renderer locates this directory via app:getPaths.
+    {
+      from: 'resources/ocr',
+      to: 'ocr'
+    },
     // Noto Sans fonts for Indian scripts are bundled via Vite (@fontsource packages)
     // and land in the ASAR under out/renderer/assets/ — no extraResources needed
     // Phase 57 — AI Assistant's bundled local model (Qwen2.5-1.5B-Instruct,

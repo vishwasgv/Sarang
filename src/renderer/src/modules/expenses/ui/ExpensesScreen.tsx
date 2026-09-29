@@ -1,6 +1,6 @@
 import React, { useState, useEffect, useCallback } from 'react'
 import { useTranslation } from 'react-i18next'
-import { Plus, Edit, Trash2, Wallet, X } from 'lucide-react'
+import { Plus, Edit, Trash2, Wallet, X, ScanLine } from 'lucide-react'
 import { Button } from '@shared/ui/atoms/Button'
 import { Input } from '@shared/ui/atoms/Input'
 import { ConfirmDialog } from '@shared/ui/molecules/ConfirmDialog'
@@ -14,6 +14,7 @@ import { formatCurrency, moneyFixed } from '@shared/utils/currency.util'
 import { formatDate, toLocalISODate } from '@shared/utils/locale.util'
 import { useBusinessStore } from '@app/store/business.store'
 import { CustomFieldsEditor, parseCustomFields } from '@shared/ui/molecules/CustomFieldsEditor'
+import { runReceiptOcr } from '../receipt-ocr.util'
 
 interface ExpenseCategory { id: string; categoryName: string }
 interface Expense {
@@ -73,6 +74,10 @@ export function ExpensesScreen() {
     customFields: {} as Record<string, string | number>
   })
   const [formSaving, setFormSaving] = useState(false)
+  // Receipt OCR (J10) — assistive only: detected fields land in the normal editable inputs
+  // above, never auto-saved, so a bad OCR read costs a re-type, not a wrong expense on the books.
+  const [scanningReceipt, setScanningReceipt] = useState(false)
+  const [receiptDetected, setReceiptDetected] = useState(false)
 
   // Delete
   const [deleteTarget, setDeleteTarget] = useState<Expense | null>(null)
@@ -115,12 +120,38 @@ export function ExpensesScreen() {
 
   function openCreate() {
     setEditExpense(null)
+    setReceiptDetected(false)
     setFormData({
       categoryId: categories[0]?.id ?? '', expenseName: '', amount: '', expenseDate: today(), paymentMethod: 'CASH', remarks: '',
       supplierId: '', billableCustomerId: '', isMileage: false, mileageKm: '', mileageRatePerKm: '', isReverseCharge: false, costCentreId: '',
       customFields: {}
     })
     setFormOpen(true)
+  }
+
+  async function handleReceiptFile(file: File | undefined) {
+    if (!file) return
+    setScanningReceipt(true)
+    setReceiptDetected(false)
+    try {
+      const detected = await runReceiptOcr(file)
+      if (!detected.amount && !detected.date && !detected.vendor) {
+        toastError(t('common.error'), t('expenses.receiptScanFailedMessage'))
+        return
+      }
+      setFormData((d) => ({
+        ...d,
+        // Never overwrite something the user already typed — OCR only fills blanks.
+        expenseName: d.expenseName || detected.vendor || d.expenseName,
+        amount: d.amount || (detected.amount != null ? moneyFixed(detected.amount) : d.amount),
+        expenseDate: detected.date || d.expenseDate
+      }))
+      setReceiptDetected(true)
+    } catch {
+      toastError(t('common.error'), t('expenses.receiptScanFailedMessage'))
+    } finally {
+      setScanningReceipt(false)
+    }
   }
 
   function openEdit(exp: Expense) {
@@ -348,6 +379,29 @@ export function ExpensesScreen() {
             <div className="flex items-center justify-between">
               <h2 className="text-base font-bold text-dark dark:text-slate-100">{editExpense ? t('expenses.editExpense') : t('expenses.addExpense')}</h2>
               <button onClick={() => setFormOpen(false)} className="text-slate-400 hover:text-slate-600 transition-colors"><X size={18} /></button>
+            </div>
+
+            <div>
+              <input
+                id="receipt-scan-input"
+                type="file"
+                accept="image/*"
+                className="hidden"
+                onChange={(e) => { void handleReceiptFile(e.target.files?.[0]); e.target.value = '' }}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                className="w-full"
+                disabled={scanningReceipt}
+                onClick={() => document.getElementById('receipt-scan-input')?.click()}
+              >
+                <ScanLine size={14} className="mr-1.5" />
+                {scanningReceipt ? t('expenses.scanningReceipt') : t('expenses.scanReceipt')}
+              </Button>
+              {receiptDetected && (
+                <p className="text-xs text-brand mt-1.5">{t('expenses.receiptDetectedNotice')}</p>
+              )}
             </div>
 
             <Select label={t('expenses.category')} required value={formData.categoryId} onChange={e => setFormData(d => ({ ...d, categoryId: e.target.value }))}>
