@@ -2,10 +2,8 @@
 // Split deliberately into two pieces:
 //  - parseReceiptText() is a pure function (no image/OCR involved) — fully unit-tested against
 //    real-shaped receipt text fixtures in the test file next to this one.
-//  - runReceiptOcr() wraps tesseract.js to turn an image into text. This half has NOT been
-//    live-verified end to end in the packaged Electron renderer (worker/WASM asset loading
-//    under Electron's file:// protocol is a known trouble spot for this library) — flag it for
-//    a live check (see M4/M8 in BUILD CHECKLIST.md) before relying on it.
+//  - runReceiptOcr() wraps tesseract.js to turn an image into text, served via the sarang-ocr://
+//    protocol (see ocr-protocol.ts) after a real CSP + file:// bug was found live (F-90).
 //
 // Either way, this is a convenience: the user always sees the detected values in the normal
 // editable form fields before saving, never auto-submitted, so a bad OCR read costs a moment
@@ -131,26 +129,21 @@ export function parseReceiptText(rawText: string): ParsedReceipt {
 /**
  * Runs offline OCR on an image (a photo/scan of a receipt) and returns the parsed fields.
  *
- * All three of tesseract.js's asset paths (worker script, WASM core, trained data) are pointed
- * explicitly at the locally bundled copies in resources/ocr (see electron-builder.config.ts and
- * app.handler.ts's app:getPaths → ocrAssetsUrl) — tesseract.js's own documented default, when
- * any of these is left unset, is to silently fetch it from the jsdelivr CDN, which would be a
- * real breach of Sarang's offline-first, no-network-calls architecture. corePath is given as the
- * exact .js filename (not the bundled directory) to skip tesseract's own SIMD/relaxed-SIMD
- * auto-detection, since only the plain SIMD-LSTM core variant is bundled — Electron's Chromium
- * always supports WASM SIMD, so this is safe, but auto-detection could otherwise pick a
- * relaxed-SIMD variant that was never bundled and fail to load it.
- *
- * NOT live-verified end-to-end in the packaged app yet: this app's renderer runs with
- * sandbox: true and webSecurity: true (see src/main/index.ts), and Web Worker + WASM loading
- * of local files under those settings is a known trouble spot for this library that needs a
- * hands-on check before this feature is relied on (BUILD CHECKLIST.md M4/M8 — live checks).
- * The Expense form never auto-saves a detected value, so the worst case of this not working is
- * a friendly "couldn't read that receipt" message, not a data-integrity problem.
+ * All three of tesseract.js's asset paths (worker script, WASM core, trained data) are served
+ * over the sarang-ocr:// privileged scheme (see ocr-protocol.ts), not file:// — a Worker can't
+ * importScripts a file:// URL cross-origin, and tesseract.js's own corePath/langPath resolution
+ * needs a real path-structured URL (its getCore.js does a literal `.slice(-2) === 'js'` filename
+ * check, and langPath is directory-style string concatenation), which rules out blob: URLs too.
+ * Confirmed live 2026-09-29 (F-90, BUILD CHECKLIST.md). corePath is given as the exact .js
+ * filename (not the bundled directory) to skip tesseract's own SIMD/relaxed-SIMD auto-detection,
+ * since only the plain SIMD-LSTM core variant is bundled — Electron's Chromium always supports
+ * WASM SIMD, so this is safe, but auto-detection could otherwise pick a relaxed-SIMD variant
+ * that was never bundled and fail to load it. Never falls back to tesseract.js's documented
+ * jsdelivr CDN default, keeping this fully offline.
  */
 export async function runReceiptOcr(imageFile: File, onProgress?: (pct: number) => void): Promise<ParsedReceipt> {
   const paths = await window.api.app.getPaths()
-  const assetsUrl = (paths as { data?: { ocrAssetsUrl?: string } })?.data?.ocrAssetsUrl
+  const assetsUrl = paths?.data?.ocrAssetsUrl
   if (!assetsUrl) throw new Error('OCR assets path not available')
 
   const { recognize } = await import('tesseract.js')

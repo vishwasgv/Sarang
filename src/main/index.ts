@@ -1,3 +1,5 @@
+import './ocr-protocol' // registerSchemesAsPrivileged must run before app is ready
+import { registerOcrProtocolHandler } from './ocr-protocol'
 import { applyLanConfig, isLanClientConfigured, stopLan } from './lan/controller'
 import { ensureOpeningStockPosted } from './services/stock-opening-ledger.service'
 import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electron'
@@ -416,14 +418,19 @@ app.whenReady().then(async () => {
       callback({
         responseHeaders: {
           ...details.responseHeaders,
+          // worker-src 'self' blob: — same fix as index.html's meta-tag CSP (see its comment):
+          // without it, tesseract.js's blob:-URL Web Worker for receipt OCR (J10) is refused
+          // outright, since worker-src falls back to script-src 'self' (no blob: source) when
+          // left unset. Kept in sync with the meta tag so packaged and dev behave the same way.
           'Content-Security-Policy': [
-            "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file:; font-src 'self' data:; connect-src 'none'; frame-src 'none'; object-src 'none'"
+            "default-src 'self'; script-src 'self' sarang-ocr: 'wasm-unsafe-eval'; worker-src 'self' blob:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file:; font-src 'self' data:; connect-src sarang-ocr:; frame-src 'none'; object-src 'none'"
           ]
         }
       })
     })
   }
 
+  registerOcrProtocolHandler()
   registerAllIpcHandlers()
   initKitchenDisplayWindowWatcher()
   createWindow()

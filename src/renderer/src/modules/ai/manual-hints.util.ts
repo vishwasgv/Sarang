@@ -50,6 +50,7 @@ export const MANUAL_HINTS: ManualHint[] = [
   { pattern: /alert rule|notif(y|ied|ication)s? (me )?(when|if)|alert me/i, slugs: ['guide-reminders-alerts', 'settings'] },
   { pattern: /dashboard (tile|widget|section)|custom(ise|ize) (the )?dashboard|hide (a )?dashboard|add (my |your )?own tile|\bkpi\b/i, slugs: ['dashboard', 'guide-routine'] },
   { pattern: /custom field|required field|field (rule|validation)/i, slugs: ['settings'] },
+  { pattern: /multi-?user|multiple (pcs?|computers)|more than one (pc|computer)|two (pcs?|computers)|second (pc|computer)|another (pc|computer)|\blan\b|local network|wi-?fi network|server mode|client mode|add (a )?seat|extra seat|seat count/i, slugs: ['guide-multi-user', 'settings'] },
   { pattern: /password (rule|policy|strength)|strong password/i, slugs: ['users-permissions'] },
   { pattern: /accountant (login|access|role)|read.?only (login|access|user)|give my accountant/i, slugs: ['users-permissions', 'guide-money-books'] },
   { pattern: /ask sarang|assistant/i, slugs: ['ai-assistant', 'guide-find-your-way'] },

@@ -5920,6 +5920,8 @@
       "reportsBody": "Ventes, inventaire, impayés, pertes et profits, synthèses GST/HSN, et plus encore — tout est généré instantanément à partir de vos données réelles. Cliquez sur quelques rapports différents pour voir à quoi ils ressemblent.",
       "settingsTitle": "Paramètres",
       "settingsBody": "Tout ce qui concerne la configuration de Sarang se trouve ici : votre profil d'entreprise, la configuration fiscale, les utilisateurs et rôles, la langue, les modules optionnels activés pour votre entreprise, vos Modèles de Facture, l'emplacement de vos sauvegardes et votre licence. Cela vaut la peine d'y jeter un œil complet au moins une fois.",
+      "multiUserTitle": "Plus d'un PC ?",
+      "multiUserBody": "Sarang peut fonctionner sur plusieurs PC à la fois via votre propre réseau Wi-Fi ou filaire — aucun internet nécessaire. Un PC conserve les données (le serveur) ; les autres s'y connectent (les clients). Configurez cela dans Paramètres → Fonctionnalités de l'entreprise → Multi-utilisateur. Un essai gratuit permet deux PC ; plus de PC nécessitent des postes supplémentaires sur votre licence.",
       "backupTitle": "Sauvegarde et restauration",
       "backupBody": "Vos données ne vivent que sur cet appareil — cet écran est la façon de les protéger. Configurez des sauvegardes automatiques ici pour ne jamais être pris au dépourvu.",
       "licenseTitle": "Votre licence",

@@ -862,7 +862,7 @@ export interface IpcChannels {
     }>>
   }
   app: {
-    getPaths: () => Promise<ApiResponse<{ userData: string; logs: string; backups: string }>>
+    getPaths: () => Promise<ApiResponse<{ userData: string; logs: string; backups: string; ocrAssetsUrl: string }>>
     getPlatform: () => Promise<ApiResponse<NodeJS.Platform>>
     checkForUpdates: () => Promise<ApiResponse<{ hasUpdate: boolean; latestVersion: string; currentVersion: string }>>
     isAutoUpdateCheckEnabled: () => Promise<ApiResponse<boolean>>

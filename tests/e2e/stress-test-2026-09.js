@@ -124,10 +124,28 @@ async function main() {
     r.log('app-still-responsive-after-load', !(await h.hasErrorBoundary(page)))
 
     // ── Cleanup — remove everything STRESS-prefixed ─────────────────────────
+    // REAL BUG found+fixed 2026-09-29 (M5 live run): products.archive() refuses to
+    // archive a product still carrying stock (PRD-006, by design). Every product
+    // here was seeded with 1000 units and only 1-2 got sold, so the old version of
+    // this cleanup — archive() with no stock zeroing first — silently failed for
+    // essentially the whole batch on every run (`.catch(() => {})` swallowed the
+    // PRD-006 error, and `cleanup-attempted` logged unconditional `true` with no
+    // actual success check). Confirmed via a live run: 9015 STRESS products had
+    // accumulated in the dev DB across ~6 prior runs, 3000 of them still active.
+    // Fixed by zeroing stock first (the same real adjustStock path a user would
+    // use) and by actually counting failures instead of asserting blindly.
+    // Invoices must be cancelled first — archive() also refuses a product still
+    // referenced by an active invoice (PRD-004), a separate guard from the
+    // stock one (PRD-006) fixed here.
     for (const id of invoiceIds) { await page.evaluate((iid) => window.api.billing.cancelInvoice({ invoiceId: iid, reason: 'stress test cleanup' }), id).catch(() => {}) }
-    for (const id of productIds) { await page.evaluate((pid) => window.api.products.archive(pid), id).catch(() => {}) }
+    let productArchiveFailures = 0
+    for (const id of productIds) {
+      await page.evaluate((pid) => window.api.inventory.adjustStock({ productId: pid, quantity: 0, reason: 'stress test cleanup' }), id).catch(() => {})
+      const res = await page.evaluate((pid) => window.api.products.archive(pid), id).catch((e) => ({ error: String(e) }))
+      if (!res?.success) productArchiveFailures++
+    }
     for (const id of customerIds) { await page.evaluate((cid) => window.api.customers.archive(cid), id).catch(() => {}) }
-    r.log('cleanup-attempted', true, `${invoiceIds.length} invoices, ${productIds.length} products, ${customerIds.length} customers`)
+    r.log('cleanup-products-archived', productArchiveFailures === 0, `${productArchiveFailures} of ${productIds.length} products failed to archive`)
   } finally {
     await h.closeApp(app)
   }

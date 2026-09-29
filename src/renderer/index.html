@@ -3,7 +3,8 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file:; font-src 'self' data:;" />
+    <!-- worker-src blob:, script-src/connect-src sarang-ocr: needed for tesseract.js's OCR worker (J10/F-90) -->
+    <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' sarang-ocr: 'wasm-unsafe-eval'; worker-src 'self' blob:; connect-src 'self' sarang-ocr:; style-src 'self' 'unsafe-inline'; img-src 'self' data: blob: file:; font-src 'self' data:;" />
     <title>Sarang Business OS Lite</title>
     <link rel="preconnect" href="https://fonts.googleapis.com" crossorigin />
   </head>

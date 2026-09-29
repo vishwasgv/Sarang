@@ -37,6 +37,11 @@ const UNIVERSAL_STEPS: TourStep[] = [
   { id: 'bills', titleKey: 'tour.universal.billsTitle', bodyKey: 'tour.universal.billsBody', targetSelector: 'a[href="#/bills"]', route: '/bills' },
   { id: 'reports', titleKey: 'tour.universal.reportsTitle', bodyKey: 'tour.universal.reportsBody', targetSelector: 'a[href="#/reports"]', route: '/reports' },
   { id: 'settings', titleKey: 'tour.universal.settingsTitle', bodyKey: 'tour.universal.settingsBody', targetSelector: 'a[href="#/settings"]', route: '/settings' },
+  // More than one PC? Multi-user (LAN) lives inside Settings → Business features, a sub-tab
+  // with no sidebar link of its own — same target/route as the 'settings' step above, on
+  // purpose, following this file's own "point at the real sidebar link" rule rather than
+  // inventing a new selector for a tab that only exists once you're already on that screen.
+  { id: 'multiUser', titleKey: 'tour.universal.multiUserTitle', bodyKey: 'tour.universal.multiUserBody', targetSelector: 'a[href="#/settings"]', route: '/settings' },
   { id: 'backup', titleKey: 'tour.universal.backupTitle', bodyKey: 'tour.universal.backupBody', targetSelector: 'a[href="#/backup"]', route: '/backup' }
 ]
 

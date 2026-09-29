@@ -213,6 +213,17 @@ async function run() {
     })
 
     await r.step('due-for-renewal-this-month', async () => {
+      // REAL BUG found+fixed 2026-09-29: this reused the contract's endDate from
+      // 'create-contract-via-real-ui' above (today + 3 days, set there for an unrelated
+      // maybeScheduleNextVisit boundary check) — safely inside the current month on most days,
+      // but crosses into next month whenever the suite runs in a month's last ~3 days, making
+      // this check fail through no fault of the app (dueForRenewalThisMonth correctly excludes
+      // it). Pin the end date to the last day of the current month here — by definition always
+      // "this month" regardless of what day the suite runs — so this check tests its own real
+      // thing, not an accidental side effect of an unrelated earlier assertion's date choice.
+      const now = new Date()
+      const lastDayOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0)
+      await page.evaluate(({ id, endDate }) => window.api.pestContract.update({ id, endDate }), { id: contractId, endDate: h.toLocalISODate(lastDayOfMonth) })
       const res = await page.evaluate(async () => window.api.pestContract.dueForRenewalThisMonth())
       const found = (res?.data || []).some((c) => c.contractId === contractId)
       r.log('contract-flagged-due-for-renewal-this-month', found, JSON.stringify(res?.data?.map((c) => c.contractId)))

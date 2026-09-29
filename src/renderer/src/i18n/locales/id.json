@@ -5920,6 +5920,8 @@
       "reportsBody": "Penjualan, inventaris, tunggakan, laba rugi, ringkasan GST/HSN, dan lainnya — semua dibuat secara instan dari data asli Anda. Klik beberapa ubin laporan berbeda untuk melihat tampilan masing-masing.",
       "settingsTitle": "Pengaturan",
       "settingsBody": "Semua tentang bagaimana Sarang dikonfigurasi ada di sini: Profil Bisnis, pengaturan Pajak, Pengguna & Peran, Bahasa, modul opsional mana yang diaktifkan untuk bisnis Anda, Template Faktur Anda, lokasi Cadangan Anda, dan Lisensi Anda. Layak untuk dilihat sepenuhnya setidaknya sekali.",
+      "multiUserTitle": "Lebih dari Satu PC?",
+      "multiUserBody": "Sarang bisa berjalan di beberapa PC sekaligus lewat jaringan Wi-Fi atau kabel Anda sendiri — tanpa perlu internet. Satu PC menyimpan data (server); PC lainnya terhubung ke sana (client). Atur ini di Pengaturan → Fitur bisnis → Multi-pengguna. Uji coba gratis mengizinkan dua PC; lebih dari itu perlu kursi tambahan pada lisensi Anda.",
       "backupTitle": "Cadangan & Pemulihan",
       "backupBody": "Data Anda hanya ada di perangkat ini — layar ini adalah cara Anda melindunginya. Siapkan cadangan otomatis di sini agar Anda tidak pernah kecolongan.",
       "licenseTitle": "Lisensi Anda",

@@ -6715,6 +6715,8 @@
       "reportsBody": "Sales, Inventory, Outstanding, Profit & Loss, GST/HSN summaries, and more — all generated instantly from your real data. Click through a few different report tiles to see how each one looks. Reports also holds the Balance Sheet, Cash Flow Statement, Trial Balance, General Ledger and Day Book, and every report now has a chart beside its table.",
       "settingsTitle": "Settings",
       "settingsBody": "Everything about how Sarang is configured lives here: your Business Profile, Tax setup, Users & Roles, Language, which optional modules are turned on for your business, your Invoice Templates, your Backup location, and your License. Worth a full look around at least once.",
+      "multiUserTitle": "More Than One PC?",
+      "multiUserBody": "Sarang can run on several PCs at once over your own Wi-Fi or wired network — no internet needed. One PC keeps the data (the server); the others connect to it (clients). Set it up under Settings → Business features → Multi-user. A free trial allows two PCs; more PCs need extra seats on your licence.",
       "backupTitle": "Backup & Restore",
       "backupBody": "Your data lives only on this device — this screen is how you protect it. Set up automatic backups here so you're never caught out.",
       "licenseTitle": "Your License",
