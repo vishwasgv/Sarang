@@ -19,7 +19,7 @@ export function getPrisma(): PrismaClient {
   return prisma
 }
 
-export async function initializeDatabase(dbPathOverride?: string): Promise<void> {
+export async function initializeDatabase(dbPathOverride?: string, migrationsDirOverride?: string): Promise<void> {
   const dbPath = dbPathOverride ?? getDatabasePath()
 
   // In the packaged app, Prisma cannot dlopen() native addons from inside the
@@ -51,7 +51,7 @@ export async function initializeDatabase(dbPathOverride?: string): Promise<void>
 
   try {
     await prisma.$connect()
-    await applyMigrations(dbPath, !!dbPathOverride)
+    await applyMigrations(dbPath, !!dbPathOverride, migrationsDirOverride)
     console.log(`[DB] Ready: ${dbPath}`)
   } catch (err) {
     console.error('[DB] Initialization failed:', err)
@@ -63,7 +63,13 @@ export async function initializeDatabase(dbPathOverride?: string): Promise<void>
 // tutorial.db (Phase 60) — a fresh scratch database needs its full schema
 // applied regardless of dev/packaged mode, unlike the real dev database
 // (which relies on the developer having already run `npm run db:migrate`).
-async function applyMigrations(dbPath: string, forceApply = false): Promise<void> {
+// migrationsDirOverride: only for the upgrade-path test (M7) — lets it point at an isolated
+// temp copy of prisma/migrations instead of mutating the real, shared directory on disk (a
+// real bug found+fixed 2026-09-29: the old approach moved real migration folders in and out,
+// racing any other concurrently-running test file's own openRealDb() call under Vitest's
+// file-level parallelism — random unrelated tests intermittently saw a half-migrated schema).
+// Every real caller omits this, so behavior is unchanged everywhere else.
+async function applyMigrations(dbPath: string, forceApply = false, migrationsDirOverride?: string): Promise<void> {
   const db = getPrisma()
 
   // WAL mode improves concurrent read performance and crash recovery
@@ -99,9 +105,9 @@ async function applyMigrations(dbPath: string, forceApply = false): Promise<void
   // needs its schema created fresh regardless of dev/packaged mode.
   if (!app.isPackaged && !forceApply) return
 
-  const migrationsDir = app.isPackaged
+  const migrationsDir = migrationsDirOverride ?? (app.isPackaged
     ? join(process.resourcesPath, 'prisma', 'migrations')
-    : join(process.cwd(), 'prisma', 'migrations')
+    : join(process.cwd(), 'prisma', 'migrations'))
   if (!existsSync(migrationsDir)) {
     console.warn('[DB] Migrations directory not found:', migrationsDir)
     return

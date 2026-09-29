@@ -6322,6 +6322,18 @@
         "EXPENSE_CREATED": "Expense saved"
       }
     },
+    "blueprints": {
+      "title": "Blueprints",
+      "hint": "Define the named stages a document moves through (e.g. Draft, Approved, Sent to Supplier, Received) and a tracker appears on the document's own screen.",
+      "namePlaceholder": "Stage name",
+      "noStages": "No stages yet — add one below to turn on the tracker for this document type.",
+      "stageTitle": "Stage",
+      "couldNotAdvance": "Could not update the stage. Please try again.",
+      "documentTypes": {
+        "SALES_ORDER": "Sales Order",
+        "PURCHASE_ORDER": "Purchase Order"
+      }
+    },
     "title": "Settings",
     "languageLockedTitle": "Language locked to English",
     "languageLockedDesc": "This business type's own screens are built in English only, so the interface language is locked to keep everything consistent. This doesn't affect your business data — only the app's language.",

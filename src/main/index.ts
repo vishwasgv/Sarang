@@ -1,5 +1,4 @@
-import './ocr-protocol' // registerSchemesAsPrivileged must run before app is ready
-import { registerOcrProtocolHandler } from './ocr-protocol'
+import { registerOcrPrivilegedScheme, registerOcrProtocolHandler } from './ocr-protocol'
 import { applyLanConfig, isLanClientConfigured, stopLan } from './lan/controller'
 import { ensureOpeningStockPosted } from './services/stock-opening-ledger.service'
 import { app, BrowserWindow, dialog, shell, nativeTheme, session } from 'electron'
@@ -37,6 +36,10 @@ import { login } from './services/auth.service'
 import { isAllowedExternalUrl } from './utils/external-link.util'
 
 process.env.APP_ROOT = app.getAppPath()
+
+// Must run before app.whenReady() — see ocr-protocol.ts's own comment for why this is a
+// function call here rather than a module-level side effect in that file.
+registerOcrPrivilegedScheme()
 
 // Tracks the last due count to avoid spamming in-app alerts on every 60-min tick
 let _lastDueCount = 0

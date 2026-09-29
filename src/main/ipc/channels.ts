@@ -370,6 +370,16 @@ export interface IpcChannels {
     setEnabled: (payload: { id: string; enabled: boolean }) => Promise<ApiResponse>
     remove: (payload: { id: string }) => Promise<ApiResponse>
   }
+  blueprintStages: {
+    list: (payload: { documentType: string }) => Promise<ApiResponse<{ id: string; documentType: string; name: string; sortOrder: number }[]>>
+    add: (payload: { documentType: string; name: string }) => Promise<ApiResponse>
+    reorder: (payload: { documentType: string; orderedIds: string[] }) => Promise<ApiResponse>
+    retire: (payload: { id: string }) => Promise<ApiResponse>
+  }
+  documentStage: {
+    getCurrent: (payload: { documentType: string; documentId: string }) => Promise<ApiResponse<{ stages: { id: string; name: string; sortOrder: number }[]; currentStageId: string } | null>>
+    advance: (payload: { documentType: string; documentId: string; stageId: string }) => Promise<ApiResponse>
+  }
   expenseClaims: {
     list: (payload?: { status?: string }) => Promise<ApiResponse>
     submit: (payload: { claimantName: string; categoryId: string; description: string; amount: number; claimDate?: string }) => Promise<ApiResponse>

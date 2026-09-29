@@ -55,6 +55,8 @@ import { register as registerPartyAddresses } from './handlers/party-address.han
 import { register as registerJournalExtras } from './handlers/journal-extras.handler'
 import { register as registerExpenseClaims } from './handlers/expense-claim.handler'
 import { register as registerWorkflowRules } from './handlers/workflow-rule.handler'
+import { register as registerBlueprintStages } from './handlers/blueprint-stage.handler'
+import { register as registerDocumentStage } from './handlers/document-stage.handler'
 import { register as registerStockJournals } from './handlers/stock-journal.handler'
 import { register as registerChequeBooks } from './handlers/cheque-book.handler'
 import { register as registerFixedAssets } from './handlers/fixed-asset.handler'
@@ -298,6 +300,8 @@ export function registerAllIpcHandlers(): void {
   registerJournalExtras(h)
   registerExpenseClaims(h)
   registerWorkflowRules(h)
+  registerBlueprintStages(h)
+  registerDocumentStage(h)
   registerStockJournals(h)
   registerChequeBooks(h)
   registerFixedAssets(h)

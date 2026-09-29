@@ -27,10 +27,14 @@ vi.mock('electron', () => ({ app: { isPackaged: false, getPath: () => process.en
 // violation) — this test exercises all three for real, on the current
 // migration set, rather than trusting a historical fix stays correct forever.
 //
-// Migration folders are moved out of prisma/migrations (not deleted) for the
-// "old schema" phase and always restored — in a top-level try/finally so a
-// mid-test failure never leaves the real project migrations directory short
-// a folder.
+// REAL BUG found+fixed 2026-09-29: this used to move real folders out of the
+// shared prisma/migrations directory and back (try/finally). Under Vitest's
+// file-level parallelism, that raced any other concurrently-running test
+// file's own openRealDb() call, which also reads that same real directory —
+// intermittently handing an unrelated test a half-migrated schema (missing
+// whatever columns this test had temporarily hidden). Now works entirely on
+// isolated temp copies (via db.ts's migrationsDirOverride param, added for
+// exactly this) — the real project directory is never touched at all.
 
 const PROJECT_MIGRATIONS_DIR = join(process.cwd(), 'prisma', 'migrations')
 // Everything from here (inclusive) onward is treated as "not yet installed" —
@@ -38,135 +42,128 @@ const PROJECT_MIGRATIONS_DIR = join(process.cwd(), 'prisma', 'migrations')
 // (bank_deposit_slips) plus a migration literally named for money integrity.
 const CUTOFF = '20260902100000_kot_running_table_tab'
 
-let holdDir: string
+let workDir: string
+let oldMigrationsDir: string
+let fullMigrationsDir: string
 let scratchDbDir: string
 let dbPath: string
-let pendingDirs: string[] = []
+let pendingCount = 0
 let preUpgrade: { invoiceItems: { productId: string; quantity: number; unitPrice: number; taxAmount: number }[]; invoiceTotal: number; productCount: number }
 
 describe('upgrade path against real, populated data (M7)', () => {
   beforeAll(async () => {
-    holdDir = mkdtempSync(join(tmpdir(), 'sarang-migrations-held-'))
+    workDir = mkdtempSync(join(tmpdir(), 'sarang-migrations-work-'))
+    oldMigrationsDir = join(workDir, 'old')
+    fullMigrationsDir = join(workDir, 'full')
     scratchDbDir = mkdtempSync(join(tmpdir(), 'sarang-upgrade-test-'))
     dbPath = join(scratchDbDir, 'upgrade-test.db')
 
-    const allDirs = readdirSync(PROJECT_MIGRATIONS_DIR).filter((d) => d !== 'migration_lock.toml')
-    pendingDirs = allDirs.filter((d) => d >= CUTOFF).sort()
-    expect(pendingDirs.length).toBeGreaterThan(5) // sanity: this is meant to be a real multi-week batch
+    // Two independent, isolated copies — the real project directory is read from once, here,
+    // and never touched again for the rest of this test.
+    cpSync(PROJECT_MIGRATIONS_DIR, fullMigrationsDir, { recursive: true })
+    cpSync(PROJECT_MIGRATIONS_DIR, oldMigrationsDir, { recursive: true })
+
+    const allDirs = readdirSync(oldMigrationsDir).filter((d) => d !== 'migration_lock.toml')
+    const pendingDirs = allDirs.filter((d) => d >= CUTOFF).sort()
+    pendingCount = pendingDirs.length
+    expect(pendingCount).toBeGreaterThan(5) // sanity: this is meant to be a real multi-week batch
     expect(pendingDirs).toContain('20260902200000_bank_deposit_slips')
+    for (const d of pendingDirs) rmSync(join(oldMigrationsDir, d), { recursive: true, force: true })
 
-    // ── Phase 1: move the newer migrations out, build the OLD-schema database ──
-    for (const d of pendingDirs) {
-      cpSync(join(PROJECT_MIGRATIONS_DIR, d), join(holdDir, d), { recursive: true })
-      rmSync(join(PROJECT_MIGRATIONS_DIR, d), { recursive: true, force: true })
+    // ── Phase 1: build the OLD-schema database from the isolated old-migrations copy ──
+    const { initializeDatabase, getPrisma } = await import('../../database/db')
+    await initializeDatabase(dbPath, oldMigrationsDir)
+
+    // ── Seed real business data at the OLD schema, via raw SQL naming only the
+    // columns that exist at this point in migration history (confirmed against
+    // real PRAGMA table_info() output for each table — not guessed). The current
+    // Prisma Client is generated against HEAD's schema.prisma and always
+    // materializes every @default(...) scalar into its INSERT, so it cannot be
+    // used here: it would send values for columns (e.g. Product.taxCategory)
+    // that this OLD schema doesn't have yet. This still exercises the exact
+    // thing under test — real relational rows surviving a real migration run —
+    // just without routing through billingService's own tax/ledger computation,
+    // which is already covered by documents-flow.test.ts against a fully
+    // current schema.
+    const db = getPrisma()
+    const now = Date.now()
+    const pid1 = crypto.randomUUID()
+    const pid2 = crypto.randomUUID()
+    const custId = crypto.randomUUID()
+    const invId = crypto.randomUUID()
+    const item1Id = crypto.randomUUID()
+    const item2Id = crypto.randomUUID()
+
+    await db.$executeRawUnsafe(
+      `INSERT INTO "Product" ("id","productName","sellingPrice","costPrice","taxRate","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`,
+      pid1, 'Upgrade-test item A', 500, 300, 18, now, now
+    )
+    await db.$executeRawUnsafe(
+      `INSERT INTO "Product" ("id","productName","sellingPrice","costPrice","taxRate","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`,
+      pid2, 'Upgrade-test item B', 1200, 700, 12, now, now
+    )
+    await db.$executeRawUnsafe(
+      `INSERT INTO "Inventory" ("id","productId","quantity","averageCost","updatedAt") VALUES (?,?,?,?,?)`,
+      crypto.randomUUID(), pid1, 50, 300, now
+    )
+    await db.$executeRawUnsafe(
+      `INSERT INTO "Inventory" ("id","productId","quantity","averageCost","updatedAt") VALUES (?,?,?,?,?)`,
+      crypto.randomUUID(), pid2, 20, 700, now
+    )
+    await db.$executeRawUnsafe(
+      `INSERT INTO "Customer" ("id","customerName","createdAt","updatedAt") VALUES (?,?,?,?)`,
+      custId, 'Upgrade-test customer', now, now
+    )
+    // Real invoice math, computed here the same way the app would (line total
+    // = qty*unitPrice, tax = lineTotal*taxRate/100) so the post-upgrade
+    // assertions check real, meaningful figures rather than placeholders.
+    const line1 = { qty: 3, unitPrice: 500, taxRate: 18 }
+    const line2 = { qty: 2, unitPrice: 1200, taxRate: 12 }
+    const lineTotal1 = line1.qty * line1.unitPrice
+    const lineTotal2 = line2.qty * line2.unitPrice
+    const tax1 = Math.round(lineTotal1 * line1.taxRate) / 100
+    const tax2 = Math.round(lineTotal2 * line2.taxRate) / 100
+    const subtotal = lineTotal1 + lineTotal2
+    const taxAmount = tax1 + tax2
+    const grandTotal = subtotal + taxAmount
+
+    await db.$executeRawUnsafe(
+      `INSERT INTO "Invoice" ("id","invoiceNumber","customerId","subtotal","taxAmount","totalAmount","balanceAmount","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?,?)`,
+      invId, 'UPGRADE-TEST-0001', custId, subtotal, taxAmount, grandTotal, grandTotal, now, now
+    )
+    await db.$executeRawUnsafe(
+      `INSERT INTO "InvoiceItem" ("id","invoiceId","productId","productName","quantity","unitPrice","taxRate","taxAmount","lineTotal") VALUES (?,?,?,?,?,?,?,?,?)`,
+      item1Id, invId, pid1, 'Upgrade-test item A', line1.qty, line1.unitPrice, line1.taxRate, tax1, lineTotal1
+    )
+    await db.$executeRawUnsafe(
+      `INSERT INTO "InvoiceItem" ("id","invoiceId","productId","productName","quantity","unitPrice","taxRate","taxAmount","lineTotal") VALUES (?,?,?,?,?,?,?,?,?)`,
+      item2Id, invId, pid2, 'Upgrade-test item B', line2.qty, line2.unitPrice, line2.taxRate, tax2, lineTotal2
+    )
+
+    preUpgrade = {
+      invoiceItems: [
+        { productId: pid1, quantity: line1.qty, unitPrice: line1.unitPrice, taxAmount: tax1 },
+        { productId: pid2, quantity: line2.qty, unitPrice: line2.unitPrice, taxAmount: tax2 }
+      ],
+      invoiceTotal: grandTotal,
+      productCount: await db.product.count()
     }
 
-    try {
-      const { initializeDatabase, getPrisma } = await import('../../database/db')
-      await initializeDatabase(dbPath)
-
-      // ── Seed real business data at the OLD schema, via raw SQL naming only the
-      // columns that exist at this point in migration history (confirmed against
-      // real PRAGMA table_info() output for each table — not guessed). The current
-      // Prisma Client is generated against HEAD's schema.prisma and always
-      // materializes every @default(...) scalar into its INSERT, so it cannot be
-      // used here: it would send values for columns (e.g. Product.taxCategory)
-      // that this OLD schema doesn't have yet. This still exercises the exact
-      // thing under test — real relational rows surviving a real migration run —
-      // just without routing through billingService's own tax/ledger computation,
-      // which is already covered by documents-flow.test.ts against a fully
-      // current schema.
-      const db = getPrisma()
-      const now = Date.now()
-      const pid1 = crypto.randomUUID()
-      const pid2 = crypto.randomUUID()
-      const custId = crypto.randomUUID()
-      const invId = crypto.randomUUID()
-      const item1Id = crypto.randomUUID()
-      const item2Id = crypto.randomUUID()
-
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Product" ("id","productName","sellingPrice","costPrice","taxRate","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`,
-        pid1, 'Upgrade-test item A', 500, 300, 18, now, now
-      )
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Product" ("id","productName","sellingPrice","costPrice","taxRate","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?)`,
-        pid2, 'Upgrade-test item B', 1200, 700, 12, now, now
-      )
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Inventory" ("id","productId","quantity","averageCost","updatedAt") VALUES (?,?,?,?,?)`,
-        crypto.randomUUID(), pid1, 50, 300, now
-      )
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Inventory" ("id","productId","quantity","averageCost","updatedAt") VALUES (?,?,?,?,?)`,
-        crypto.randomUUID(), pid2, 20, 700, now
-      )
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Customer" ("id","customerName","createdAt","updatedAt") VALUES (?,?,?,?)`,
-        custId, 'Upgrade-test customer', now, now
-      )
-      // Real invoice math, computed here the same way the app would (line total
-      // = qty*unitPrice, tax = lineTotal*taxRate/100) so the post-upgrade
-      // assertions check real, meaningful figures rather than placeholders.
-      const line1 = { qty: 3, unitPrice: 500, taxRate: 18 }
-      const line2 = { qty: 2, unitPrice: 1200, taxRate: 12 }
-      const lineTotal1 = line1.qty * line1.unitPrice
-      const lineTotal2 = line2.qty * line2.unitPrice
-      const tax1 = Math.round(lineTotal1 * line1.taxRate) / 100
-      const tax2 = Math.round(lineTotal2 * line2.taxRate) / 100
-      const subtotal = lineTotal1 + lineTotal2
-      const taxAmount = tax1 + tax2
-      const grandTotal = subtotal + taxAmount
-
-      await db.$executeRawUnsafe(
-        `INSERT INTO "Invoice" ("id","invoiceNumber","customerId","subtotal","taxAmount","totalAmount","balanceAmount","createdAt","updatedAt") VALUES (?,?,?,?,?,?,?,?,?)`,
-        invId, 'UPGRADE-TEST-0001', custId, subtotal, taxAmount, grandTotal, grandTotal, now, now
-      )
-      await db.$executeRawUnsafe(
-        `INSERT INTO "InvoiceItem" ("id","invoiceId","productId","productName","quantity","unitPrice","taxRate","taxAmount","lineTotal") VALUES (?,?,?,?,?,?,?,?,?)`,
-        item1Id, invId, pid1, 'Upgrade-test item A', line1.qty, line1.unitPrice, line1.taxRate, tax1, lineTotal1
-      )
-      await db.$executeRawUnsafe(
-        `INSERT INTO "InvoiceItem" ("id","invoiceId","productId","productName","quantity","unitPrice","taxRate","taxAmount","lineTotal") VALUES (?,?,?,?,?,?,?,?,?)`,
-        item2Id, invId, pid2, 'Upgrade-test item B', line2.qty, line2.unitPrice, line2.taxRate, tax2, lineTotal2
-      )
-
-      preUpgrade = {
-        invoiceItems: [
-          { productId: pid1, quantity: line1.qty, unitPrice: line1.unitPrice, taxAmount: tax1 },
-          { productId: pid2, quantity: line2.qty, unitPrice: line2.unitPrice, taxAmount: tax2 }
-        ],
-        invoiceTotal: grandTotal,
-        productCount: await db.product.count()
-      }
-
-      await (await import('../../database/db')).closeDatabase()
-    } finally {
-      // ── Restore the migrations directory before Phase 2, whatever happened above ──
-      for (const d of pendingDirs) {
-        cpSync(join(holdDir, d), join(PROJECT_MIGRATIONS_DIR, d), { recursive: true })
-      }
-    }
+    await (await import('../../database/db')).closeDatabase()
   })
 
   afterAll(async () => {
     try { await (await import('../../database/db')).closeDatabase() } catch { /* already closed */ }
-    for (const d of pendingDirs) {
-      // Best-effort: if Phase 2 itself failed before its own cleanup, make sure
-      // nothing was left missing from the real project migrations directory.
-      if (!existsSync(join(PROJECT_MIGRATIONS_DIR, d)) && existsSync(join(holdDir, d))) {
-        cpSync(join(holdDir, d), join(PROJECT_MIGRATIONS_DIR, d), { recursive: true })
-      }
-    }
-    rmSync(holdDir, { recursive: true, force: true })
+    rmSync(workDir, { recursive: true, force: true })
     try { rmSync(scratchDbDir, { recursive: true, force: true }) } catch { /* Windows may still hold the WAL file briefly */ }
   })
 
   it('applies all pending migrations on top of real seeded data with zero data loss', async () => {
     const { initializeDatabase, getPrisma } = await import('../../database/db')
 
-    // ── Phase 2: the actual upgrade — real runner, real migration files, real data ──
-    await expect(initializeDatabase(dbPath)).resolves.not.toThrow()
+    // ── Phase 2: the actual upgrade — real runner, real migration files (isolated full copy), real data ──
+    await expect(initializeDatabase(dbPath, fullMigrationsDir)).resolves.not.toThrow()
+    expect(pendingCount).toBeGreaterThan(0) // sanity: phase 1 really did have something pending
 
     const db = getPrisma()
 

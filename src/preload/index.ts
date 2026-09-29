@@ -293,6 +293,16 @@ const api: IpcChannels = {
     setEnabled: (p) => invoke('workflowRules:setEnabled', p),
     remove: (p) => invoke('workflowRules:remove', p)
   },
+  blueprintStages: {
+    list: (p) => invoke('blueprintStages:list', p),
+    add: (p) => invoke('blueprintStages:add', p),
+    reorder: (p) => invoke('blueprintStages:reorder', p),
+    retire: (p) => invoke('blueprintStages:retire', p)
+  },
+  documentStage: {
+    getCurrent: (p) => invoke('documentStage:getCurrent', p),
+    advance: (p) => invoke('documentStage:advance', p)
+  },
   expenseClaims: {
     list: (p) => invoke('expenseClaims:list', p),
     submit: (p) => invoke('expenseClaims:submit', p),

@@ -6003,6 +6003,18 @@
         "EXPENSE_CREATED": "Gasto guardado"
       }
     },
+    "blueprints": {
+      "title": "Planos",
+      "hint": "Define las etapas con nombre por las que pasa un documento (p. ej. Borrador, Aprobado, Enviado al proveedor, Recibido) y aparecerá un seguimiento en la propia pantalla del documento.",
+      "namePlaceholder": "Nombre de la etapa",
+      "noStages": "Aún no hay etapas — agrega una abajo para activar el seguimiento de este tipo de documento.",
+      "stageTitle": "Etapa",
+      "couldNotAdvance": "No se pudo actualizar la etapa. Inténtalo de nuevo.",
+      "documentTypes": {
+        "SALES_ORDER": "Pedido de venta",
+        "PURCHASE_ORDER": "Orden de compra"
+      }
+    },
     "stockRules": {
       "title": "Reglas de stock",
       "allowNegative": "Permitir vender más que el stock disponible",

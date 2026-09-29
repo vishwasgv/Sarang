@@ -5820,6 +5820,18 @@
         "EXPENSE_CREATED": "Dépense enregistrée"
       }
     },
+    "blueprints": {
+      "title": "Modèles de flux",
+      "hint": "Définissez les étapes nommées qu'un document traverse (ex. Brouillon, Approuvé, Envoyé au fournisseur, Reçu) et un suivi apparaît sur l'écran du document.",
+      "namePlaceholder": "Nom de l'étape",
+      "noStages": "Aucune étape pour l'instant — ajoutez-en une ci-dessous pour activer le suivi pour ce type de document.",
+      "stageTitle": "Étape",
+      "couldNotAdvance": "Impossible de mettre à jour l'étape. Veuillez réessayer.",
+      "documentTypes": {
+        "SALES_ORDER": "Commande client",
+        "PURCHASE_ORDER": "Bon de commande"
+      }
+    },
     "stockRules": {
       "title": "Règles de stock",
       "allowNegative": "Autoriser la vente de plus que le stock disponible",

@@ -15,6 +15,7 @@ import { formatCurrency } from '@shared/utils/currency.util'
 import { splitTaxLines, taxLinesText } from '@shared/utils/tax.util'
 import { getCurrencyDecimals } from '@money'
 import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
+import { DocumentStageTracker } from '@shared/ui/organisms/DocumentStageTracker'
 
 interface Supplier { id: string; supplierName: string; supplierCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string; inventory?: { quantity: number } | null }
@@ -347,6 +348,7 @@ export function PurchaseOrderDetailScreen() {
 
       {po.status === 'APPROVED' && canReceive && <p className="text-xs text-slate-500 dark:text-slate-400">{t('purchaseOrders.receiveHint')}</p>}
       <ApprovalPanel documentType="PURCHASE_ORDER" documentId={po.id} refreshSignal={po.status} onActioned={loadPO} />
+      <DocumentStageTracker documentType="PURCHASE_ORDER" documentId={po.id} refreshSignal={po.status} />
 
       {/* Supplier info */}
       <div className="grid grid-cols-2 gap-4">

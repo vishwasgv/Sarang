@@ -3,6 +3,7 @@ import { StockRulesCard } from './StockRulesCard'
 import { LanCard } from './LanCard'
 import { CustomFieldRulesEditor, EMPTY_RULES, rulesPayload, type FieldRulesForm } from './CustomFieldRulesEditor'
 import { WorkflowRulesCard } from './WorkflowRulesCard'
+import { BlueprintStagesCard } from './BlueprintStagesCard'
 import { ExchangeRatesCard } from './ExchangeRatesCard'
 import { LateInterestCard } from './LateInterestCard'
 import { TaxComponentsEditor, partsPayload, type TaxPartForm } from './TaxComponentsEditor'
@@ -497,7 +498,7 @@ export function SettingsScreen() {
         {activeSection === 'industry' && <IndustrySettingsScreen />}
         {activeSection === 'language' && <LanguageSection />}
         {activeSection === 'appearance' && <AppearanceSection />}
-        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><LanCard /><WorkflowRulesCard /><LateInterestCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
+        {activeSection === 'businessFeatures' && (<><BusinessFeaturesSection /><StockRulesCard /><LanCard /><WorkflowRulesCard /><BlueprintStagesCard /><LateInterestCard /><ExchangeRatesCard /><ScheduledReportsCard /></>)}
         {activeSection === 'barcode' && <BarcodeSection />}
         {activeSection === 'invoiceTemplates' && <InvoiceTemplatesSection />}
         {activeSection === 'aiAssistant' && <AiAssistantSection />}

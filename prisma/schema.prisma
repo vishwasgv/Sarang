@@ -7299,6 +7299,43 @@ model ApprovalAction {
   @@index([stepId])
 }
 
+// J19 — Blueprints: an owner-defined named pipeline (e.g. Draft -> Approved -> Sent to
+// Supplier -> Received) a document visibly moves through, with a widget on the document
+// screen to advance it. Deliberately NOT an approval gate (see ApprovalWorkflow above for
+// that) — anyone who can already edit the document can advance its stage; this is a status
+// pipeline, not a sign-off chain. documentId is a plain string, not a real FK (same pattern
+// AuditLog already uses for entityType/entityId), so this works across every document type
+// with zero schema change per type — only currentStageId is a real FK, since stages
+// themselves are a small, bounded, real table.
+model BlueprintStage {
+  id           String   @id @default(cuid())
+  documentType String // e.g. SALES_ORDER | PURCHASE_ORDER
+  name         String
+  sortOrder    Int
+  isActive     Boolean  @default(true)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+
+  assignments DocumentStageAssignment[]
+
+  @@index([documentType])
+  @@index([documentType, sortOrder])
+}
+
+model DocumentStageAssignment {
+  id             String   @id @default(cuid())
+  documentType   String
+  documentId     String
+  currentStageId String
+  updatedAt      DateTime @updatedAt
+  updatedById    String?
+
+  currentStage BlueprintStage @relation(fields: [currentStageId], references: [id])
+
+  @@unique([documentType, documentId])
+  @@index([currentStageId])
+}
+
 // Account-based line items on Credit Notes and Vendor Credits — both models
 // were lump-sum (a single `amount` field, zero line items) before this
 // phase, confirmed via a live code read, not assumed. `amount` on the parent

@@ -15,6 +15,7 @@ import { splitTaxLines } from '@shared/utils/tax.util'
 import { getCurrencyDecimals } from '@money'
 import { cn } from '@shared/utils/cn'
 import { ApprovalPanel } from '@shared/ui/organisms/ApprovalPanel'
+import { DocumentStageTracker } from '@shared/ui/organisms/DocumentStageTracker'
 
 interface Customer { id: string; customerName: string; customerCode: string; phone?: string | null; email?: string | null }
 interface Product { id: string; productName: string; sku?: string | null; unit: string }
@@ -235,6 +236,7 @@ export function SalesOrderDetailScreen() {
       </div>
 
       <ApprovalPanel documentType="SALES_ORDER" documentId={so.id} refreshSignal={so.status} onActioned={loadSO} />
+      <DocumentStageTracker documentType="SALES_ORDER" documentId={so.id} refreshSignal={so.status} />
 
       <div className="grid grid-cols-2 gap-4">
         <Card padding="md" className="space-y-2">

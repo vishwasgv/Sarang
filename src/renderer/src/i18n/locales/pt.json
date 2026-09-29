@@ -5820,6 +5820,18 @@
         "EXPENSE_CREATED": "Despesa salva"
       }
     },
+    "blueprints": {
+      "title": "Blueprints",
+      "hint": "Defina as etapas nomeadas pelas quais um documento passa (ex.: Rascunho, Aprovado, Enviado ao fornecedor, Recebido) e um rastreador aparece na própria tela do documento.",
+      "namePlaceholder": "Nome da etapa",
+      "noStages": "Ainda sem etapas — adicione uma abaixo para ativar o rastreador deste tipo de documento.",
+      "stageTitle": "Etapa",
+      "couldNotAdvance": "Não foi possível atualizar a etapa. Tente novamente.",
+      "documentTypes": {
+        "SALES_ORDER": "Pedido de venda",
+        "PURCHASE_ORDER": "Pedido de compra"
+      }
+    },
     "stockRules": {
       "title": "Regras de estoque",
       "allowNegative": "Permitir vender mais que o estoque disponível",

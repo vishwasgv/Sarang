@@ -19,11 +19,18 @@ const OCR_ASSET_WHITELIST = new Set([
   'eng.traineddata.gz'
 ])
 
-// Must run before app.whenReady() / any other Electron API — this is a module-level call by
-// Electron's own design, so this file must be imported at the very top of main/index.ts.
-protocol.registerSchemesAsPrivileged([
-  { scheme: OCR_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }
-])
+// Electron requires this to run before app.whenReady() — exported as a function (not a
+// module-level side effect) so merely importing OCR_SCHEME elsewhere (e.g. app.handler.ts)
+// never triggers it. Real bug found+fixed: a bare top-level call here crashed every unit test
+// that imports app.handler.ts with a partial `vi.mock('electron', ...)` (no `protocol` export),
+// since Vitest's mock replaced `protocol` with `undefined`. main/index.ts calls this explicitly,
+// synchronously, before any other Electron API use — same timing guarantee, without the
+// import-time side effect.
+export function registerOcrPrivilegedScheme(): void {
+  protocol.registerSchemesAsPrivileged([
+    { scheme: OCR_SCHEME, privileges: { standard: true, secure: true, supportFetchAPI: true, corsEnabled: true } }
+  ])
+}
 
 function ocrAssetsDir(): string {
   return app.isPackaged ? join(process.resourcesPath, 'ocr') : join(__dirname, '../../resources/ocr')

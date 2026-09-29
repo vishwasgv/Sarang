@@ -5820,6 +5820,18 @@
         "EXPENSE_CREATED": "Pengeluaran disimpan"
       }
     },
+    "blueprints": {
+      "title": "Blueprint",
+      "hint": "Tentukan tahapan bernama yang dilalui sebuah dokumen (mis. Draf, Disetujui, Dikirim ke Pemasok, Diterima) dan pelacak akan muncul di layar dokumen itu sendiri.",
+      "namePlaceholder": "Nama tahap",
+      "noStages": "Belum ada tahap — tambahkan satu di bawah untuk mengaktifkan pelacak untuk jenis dokumen ini.",
+      "stageTitle": "Tahap",
+      "couldNotAdvance": "Tidak dapat memperbarui tahap. Silakan coba lagi.",
+      "documentTypes": {
+        "SALES_ORDER": "Pesanan Penjualan",
+        "PURCHASE_ORDER": "Pesanan Pembelian"
+      }
+    },
     "stockRules": {
       "title": "Aturan stok",
       "allowNegative": "Izinkan menjual lebih dari stok yang ada",
