@@ -90,18 +90,38 @@ describe('treatment-plan.service — generateInvoiceFromTreatmentPlan', () => {
     }
   }
 
-  it('bills an accepted plan, creating one invoice line per priced item', async () => {
+  // makeClaimingDb wires up the atomic-claim shape (updateMany gated on
+  // invoiceId: null) every generateXInvoice in this codebase shares —
+  // findUnique is called twice by the fixed implementation (once to resolve
+  // the not-found/already-billed error when the claim fails, once for the
+  // real post-claim read), so both mocks must return the plan/null
+  // consistently across calls.
+  function makeClaimingDb(plan: Record<string, unknown> | null, opts: { claimCount?: number } = {}) {
+    const claimCount = opts.claimCount ?? (plan && !plan.invoiceId ? 1 : 0)
     const db: Record<string, any> = {
-      treatmentPlan: { findUnique: vi.fn().mockResolvedValue(makePlan()), update: vi.fn().mockResolvedValue({}) },
+      treatmentPlan: {
+        updateMany: vi.fn().mockResolvedValue({ count: claimCount }),
+        findUnique: vi.fn().mockResolvedValue(plan),
+        update: vi.fn().mockResolvedValue({}),
+      },
       product: { findFirst: vi.fn().mockResolvedValue({ id: 'prod-dental' }) },
       auditLog: { create: vi.fn().mockResolvedValue({}) },
     }
+    return db
+  }
+
+  it('bills an accepted plan, creating one invoice line per priced item', async () => {
+    const db = makeClaimingDb(makePlan())
     vi.mocked(getPrisma).mockReturnValue(db as never)
     vi.mocked(billingService.createInvoice).mockResolvedValue({ success: true, data: { id: 'inv-1' } } as never)
 
     const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' }, 'user-1')
 
     expect(res.success).toBe(true)
+    expect(db.treatmentPlan.updateMany).toHaveBeenCalledWith({
+      where: { id: 'plan-1', invoiceId: null },
+      data: { invoiceId: 'PENDING_INVOICE_GENERATION' },
+    })
     expect(billingService.createInvoice).toHaveBeenCalledWith(
       expect.objectContaining({
         customerId: 'pat-1',
@@ -112,18 +132,19 @@ describe('treatment-plan.service — generateInvoiceFromTreatmentPlan', () => {
     expect(db.treatmentPlan.update).toHaveBeenCalledWith({ where: { id: 'plan-1' }, data: { invoiceId: 'inv-1' } })
   })
 
-  it('rejects billing a plan that is still PROPOSED', async () => {
-    const db: Record<string, any> = { treatmentPlan: { findUnique: vi.fn().mockResolvedValue(makePlan({ status: 'PROPOSED' })) } }
+  it('rejects billing a plan that is still PROPOSED, and releases the claim', async () => {
+    const db = makeClaimingDb(makePlan({ status: 'PROPOSED' }))
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' })
 
     expect(res.success).toBe(false)
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+    expect(db.treatmentPlan.update).toHaveBeenCalledWith({ where: { id: 'plan-1' }, data: { invoiceId: null } })
   })
 
   it('rejects billing a DECLINED plan', async () => {
-    const db: Record<string, any> = { treatmentPlan: { findUnique: vi.fn().mockResolvedValue(makePlan({ status: 'DECLINED' })) } }
+    const db = makeClaimingDb(makePlan({ status: 'DECLINED' }))
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' })
@@ -132,7 +153,8 @@ describe('treatment-plan.service — generateInvoiceFromTreatmentPlan', () => {
   })
 
   it('rejects re-billing a plan that already has an invoiceId', async () => {
-    const db: Record<string, any> = { treatmentPlan: { findUnique: vi.fn().mockResolvedValue(makePlan({ invoiceId: 'inv-old' })) } }
+    const plan = makePlan({ invoiceId: 'inv-old' })
+    const db = makeClaimingDb(plan, { claimCount: 0 })
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' })
@@ -142,14 +164,41 @@ describe('treatment-plan.service — generateInvoiceFromTreatmentPlan', () => {
   })
 
   it('rejects a plan with no positively-priced items', async () => {
-    const db: Record<string, any> = {
-      treatmentPlan: { findUnique: vi.fn().mockResolvedValue(makePlan({ planItems: JSON.stringify([{ procedure: 'Consultation', estimatedCost: 0, itemStatus: 'DONE' }]) })) },
-    }
+    const db = makeClaimingDb(makePlan({ planItems: JSON.stringify([{ procedure: 'Consultation', estimatedCost: 0, itemStatus: 'DONE' }]) }))
     vi.mocked(getPrisma).mockReturnValue(db as never)
 
     const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' })
 
     expect(res.success).toBe(false)
     expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  // Real bug found in this audit: two near-simultaneous calls for the same
+  // plan (double-click, or two staff terminals) used to both pass a plain
+  // `if (plan.invoiceId)` read-check before either write landed, so both
+  // could call billingService.createInvoice — double-billing the patient.
+  // The fix claims the row atomically first; a losing concurrent call must
+  // see claim.count === 0 and never touch billing at all.
+  it('rejects a concurrent second call that loses the atomic claim, without calling billing', async () => {
+    const db = makeClaimingDb(makePlan(), { claimCount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('TP-006')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+    expect(db.treatmentPlan.update).not.toHaveBeenCalled()
+  })
+
+  it('releases the claim when billing itself fails', async () => {
+    const db = makeClaimingDb(makePlan())
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(billingService.createInvoice).mockResolvedValue({ success: false, error: { code: 'INVOC-002', message: 'boom' } } as never)
+
+    const res = await generateInvoiceFromTreatmentPlan({ treatmentPlanId: 'plan-1' })
+
+    expect(res.success).toBe(false)
+    expect(db.treatmentPlan.update).toHaveBeenCalledWith({ where: { id: 'plan-1' }, data: { invoiceId: null } })
   })
 })

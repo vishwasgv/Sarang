@@ -426,6 +426,23 @@ describe('pest-job-sheet.service.generatePestJobInvoice — invoice-claim atomic
     expect(res.success).toBe(false)
     expect(db.pestJobSheet.update).toHaveBeenCalledWith({ where: { id: 'pjs-1' }, data: { invoiceId: null } })
   })
+
+  // Real bug found: nothing previously stopped a CANCELLED visit (with a real
+  // jobAmount already set) from still being fully invoiced — same guard this
+  // codebase's own established convention already enforces elsewhere for a
+  // one-off cancelled work item (lab-test-order.service.ts, sales-order.service.ts,
+  // blood-bank.service.ts).
+  it('rejects invoicing a cancelled job sheet', async () => {
+    const sheet = makeSheet({ status: 'CANCELLED' })
+    const db = makeMockDb(sheet)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generatePestJobInvoice('pjs-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PJS-011')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
 })
 
 // Real bug found+fixed (Phase 68 §9.1 — Pest Control): visitDate/

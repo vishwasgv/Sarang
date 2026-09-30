@@ -223,6 +223,69 @@ describe('creditNoteService.create — invoice balance reconciliation', () => {
   })
 })
 
+// Real bug found live (this audit): the Credit Note form's customer and
+// invoice fields are two fully independent selects (the invoice dropdown is
+// never filtered by the chosen customer), and nothing server-side checked
+// they actually belonged together — picking Customer A with Customer B's
+// invoice credited A's ledger while silently forgiving B's real debt.
+describe('creditNoteService.create — customer/invoice mismatch guard', () => {
+  it('rejects when the selected invoice belongs to a different customer', async () => {
+    const db = makeDb()
+    db.invoice.findUnique = vi.fn().mockResolvedValue({ id: 'inv-1', customerId: 'cust-OTHER', pricesIncludeTax: false, gstType: 'GST', items: [] })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Discount', amount: 100 }, 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CN-006')
+    expect(db.__txClient.creditNote.create).not.toHaveBeenCalled()
+  })
+
+  it('allows a matching customer/invoice pair', async () => {
+    const db = makeDb(EXISTING, { balanceAmount: 500, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    db.invoice.findUnique = vi.fn().mockResolvedValue({ id: 'inv-1', customerId: 'cust-1', pricesIncludeTax: false, gstType: 'GST', items: [] })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Discount', amount: 100 }, 'user-1')
+
+    expect(res.success).toBe(true)
+  })
+
+  it('allows a credit note against a walk-in (customer-less) invoice', async () => {
+    const db = makeDb(EXISTING, { balanceAmount: 500, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    db.invoice.findUnique = vi.fn().mockResolvedValue({ id: 'inv-1', customerId: null, pricesIncludeTax: false, gstType: 'GST', items: [] })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.create({ customerId: 'cust-1', invoiceId: 'inv-1', reason: 'Discount', amount: 100 }, 'user-1')
+
+    expect(res.success).toBe(true)
+  })
+})
+
+describe('creditNoteService.update — customer/invoice mismatch guard', () => {
+  it('rejects re-pointing a credit note at an invoice belonging to a different customer', async () => {
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', customerId: 'cust-1' }
+    const db = makeDb(existingWithInvoice, { customerId: 'cust-OTHER', balanceAmount: 500, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.update('cn-1', { customerId: 'cust-1', invoiceId: 'inv-1' }, 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CN-006')
+  })
+
+  it('does not re-validate an untouched pairing on a reason-only edit', async () => {
+    // Pre-existing (pre-fix-era) mismatched row: must not block an unrelated edit.
+    const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', customerId: 'cust-1' }
+    const db = makeDb(existingWithInvoice, { customerId: 'cust-OTHER', balanceAmount: 500, totalAmount: 500, paymentStatus: 'UNPAID', paidAmount: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await creditNoteService.update('cn-1', { reason: 'Corrected wording' }, 'user-1')
+
+    expect(res.success).toBe(true)
+  })
+})
+
 describe('creditNoteService.delete — invoice balance restoration', () => {
   it('restores the invoice balance by the voided credit note amount', async () => {
     const existingWithInvoice = { ...EXISTING, invoiceId: 'inv-1', amount: 200, appliedToInvoiceAmount: 200 }

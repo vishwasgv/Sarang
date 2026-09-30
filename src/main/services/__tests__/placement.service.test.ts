@@ -212,6 +212,22 @@ describe('placement.service.generatePlacementInvoice — invoice-claim atomicity
     expect(res.success).toBe(false)
     expect(db.placement.update).toHaveBeenCalledWith({ where: { id: 'plc-1' }, data: { invoiceId: null } })
   })
+
+  // Real bug found: nothing previously stopped a CANCELLED placement (with a
+  // real commissionAmount already set) from still being fully invoiced to the
+  // client — same guard this codebase's own established convention already
+  // enforces elsewhere for a one-off cancelled work item (lab-test-order.service.ts,
+  // sales-order.service.ts, blood-bank.service.ts).
+  it('rejects invoicing a cancelled placement', async () => {
+    const db = makeMockDb(makePlacement({ status: 'CANCELLED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generatePlacementInvoice('plc-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PLC-006')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
 })
 
 // Real bug found+fixed (Phase 68 §9.1 — Placement Agency): joiningDate was

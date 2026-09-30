@@ -293,7 +293,7 @@ export function TripBookingScreen(): React.JSX.Element {
                         <PlayCircle size={12} /> {t('tours.bookings.startDuty')}
                       </button>
                     )}
-                    {canManage && !b.invoiceId && (
+                    {canManage && !b.invoiceId && b.status !== 'CANCELLED' && (
                       <button onClick={() => void handleGenerateInvoice(b.id)} disabled={generatingInvoiceId === b.id} className="text-xs px-3 py-1.5 rounded-lg bg-brand text-white flex items-center gap-1 font-medium disabled:opacity-50">
                         <Receipt size={12} /> {t('tours.bookings.generateInvoice')}
                       </button>

@@ -105,6 +105,33 @@ Total: 899.00
     expect(r.vendor).toBe('Om Sai Traders')
   })
 
+  it('prefers a later Grand Total over an earlier, less specific Item Total line', () => {
+    const text = `
+Om Sai Traders
+
+Milk               90.00
+Item Total:         90.00
+CGST @2.5%           2.25
+SGST @2.5%           2.25
+Grand Total:        94.50
+`
+    const r = parseReceiptText(text)
+    // Real bug: a plain leftmost regex match picked "Item Total: 90.00" (the first "total"
+    // occurrence in the text) over the actual "Grand Total: 94.50" printed further down.
+    expect(r.amount).toBe(94.5)
+  })
+
+  it('picks the last "Total" line when no specific keyword (Grand/Amount Due/etc.) exists at all', () => {
+    const text = `
+Quick Bites
+
+Item Total:         90.00
+Total:               94.50
+`
+    const r = parseReceiptText(text)
+    expect(r.amount).toBe(94.5)
+  })
+
   it('never returns a negative or absurdly large amount from stray digits', () => {
     const text = `
 Some Shop

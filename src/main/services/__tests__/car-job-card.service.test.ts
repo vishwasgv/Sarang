@@ -243,6 +243,27 @@ describe('generateCarJobInvoice — catalog-linked parts reach real inventory', 
   })
 })
 
+// Real bug found: nothing previously stopped a CANCELLED job card (with real
+// laborTotal/partsTotal already recorded) from still being fully invoiced —
+// same guard this codebase's own established convention already enforces
+// elsewhere for a one-off cancelled work item (lab-test-order.service.ts,
+// sales-order.service.ts, blood-bank.service.ts).
+describe('generateCarJobInvoice — cancelled job card', () => {
+  beforeEach(() => vi.clearAllMocks())
+
+  it('fails when the job card is cancelled', async () => {
+    const card = makeCard({ status: 'CANCELLED' })
+    const db = makeMockDb(card)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateCarJobInvoice('cjc-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('CJC-012')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+})
+
 // Real bug found 2026-07-23: generateCarJobInvoice had no atomic claim on
 // invoiceId (unlike every sibling generate*Invoice function elsewhere in
 // this codebase) — two concurrent calls for the same job card could both

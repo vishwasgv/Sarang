@@ -19,6 +19,27 @@ function validateGrnItems(items: Array<{ receivedQty: number; unitCost?: number;
   return null
 }
 
+// Sums each GRN's own line items by the PurchaseOrderItem they resolve to —
+// a single GRN can carry more than one line for the same product (e.g. two
+// different batch numbers of the same product delivered together), and each
+// such line must count against the SAME poItem.receivedQty, not be checked
+// or applied independently against a stale pre-GRN snapshot of it.
+function sumByPoItem<T extends { productId: string | null; receivedQty: number }>(
+  grnItems: T[],
+  poItems: Array<{ id: string; productId: string }>
+): Map<string, { itemName: string; delta: number }> {
+  const result = new Map<string, { itemName: string; delta: number }>()
+  for (const grnItem of grnItems) {
+    if (!grnItem.productId) continue
+    const poItem = poItems.find(p => p.productId === grnItem.productId)
+    if (!poItem) continue
+    const prev = result.get(poItem.id)
+    const itemName = (grnItem as unknown as { itemName?: string }).itemName ?? grnItem.productId
+    result.set(poItem.id, { itemName, delta: (prev?.delta ?? 0) + grnItem.receivedQty })
+  }
+  return result
+}
+
 function toRecord(r: any) {
   return {
     id: r.id, grnNumber: r.grnNumber,
@@ -252,12 +273,11 @@ export async function postGRN(id: string, userId?: string) {
         // GRN consumer to re-handle the null case.
         poItems = (await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } }))
           .filter((item): item is typeof item & { productId: string } => item.productId !== null)
-        for (const grnItem of grn.items) {
-          if (!grnItem.productId) continue
-          const poItem = poItems.find(p => p.productId === grnItem.productId)
-          if (poItem && poItem.receivedQty + grnItem.receivedQty > poItem.quantity + 1e-6) {
+        for (const [poItemId, { itemName, delta }] of sumByPoItem(grn.items, poItems)) {
+          const poItem = poItems.find(p => p.id === poItemId)!
+          if (poItem.receivedQty + delta > poItem.quantity + 1e-6) {
             throw Object.assign(
-              new Error(`Receiving ${grnItem.receivedQty} ${grnItem.itemName} would exceed the ordered quantity (ordered ${poItem.quantity}, already received ${poItem.receivedQty}).`),
+              new Error(`Receiving ${delta} ${itemName} would exceed the ordered quantity (ordered ${poItem.quantity}, already received ${poItem.receivedQty}).`),
               { _code: 'OVER_RECEIPT' }
             )
           }
@@ -352,17 +372,24 @@ export async function postGRN(id: string, userId?: string) {
         }, tx)
       }
 
-      // Update PO line items receivedQty and PO status
+      // Update PO line items receivedQty and PO status.
+      // REAL BUG found+fixed (pre-launch audit): this used to loop over
+      // grn.items directly and write `poItem.receivedQty + grnItem.receivedQty`
+      // straight from the pre-GRN `poItems` snapshot. A GRN with two lines
+      // against the SAME PO item (two batch numbers of one product received
+      // together) computed both updates from the identical stale
+      // poItem.receivedQty — the second update overwrote the first instead of
+      // adding to it, so the PO's receivedQty permanently lost whatever the
+      // first line contributed. Fixed by summing each PO item's total delta
+      // across all of this GRN's own lines first, then writing one update per
+      // PO item — same accumulation the over-receipt check above now uses.
       if (grn.purchaseOrderId) {
-        for (const grnItem of grn.items) {
-          if (!grnItem.productId) continue
-          const poItem = poItems.find(p => p.productId === grnItem.productId)
-          if (poItem) {
-            await tx.purchaseOrderItem.update({
-              where: { id: poItem.id },
-              data: { receivedQty: poItem.receivedQty + grnItem.receivedQty },
-            })
-          }
+        for (const [poItemId, { delta }] of sumByPoItem(grn.items, poItems)) {
+          const poItem = poItems.find(p => p.id === poItemId)!
+          await tx.purchaseOrderItem.update({
+            where: { id: poItem.id },
+            data: { receivedQty: poItem.receivedQty + delta },
+          })
         }
         // Re-fetch updated PO items to determine status
         const updatedPoItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } })
@@ -488,16 +515,17 @@ export async function reverseGRN(id: string, userId?: string) {
         }, tx)
       }
 
+      // Same stale-snapshot lost-update bug as postGRN's PO update, mirrored
+      // in reverse: sum each PO item's total delta across all of this GRN's
+      // own lines before writing, instead of overwriting from the same
+      // pre-reversal poItem.receivedQty on every line that shares a product.
       if (grn.purchaseOrderId) {
-        for (const grnItem of grn.items) {
-          if (!grnItem.productId) continue
-          const poItem = poItems.find(p => p.productId === grnItem.productId)
-          if (poItem) {
-            await tx.purchaseOrderItem.update({
-              where: { id: poItem.id },
-              data: { receivedQty: Math.max(0, poItem.receivedQty - grnItem.receivedQty) },
-            })
-          }
+        for (const [poItemId, { delta }] of sumByPoItem(grn.items, poItems)) {
+          const poItem = poItems.find(p => p.id === poItemId)!
+          await tx.purchaseOrderItem.update({
+            where: { id: poItem.id },
+            data: { receivedQty: Math.max(0, poItem.receivedQty - delta) },
+          })
         }
         const updatedPoItems = await tx.purchaseOrderItem.findMany({ where: { purchaseOrderId: grn.purchaseOrderId } })
         const allReceived = updatedPoItems.every(p => p.receivedQty >= p.quantity)

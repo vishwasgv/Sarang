@@ -253,6 +253,71 @@ describe('postGRN', () => {
     )
   })
 
+  // REAL BUG found+fixed (pre-launch audit): a GRN with two lines for the SAME
+  // product (e.g. two different batch numbers of one product delivered
+  // together) checked each line's over-receipt guard, and later wrote each
+  // line's PO receivedQty update, independently against the SAME stale
+  // pre-GRN poItem.receivedQty snapshot. Two lines that each individually
+  // stayed under the ordered quantity could combine to exceed it undetected,
+  // and the second PO update overwrote the first instead of adding to it —
+  // permanently losing track of whatever the first line contributed.
+  it('sums multiple GRN lines for the same product before checking/writing PO receivedQty (not a lost update)', async () => {
+    const db = makeDb({
+      goodsReceiptNote: {
+        findUnique: vi.fn().mockResolvedValue(makeGRN({
+          purchaseOrderId: 'po-1',
+          items: [
+            { id: 'gi-1', productId: 'prod-1', rawMaterialId: null, itemName: 'Widget (Batch A)', receivedQty: 6, rejectedQty: 0, unitCost: 100 },
+            { id: 'gi-2', productId: 'prod-1', rawMaterialId: null, itemName: 'Widget (Batch B)', receivedQty: 4, rejectedQty: 0, unitCost: 100 }
+          ]
+        })),
+        update: vi.fn()
+      },
+      purchaseOrder: { findUnique: vi.fn().mockResolvedValue({ id: 'po-1', status: 'APPROVED' }), update: vi.fn() },
+      purchaseOrderItem: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([makePOItem({ receivedQty: 0, quantity: 10 })])
+          .mockResolvedValue([makePOItem({ receivedQty: 10, quantity: 10 })]),
+        update: vi.fn().mockResolvedValue(makePOItem({ receivedQty: 10 }))
+      }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await postGRN('grn-1', 'user-1')
+
+    expect(result.success).toBe(true)
+    // One combined write per PO item, summing both lines (0 + 6 + 4 = 10), not
+    // two separate writes each recomputed from the same stale receivedQty: 0.
+    expect(db.purchaseOrderItem.update).toHaveBeenCalledTimes(1)
+    expect(db.purchaseOrderItem.update).toHaveBeenCalledWith({ where: { id: 'poi-1' }, data: { receivedQty: 10 } })
+    expect(db.purchaseOrder.update).toHaveBeenCalledWith(expect.objectContaining({ data: { status: 'RECEIVED' } }))
+  })
+
+  it('rejects when two same-product GRN lines combine to exceed the ordered quantity, even though each line alone would pass', async () => {
+    const db = makeDb({
+      goodsReceiptNote: {
+        findUnique: vi.fn().mockResolvedValue(makeGRN({
+          purchaseOrderId: 'po-1',
+          items: [
+            { id: 'gi-1', productId: 'prod-1', rawMaterialId: null, itemName: 'Widget (Batch A)', receivedQty: 8, rejectedQty: 0, unitCost: 100 },
+            { id: 'gi-2', productId: 'prod-1', rawMaterialId: null, itemName: 'Widget (Batch B)', receivedQty: 8, rejectedQty: 0, unitCost: 100 }
+          ]
+        })),
+        update: vi.fn()
+      },
+      purchaseOrder: { findUnique: vi.fn().mockResolvedValue({ id: 'po-1', status: 'APPROVED' }), update: vi.fn() },
+      purchaseOrderItem: { findMany: vi.fn().mockResolvedValue([makePOItem({ receivedQty: 0, quantity: 10 })]), update: vi.fn() }
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await postGRN('grn-1')
+
+    expect(result.success).toBe(false)
+    expect((result as { error: { code: string } }).error.code).toBe('GRN-001')
+    expect(inventoryService.addStockTx).not.toHaveBeenCalled()
+    expect(db.purchaseOrderItem.update).not.toHaveBeenCalled()
+  })
+
   it('preserves a ServiceError thrown by addStockTx instead of swallowing it', async () => {
     const db = makeDb()
     vi.mocked(getPrisma).mockReturnValue(db as never)
@@ -499,6 +564,42 @@ describe('reverseGRN', () => {
     const result = await reverseGRN('grn-1')
 
     expect(result.success).toBe(true)
+    expect(db.purchaseOrderItem.update).toHaveBeenCalledWith({ where: { id: 'poi-1' }, data: { receivedQty: 0 } })
+    expect(db.purchaseOrder.update).toHaveBeenCalledWith({ where: { id: 'po-1' }, data: { status: 'APPROVED' } })
+  })
+
+  // Same lost-update bug, mirrored on the reversal path: two GRN lines for
+  // the same product must subtract their combined total from PO receivedQty
+  // in one write, not each subtract independently from the same stale
+  // pre-reversal snapshot (which would leave the PO receivedQty rolled back
+  // by only the LAST line's quantity instead of both lines').
+  it('sums multiple same-product GRN lines before writing the PO receivedQty rollback', async () => {
+    const db = makeDb({
+      goodsReceiptNote: {
+        findUnique: vi.fn().mockResolvedValue(makeGRN({
+          status: 'POSTED', purchaseOrderId: 'po-1',
+          items: [
+            { id: 'gi-1', productId: 'prod-1', rawMaterialId: null, itemName: 'Widget (Batch A)', receivedQty: 6, rejectedQty: 0, unitCost: 100 },
+            { id: 'gi-2', productId: 'prod-1', rawMaterialId: null, itemName: 'Widget (Batch B)', receivedQty: 4, rejectedQty: 0, unitCost: 100 }
+          ]
+        })),
+        update: vi.fn().mockResolvedValue(makeGRN({ status: 'REVERSED' })),
+      },
+      purchaseOrderItem: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([makePOItem({ receivedQty: 10, quantity: 10 })])
+          .mockResolvedValue([makePOItem({ receivedQty: 0, quantity: 10 })]),
+        update: vi.fn().mockResolvedValue(makePOItem({ receivedQty: 0 })),
+      },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reverseGRN('grn-1')
+
+    expect(result.success).toBe(true)
+    // One combined write: 10 - (6 + 4) = 0, not two writes each computed from
+    // the same stale receivedQty: 10 (which would leave it at 6, not 0).
+    expect(db.purchaseOrderItem.update).toHaveBeenCalledTimes(1)
     expect(db.purchaseOrderItem.update).toHaveBeenCalledWith({ where: { id: 'poi-1' }, data: { receivedQty: 0 } })
     expect(db.purchaseOrder.update).toHaveBeenCalledWith({ where: { id: 'po-1' }, data: { status: 'APPROVED' } })
   })

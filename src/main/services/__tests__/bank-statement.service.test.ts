@@ -105,6 +105,50 @@ describe('bankStatementService.autoMatch', () => {
     expect(db.bankStatementLine.update).not.toHaveBeenCalled()
   })
 
+  it('never matches the same Payment to two different unmatched lines in one run', async () => {
+    const db = makeDb({
+      bankStatementLine: {
+        findMany: vi.fn().mockResolvedValue([
+          { id: 'line-1', creditAmount: 500, debitAmount: 0, transactionDate: new Date(2026, 7, 1) },
+          { id: 'line-2', creditAmount: 500, debitAmount: 0, transactionDate: new Date(2026, 7, 2) },
+        ]),
+        update: vi.fn().mockResolvedValue({}),
+      },
+      payment: { findMany: vi.fn().mockResolvedValue([{ id: 'pmt-1', amount: 500, paymentDate: new Date(2026, 7, 1), isReversed: false }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await bankStatementService.autoMatch('bank-1')
+
+    expect(res.success).toBe(true)
+    // Only line-1 gets the one real payment; line-2 must stay unmatched, not claim it too.
+    expect((res.data as { matchedCount: number }).matchedCount).toBe(1)
+    expect(db.bankStatementLine.update).toHaveBeenCalledTimes(1)
+    expect(db.bankStatementLine.update).toHaveBeenCalledWith({
+      where: { id: 'line-1' },
+      data: expect.objectContaining({ matchedType: 'PAYMENT', matchedId: 'pmt-1' })
+    })
+  })
+
+  it('skips a candidate already reconciled to another line from a prior run', async () => {
+    const db = makeDb({
+      bankStatementLine: {
+        findMany: vi.fn()
+          .mockResolvedValueOnce([{ id: 'line-2', creditAmount: 500, debitAmount: 0, transactionDate: new Date(2026, 7, 2) }]) // unmatched
+          .mockResolvedValueOnce([{ matchedType: 'PAYMENT', matchedId: 'pmt-1' }]), // already reconciled elsewhere
+        update: vi.fn().mockResolvedValue({}),
+      },
+      payment: { findMany: vi.fn().mockResolvedValue([{ id: 'pmt-1', amount: 500, paymentDate: new Date(2026, 7, 1), isReversed: false }]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await bankStatementService.autoMatch('bank-1')
+
+    expect(res.success).toBe(true)
+    expect((res.data as { matchedCount: number }).matchedCount).toBe(0)
+    expect(db.bankStatementLine.update).not.toHaveBeenCalled()
+  })
+
   it('leaves a line unreconciled when the only candidate is outside the date proximity window', async () => {
     const db = makeDb({
       bankStatementLine: {

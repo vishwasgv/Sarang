@@ -250,6 +250,14 @@ export async function generateCarJobInvoice(id: string) {
       await db.carJobCard.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'CJC-001', message: 'Job card not found.' } }
     }
+    // Real bug found: same missing guard as job-card.service.ts's own
+    // generateJobCardInvoice — see that function's comment. CarJobCard.status
+    // can be CANCELLED, and nothing stopped a cancelled job card (with real
+    // laborTotal/partsTotal already recorded) from still being fully invoiced.
+    if (card.status === 'CANCELLED') {
+      await db.carJobCard.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'CJC-012', message: 'Cannot generate an invoice for a cancelled job card.' } }
+    }
 
     const laborTotal = Number(card.laborTotal)
     const partsTotal = Number(card.partsTotal)

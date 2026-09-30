@@ -331,6 +331,15 @@ export async function generateProjectInvoice(id: string, userId?: string) {
       await db.project.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PRJ-004', message: 'This project has no linked customer. Set a customer before generating an invoice.' } }
     }
+    // Real bug found in this audit: a CANCELLED project (a real, reachable
+    // terminal state — see updateProject's own status handling) had no
+    // guard here, so a cancelled project could still be fully invoiced.
+    // Mirrors trip-booking.service.ts's own TRB-018 guard for the same
+    // "cancelled parent record" bug class.
+    if (project.status === 'CANCELLED') {
+      await db.project.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PRJ-007', message: 'Cannot generate an invoice for a cancelled project.' } }
+    }
     if (project.estimatedAmount <= 0) {
       await db.project.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PRJ-006', message: 'This project has no billable amount. Set an amount before generating an invoice.' } }

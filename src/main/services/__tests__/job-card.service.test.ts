@@ -93,6 +93,21 @@ describe('job-card.service.generateJobCardInvoice', () => {
     expect(res.error?.code).toBe('JC-005')
   })
 
+  // Real bug found: nothing previously stopped a CANCELLED job card (with a
+  // real actualCost/estimatedCost already recorded) from still being fully
+  // invoiced — same guard this codebase's own established convention already
+  // enforces elsewhere for a one-off cancelled work item (lab-test-order.service.ts,
+  // sales-order.service.ts, blood-bank.service.ts).
+  it('fails when the job card is cancelled', async () => {
+    const job = makeJobCard({ status: 'CANCELLED', actualCost: 2800 })
+    vi.mocked(getPrisma).mockReturnValue(makeMockDb(job) as never)
+
+    const res = await generateJobCardInvoice('jc-1')
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('JC-009')
+  })
+
   it('fails when both estimatedCost and actualCost are zero — nothing to bill', async () => {
     const job = makeJobCard({ estimatedCost: 0, actualCost: 0 })
     vi.mocked(getPrisma).mockReturnValue(makeMockDb(job) as never)

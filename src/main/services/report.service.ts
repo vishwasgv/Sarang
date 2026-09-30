@@ -4439,7 +4439,10 @@ async function generateJewelleryReport(params: { dateFrom: string; dateTo: strin
   const jewelleryItems = await db.invoiceItem.findMany({
     where: {
       jewelleryMetalType: { not: null },
-      invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } }
+      // SPLIT excluded too, not just CANCELLED — this reads InvoiceItem fields
+      // directly, and splitInvoice() deliberately leaves a SPLIT parent's own
+      // line items untouched (see generateTaxReport's own SPLIT comment above).
+      invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } }
     },
     select: { jewelleryMakingCharge: true, quantity: true }
   })
@@ -4491,7 +4494,8 @@ async function generateMakingChargeMarginReport(params: { dateFrom: string; date
   const items = await db.invoiceItem.findMany({
     where: {
       jewelleryMetalType: { not: null },
-      invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+      // See generateJewelleryReport's own SPLIT comment — reads InvoiceItem directly.
+      invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     },
     select: {
       jewelleryNetWeight: true, jewelleryRatePerGram: true, jewelleryMakingCharge: true, quantity: true,
@@ -4601,7 +4605,8 @@ async function generateMetalRateVsSalesVolumeReport(params: { dateFrom: string; 
   const allItems = await db.invoiceItem.findMany({
     where: {
       jewelleryMetalType: { not: null }, jewelleryPurity: { not: null },
-      invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } },
+      // See generateJewelleryReport's own SPLIT comment — reads InvoiceItem directly.
+      invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } },
     },
     select: { jewelleryMetalType: true, jewelleryPurity: true, jewelleryNetWeight: true, quantity: true, invoice: { select: { invoiceDate: true } } },
   })
@@ -8148,7 +8153,8 @@ async function generatePrescriptionDrugSalesReport(params: { dateFrom: string; d
     where: {
       createdAt: { gte: from, lte: to },
       product: { isPrescriptionRequired: true },
-      invoice: { status: { not: 'CANCELLED' } },
+      // See generateTaxReport's own SPLIT comment — reads InvoiceItem directly.
+      invoice: { status: { notIn: ['CANCELLED', 'SPLIT'] } },
     },
     include: {
       invoice: { select: { invoiceNumber: true, createdAt: true, customer: { select: { customerName: true } } } },
@@ -8225,7 +8231,8 @@ async function generateScheduleH1XRegisterReport(params: { dateFrom: string; dat
     where: {
       createdAt: { gte: from, lte: to },
       product: { isScheduleH1X: true },
-      invoice: { status: { not: 'CANCELLED' } },
+      // See generateTaxReport's own SPLIT comment — reads InvoiceItem directly.
+      invoice: { status: { notIn: ['CANCELLED', 'SPLIT'] } },
     },
     include: {
       invoice: { select: { invoiceNumber: true, createdAt: true, customer: { select: { customerName: true } } } },
@@ -9253,10 +9260,11 @@ async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; date
   // Total volume (paid + FOC) of every scheme-covered product in range,
   // regardless of whether a given line actually carried a schemeId — this is
   // the "did the covered product sell more" half of the correlation.
+  // See generateTaxReport's own SPLIT comment — both queries below read InvoiceItem directly.
   const volumeItems = coveredIdsArr.length > 0
     ? await db.invoiceItem.findMany({
-        where: { productId: { in: coveredIdsArr }, invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } } },
-        select: { quantity: true, invoice: { select: { invoiceDate: true } } },
+        where: { productId: { in: coveredIdsArr }, invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } } },
+        select: { quantity: true, invoice: { select: { invoiceDate: true, invoiceType: true } } },
       })
     : []
 
@@ -9268,7 +9276,7 @@ async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; date
   // "computed at current cost, framed as such" precedent Phase 63's own
   // pricing.schemeCostThisMonth AI intent already established for FOC lines).
   const schemeItems = await db.invoiceItem.findMany({
-    where: { schemeId: { not: null }, invoice: { invoiceDate: { gte: from, lte: to }, status: { not: 'CANCELLED' } } },
+    where: { schemeId: { not: null }, invoice: { invoiceDate: { gte: from, lte: to }, status: { notIn: ['CANCELLED', 'SPLIT'] } } },
     select: {
       productId: true, quantity: true, isFreeOfCost: true, discountAmount: true, schemeId: true,
       invoice: { select: { invoiceDate: true } }, scheme: { select: { name: true, ruleType: true } },
@@ -9281,7 +9289,12 @@ async function generateSchemeCostVsVolumeReport(params: { dateFrom: string; date
   for (const item of volumeItems) {
     const key = weekStartKey(item.invoice.invoiceDate)
     const p = periodMap.get(key) ?? { schemeCost: 0, totalVolume: 0 }
-    p.totalVolume += item.quantity
+    // RETURN lines store quantity as a positive magnitude (this file's
+    // established convention — see generateSalesReport's own sign-correction
+    // comment) — without this, a customer returning a scheme-covered product
+    // inflated "did the covered product sell more" instead of reducing it.
+    const sign = item.invoice.invoiceType === 'RETURN' ? -1 : 1
+    p.totalVolume += sign * item.quantity
     periodMap.set(key, p)
   }
 

@@ -150,11 +150,20 @@ export async function generateMilestoneInvoice(milestoneId: string) {
     try {
       const milestone = await db.serviceProjectMilestone.findUnique({
         where: { id: milestoneId },
-        include: { project: { select: { id: true, clientId: true, projectName: true } } },
+        include: { project: { select: { id: true, clientId: true, projectName: true, status: true } } },
       })
       if (!milestone || milestone.milestoneAmount == null || Number(milestone.milestoneAmount) <= 0) {
         await db.serviceProjectMilestone.update({ where: { id: milestoneId }, data: { invoiceId: null } })
         return { success: false, error: { code: 'MS30-007', message: 'Set a milestone amount greater than zero before generating an invoice.' } }
+      }
+      // Real bug found (renderer audit, service-business batch): nothing here
+      // stopped a milestone from being invoiced when its PARENT project had
+      // already been marked CANCELLED — same bug class as shoot-booking
+      // .service.ts's/event-booking.service.ts's own missing cancelled-record
+      // invoice guards.
+      if (milestone.project.status === 'CANCELLED') {
+        await db.serviceProjectMilestone.update({ where: { id: milestoneId }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'MS30-011', message: 'Cannot generate an invoice for a milestone on a cancelled project.' } }
       }
 
       let product = await db.product.findFirst({ where: { hsnCode: '998311', isActive: true } })

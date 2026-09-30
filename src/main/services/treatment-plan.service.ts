@@ -133,6 +133,13 @@ async function findOrCreateDentalServiceProduct() {
   return product
 }
 
+// Sentinel written to TreatmentPlan.invoiceId while a generation is in
+// flight — same atomic-claim pattern as appointment.service.ts's
+// generateAppointmentInvoice / lab-test-order.service.ts's
+// generateLabTestOrderInvoice (see their comments for the full race
+// rationale).
+const TREATMENT_PLAN_CLAIM_SENTINEL = 'PENDING_INVOICE_GENERATION'
+
 // Phase 67 §9.1 item 21.1 — Dental Clinic: treatment-plan conversion
 // tracking (quoted→accepted→billed). Mirrors generateInvoiceForServiceProject's
 // own "one product, one line per real chargeable item" pattern (time-entry.service.ts)
@@ -140,43 +147,77 @@ async function findOrCreateDentalServiceProduct() {
 // actually been accepted (not still PROPOSED, not DECLINED) can be billed —
 // billing an unaccepted plan would silently invent acceptance the patient
 // never gave. A plan can only be billed once: `invoiceId` is the claim.
+//
+// Real bug found in this audit: the "already billed" check used to be a
+// plain findUnique() read with the invoiceId write only happening at the
+// very end — a classic TOCTOU gap (the same class already closed for every
+// sibling generateXInvoice in this codebase). Two near-simultaneous clicks
+// on "Generate Invoice" (a double-click, or two staff terminals) could both
+// pass the stale `plan.invoiceId` check and both call billingService.
+// createInvoice, double-billing the patient for the same treatment plan.
+// Fixed with the same atomic updateMany-claim-then-release-on-failure shape
+// every other invoice generator here already uses.
 export async function generateInvoiceFromTreatmentPlan(payload: { treatmentPlanId: string }, userId?: string) {
+  const db = getPrisma()
   try {
-    const db = getPrisma()
-    const plan = await db.treatmentPlan.findUnique({ where: { id: payload.treatmentPlanId } })
-    if (!plan) return { success: false, error: { code: 'TP-005', message: 'Treatment plan not found.' } }
-    if (plan.invoiceId) return { success: false, error: { code: 'TP-006', message: 'This treatment plan has already been billed.' } }
-    if (plan.status === 'PROPOSED' || plan.status === 'DECLINED') {
-      return { success: false, error: { code: 'TP-007', message: 'Only an accepted treatment plan can be billed.' } }
+    const claim = await db.treatmentPlan.updateMany({
+      where: { id: payload.treatmentPlanId, invoiceId: null },
+      data: { invoiceId: TREATMENT_PLAN_CLAIM_SENTINEL },
+    })
+    if (claim.count === 0) {
+      const existing = await db.treatmentPlan.findUnique({ where: { id: payload.treatmentPlanId }, select: { id: true } })
+      if (!existing) return { success: false, error: { code: 'TP-005', message: 'Treatment plan not found.' } }
+      return { success: false, error: { code: 'TP-006', message: 'This treatment plan has already been billed.' } }
     }
 
-    let items: Array<{ toothNumber?: number; procedure: string; estimatedCost: number; itemStatus: string }> = []
-    try { items = JSON.parse(plan.planItems) } catch { items = [] }
-    const billableItems = items.filter((i) => i.estimatedCost > 0)
-    if (billableItems.length === 0) return { success: false, error: { code: 'TP-008', message: 'This plan has no priced items to bill.' } }
+    try {
+      const plan = await db.treatmentPlan.findUnique({ where: { id: payload.treatmentPlanId } })
+      if (!plan) {
+        await db.treatmentPlan.update({ where: { id: payload.treatmentPlanId }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'TP-005', message: 'Treatment plan not found.' } }
+      }
+      if (plan.status === 'PROPOSED' || plan.status === 'DECLINED') {
+        await db.treatmentPlan.update({ where: { id: payload.treatmentPlanId }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'TP-007', message: 'Only an accepted treatment plan can be billed.' } }
+      }
 
-    const product = await findOrCreateDentalServiceProduct()
-    const result = await billingService.createInvoice({
-      customerId: plan.patientId,
-      paymentMethod: 'CREDIT',
-      items: billableItems.map((i) => ({
-        productId: product.id,
-        quantity: 1,
-        unitPrice: i.estimatedCost,
-        variantInfo: (i.toothNumber ? `Tooth #${i.toothNumber} — ${i.procedure}` : i.procedure).slice(0, 100),
-      })),
-      notes: plan.title,
-      referenceNumber: plan.id.slice(0, 12),
-    }, userId)
-    if (!result.success) return result
+      let items: Array<{ toothNumber?: number; procedure: string; estimatedCost: number; itemStatus: string }> = []
+      try { items = JSON.parse(plan.planItems) } catch { items = [] }
+      const billableItems = items.filter((i) => i.estimatedCost > 0)
+      if (billableItems.length === 0) {
+        await db.treatmentPlan.update({ where: { id: payload.treatmentPlanId }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'TP-008', message: 'This plan has no priced items to bill.' } }
+      }
 
-    const invoice = result.data as { id: string }
-    await db.treatmentPlan.update({ where: { id: plan.id }, data: { invoiceId: invoice.id } })
-    await db.auditLog.create({
-      data: { userId: userId ?? null, action: 'INVOICED', entityType: 'TreatmentPlan', entityId: plan.id, newValue: JSON.stringify({ invoiceId: invoice.id }) },
-    }).catch(() => {})
+      const product = await findOrCreateDentalServiceProduct()
+      const result = await billingService.createInvoice({
+        customerId: plan.patientId,
+        paymentMethod: 'CREDIT',
+        items: billableItems.map((i) => ({
+          productId: product.id,
+          quantity: 1,
+          unitPrice: i.estimatedCost,
+          variantInfo: (i.toothNumber ? `Tooth #${i.toothNumber} — ${i.procedure}` : i.procedure).slice(0, 100),
+        })),
+        notes: plan.title,
+        referenceNumber: plan.id.slice(0, 12),
+      }, userId)
+      if (!result.success) {
+        await db.treatmentPlan.update({ where: { id: payload.treatmentPlanId }, data: { invoiceId: null } })
+        return result
+      }
 
-    return { success: true, data: { invoiceId: invoice.id } }
+      const invoice = result.data as { id: string }
+      await db.treatmentPlan.update({ where: { id: plan.id }, data: { invoiceId: invoice.id } })
+      await db.auditLog.create({
+        data: { userId: userId ?? null, action: 'INVOICED', entityType: 'TreatmentPlan', entityId: plan.id, newValue: JSON.stringify({ invoiceId: invoice.id }) },
+      }).catch(() => {})
+
+      return { success: true, data: { invoiceId: invoice.id } }
+    } catch (err) {
+      await db.treatmentPlan.update({ where: { id: payload.treatmentPlanId }, data: { invoiceId: null } }).catch(() => {})
+      throw err
+    }
   } catch (err) {
     return { success: false, error: { code: 'TP-009', message: err instanceof Error ? err.message : 'Could not generate invoice for treatment plan.' } }
   }

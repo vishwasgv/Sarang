@@ -48,6 +48,11 @@ export const MANUAL_CHAPTERS: ManualChapter[] = [
   // to Billing (the purchase-side and sales-side "beyond the basic
   // transaction" chapters sit next to each other).
   { slug: 'sales-orders-pricing', group: 'universal', title: 'Sales Orders & Pricing' },
+  // Blueprints (J19, built earlier this session) — cross-cutting, opt-in, same
+  // convention as owner-view/ai-assistant directly above. Placed right after
+  // sales-orders-pricing since it extends that chapter's own documents
+  // (Sales Orders and Purchase Orders).
+  { slug: 'blueprints', group: 'universal', title: 'Blueprints: Document Stage Tracking' },
   // Phase 62 — Banking, Ledger & Compliance Backbone. Placed right after
   // bills-purchases, matching that chapter's own precedent of sitting
   // between the transaction-recording chapters and Reports.

@@ -263,4 +263,30 @@ describe('trip-booking.service.generateTripInvoice', () => {
     expect(res.success).toBe(true)
     expect(billingService.createInvoice).toHaveBeenCalledWith(expect.objectContaining({ items: [{ productId: 'svc-prod-1', quantity: 1, unitPrice: 3000 }] }))
   })
+
+  // Real bug found: nothing previously stopped a CANCELLED booking (which
+  // updateTripBookingStatus already treats as a real terminal state, even
+  // releasing held seats back) from still being fully invoiced for its
+  // packageRate — same guard this codebase's own established convention
+  // already enforces elsewhere for a one-off cancelled work item
+  // (lab-test-order.service.ts, sales-order.service.ts, blood-bank.service.ts).
+  it('rejects invoicing a cancelled booking', async () => {
+    const db: Record<string, any> = {
+      tripBooking: {
+        updateMany: vi.fn().mockResolvedValue({ count: 1 }),
+        findUnique: vi.fn().mockResolvedValue({
+          id: 'trp-3', bookingNumber: 'TRP-00003', bookingType: 'CHARTER', customerId: 'cust-1',
+          packageRate: 5000, advanceAmount: 0, status: 'CANCELLED', dutyLogs: [],
+        }),
+        update: vi.fn().mockResolvedValue({}),
+      },
+    }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateTripInvoice('trp-3')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('TRB-018')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
 })

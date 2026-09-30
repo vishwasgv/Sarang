@@ -167,6 +167,31 @@ describe('updateSalaryPayment', () => {
     expect(res.error?.code).toBe('PAY-005')
   })
 
+  // Real bug found: nothing previously stopped totalDeductions from exceeding
+  // grossSalary — netPayable could go negative, and markSalaryPaid would bake
+  // that straight into a negative Expense.amount that postExpenseJournalEntry's
+  // own `amount <= 0` guard then silently skips posting to the GL at all.
+  it('rejects deductions that would push netPayable negative', async () => {
+    const db = { salaryPayment: { findUnique: vi.fn().mockResolvedValue(makeExistingRecord({ grossSalary: 10000 })), updateMany: vi.fn(), update: vi.fn() } }
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: 'Advance Recovery', amount: 12000 }] })
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('PAY-011')
+    expect(db.salaryPayment.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('allows deductions that exactly equal grossSalary (netPayable = 0)', async () => {
+    const db = makeUpdateDb(makeExistingRecord({ grossSalary: 10000 }), { totalDeductions: 10000, netPayable: 0 })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await updateSalaryPayment({ id: 'sp-1', deductions: [{ name: 'Full Recovery', amount: 10000 }] })
+
+    expect(res.success).toBe(true)
+    expect(res.data?.netPayable).toBe(0)
+  })
+
   it('filters out blank-named deduction lines', async () => {
     const db = makeUpdateDb(makeExistingRecord({ grossSalary: 10000 }), { totalDeductions: 100, netPayable: 9900 })
     vi.mocked(getPrisma).mockReturnValue(db as never)

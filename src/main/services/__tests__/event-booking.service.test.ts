@@ -287,6 +287,17 @@ describe('event-booking.service — generateEventInvoice', () => {
     expect((res as { error: { code: string } }).error.code).toBe('EVT-005')
   })
 
+  it('rejects a cancelled event even with a final amount already set', async () => {
+    const db = makeInvoiceMockDb(makeBookingForInvoice({ status: 'CANCELLED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateEventInvoice('event-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('EVT-008')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+    expect(db.eventBooking.update).toHaveBeenCalledWith({ where: { id: 'event-1' }, data: { invoiceId: null } })
+  })
+
   it('generates an invoice and links it back to the event booking', async () => {
     const db = makeInvoiceMockDb(makeBookingForInvoice())
     vi.mocked(getPrisma).mockReturnValue(db as never)

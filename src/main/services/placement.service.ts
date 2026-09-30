@@ -196,6 +196,14 @@ export async function generatePlacementInvoice(id: string) {
       await db.placement.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PLC-001', message: 'Placement not found.' } }
     }
+    // Real bug found: same missing guard as job-card.service.ts's own
+    // generateJobCardInvoice — Placement.status can be CANCELLED, and nothing
+    // stopped a cancelled placement (with a real commissionAmount already
+    // set) from still being fully invoiced to the client.
+    if (placement.status === 'CANCELLED') {
+      await db.placement.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PLC-006', message: 'Cannot generate an invoice for a cancelled placement.' } }
+    }
     if (Number(placement.commissionAmount) === 0) {
       await db.placement.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PLC-004', message: 'Commission amount is zero. Set a commission amount before generating an invoice.' } }

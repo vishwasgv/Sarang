@@ -199,11 +199,19 @@ export async function generateEventInvoice(id: string) {
     try {
       const booking = await db.eventBooking.findUnique({
         where: { id },
-        select: { id: true, clientId: true, eventName: true, eventType: true, finalAmount: true },
+        select: { id: true, clientId: true, eventName: true, eventType: true, finalAmount: true, status: true },
       })
       if (!booking || booking.finalAmount == null || Number(booking.finalAmount) <= 0) {
         await db.eventBooking.update({ where: { id }, data: { invoiceId: null } })
         return { success: false, error: { code: 'EVT-005', message: 'Set a final agreed amount greater than zero before generating an invoice.' } }
+      }
+      // Real bug found (renderer audit, service-business batch): same missing
+      // guard as shoot-booking.service.ts's own generateShootInvoice —
+      // EventBooking.status can be CANCELLED, and nothing stopped a
+      // cancelled event from still being fully invoiced.
+      if (booking.status === 'CANCELLED') {
+        await db.eventBooking.update({ where: { id }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'EVT-008', message: 'Cannot generate an invoice for a cancelled event.' } }
       }
 
       let product = await db.product.findFirst({ where: { hsnCode: '998596', isActive: true } })

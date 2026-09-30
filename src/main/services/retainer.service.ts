@@ -285,6 +285,16 @@ export async function generateInvoiceForRetainer(retainerId: string, period?: st
     if (retainer.lastInvoicedPeriod === targetPeriod) {
       return { success: false, error: { code: 'RT30-006', message: `Already invoiced for ${targetPeriod}.` } }
     }
+    // Real bug found (renderer audit, service-business batch): nothing here
+    // stopped a PAUSED or EXPIRED retainer from still being invoiced every
+    // month — RetainersScreen.tsx's own "Generate Invoice" button already
+    // only shows for status === 'ACTIVE', but that's a UI-only gate; the
+    // IPC handler itself had no matching check. Same bug class as
+    // shoot-booking.service.ts's/event-booking.service.ts's own missing
+    // cancelled-record invoice guards.
+    if (retainer.status !== 'ACTIVE') {
+      return { success: false, error: { code: 'RT30-010', message: `Cannot generate an invoice for a ${retainer.status.toLowerCase()} retainer.` } }
+    }
     const priorPeriod = retainer.lastInvoicedPeriod
 
     const claim = await db.retainerAgreement.updateMany({

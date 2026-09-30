@@ -397,11 +397,11 @@ describe('tailoring-order.service.clearOrderFabric', () => {
 describe('tailoring-order.service.generateTailoringInvoice', () => {
   beforeEach(() => vi.clearAllMocks())
 
-  function makeInvoiceMockDb(opts: { invoiceId?: string | null; totalAmount?: number; existingProduct?: { id: string; taxRate: number } | null } = {}) {
+  function makeInvoiceMockDb(opts: { invoiceId?: string | null; totalAmount?: number; existingProduct?: { id: string; taxRate: number } | null; status?: string } = {}) {
     const order = {
       id: 'to-1', orderNumber: 'TO-00001', clientId: 'cust-1', garmentType: 'Suit',
       quantity: 2, unitPrice: 500, totalAmount: opts.totalAmount ?? 1000,
-      invoiceId: opts.invoiceId ?? null,
+      invoiceId: opts.invoiceId ?? null, status: opts.status ?? 'RECEIVED',
       client: { id: 'cust-1', customerName: 'Test Client' },
     }
     let currentInvoiceId = opts.invoiceId ?? null
@@ -446,6 +446,22 @@ describe('tailoring-order.service.generateTailoringInvoice', () => {
 
     expect(res.success).toBe(false)
     expect((res as any).error.code).toBe('TO-003')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  // Real bug found: nothing previously stopped a CANCELLED order (with a real
+  // totalAmount already set) from still being fully invoiced — same guard
+  // this codebase's own established convention already enforces elsewhere
+  // for a one-off cancelled work item (lab-test-order.service.ts,
+  // sales-order.service.ts, blood-bank.service.ts).
+  it('rejects invoicing a cancelled order', async () => {
+    const db = makeInvoiceMockDb({ status: 'CANCELLED' })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateTailoringInvoice('to-1')
+
+    expect(res.success).toBe(false)
+    expect((res as any).error.code).toBe('TO-010')
     expect(billingService.createInvoice).not.toHaveBeenCalled()
   })
 

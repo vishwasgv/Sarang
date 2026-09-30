@@ -18,16 +18,27 @@ function makeCheckout(overrides: Record<string, unknown> = {}) {
   }
 }
 
-function makeMockDb(existing: ReturnType<typeof makeCheckout> | null = makeCheckout(), asset: { id: string; status: string } | null = { id: 'asset-1', status: 'ACTIVE' }) {
+// `openCheckout` is the row checkOutEquipment's own double-checkout guard
+// looks for (an existing row for this asset with actualReturnDate: null) —
+// distinct from `existing`, which is only listEquipmentCheckouts'/
+// returnEquipment's/deleteEquipmentCheckout's target row and defaults to an
+// ALREADY-RETURNED checkout so it never trips the new guard by accident.
+function makeMockDb(
+  existing: ReturnType<typeof makeCheckout> | null = makeCheckout({ actualReturnDate: new Date(2026, 7, 5) }),
+  asset: { id: string; status: string } | null = { id: 'asset-1', status: 'ACTIVE' },
+  openCheckout: ReturnType<typeof makeCheckout> | null = null
+) {
   const db: Record<string, any> = {
     fixedAsset: { findUnique: vi.fn().mockResolvedValue(asset) },
     equipmentCheckout: {
       findMany: vi.fn().mockResolvedValue(existing ? [existing] : []),
+      findFirst: vi.fn().mockResolvedValue(openCheckout),
       create: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(makeCheckout({ id: 'chk-new', ...data }))),
       update: vi.fn().mockImplementation(({ data }: { data: Record<string, unknown> }) => Promise.resolve(makeCheckout({ ...existing, ...data }))),
       delete: vi.fn().mockResolvedValue({}),
     },
     auditLog: { create: vi.fn().mockResolvedValue({}) },
+    $transaction: vi.fn((cb: (tx: unknown) => unknown) => cb(db)),
   }
   return db
 }
@@ -78,6 +89,17 @@ describe('equipment-checkout.service — basic CRUD', () => {
     expect(db.equipmentCheckout.create).toHaveBeenCalledWith(expect.objectContaining({
       data: expect.objectContaining({ fixedAssetId: 'asset-1', shootBookingId: 'shoot-1' }),
     }))
+  })
+
+  it('rejects checking out equipment that already has an open checkout (double-checkout)', async () => {
+    const db = makeMockDb(null, { id: 'asset-1', status: 'ACTIVE' }, makeCheckout({ actualReturnDate: null }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await checkOutEquipment({ fixedAssetId: 'asset-1', checkedOutDate: '2026-08-15' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('EQC-009')
+    expect(db.equipmentCheckout.create).not.toHaveBeenCalled()
   })
 
   it('rejects a missing return date', async () => {

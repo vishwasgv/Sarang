@@ -166,6 +166,17 @@ export async function updateSalaryPayment(payload: { id: string; deductions: Ded
       .map((d) => ({ name: (d.name ?? '').trim(), amount: Number(d.amount) || 0 }))
       .filter((d) => d.name.length > 0)
     const totalDeductions = roundCurrency(cleanDeductions.reduce((s, d) => s + d.amount, 0))
+    // Real bug found: nothing stopped totalDeductions from exceeding
+    // grossSalary, letting netPayable go negative. markSalaryPaid then bakes
+    // that straight into Expense.amount (a negative "expense" that silently
+    // UNDER-reports total spend on the Expense Report/P&L), while
+    // postExpenseJournalEntry's own `amount <= 0` guard skips posting it to
+    // the GL entirely — the payslip would show PAID with money owed BY the
+    // employee, yet leave zero trace in the Trial Balance. A payslip can
+    // legitimately zero out (full deduction), never go negative.
+    if (totalDeductions > existing.grossSalary) {
+      return { success: false, error: { code: 'PAY-011', message: 'Total deductions cannot exceed the gross salary.' } }
+    }
     const netPayable = roundCurrency(existing.grossSalary - totalDeductions)
 
     // Real bug found live (2026-07-28 reports/HR audit): the PAID check

@@ -226,6 +226,14 @@ export async function generateTailoringInvoice(id: string) {
       await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'TO-001', message: 'Tailoring order not found.' } }
     }
+    // Real bug found: same missing guard as job-card.service.ts's own
+    // generateJobCardInvoice — TailoringOrder.status can be CANCELLED, and
+    // nothing stopped a cancelled order (with a real totalAmount already set)
+    // from still being fully invoiced.
+    if (order.status === 'CANCELLED') {
+      await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'TO-010', message: 'Cannot generate an invoice for a cancelled order.' } }
+    }
     if (Number(order.totalAmount) === 0) {
       await db.tailoringOrder.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'TO-004', message: 'Order total is zero. Set a unit price before generating an invoice.' } }

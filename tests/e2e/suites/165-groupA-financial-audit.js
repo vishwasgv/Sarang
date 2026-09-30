@@ -204,17 +204,37 @@ async function run() {
     })
 
     // ── Backup -> Restore round trip (real, live) ───────────────────────────
-    let backupCountBefore = 0
+    // NOTE (2026-09-30, real root cause found+fixed): this used to compare
+    // COUNT(*) before/after backup creation, which is wrong on any
+    // long-lived dev/shared DB — once Backup rows reach
+    // `backup_retention_count` (default 10; see GAP R13,
+    // applyBackupRetentionPolicy() in backup.service.ts), a successful new
+    // backup correctly PRUNES the oldest row too, so the total count never
+    // grows past the cap. That's the app's documented retention policy
+    // working as designed, not a bug — confirmed live: a direct
+    // `window.api.backup.create()` IPC call against this exact dev DB
+    // (already at the 10-backup cap) returns `{ success: true, data: { id:
+    // <new id>, ... } }` with a brand-new Backup row, while COUNT(*) stays
+    // unchanged before/after. Fixed by tracking the most-recent backup's id
+    // instead of the total row count, and polling (a ~99MB dev DB's real
+    // VACUUM INTO + double-SHA256 + ZIP can take several seconds, more than
+    // a single fixed 6s wait covers under load) instead of one fixed wait.
+    let newestBackupBefore = null
     await r.step('backup-create-and-verify', async () => {
       await h.gotoHash(page, '#/backup')
       await page.waitForTimeout(700)
-      backupCountBefore = h.withDb((db) => db.prepare('SELECT COUNT(*) as c FROM Backup').get().c)
+      newestBackupBefore = h.withDb((db) => db.prepare('SELECT id, createdAt FROM Backup ORDER BY createdAt DESC LIMIT 1').get() || null)
       const createBtn = page.locator('button', { hasText: /Backup Now|Create Backup/i }).first()
       if (await createBtn.count()) {
         await createBtn.click()
-        await page.waitForTimeout(6000)
-        const backupCountAfter = h.withDb((db) => db.prepare('SELECT COUNT(*) as c FROM Backup').get().c)
-        r.log('backup-created', backupCountAfter > backupCountBefore, `before=${backupCountBefore} after=${backupCountAfter}`)
+        let newestAfter = newestBackupBefore
+        for (let i = 0; i < 15; i++) {
+          await page.waitForTimeout(1000)
+          newestAfter = h.withDb((db) => db.prepare('SELECT id, createdAt FROM Backup ORDER BY createdAt DESC LIMIT 1').get() || null)
+          if (newestAfter && newestAfter.id !== newestBackupBefore?.id) break
+        }
+        const created = !!newestAfter && newestAfter.id !== (newestBackupBefore && newestBackupBefore.id)
+        r.log('backup-created', created, `before=${newestBackupBefore ? newestBackupBefore.id : 'none'} after=${newestAfter ? newestAfter.id : 'none'}`)
       } else {
         r.log('backup-created', false, 'Backup Now button not found')
       }

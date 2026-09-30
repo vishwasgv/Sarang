@@ -4193,6 +4193,26 @@ describe('reportService.generateJewelleryReport', () => {
     expect(result.summary.totalMakingChargeRevenue).toBe(0.3)
     expect(result.summary.totalExchangeValueGiven).toBe(0.3)
   })
+
+  // Real bug found in a fresh audit pass: this reads InvoiceItem fields
+  // directly (jewelleryMakingCharge), so a SPLIT invoice's own original
+  // items (left un-zeroed by splitInvoice() — see generateTaxReport's own
+  // SPLIT comment) were being double-counted against both the original and
+  // its new child invoices' making-charge revenue.
+  it('excludes CANCELLED and SPLIT invoices entirely', async () => {
+    const db = makeDb({
+      product: { findMany: vi.fn().mockResolvedValue([]) },
+      metalRate: { findMany: vi.fn().mockResolvedValue([]) },
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([]) },
+      metalExchange: { findMany: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateJewelleryReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const whereArg = vi.mocked(db.invoiceItem.findMany).mock.calls[0][0] as { where: { invoice: { status: { notIn: string[] } } } }
+    expect(whereArg.where.invoice.status).toEqual({ notIn: ['CANCELLED', 'SPLIT'] })
+  })
 })
 
 // Phase 67 §9.1 — Jewellery item 2: Making-Charge vs. Metal-Value Margin, per sale.
@@ -4239,6 +4259,17 @@ describe('reportService.generateMakingChargeMarginReport', () => {
 
     expect(result.rows).toHaveLength(0)
     expect(result.summary.avgMakingChargePercent).toBe(0)
+  })
+
+  // See generateJewelleryReport's own SPLIT comment — this also reads InvoiceItem directly.
+  it('excludes CANCELLED and SPLIT invoices entirely', async () => {
+    const db = makeDb({ invoiceItem: { findMany: vi.fn().mockResolvedValue([]) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateMakingChargeMarginReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const whereArg = vi.mocked(db.invoiceItem.findMany).mock.calls[0][0] as { where: { invoice: { status: { notIn: string[] } } } }
+    expect(whereArg.where.invoice.status).toEqual({ notIn: ['CANCELLED', 'SPLIT'] })
   })
 })
 
@@ -4330,6 +4361,20 @@ describe('reportService.generateMetalRateVsSalesVolumeReport', () => {
 
     expect(result.metalType).toBe('')
     expect(result.rows).toHaveLength(0)
+  })
+
+  // See generateJewelleryReport's own SPLIT comment — this also reads InvoiceItem directly.
+  it('excludes CANCELLED and SPLIT invoices entirely', async () => {
+    const db = makeDb({
+      invoiceItem: { findMany: vi.fn().mockResolvedValue([]) },
+      metalRateHistory: { findMany: vi.fn().mockResolvedValue([]), groupBy: vi.fn().mockResolvedValue([]) },
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    await reportService.generateMetalRateVsSalesVolumeReport({ dateFrom: '2026-01-01', dateTo: '2026-01-31' })
+
+    const whereArg = vi.mocked(db.invoiceItem.findMany).mock.calls[0][0] as { where: { invoice: { status: { notIn: string[] } } } }
+    expect(whereArg.where.invoice.status).toEqual({ notIn: ['CANCELLED', 'SPLIT'] })
   })
 })
 
@@ -7650,7 +7695,11 @@ describe('reportService.generatePrescriptionDrugSalesReport', () => {
     const call = (db.invoiceItem.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
 
     expect(call.where.product).toEqual({ isPrescriptionRequired: true })
-    expect(call.where.invoice).toEqual({ status: { not: 'CANCELLED' } })
+    // Real bug found in a fresh audit pass: this reads InvoiceItem fields
+    // directly, so a SPLIT invoice's own original items (left un-zeroed by
+    // splitInvoice() — see generateTaxReport's own SPLIT comment) were being
+    // double-counted against both the original and its child invoices.
+    expect(call.where.invoice).toEqual({ status: { notIn: ['CANCELLED', 'SPLIT'] } })
     expect(result.summary.totalSales).toBe(1)
     expect(result.summary.totalAmount).toBe(250)
     expect(result.rows[0]).toMatchObject({
@@ -7749,7 +7798,9 @@ describe('reportService.generateScheduleH1XRegisterReport', () => {
     const call = (db.invoiceItem.findMany as ReturnType<typeof vi.fn>).mock.calls[0][0]
 
     expect(call.where.product).toEqual({ isScheduleH1X: true })
-    expect(call.where.invoice).toEqual({ status: { not: 'CANCELLED' } })
+    // See generatePrescriptionDrugSalesReport's own SPLIT comment — this narcotic
+    // register also reads InvoiceItem directly and had the same double-count bug.
+    expect(call.where.invoice).toEqual({ status: { notIn: ['CANCELLED', 'SPLIT'] } })
     expect(result.summary.totalSales).toBe(1)
     expect(result.summary.totalQuantity).toBe(10)
     expect(result.rows[0]).toMatchObject({
@@ -7903,6 +7954,28 @@ describe('reportService.generateSchemeCostVsVolumeReport', () => {
     expect(result.summary).toEqual({ totalSchemeCost: 0, totalFocUnitsGiven: 0, activeSchemeCount: 0, coveredProductCount: 0 })
     expect(result.byPeriod).toEqual([])
     expect(result.rows).toEqual([])
+  })
+
+  // Real bug found in a fresh audit pass: a RETURN invoice's InvoiceItem
+  // rows store quantity as a positive magnitude (this file's established
+  // sign convention — see generateSalesReport's own comment), but this
+  // report's volume tally summed raw quantity unconditionally, so a
+  // customer returning a scheme-covered product INFLATED "did the covered
+  // product sell more" instead of reducing it.
+  it('subtracts a RETURN line\'s quantity from total volume instead of adding it', async () => {
+    const db = makeSchemeDb({
+      schemes: [{ id: 's1', isActive: true, productId: 'p1', category: null, startDate: null, endDate: null }],
+      volumeItems: [
+        { quantity: 10, invoice: { invoiceDate: new Date('2026-08-03'), invoiceType: 'SALE' } },
+        { quantity: 3, invoice: { invoiceDate: new Date('2026-08-03'), invoiceType: 'RETURN' } },
+      ],
+      schemeItems: [],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const result = await reportService.generateSchemeCostVsVolumeReport({ dateFrom: '2026-08-01', dateTo: '2026-08-07' })
+
+    expect(result.byPeriod[0].totalVolume).toBe(7)
   })
 })
 

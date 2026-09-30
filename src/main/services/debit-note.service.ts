@@ -60,6 +60,13 @@ export const debitNoteService = {
     if (payload.purchaseOrderId) {
       const po = await db.purchaseOrder.findUnique({ where: { id: payload.purchaseOrderId }, include: { items: true } })
       if (!po) return { success: false, error: { code: 'PO-001', message: 'Purchase order not found.' } }
+      // Same mismatch guard as credit-note.service.ts's own create() — without
+      // it a note tagged to one supplier's ledger could sit linked to another
+      // supplier's PO, corrupting per-PO drill-down and inheriting the wrong
+      // PO's gstType/dominant rate into this note's own tax presentation.
+      if (payload.supplierId && po.supplierId && po.supplierId !== payload.supplierId) {
+        return { success: false, error: { code: 'DN-006', message: 'Selected purchase order belongs to a different supplier.' } }
+      }
       linkedIncludesTax = po.pricesIncludeTax === true
       linkedGstType = po.gstType
       linkedRate = dominantTaxRate((po as { items?: Array<{ taxRate?: number }> }).items)
@@ -197,6 +204,17 @@ export const debitNoteService = {
       existingSnapshot = existing
 
       const newSupplierId = payload.supplierId !== undefined ? payload.supplierId : existing.supplierId
+      const newPurchaseOrderId = payload.purchaseOrderId !== undefined ? payload.purchaseOrderId : existing.purchaseOrderId
+      // Same mismatch guard as create() above, and as credit-note.service.ts's
+      // own update() — only re-checked when this edit actually touches supplier
+      // or purchase order; an untouched pre-existing pairing must not block an
+      // unrelated reason/notes-only save.
+      if (newPurchaseOrderId && newSupplierId && (payload.supplierId !== undefined || payload.purchaseOrderId !== undefined)) {
+        const targetPo = await tx.purchaseOrder.findUniqueOrThrow({ where: { id: newPurchaseOrderId }, select: { supplierId: true } })
+        if (targetPo.supplierId && targetPo.supplierId !== newSupplierId) {
+          throw new ServiceError('DN-006', 'Selected purchase order belongs to a different supplier.')
+        }
+      }
       const existingLines = (existing as { items?: Array<{ id: string; quantity: number; unitPrice: number; taxRate: number }> }).items ?? []
       const wasApplied = (existing as { taxApplied?: boolean }).taxApplied ?? false
       const existingTax = (existing as { taxAmount?: number }).taxAmount ?? 0

@@ -18,7 +18,14 @@ export interface ParsedReceipt {
 
 // \b before the group matters: without it, "total" matches inside "Subtotal" too (no word
 // boundary between "sub" and "total"), which would pick the subtotal line over the real total.
-const AMOUNT_KEYWORD_RE = /\b(grand\s*total|total\s*amount|amount\s*due|balance\s*due|net\s*payable|total)\s*[:\-]?\s*(?:rs\.?|inr|₹|\$|usd)?\s*([\d,]+\.\d{1,2}|[\d,]+)/i
+//
+// Split into a specific tier and a generic "total" tier (searched separately, see
+// matchBestTotal below) rather than one alternation: a plain leftmost regex match would let an
+// earlier, less specific line like "Item Total: 45.00" win over a later "Grand Total: 120.00" —
+// alternation only breaks ties at the same starting position, it doesn't prefer a more specific
+// keyword that starts later in the text. Real receipt layout, not a hypothetical.
+const SPECIFIC_TOTAL_RE = /\b(grand\s*total|total\s*amount|amount\s*due|balance\s*due|net\s*payable)\s*[:\-]?\s*(?:rs\.?|inr|₹|\$|usd)?\s*([\d,]+\.\d{1,2}|[\d,]+)/gi
+const GENERIC_TOTAL_RE = /\btotal\s*[:\-]?\s*(?:rs\.?|inr|₹|\$|usd)?\s*([\d,]+\.\d{1,2}|[\d,]+)/gi
 // Fallback: a money-shaped number anywhere in the text (used only when no labelled total line
 // is found). `[\s\S]` capture group requires either a decimal point (how money is normally
 // printed) or, if no decimal number exists at all, a bounded whole number.
@@ -75,12 +82,29 @@ function extractDate(text: string): { date?: string; raw?: string } {
   return {}
 }
 
-function extractAmount(text: string, dateRaw?: string): number | undefined {
-  const keyed = text.match(AMOUNT_KEYWORD_RE)
-  if (keyed) {
-    const n = Number(keyed[2].replace(/,/g, ''))
-    if (Number.isFinite(n) && n > 0) return Math.round(n * 100) / 100
+// Scans ALL matches of `re` (global flag) and returns the LAST valid one — when a keyword
+// repeats (e.g. multiple "Total" lines: item total, then the real total), the real total is
+// printed last on virtually every receipt layout.
+function lastKeywordAmount(re: RegExp, text: string, amountGroup: number): number | undefined {
+  re.lastIndex = 0
+  let last: number | undefined
+  let m: RegExpExecArray | null
+  while ((m = re.exec(text))) {
+    const n = Number(m[amountGroup].replace(/,/g, ''))
+    if (Number.isFinite(n) && n > 0) last = Math.round(n * 100) / 100
   }
+  return last
+}
+
+function matchBestTotal(text: string): number | undefined {
+  const specific = lastKeywordAmount(SPECIFIC_TOTAL_RE, text, 2)
+  if (specific !== undefined) return specific
+  return lastKeywordAmount(GENERIC_TOTAL_RE, text, 1)
+}
+
+function extractAmount(text: string, dateRaw?: string): number | undefined {
+  const keyed = matchBestTotal(text)
+  if (keyed !== undefined) return keyed
   // No labelled total — mask out the date substring first (a bare year or day-of-month is not
   // a plausible amount), then prefer decimal-formatted numbers (how money is normally printed)
   // over bare whole numbers (more likely a quantity, invoice number or phone-number fragment);

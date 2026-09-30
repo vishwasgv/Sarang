@@ -228,6 +228,14 @@ export async function generatePestJobInvoice(id: string) {
       await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PJS-001', message: 'Job sheet not found.' } }
     }
+    // Real bug found: same missing guard as job-card.service.ts's own
+    // generateJobCardInvoice — PestJobSheet.status can be CANCELLED, and
+    // nothing stopped a cancelled visit (with a real jobAmount already set)
+    // from still being fully invoiced.
+    if (sheet.status === 'CANCELLED') {
+      await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PJS-011', message: 'Cannot generate an invoice for a cancelled job sheet.' } }
+    }
     if (Number(sheet.jobAmount) === 0) {
       await db.pestJobSheet.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PJS-004', message: 'Job amount is zero. Set a job amount before generating an invoice.' } }

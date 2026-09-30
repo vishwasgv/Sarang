@@ -564,7 +564,8 @@ describe('quotationService.convertToRetainer', () => {
           id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', retainerType: 'FIXED_FEE',
           status: 'DRAFT', totalAmount: 15000, notes: null
         }),
-        update: vi.fn().mockResolvedValue({})
+        update: vi.fn().mockResolvedValue({}),
+        updateMany: vi.fn().mockResolvedValue({ count: 1 })
       },
       retainerAgreement: { findFirst: vi.fn().mockResolvedValue(null) },
       ...overrides
@@ -612,7 +613,9 @@ describe('quotationService.convertToRetainer', () => {
     expect(res.success).toBe(true)
     expect(createRetainer).toHaveBeenCalledWith(expect.objectContaining({ clientId: 'cust-1', retainerType: 'FIXED_FEE', monthlyAmount: 15000 }))
     expect(generateInvoiceForRetainer).toHaveBeenCalledWith('ret-1')
-    expect(db.quotation.update).toHaveBeenCalledWith({ where: { id: 'qt-1' }, data: { status: 'ACCEPTED' } })
+    // Status is claimed atomically up front (see the race test below), not via a plain update() at the end.
+    expect(db.quotation.updateMany).toHaveBeenCalledWith({ where: { id: 'qt-1', status: 'DRAFT' }, data: { status: 'ACCEPTED' } })
+    expect(db.quotation.update).not.toHaveBeenCalled()
   })
 
   // REAL BUG found+fixed 2026-09-15: startDate used
@@ -658,7 +661,25 @@ describe('quotationService.convertToRetainer', () => {
 
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('RT30-006')
-    expect(db.quotation.update).not.toHaveBeenCalled()
+    // The claim taken up front must be released back to the original status on failure,
+    // otherwise the quotation would be stuck ACCEPTED with no retainer/invoice to show for it.
+    expect(db.quotation.update).toHaveBeenCalledWith({ where: { id: 'qt-1' }, data: { status: 'DRAFT' } })
+  })
+
+  // Real race found in this audit: two concurrent conversions of the same
+  // Quotation used to both pass the QT-002 status guard (a plain pre-write
+  // read), each create its own RetainerAgreement and each generate its own
+  // invoice — double-billing the client. The atomic claim below closes it.
+  it('blocks a second concurrent conversion once the first has already claimed the quotation', async () => {
+    const db = makeRetainerDb({ quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', retainerType: 'FIXED_FEE', status: 'DRAFT', totalAmount: 15000, notes: null }), update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 0 }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await quotationService.convertToRetainer('qt-1', 'user-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('QT-002')
+    expect(createRetainer).not.toHaveBeenCalled()
+    expect(generateInvoiceForRetainer).not.toHaveBeenCalled()
   })
 })
 
@@ -666,7 +687,7 @@ describe('quotationService.convertToRetainer', () => {
 describe('quotationService.convertToRetainer — pricing mode', () => {
   function dbWith(quotation: Record<string, unknown>) {
     return {
-      quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', retainerType: 'FIXED_FEE', status: 'DRAFT', notes: null, ...quotation }), update: vi.fn().mockResolvedValue({}) },
+      quotation: { findUnique: vi.fn().mockResolvedValue({ id: 'qt-1', quotationNumber: 'QT-00001', customerId: 'cust-1', retainerType: 'FIXED_FEE', status: 'DRAFT', notes: null, ...quotation }), update: vi.fn().mockResolvedValue({}), updateMany: vi.fn().mockResolvedValue({ count: 1 }) },
       retainerAgreement: { findFirst: vi.fn().mockResolvedValue(null) }
     }
   }

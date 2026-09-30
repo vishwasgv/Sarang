@@ -953,7 +953,7 @@ export default function ShootsScreen() {
                       ) : 'Final amount not set'}
                       {b.invoiceId && <span className="ms-2 text-green-600 font-medium">Invoiced</span>}
                     </div>
-                    {!b.invoiceId && b.finalAmount != null && b.finalAmount > 0 && (
+                    {!b.invoiceId && b.finalAmount != null && b.finalAmount > 0 && b.status !== 'CANCELLED' && (
                       <button
                         onClick={e => { e.stopPropagation(); handleGenerateInvoice(b) }}
                         disabled={generatingInvoiceId === b.id}

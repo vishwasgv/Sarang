@@ -901,7 +901,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                         </button>
                       </>
                     )}
-                    {p.billingMethod !== 'HOURLY' && (
+                    {p.billingMethod !== 'HOURLY' && p.status !== 'CANCELLED' && (
                       // Real bug found+fixed 2026-08-12: this shares its row
                       // with the pre-existing per-milestone "Generate
                       // Invoice" button below (title="Generate Invoice",
@@ -964,7 +964,7 @@ ${summary.entries.map((e) => `<tr><td>${fmtDate(e.periodStart)} – ${fmtDate(e.
                               <td className="py-1.5 text-gray-500 dark:text-slate-400">{fmtDate(m.dueDate)}</td>
                               <td className="py-1.5">
                                 <div className="flex items-center gap-1 justify-end">
-                                  {!m.invoiceId && m.milestoneAmount != null && m.milestoneAmount > 0 && (
+                                  {!m.invoiceId && m.milestoneAmount != null && m.milestoneAmount > 0 && p.status !== 'CANCELLED' && (
                                     <button
                                       onClick={() => void handleGenerateMilestoneInvoice(m.id)}
                                       disabled={generatingMilestoneId === m.id}

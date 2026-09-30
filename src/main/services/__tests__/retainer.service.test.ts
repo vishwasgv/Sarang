@@ -323,6 +323,30 @@ describe('retainer.service — generateInvoiceForRetainer', () => {
     }))
   })
 
+  it('refuses to invoice a PAUSED retainer', async () => {
+    const retainer = makeRetainer({ lastInvoicedPeriod: null, status: 'PAUSED' })
+    const db = makeDbForInvoice(retainer)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateInvoiceForRetainer('ret-abc123', '2026-07')
+
+    expect(res.success).toBe(false)
+    expect(db.retainerAgreement.updateMany).not.toHaveBeenCalled()
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('refuses to invoice an EXPIRED retainer', async () => {
+    const retainer = makeRetainer({ lastInvoicedPeriod: null, status: 'EXPIRED' })
+    const db = makeDbForInvoice(retainer)
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateInvoiceForRetainer('ret-abc123', '2026-07')
+
+    expect(res.success).toBe(false)
+    expect(db.retainerAgreement.updateMany).not.toHaveBeenCalled()
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
   it('refuses to invoice the same period twice', async () => {
     const retainer = makeRetainer({ lastInvoicedPeriod: '2026-07' })
     const db = makeDbForInvoice(retainer)

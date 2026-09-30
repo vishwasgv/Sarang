@@ -204,6 +204,21 @@ describe('shoot-booking.service — generateShootInvoice', () => {
     expect((res as { error: { code: string } }).error.code).toBe('SHT-005')
   })
 
+  // Real bug found: nothing previously stopped a CANCELLED booking (with a
+  // real finalAmount already set) from still being fully invoiced — same
+  // guard this codebase's own established convention already enforces
+  // elsewhere for a one-off cancelled work item (lab-test-order.service.ts,
+  // sales-order.service.ts, blood-bank.service.ts).
+  it('rejects a cancelled booking', async () => {
+    const db = makeInvoiceMockDb(makeBookingForInvoice({ status: 'CANCELLED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateShootInvoice('shoot-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SHT-010')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
   it('generates an invoice and links it back to the booking', async () => {
     const db = makeInvoiceMockDb(makeBookingForInvoice())
     vi.mocked(getPrisma).mockReturnValue(db as never)

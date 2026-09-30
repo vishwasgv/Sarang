@@ -41,17 +41,32 @@ export async function checkOutEquipment(payload: {
     if (!asset) return { success: false, error: { code: 'EQC-003', message: 'Equipment (fixed asset) not found.' } }
     if (asset.status === 'DISPOSED') return { success: false, error: { code: 'EQC-004', message: 'This equipment has been disposed and cannot be checked out.' } }
 
-    const checkout = await db.equipmentCheckout.create({
-      data: {
-        fixedAssetId: payload.fixedAssetId,
-        shootBookingId: payload.shootBookingId ?? null,
-        checkedOutToId: payload.checkedOutToId ?? null,
-        checkedOutDate: parseLocalDateStart(payload.checkedOutDate),
-        expectedReturnDate: payload.expectedReturnDate ? parseLocalDateStart(payload.expectedReturnDate) : null,
-        notes: payload.notes ?? null,
-      },
-      include: INCLUDE,
+    // Real bug found in this audit: nothing stopped the SAME physical piece
+    // of equipment from being checked out twice at once — FixedAsset.status
+    // only tracks ACTIVE|DISPOSED (no "checked out" state), and this used to
+    // create a new EquipmentCheckout row unconditionally with no check for an
+    // already-open one (actualReturnDate: null) on this fixedAssetId. Two
+    // different shoots could each check out the same camera with no error,
+    // discovering the conflict only on set. Guarded here, and the read-then-
+    // create runs inside one transaction so two near-simultaneous checkouts
+    // of the same asset can't both pass the check (same pattern as
+    // customer-checkin.service.ts's checkInCustomer).
+    const checkout = await db.$transaction(async (tx) => {
+      const open = await tx.equipmentCheckout.findFirst({ where: { fixedAssetId: payload.fixedAssetId, actualReturnDate: null } })
+      if (open) return null
+      return tx.equipmentCheckout.create({
+        data: {
+          fixedAssetId: payload.fixedAssetId,
+          shootBookingId: payload.shootBookingId ?? null,
+          checkedOutToId: payload.checkedOutToId ?? null,
+          checkedOutDate: parseLocalDateStart(payload.checkedOutDate),
+          expectedReturnDate: payload.expectedReturnDate ? parseLocalDateStart(payload.expectedReturnDate) : null,
+          notes: payload.notes ?? null,
+        },
+        include: INCLUDE,
+      })
     })
+    if (!checkout) return { success: false, error: { code: 'EQC-009', message: 'This equipment is already checked out. Return it first.' } }
     await db.auditLog.create({ data: { action: 'CREATE', entityType: 'EquipmentCheckout', entityId: checkout.id, newValue: JSON.stringify({ fixedAssetId: checkout.fixedAssetId }) } }).catch(() => {})
     return { success: true, data: checkout }
   } catch (err) {

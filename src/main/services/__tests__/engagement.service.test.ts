@@ -198,7 +198,7 @@ describe('engagement.service — date-field IPC serialization', () => {
 
 function makeEngagementForInvoice(overrides: Record<string, unknown> = {}) {
   return {
-    id: 'eng-1', clientId: 'cust-1', title: 'GST Retainer',
+    id: 'eng-1', clientId: 'cust-1', title: 'GST Retainer', status: 'ACTIVE',
     feeAmount: 15000, invoiceId: null, lastInvoicedPeriod: null,
     client: { id: 'cust-1', customerName: 'Ramesh Kumar' },
     ...overrides,
@@ -264,6 +264,26 @@ describe('engagement.service — generateEngagementInvoice', () => {
     expect(res.success).toBe(false)
     expect((res as { error: { code: string } }).error.code).toBe('EN29-009')
     expect(db.engagement.updateMany).not.toHaveBeenCalled()
+  })
+
+  it('rejects a TERMINATED engagement even with a fee amount still set', async () => {
+    const db = makeInvoiceMockDb(makeEngagementForInvoice({ status: 'TERMINATED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateEngagementInvoice('eng-1', '2026-07')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('EN29-011')
+    expect(db.engagement.updateMany).not.toHaveBeenCalled()
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
+  it('rejects a PAUSED engagement', async () => {
+    const db = makeInvoiceMockDb(makeEngagementForInvoice({ status: 'PAUSED' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateEngagementInvoice('eng-1', '2026-07')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('EN29-011')
   })
 
   it('generates an invoice and links it back to the engagement', async () => {

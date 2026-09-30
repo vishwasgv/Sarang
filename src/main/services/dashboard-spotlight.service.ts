@@ -13,6 +13,7 @@ import { listRecalls } from './recall-record.service'
 import { getChronicRecallDashboardCounts } from './chronic-condition-record.service'
 import { getPrisma } from '../database/db'
 import { APPOINTMENT_BASED_TYPES, PROJECT_BASED_TYPES } from './ai-vertical-templates.service'
+import { getOutstandingAmount } from './analytics.service'
 
 // Phase 66 — Per-Vertical Dashboards. Real per-vertical Dashboard spotlight
 // data, genuinely reusing the SAME report/service functions Ask Sarang AI's
@@ -302,11 +303,20 @@ export async function getVerticalSpotlightKpis(businessType: string): Promise<{ 
       const now = new Date()
       const dayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate())
       const dayEnd = new Date(now.getFullYear(), now.getMonth(), now.getDate(), 23, 59, 59, 999)
-      const [invoicesToday, outstandingResult] = await Promise.all([
+      // RULE AN001 — real bug found in a fresh audit pass: this used to sum
+      // Invoice.balanceAmount directly, the same anti-pattern
+      // generateOutstandingReport's own 2026-07-30 fix comment names — a
+      // standalone OPENING_BALANCE/CREDIT_NOTE CustomerLedger entry with no
+      // Invoice row at all was silently missing from this card while showing
+      // correctly on the Dashboard KPI tile and Outstanding Report, so this
+      // card could disagree with the rest of the app in the same session.
+      // getOutstandingAmount() is the same ledger-based single source of
+      // truth every other outstanding figure in this codebase already uses.
+      const [invoicesToday, outstanding] = await Promise.all([
         db.invoice.count({ where: { invoiceDate: { gte: dayStart, lte: dayEnd }, status: { not: 'CANCELLED' } } }),
-        db.invoice.aggregate({ _sum: { balanceAmount: true }, where: { status: { not: 'CANCELLED' } } })
+        getOutstandingAmount()
       ])
-      return { success: true, data: { kind: 'general', invoicesToday, outstanding: Number(outstandingResult._sum.balanceAmount ?? 0) } }
+      return { success: true, data: { kind: 'general', invoicesToday, outstanding } }
     }
 
     return { success: true, data: { kind: 'none' } }

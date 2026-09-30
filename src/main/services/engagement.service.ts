@@ -264,6 +264,17 @@ export async function generateEngagementInvoice(engagementId: string, period?: s
     if (engagement.feeAmount == null || Number(engagement.feeAmount) <= 0) {
       return { success: false, error: { code: 'EN29-009', message: 'Set a fee amount greater than zero before generating an invoice.' } }
     }
+    // Real bug found (renderer audit, service-business batch): nothing here
+    // stopped a COMPLETED/PAUSED/TERMINATED engagement from still being
+    // invoiced every month — EngagementsScreen.tsx's own "Generate Invoice"
+    // button now only shows for status === 'ACTIVE' (it didn't before this
+    // same audit), but that's a UI-only gate; the IPC handler itself had no
+    // matching check. Same bug class as shoot-booking.service.ts's/
+    // event-booking.service.ts's/retainer.service.ts's own missing
+    // cancelled-record invoice guards.
+    if (engagement.status !== 'ACTIVE') {
+      return { success: false, error: { code: 'EN29-011', message: `Cannot generate an invoice for a ${engagement.status.toLowerCase()} engagement.` } }
+    }
     const priorPeriod = engagement.lastInvoicedPeriod
 
     const claim = await db.engagement.updateMany({

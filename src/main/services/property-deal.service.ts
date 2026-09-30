@@ -238,6 +238,15 @@ export async function generateCommissionInvoice(dealId: string) {
       await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: null } })
       return { success: false, error: { code: 'PROP-002', message: 'Deal not found.' } }
     }
+    // Real bug found: same missing guard as job-card.service.ts's own
+    // generateJobCardInvoice — a deal that FELL_THROUGH never actually
+    // registered/completed (updatePropertyDeal even reverts the property back
+    // to AVAILABLE on this transition), yet nothing stopped staff from still
+    // generating a full brokerage-commission invoice against it.
+    if (deal.status === 'FELL_THROUGH') {
+      await db.propertyDeal.update({ where: { id: dealId }, data: { invoiceId: null } })
+      return { success: false, error: { code: 'PROP-007', message: 'Cannot generate a commission invoice for a deal that fell through.' } }
+    }
 
     // Find or create a "Real Estate Commission" service product (SAC 997212, 18% GST)
     let commissionProduct = await db.product.findFirst({

@@ -20,6 +20,7 @@ vi.mock('../shoot-booking.service', () => ({ getShootKPIs: vi.fn() }))
 vi.mock('../driving.service', () => ({ getUpcomingTestsAndLowBalanceKPIs: vi.fn() }))
 vi.mock('../vaccination.service', () => ({ getUpcomingVaccinations: vi.fn() }))
 vi.mock('../recall-record.service', () => ({ listRecalls: vi.fn() }))
+vi.mock('../analytics.service', () => ({ getOutstandingAmount: vi.fn() }))
 
 import { getPrisma } from '../../database/db'
 import { reportService } from '../report.service'
@@ -33,6 +34,7 @@ import { getShootKPIs } from '../shoot-booking.service'
 import { getUpcomingTestsAndLowBalanceKPIs } from '../driving.service'
 import { getUpcomingVaccinations } from '../vaccination.service'
 import { listRecalls } from '../recall-record.service'
+import { getOutstandingAmount } from '../analytics.service'
 import { getVerticalSpotlightKpis } from '../dashboard-spotlight.service'
 
 beforeEach(() => vi.clearAllMocks())
@@ -341,19 +343,22 @@ describe('getVerticalSpotlightKpis', () => {
     expect(res.data).toEqual({ kind: 'placement', activeCandidates: 40, openJobOrders: 6, placementsThisMonth: 3, revenueThisMonth: 75000 })
   })
 
-  it('computes a real GENERAL card from Invoice data directly', async () => {
-    const db = {
-      invoice: {
-        count: vi.fn().mockResolvedValue(7),
-        aggregate: vi.fn().mockResolvedValue({ _sum: { balanceAmount: 45000 } })
-      }
-    }
+  // RULE AN001 — real bug found in a fresh audit pass: outstanding used to
+  // sum Invoice.balanceAmount directly instead of routing through the same
+  // ledger-based getOutstandingAmount() every other outstanding figure in
+  // this codebase uses (see generateOutstandingReport's own 2026-07-30 fix
+  // comment) — a standalone ledger entry with no Invoice row at all was
+  // silently missing from this card while showing correctly everywhere else.
+  it('computes a real GENERAL card from Invoice data + the shared ledger-based outstanding figure', async () => {
+    const db = { invoice: { count: vi.fn().mockResolvedValue(7) } }
     vi.mocked(getPrisma).mockReturnValue(db as never)
+    vi.mocked(getOutstandingAmount).mockResolvedValue(45000)
 
     const res = await getVerticalSpotlightKpis('GENERAL')
 
     expect(res.data).toEqual({ kind: 'general', invoicesToday: 7, outstanding: 45000 })
     expect(db.invoice.count).toHaveBeenCalledWith(expect.objectContaining({ where: expect.objectContaining({ status: { not: 'CANCELLED' } }) }))
+    expect(getOutstandingAmount).toHaveBeenCalled()
   })
 
   it('returns kind "none" for a business type with no vertical-specific data (e.g. RETAIL)', async () => {

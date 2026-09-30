@@ -152,6 +152,13 @@ export async function generateCustomOrderInvoice(bookingId: string, userId?: str
         await db.customOrderBooking.update({ where: { id: bookingId }, data: { invoiceId: null } })
         return { success: false, error: { code: 'COB-007', message: 'Order not found.' } }
       }
+      // Real bug found: same missing guard as job-card.service.ts's own
+      // generateJobCardInvoice — CustomOrderBooking.status can be CANCELLED,
+      // and nothing stopped a cancelled order from still being fully invoiced.
+      if (booking.status === 'CANCELLED') {
+        await db.customOrderBooking.update({ where: { id: bookingId }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'COB-014', message: 'Cannot generate an invoice for a cancelled order.' } }
+      }
 
       const invoiceItems = booking.items.map(i => ({ productId: i.productId, quantity: i.quantity, unitPrice: i.unitPrice }))
       const result = await billingService.createInvoice({

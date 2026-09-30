@@ -75,6 +75,13 @@ export const bankStatementService = {
       const unmatched = await db.bankStatementLine.findMany({ where: { bankAccountId, reconciled: false } })
       let matchedCount = 0
 
+      // Records already reconciled to some other line (any account) must never be
+      // matched again here — without this, two unmatched lines with the same amount
+      // near the same date both independently see "exactly one candidate" and both
+      // get auto-matched to the SAME underlying Payment/Expense/etc, double-counting it.
+      const alreadyMatched = await db.bankStatementLine.findMany({ where: { reconciled: true, matchedId: { not: null } }, select: { matchedType: true, matchedId: true } })
+      const claimed = new Set(alreadyMatched.map((m) => `${m.matchedType}:${m.matchedId}`))
+
       for (const line of unmatched) {
         type Candidate = { matchedType: 'PAYMENT' | 'EXPENSE' | 'SUPPLIER_PAYMENT' | 'JOURNAL_ENTRY'; matchedId: string }
         const candidates: Candidate[] = []
@@ -117,11 +124,14 @@ export const bankStatementService = {
           }
         }
 
-        if (candidates.length === 1) {
+        const unclaimed = candidates.filter((c) => !claimed.has(`${c.matchedType}:${c.matchedId}`))
+
+        if (unclaimed.length === 1) {
           await db.bankStatementLine.update({
             where: { id: line.id },
-            data: { reconciled: true, reconciledAt: new Date(), matchedType: candidates[0].matchedType, matchedId: candidates[0].matchedId }
+            data: { reconciled: true, reconciledAt: new Date(), matchedType: unclaimed[0].matchedType, matchedId: unclaimed[0].matchedId }
           })
+          claimed.add(`${unclaimed[0].matchedType}:${unclaimed[0].matchedId}`)
           matchedCount++
         }
       }

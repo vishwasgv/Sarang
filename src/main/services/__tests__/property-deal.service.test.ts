@@ -364,4 +364,19 @@ describe('property-deal.service.generateCommissionInvoice', () => {
     expect(res.success).toBe(false)
     expect(db.propertyDeal.update).toHaveBeenCalledWith({ where: { id: 'deal-1' }, data: { invoiceId: null } })
   })
+
+  // Real bug found: a deal that FELL_THROUGH never actually registered/
+  // completed (updatePropertyDeal even reverts the property back to
+  // AVAILABLE on this transition), yet nothing previously stopped staff from
+  // still generating a full brokerage-commission invoice against it.
+  it('rejects generating a commission invoice for a deal that fell through', async () => {
+    const db = makeMockDb(makeDeal({ status: 'FELL_THROUGH' }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateCommissionInvoice('deal-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('PROP-007')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
 })

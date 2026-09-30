@@ -909,7 +909,7 @@ export default function EventsScreen() {
                         {ev.finalAmount != null ? `Final Amount: ${fmtCurrency(ev.finalAmount)}` : 'Final amount not set'}
                         {ev.invoiceId && <span className="ms-2 text-green-600 font-medium">Invoiced</span>}
                       </div>
-                      {!ev.invoiceId && ev.finalAmount != null && ev.finalAmount > 0 && (
+                      {!ev.invoiceId && ev.finalAmount != null && ev.finalAmount > 0 && ev.status !== 'CANCELLED' && (
                         <button
                           onClick={() => handleGenerateInvoice(ev)}
                           disabled={generatingInvoiceId === ev.id}

@@ -294,13 +294,21 @@ export async function generateInvoiceForServiceProject(payload: { serviceProject
   try {
     const project = await db.serviceProject.findUnique({
       where: { id: payload.serviceProjectId },
-      select: { id: true, clientId: true, projectName: true, billingMethod: true, totalContractValue: true }
+      select: { id: true, clientId: true, projectName: true, billingMethod: true, totalContractValue: true, status: true }
     })
     if (!project) return { success: false, error: { code: 'SP-001', message: 'Service project not found.' } }
 
     if (project.billingMethod === 'HOURLY') {
       if (!payload.timeEntryIds?.length) return { success: false, error: { code: 'SP-002', message: 'Select at least one time entry to bill for an hourly-billed project.' } }
       return generateTimeEntryInvoice(payload.timeEntryIds)
+    }
+
+    // Real bug found (renderer audit, service-business batch): nothing here
+    // stopped a CANCELLED project from still being billed its full FIXED_COST/
+    // DAILY_* contract value — same bug class as shoot-booking.service.ts's/
+    // event-booking.service.ts's own missing cancelled-record invoice guards.
+    if (project.status === 'CANCELLED') {
+      return { success: false, error: { code: 'SP-006', message: 'Cannot generate an invoice for a cancelled project.' } }
     }
 
     const contractValue = project.totalContractValue ? Number(project.totalContractValue) : 0

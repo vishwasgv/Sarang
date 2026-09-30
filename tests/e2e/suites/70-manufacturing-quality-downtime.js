@@ -187,8 +187,9 @@ async function run() {
       if (!productId) return r.log('landed-cost-per-unit-report-computes-and-renders-correctly', false, 'no productId captured')
 
       const now = new Date()
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      // .toISOString() shifts a local midnight back a day for IST — use local calendar components.
+      const dateFrom = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
 
       const reportRes = await page.evaluate((args) => window.api.reports.landedCostPerUnit(args), { dateFrom, dateTo })
       r.log('landed-cost-api-succeeded', !!reportRes?.success, JSON.stringify(reportRes?.error || ''))
@@ -221,8 +222,9 @@ async function run() {
     // ─── Phase 67 §9.1 item 4: Rejection Rate Trend ──────────────────────────
     await r.step('rejection-rate-trend-report-computes-and-renders-correctly', async () => {
       const now = new Date()
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      // .toISOString() shifts a local midnight back a day for IST — use local calendar components.
+      const dateFrom = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
 
       const reportRes = await page.evaluate((args) => window.api.reports.rejectionRateTrend(args), { dateFrom, dateTo })
       r.log('rejection-trend-api-succeeded', !!reportRes?.success, JSON.stringify(reportRes?.error || ''))

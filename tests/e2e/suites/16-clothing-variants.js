@@ -226,8 +226,9 @@ async function run() {
       r.log('extra-unreturned-sale-created', !!saleRes?.success, JSON.stringify(saleRes?.error || ''))
 
       const now = new Date()
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      // .toISOString() shifts a local midnight back a day for IST — use local calendar components.
+      const dateFrom = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
       const month = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`
 
       const reportRes = await page.evaluate((args) => window.api.reports.seasonSellThrough(args), { dateFrom, dateTo })
@@ -311,8 +312,9 @@ async function run() {
       if (!productId) return r.log('size-style-heatmap-computes-and-renders-correctly', false, 'no productId captured')
 
       const now = new Date()
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      // .toISOString() shifts a local midnight back a day for IST — use local calendar components.
+      const dateFrom = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
 
       const reportRes = await page.evaluate((args) => window.api.reports.sizeStyleHeatmap(args), { dateFrom, dateTo })
       r.log('size-style-heatmap-api-succeeded', !!reportRes?.success, JSON.stringify(reportRes?.error || ''))
@@ -495,8 +497,9 @@ async function run() {
       r.log('vendor-margin-extra-sale-created', !!saleRes?.success, JSON.stringify(saleRes?.error || ''))
 
       const now = new Date()
-      const dateFrom = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().slice(0, 10)
-      const dateTo = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().slice(0, 10)
+      // .toISOString() shifts a local midnight back a day for IST — use local calendar components.
+      const dateFrom = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth(), 1))
+      const dateTo = h.toLocalISODate(new Date(now.getFullYear(), now.getMonth() + 1, 0))
 
       const reportRes = await page.evaluate((args) => window.api.reports.vendorMargin(args), { dateFrom, dateTo })
       r.log('vendor-margin-api-succeeded', !!reportRes?.success, JSON.stringify(reportRes?.error || ''))

@@ -764,7 +764,7 @@ export function JobCardsScreen() {
               )}
             </div>
             <div className="px-6 pb-6 space-y-2">
-              {detail.customerId && (
+              {detail.customerId && detail.status !== 'CANCELLED' && (
                 detail.invoiceId ? (
                   <span className="w-full h-11 rounded-xl bg-success/10 text-success text-sm font-semibold flex items-center justify-center gap-2">
                     <Receipt size={14} /> Invoice Generated

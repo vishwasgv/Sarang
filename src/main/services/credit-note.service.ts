@@ -56,6 +56,18 @@ export const creditNoteService = {
     if (payload.invoiceId) {
       const inv = await db.invoice.findUnique({ where: { id: payload.invoiceId }, include: { items: true } })
       if (!inv) return { success: false, error: { code: 'INV-001', message: 'Invoice not found.' } }
+      // Real bug found live (this audit): customer and invoice are two
+      // completely independent selects on the Credit Note form (the invoice
+      // dropdown is never filtered by the chosen customer) — nothing here
+      // checked the two actually belong together. Picking a customer and an
+      // unrelated invoice credited the WRONG customer's ledger while still
+      // reducing the ACTUAL invoice owner's balanceAmount, silently forgiving
+      // a stranger's debt on one account while crediting another. A
+      // customer-less (walk-in) invoice has nothing to conflict with, so
+      // only a genuine mismatch is rejected.
+      if (payload.customerId && inv.customerId && inv.customerId !== payload.customerId) {
+        return { success: false, error: { code: 'CN-006', message: 'Selected invoice belongs to a different customer.' } }
+      }
       linkedIncludesTax = inv.pricesIncludeTax === true
       linkedGstType = inv.gstType
       linkedRate = dominantTaxRate((inv as { items?: Array<{ taxRate?: number }> }).items)
@@ -265,6 +277,15 @@ export const creditNoteService = {
         if (!newApplied) newTaxRate = payload.taxRate ?? newTaxRate
       }
       const newInvoiceId = payload.invoiceId !== undefined ? payload.invoiceId : existing.invoiceId
+      // Same mismatch guard as create() — only re-checked when this edit
+      // actually touches customer or invoice; an untouched pre-existing
+      // pairing must not block an unrelated reason/notes-only save.
+      if (newInvoiceId && newCustomerId && (payload.customerId !== undefined || payload.invoiceId !== undefined)) {
+        const targetInv = await tx.invoice.findUniqueOrThrow({ where: { id: newInvoiceId }, select: { customerId: true } })
+        if (targetInv.customerId && targetInv.customerId !== newCustomerId) {
+          throw new ServiceError('CN-006', 'Selected invoice belongs to a different customer.')
+        }
+      }
       // Ledger only needs touching if the party or the amount actually changes —
       // a reason/notes-only edit has no financial effect.
       const ledgerAffected = newCustomerId !== existing.customerId || newAmount !== existing.amount

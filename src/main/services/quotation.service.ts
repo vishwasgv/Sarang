@@ -558,6 +558,13 @@ export const quotationService = {
     if (q.status === 'ACCEPTED') return { success: false, error: { code: 'QT-002', message: 'Quotation already accepted.' } }
     if (!q.customerId) return { success: false, error: { code: 'QT-005', message: 'A retainer engagement requires a real customer, not a walk-in name.' } }
 
+    // Real race found in this audit (unlike convertToInvoice/convertToSalesOrder
+    // above): claimed atomically up front, not via a plain update() at the end —
+    // otherwise two concurrent calls both pass QT-002 and double-bill the client.
+    const claimed = await db.quotation.updateMany({ where: { id, status: q.status }, data: { status: 'ACCEPTED' } })
+    if (claimed.count === 0) return { success: false, error: { code: 'QT-002', message: 'Quotation already accepted.' } }
+    const releaseClaim = () => db.quotation.update({ where: { id }, data: { status: q.status } }).catch(() => {})
+
     try {
       const decimals = await getBusinessCurrencyDecimals()
       let retainerId: string
@@ -574,28 +581,21 @@ export const quotationService = {
           monthlyAmount: q.pricesIncludeTax || typeof q.subtotal !== 'number' ? q.totalAmount : roundCurrency(q.subtotal - (q.discountAmount ?? 0), decimals),
           pricesIncludeTax: q.pricesIncludeTax === true,
           billingDay: new Date().getDate(),
-          // toLocalISODate, not .toISOString().slice(0,10) — the latter is
-          // the UTC calendar date, which can be a full day behind local
-          // time (e.g. IST, any timezone ahead of UTC) for roughly the
-          // first several hours of every local day, mismatching billingDay
-          // above (already correctly local) and driving the wrong first
-          // billing period once fed into createRetainer's own
-          // parseLocalDateStart(startDate).
+          // toLocalISODate, not the UTC calendar date — see date.util.ts.
           startDate: toLocalISODate(new Date()),
           notes: q.notes ?? undefined
         })
-        if (!created.success || !created.data) return created
+        if (!created.success || !created.data) { await releaseClaim(); return created }
         retainerId = (created.data as { id: string }).id
       }
 
       const invoiceResult = await generateInvoiceForRetainer(retainerId)
-      if (!invoiceResult.success) return invoiceResult
+      if (!invoiceResult.success) { await releaseClaim(); return invoiceResult }
 
-      await db.quotation.update({ where: { id }, data: { status: 'ACCEPTED' } })
       await logAction({ userId, action: 'CONVERT_QUOTATION_TO_RETAINER', entityType: 'RetainerAgreement', entityId: retainerId, newValue: `From quotation ${q.quotationNumber}` })
-
       return { success: true, data: { retainerId, ...(invoiceResult.data as object) } }
     } catch (err) {
+      await releaseClaim()
       return { success: false, error: { code: 'SYS-001', message: err instanceof Error ? err.message : 'Failed to convert quotation to retainer.' } }
     }
   },

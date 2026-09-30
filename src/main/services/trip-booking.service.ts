@@ -279,6 +279,15 @@ export async function generateTripInvoice(bookingId: string, userId?: string): P
         await db.tripBooking.update({ where: { id: bookingId }, data: { invoiceId: null } })
         return { success: false, error: { code: 'TRB-008', message: 'Booking not found.' } }
       }
+      // Real bug found: same missing guard as job-card.service.ts's own
+      // generateJobCardInvoice — TripBooking.status can be CANCELLED (and
+      // updateTripBookingStatus already treats it as a real terminal state,
+      // releasing held seats back), yet nothing stopped a cancelled trip from
+      // still being fully invoiced for its packageRate.
+      if (booking.status === 'CANCELLED') {
+        await db.tripBooking.update({ where: { id: bookingId }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'TRB-018', message: 'Cannot generate an invoice for a cancelled booking.' } }
+      }
 
       const excessTotal = booking.dutyLogs.reduce((s, d) => s + (d.excessKmCharge ?? 0) + (d.excessHourCharge ?? 0), 0)
       // getOrCreateServiceProduct has no failure path in its own type (it

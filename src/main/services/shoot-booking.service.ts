@@ -291,11 +291,18 @@ export async function generateShootInvoice(id: string) {
     try {
       const booking = await db.shootBooking.findUnique({
         where: { id },
-        select: { id: true, clientId: true, shootType: true, shootLocation: true, finalAmount: true, addOnItems: true },
+        select: { id: true, clientId: true, shootType: true, shootLocation: true, finalAmount: true, addOnItems: true, status: true },
       })
       if (!booking || booking.finalAmount == null || Number(booking.finalAmount) <= 0) {
         await db.shootBooking.update({ where: { id }, data: { invoiceId: null } })
         return { success: false, error: { code: 'SHT-005', message: 'Set a final agreed amount greater than zero before generating an invoice.' } }
+      }
+      // Real bug found: same missing guard as job-card.service.ts's own
+      // generateJobCardInvoice — ShootBooking.status can be CANCELLED, and
+      // nothing stopped a cancelled shoot from still being fully invoiced.
+      if (booking.status === 'CANCELLED') {
+        await db.shootBooking.update({ where: { id }, data: { invoiceId: null } })
+        return { success: false, error: { code: 'SHT-010', message: 'Cannot generate an invoice for a cancelled booking.' } }
       }
 
       let product = await db.product.findFirst({ where: { hsnCode: '998314', isActive: true } })

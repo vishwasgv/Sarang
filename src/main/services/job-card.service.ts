@@ -487,13 +487,13 @@ export async function generateJobCardInvoice(id: string, userId?: string) {
     if (!existing) return { success: false, error: { code: 'JC-003', message: 'Job card not found.' } }
     return { success: false, error: { code: 'JC-005', message: 'Invoice already generated for this job card.' } }
   }
-
   try {
     const job = await db.jobCard.findUnique({ where: { id } })
     if (!job) {
       await db.jobCard.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'JC-003', message: 'Job card not found.' } }
     }
+    if (job.status === 'CANCELLED') { await db.jobCard.update({ where: { id }, data: { invoiceId: null } }); return { success: false, error: { code: 'JC-009', message: 'Cannot generate an invoice for a cancelled job card.' } } } // real bug found: was missing this cancelled-record guard (cf. lab-test-order/sales-order/blood-bank)
     if (!job.customerId) {
       await db.jobCard.update({ where: { id }, data: { invoiceId: null } })
       return { success: false, error: { code: 'JC-004', message: 'This job card has no linked customer. Set a customer before generating an invoice.' } }

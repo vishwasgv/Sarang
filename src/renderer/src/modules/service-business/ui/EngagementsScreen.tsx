@@ -387,7 +387,7 @@ export default function EngagementsScreen(): React.JSX.Element {
                   </td>
                   <td className="px-4 py-3 whitespace-nowrap">
                     <div className="flex items-center gap-1">
-                      {eng.lastInvoicedPeriod !== currentPeriod() && eng.feeAmount != null && eng.feeAmount > 0 && (
+                      {eng.status === 'ACTIVE' && eng.lastInvoicedPeriod !== currentPeriod() && eng.feeAmount != null && eng.feeAmount > 0 && (
                         <button
                           onClick={() => void handleGenerateInvoice(eng.id)}
                           disabled={generatingInvoiceId === eng.id}

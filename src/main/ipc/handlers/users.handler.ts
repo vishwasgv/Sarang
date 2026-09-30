@@ -41,6 +41,18 @@ export function register(handle: HandleFn): void {
     }
     const { id, fullName, roleId, email, phone } = parsed.data
     const db = getPrisma()
+    // Same "at least one administrator must remain active" invariant users:deactivate
+    // already enforces — reassigning the last Admin's roleId away from Admin here would
+    // silently strip Admin access from the whole install just as effectively as
+    // deactivating that user, but was previously unchecked on this path.
+    const adminRole = await db.role.findFirst({ where: { roleName: 'Admin' } })
+    if (adminRole && roleId !== adminRole.id) {
+      const adminCount = await db.user.count({ where: { roleId: adminRole.id, isActive: true } })
+      const targetUser = await db.user.findUnique({ where: { id } })
+      if (targetUser?.roleId === adminRole.id && adminCount <= 1) {
+        return { success: false, error: { code: 'USER-002', message: 'At least one administrator must remain active.' } }
+      }
+    }
     const updated = await db.user.update({ where: { id }, data: { fullName, roleId, email, phone } })
     await auditService.logAction({ userId: authService.getCurrentSession()?.userId, action: 'USER_UPDATED', entityType: 'User', entityId: id })
     return { success: true, data: { ...updated, passwordHash: undefined } }

@@ -247,6 +247,19 @@ describe('service-project-milestone.service — generateMilestoneInvoice', () =>
     expect((res as { error: { code: string } }).error.code).toBe('MS30-007')
   })
 
+  it('rejects a milestone whose parent project has been cancelled', async () => {
+    const db = makeInvoiceMockDb(makeMilestoneWithProject({
+      project: { id: 'proj-1', clientId: 'client-1', projectName: 'Villa Renovation', status: 'CANCELLED' },
+    }))
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateMilestoneInvoice('ms-1')
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('MS30-011')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+    expect(db.serviceProjectMilestone.update).toHaveBeenCalledWith({ where: { id: 'ms-1' }, data: { invoiceId: null } })
+  })
+
   it('generates an invoice and marks the milestone INVOICED', async () => {
     const db = makeInvoiceMockDb(makeMilestoneWithProject())
     vi.mocked(getPrisma).mockReturnValue(db as never)

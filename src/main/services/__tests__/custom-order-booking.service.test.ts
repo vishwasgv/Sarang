@@ -122,4 +122,23 @@ describe('custom-order-booking.service.generateCustomOrderInvoice', () => {
     expect(res.success).toBe(true)
     expect(paymentService.recordPayment).toHaveBeenCalledWith(expect.objectContaining({ amount: 1000 }), undefined)
   })
+
+  // Real bug found: nothing previously stopped a CANCELLED order from still
+  // being fully invoiced — same guard this codebase's own established
+  // convention already enforces elsewhere for a one-off cancelled work item
+  // (lab-test-order.service.ts, sales-order.service.ts, blood-bank.service.ts).
+  it('rejects invoicing a cancelled order', async () => {
+    const db = makeMockDb()
+    db.customOrderBooking.findUnique.mockResolvedValue({
+      id: 'cob-1', bookingNumber: 'COB-00001', customerId: 'cust-1', status: 'CANCELLED',
+      advanceAmount: 0, items: [{ productId: 'prod-1', quantity: 1, unitPrice: 1000 }],
+    })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+
+    const res = await generateCustomOrderInvoice('cob-1')
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('COB-014')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
 })

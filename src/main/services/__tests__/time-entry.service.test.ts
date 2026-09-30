@@ -357,6 +357,18 @@ describe('generateInvoiceForServiceProject', () => {
     expect(createCall.items[0]).toMatchObject({ quantity: 5, unitPrice: 3000 })
   })
 
+  it('rejects a CANCELLED project even with a contract value set', async () => {
+    const db = makeProjectDb({ serviceProject: { findUnique: vi.fn().mockResolvedValue({
+      id: 'sp-1', clientId: 'cust-1', projectName: 'Website Revamp', billingMethod: 'FIXED_COST', totalContractValue: new FakeDecimal(50000), status: 'CANCELLED'
+    }) } })
+    vi.mocked(getPrisma).mockReturnValue(db as never)
+    const res = await generateInvoiceForServiceProject({ serviceProjectId: 'sp-1' })
+
+    expect(res.success).toBe(false)
+    expect((res as { error: { code: string } }).error.code).toBe('SP-006')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
   it('rejects a FIXED_COST project with no contract value set', async () => {
     const db = makeProjectDb({ serviceProject: { findUnique: vi.fn().mockResolvedValue({ id: 'sp-1', clientId: 'cust-1', projectName: 'No Value Set', billingMethod: 'FIXED_COST', totalContractValue: null }) } })
     vi.mocked(getPrisma).mockReturnValue(db as never)

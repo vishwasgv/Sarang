@@ -54,6 +54,21 @@ describe('project.service.generateProjectInvoice', () => {
     expect(billingService.createInvoice).not.toHaveBeenCalled()
   })
 
+  // Real bug found in this audit: a cancelled project (a real terminal
+  // status, set via updateProject) had no guard here — ProjectsScreen.tsx's
+  // own "Generate Invoice" button was also reachable for one (fixed
+  // alongside this), so a cancelled project could still be fully invoiced.
+  it('fails when the project has been cancelled', async () => {
+    const project = makeProject({ status: 'CANCELLED' })
+    vi.mocked(getPrisma).mockReturnValue(makeMockDb(project) as never)
+
+    const res = await generateProjectInvoice('prj-1')
+
+    expect(res.success).toBe(false)
+    expect(res.error?.code).toBe('PRJ-007')
+    expect(billingService.createInvoice).not.toHaveBeenCalled()
+  })
+
   it('fails when an invoice was already generated for this project', async () => {
     const project = makeProject({ invoiceId: 'inv-existing' })
     vi.mocked(getPrisma).mockReturnValue(makeMockDb(project) as never)
